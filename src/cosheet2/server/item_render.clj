@@ -1,8 +1,8 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [StoredItemDescription]]
-                      [entity :as entity :refer [label? description->entity
-                                                 has-keyword?]]
+                      [entity :refer [label? description->entity
+                                      content has-keyword? primitive?]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
                                      map-with-first-last
@@ -497,13 +497,13 @@
 (defn item-content-DOM
   "Make dom for the content part of an item."
   [item specification]
-  ;; We don't currently handle content that itself non-trivial
-  ;; entities. That would need more interaction and UI design work to
+  ;; We don't currently handle content that is itself a non-trivial
+  ;; entity. That would need more interaction and UI design work to
   ;; deal with the distinction between elements of an item and
   ;; elements on its content.
-  (let [content (entity/content item)]
-    (assert (entity/atom? content))
-    (let [anything (= 'anything content)
+  (let [contents (content item)]
+    (assert (primitive? contents))
+    (let [anything (= 'anything contents)
           editable (not (:immutable specification))]
       [:div (cond-> (-> (select-keys specification [:class])
                         (into-attributes
@@ -514,7 +514,7 @@
               (into-attributes (:class "label"))
               anything
               (into-attributes (:class "placeholder")))
-       (if anything "\u00A0..." (str content))])))
+       (if anything "\u00A0..." (str contents))])))
 
 (defn render-content-only-DOM
   "Render a dom spec for only the content of an item."

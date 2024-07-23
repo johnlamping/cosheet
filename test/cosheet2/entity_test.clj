@@ -40,7 +40,7 @@
         item_b (description->entity idb s)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
-    (is (not (atom? item0)))
+    (is (not (primitive? item0)))
     (is (= (subject (description->entity ida s)) item99))
     (is (= (label->elements item99 "foo") [(description->entity ida s)]))
     ;; Check that the :label is required.
@@ -55,7 +55,7 @@
     (is (has-keyword? item_b :label))
     (is (not (has-keyword? item_b :foo)))
     (is (= (content (description->entity ida s)) 3))
-    (is (not (atom? (content (description->entity idf s)))))
+    (is (not (primitive? (content (description->entity idf s)))))
     (is (content (content (description->entity idf s))) "baz")
     (is (= (elements (content (description->entity idf s)))
            [(description->entity idg s)]))
@@ -99,7 +99,7 @@
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (= (subject (description->entity ida ms)) item99))
-    (is (not (current-value (atom? item0))))
+    (is (not (current-value (primitive? item0))))
     (is (= (current-value (label->elements item99 "foo"))
            [(description->entity ida ms)]))
     (is (= (current-value (label->elements item99 "bar")) nil))
@@ -114,7 +114,7 @@
     (is (not (current-value (has-keyword? item_b :foo))))
     (is (= (current-value (content (description->entity ida ms))) 3))
     (is (not (current-value
-              (atom? (current-value (content (description->entity idf ms)))))))
+              (primitive? (current-value (content (description->entity idf ms)))))))
     (is (current-value
          [content (current-value (content (description->entity idc ms)))])
         4)
@@ -177,7 +177,7 @@
            (description->entity id0 (current-store ms))))))
 
 (deftest list-test
-  (is (not (atom? '(1 2))))
+  (is (not (primitive? '(1 2))))
   (is (= (elements '(1 2)) [2]))
   (is (= (elements '(1 (2 3) (4 5))) '[(2 3) (4 5)]))
   (is (= (label->elements '(1 (2 (3 :label)) (4 3)) 3)
@@ -193,13 +193,13 @@
   (is (= (to-deep-list '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest constant-test
-  (is (atom? 1))
-  (is (atom? true))
-  (is (atom? "foo"))
-  (is (atom? :foo))
-  (is (atom? 'foo))
-  (is (atom? nil))
-  (is (atom? orderable/initial))
+  (is (primitive? 1))
+  (is (primitive? true))
+  (is (primitive? "foo"))
+  (is (primitive? :foo))
+  (is (primitive? 'foo))
+  (is (primitive? nil))
+  (is (primitive? orderable/initial))
   (is (= (elements 1) nil))
   (is (= (elements true) nil))
   (is (= (elements "foo") nil))

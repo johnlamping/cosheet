@@ -6,7 +6,7 @@
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list description->entity content
                                       elements label->elements mutable-entity?
-                                      has-keyword? atom?]]
+                                      has-keyword? primitive?]]
                       entity-impl
                       [query :refer :all]
                       [query-impl :refer [bind-entity closest-template]]
@@ -113,7 +113,7 @@
         alternate-bound (bind-entity entity {"foo" :b, "bar" 9})]
     (is (= (content bound) :b))
     (is (= (mutable-entity? bound) false))
-    (is (= (atom? bound) false))
+    (is (= (primitive? bound) false))
     (is (= (to-list partially-bound)
            `(:a (4 ~(variable-query "bar")))))
     (is (= (to-list bound)

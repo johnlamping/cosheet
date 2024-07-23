@@ -36,7 +36,7 @@
 
   (mutable-entity? [this] false)
 
-  (atom? [this] false)
+  (primitive? [this] false)
 
   (label->elements [this label]
     (seq (for [element-id (id-label->element-ids store item-id label)]
@@ -79,7 +79,7 @@
 
   (mutable-entity? [this] true)
 
-  (atom? [this?] false)
+  (primitive? [this?] false)
 
   (label->elements [this label]
     (expr-let [element-ids (id-label->element-ids store item-id label)]
@@ -114,7 +114,7 @@
 
   (mutable-entity? [this] false)
 
-  (atom? [this] false)
+  (primitive? [this] false)
 
   
   (label->elements [this label]
@@ -139,7 +139,7 @@
 (extend-protocol Entity
   clojure.lang.Keyword
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -148,7 +148,7 @@
   (current-version [this] this)
   clojure.lang.Symbol
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -157,7 +157,7 @@
   (current-version [this] this)
   java.lang.String
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -166,7 +166,7 @@
   (current-version [this] this)
   java.lang.Number
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -175,7 +175,7 @@
   (current-version [this] this)
   java.lang.Boolean
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -184,7 +184,7 @@
   (current-version [this] this)
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
@@ -193,7 +193,7 @@
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
-  (atom? [this] true)
+  (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)

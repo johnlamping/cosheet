@@ -323,7 +323,7 @@
     (store/read-store (store/new-element-store) stream)))
 
 (defn to-limited-list [entity depth width]
-  (if (entity/atom? entity)
+  (if (entity/primitive? entity)
     (entity/ultimate-content entity)
     (let [content (entity/content entity)
           elements (entity/elements entity)]

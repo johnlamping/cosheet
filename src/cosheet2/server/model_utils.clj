@@ -6,7 +6,7 @@
                       [canonical :refer [canonicalize-list]]
                       [store :refer [new-element-store update-content
                                      id-label->element-ids]]
-                      [entity :refer [atom? label? description->entity elements
+                      [entity :refer [primitive? label? description->entity elements
                                       content subject label->elements
                                       in-different-store]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
@@ -106,7 +106,7 @@
   "Given an immutable entity, make a list representation of the
   semantic information of the entity."
   [immutable-entity]
-  (if (atom? immutable-entity)
+  (if (primitive? immutable-entity)
     (content immutable-entity)
     (let [content (content immutable-entity)
           elements (semantic-elements immutable-entity)
@@ -121,7 +121,7 @@
   semantic information of the entity, putting elements in the order that the
   :order information calls for."
   [immutable-entity]
-  (if (atom? immutable-entity)
+  (if (primitive? immutable-entity)
     (content immutable-entity)
     (let [content (content immutable-entity)
           elements (ordered-entities (semantic-elements immutable-entity))

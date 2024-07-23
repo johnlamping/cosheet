@@ -33,8 +33,8 @@
      on it assume they are runing under a compute-manager, and may return
      reporters.")
 
-  (atom? [this]
-    "True if this entity is atomic: a primitive.")
+  (primitive? [this]
+    "True if this entity is a primitive, like a string or a number.")
 
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
@@ -125,7 +125,7 @@
 
 (defn to-deep-list [entity]
   "Like to-list, but expand out content that is entities."
-  (if (atom? entity)
+  (if (primitive? entity)
     entity
     (expr-let [immutable (updating-immutable entity)]
       (let [content-as-list (to-deep-list (content entity))
@@ -162,7 +162,7 @@
   (if (nil? entity)
     nil
     (expr-let [content (content entity)]
-      (if (atom? content)
+      (if (primitive? content)
         content
         (ultimate-content content)))))
 

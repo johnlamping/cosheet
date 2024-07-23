@@ -1,7 +1,7 @@
 (ns cosheet2.query-impl
   (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [Entity StoredEntity
-                                      mutable-entity? atom?
+                                      mutable-entity? primitive?
                                       description->entity
                                       content elements label->elements
                                       label->content ultimate-content
@@ -135,7 +135,7 @@
 
 (defn elements-satisfying [fixed-term target]
   "Return a list of the target elements satisfying the given fixed-term."
-  (when (not (atom? target))
+  (when (not (primitive? target))
     (let [labels (labels-for-element fixed-term {})]
       (if (seq? labels)
         (filter #(extended-by? fixed-term %)
@@ -151,7 +151,7 @@
 
 (defn extended-by? [fixed-term target]
   (or (nil? fixed-term)
-      (if (atom? fixed-term)
+      (if (primitive? fixed-term)
         (equivalent-primitives? (ultimate-content fixed-term)
                                 (ultimate-content target))
         (let [content-extended (extended-by? (content fixed-term)
@@ -225,7 +225,7 @@
 
   (mutable-entity? [this] false)
   
-  (atom? [this] (atom? wrapped))
+  (primitive? [this] (primitive? wrapped))
 
   (label->elements [this label]
     (seq (filter (fn [element]
@@ -253,7 +253,7 @@
 
 (defn bind-entity [entity env]
   (assert (not (mutable-entity? entity)))
-  (if (atom? entity)
+  (if (primitive? entity)
     (ultimate-content entity)
     (or (and (variable-query? entity)
              (env (label->content entity ::query/name)))
@@ -389,7 +389,7 @@
 (defn matching-extensions [query env target]
   (assert (not (mutable-entity? query)))
   (let [answer
-        (if (atom? query)
+        (if (primitive? query)
           (when (extended-by? query target) [env])
           (if (variable-query? query)
             (variable-matches query env target)

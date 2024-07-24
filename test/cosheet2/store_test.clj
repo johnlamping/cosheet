@@ -16,27 +16,27 @@
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->subject
-    {(make-id "1") (make-id "0")
-     (make-id "2") (make-id "1")
-     (make-id "3") (make-id "2")
-     (make-id "5") (make-id "2")
-     (make-id "6") (make-id "3")
-     (make-id "7") (make-id "3")
-     (make-id "8") (make-id "5")
-     (make-id "9") (make-id "1")
-     (make-id "10") (make-id "9")}
+    {(make-item-id "1") (make-item-id "0")
+     (make-item-id "2") (make-item-id "1")
+     (make-item-id "3") (make-item-id "2")
+     (make-item-id "5") (make-item-id "2")
+     (make-item-id "6") (make-item-id "3")
+     (make-item-id "7") (make-item-id "3")
+     (make-item-id "8") (make-item-id "5")
+     (make-item-id "9") (make-item-id "1")
+     (make-item-id "10") (make-item-id "9")}
     :id->content-data
-    {(make-id "0") 0
-     (make-id "1") (make-id "4")
-     (make-id "2") "Foo"
-     (make-id "3") "Baz"
-     (make-id "4") 5
-     (make-id "5") "bar"
-     (make-id "6") :baz
-     (make-id "7") :label
-     (make-id "8") :label
-     (make-id "9") "Bar"
-     (make-id "10") :order}
+    {(make-item-id "0") 0
+     (make-item-id "1") (make-item-id "4")
+     (make-item-id "2") "Foo"
+     (make-item-id "3") "Baz"
+     (make-item-id "4") 5
+     (make-item-id "5") "bar"
+     (make-item-id "6") :baz
+     (make-item-id "7") :label
+     (make-item-id "8") :label
+     (make-item-id "9") "Bar"
+     (make-item-id "10") :order}
     :temporary-ids
     #{}
     :next-id
@@ -55,14 +55,14 @@
          :id->content-data {}))
 
 (deftest id<->string-test
-  (let [id (make-id "a")]
+  (let [id (make-item-id "a")]
     (is (= (-> id id->string string->id) id)))
   (let [id (->ItemId 3)]
     (is (= (-> id id->string string->id) id))))
 
 (deftest stored-item-description-name-test
-  (is (= (stored-item-description-name (make-id "a")) "Id-Ia"))
-  (is (= (stored-item-description-name (->ItemId 1)) "Id-1")))
+  (is (= (item-id-name (make-item-id "a")) "Id-Ia"))
+  (is (= (item-id-name (->ItemId 1)) "Id-1")))
 
 (deftest index-id->elements-test
   (let [ids (keys (:id->content-data unindexed-test-store))
@@ -107,9 +107,9 @@
         empty-indexed (clear-store-leaving-indices store)
         unindexed (reduce #(index-id->keywords %1 store %2) empty-indexed ids)]
     (is (check (:id->keywords store)
-               {(make-id "3") #{:label :baz}
-                (make-id "5") :label
-                (make-id "9") :order}))
+               {(make-item-id "3") #{:label :baz}
+                (make-item-id "5") :label
+                (make-item-id "9") :order}))
     (is (empty? (:id->keywords unindexed)))))
 
 (deftest index-id->label->ids-test
@@ -124,10 +124,10 @@
         unindexed (reduce #(index-id->label->ids %1 store %2)
                           empty-indexed ids)]
     (is (check (:id->label->ids store)
-               {(make-id "1") {"baz" (make-id "3")
-                               "bar" (make-id "5")
-                               :order (make-id "10")}
-                (make-id "2") {:baz (make-id "6")}}))
+               {(make-item-id "1") {"baz" (make-item-id "3")
+                               "bar" (make-item-id "5")
+                               :order (make-item-id "10")}
+                (make-item-id "2") {:baz (make-item-id "6")}}))
     (is (empty? (:content->ids unindexed)))))
 
 (def test-store
@@ -140,73 +140,74 @@
 
 (deftest all-X-test
    (is (= (set (all-ids-eventually-holding-content test-store 5))
-          #{(make-id "1") (make-id "4")}))
-  (is (= (set (all-ids-eventually-holding-id test-store (make-id "4")))
-         #{(make-id "1") (make-id "4")}))
-  (is (= (set (all-forward-reachable-ids test-store (make-id "1")))
-          #{(make-id "0") (make-id "1") (make-id "4")})))
+          #{(make-item-id "1") (make-item-id "4")}))
+  (is (= (set (all-ids-eventually-holding-id test-store (make-item-id "4")))
+         #{(make-item-id "1") (make-item-id "4")}))
+  (is (= (set (all-forward-reachable-ids test-store (make-item-id "1")))
+          #{(make-item-id "0") (make-item-id "1") (make-item-id "4")})))
 
 (deftest id-valid?-test
-  (is (id-valid? test-store (make-id "1")))
-  (is (not (id-valid? test-store (make-id "wrong")))))
+  (is (id-valid? test-store (make-item-id "1")))
+  (is (not (id-valid? test-store (make-item-id "wrong")))))
 
 (deftest id->content-test
-  (is (= (id->content test-store (make-id "???")) nil))
-  (is (= (id->content test-store (make-id "1")) (make-id "4")))
-  (is (= (id->content test-store (make-id "2")) "Foo"))
-  (is (= (id->content test-store (make-id "6")) :baz)))
+  (is (= (id->content test-store (make-item-id "???")) nil))
+  (is (= (id->content test-store (make-item-id "1")) (make-item-id "4")))
+  (is (= (id->content test-store (make-item-id "2")) "Foo"))
+  (is (= (id->content test-store (make-item-id "6")) :baz)))
 
 (deftest id->element-ids-test
-  (is (= (id->element-ids test-store (make-id "0")) [(make-id "1")]))
-  (is (= (set (id->element-ids test-store (make-id "1")))
-         (set [(make-id "2") (make-id "9")])))
-  (is (= (id->element-ids test-store (make-id "wrong")) nil)))
+  (is (= (id->element-ids test-store (make-item-id "0")) [(make-item-id "1")]))
+  (is (= (set (id->element-ids test-store (make-item-id "1")))
+         (set [(make-item-id "2") (make-item-id "9")])))
+  (is (= (id->element-ids test-store (make-item-id "wrong")) nil)))
 
 (deftest id-label->element-ids-test
-  (is (= (id-label->element-ids test-store (make-id "1") "Bar")
-         [(make-id "2")]))
-  (is (= (id-label->element-ids test-store (make-id "1") "Baz")
-         [(make-id "2")]))
-  (is (= (id-label->element-ids test-store (make-id "0") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-id "wrong") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-id "1") :order)
-         [(make-id "9")]))
-  (is (= (id-label->element-ids test-store (make-id "0") :order)
+  (is (= (id-label->element-ids test-store (make-item-id "1") "Bar")
+         [(make-item-id "2")]))
+  (is (= (id-label->element-ids test-store (make-item-id "1") "Baz")
+         [(make-item-id "2")]))
+  (is (= (id-label->element-ids test-store (make-item-id "0") "bar") nil))
+  (is (= (id-label->element-ids test-store (make-item-id "wrong") "bar") nil))
+  (is (= (id-label->element-ids test-store (make-item-id "1") :order)
+         [(make-item-id "9")]))
+  (is (= (id-label->element-ids test-store (make-item-id "0") :order)
          nil)))
 
 (deftest id->has-keyword?-test
-  (is (id->has-keyword? test-store (make-id "3") :baz))
-  (is (id->has-keyword? test-store (make-id "3") :label))
-  (is (not (id->has-keyword? test-store (make-id "3") :bar)))
-  (is (not (id->has-keyword? test-store (make-id "2") :baz))))
+  (is (id->has-keyword? test-store (make-item-id "3") :baz))
+  (is (id->has-keyword? test-store (make-item-id "3") :label))
+  (is (not (id->has-keyword? test-store (make-item-id "3") :bar)))
+  (is (not (id->has-keyword? test-store (make-item-id "2") :baz))))
 
 (deftest id->containing-ids-test
-  (is (= (id->containing-ids test-store (make-id "4")) #{(make-id "1")}))
-  (is (= (id->containing-ids test-store (make-id "1")) #{}))
+  (is (= (id->containing-ids test-store (make-item-id "4"))
+         #{(make-item-id "1")}))
+  (is (= (id->containing-ids test-store (make-item-id "1")) #{}))
   (is (thrown? java.lang.AssertionError
                (id->containing-ids test-store "Foo"))))
 
 (deftest id->subject-test
-   (is (= (id->subject test-store (make-id "2")) (make-id "1")))
+   (is (= (id->subject test-store (make-item-id "2")) (make-item-id "1")))
    (is (= (id->subject test-store 2) nil)))
 
 (deftest add-simple-item-test
   (let [[added-store id]
-        (add-simple-item test-store (make-id "1") "test")]
+        (add-simple-item test-store (make-item-id "1") "test")]
     (is (= (:id id) (:next-id test-store)))
     (is (= (id->content added-store id) "test"))
-    (is (= (id->subject added-store id) (make-id "1"))))
+    (is (= (id->subject added-store id) (make-item-id "1"))))
   ;; Test that adding nil content fails.
   (is (thrown? java.lang.AssertionError
-               (add-simple-item test-store (make-id "1") nil)))
+               (add-simple-item test-store (make-item-id "1") nil)))
   (let [[added-store id]
         (add-simple-item
-         (track-modified-ids test-store) (make-id "1") "test")]
+         (track-modified-ids test-store) (make-item-id "1") "test")]
     (is (= (:modified-ids added-store) #{id}))))
 
 (deftest remove-simple-item-test
   (let [[added-store id]
-        (add-simple-item test-store (make-id "1") (make-id "2"))]
+        (add-simple-item test-store (make-item-id "1") (make-item-id "2"))]
     (is (= (assoc (remove-simple-item added-store id)
                   :next-id (:next-id test-store))
            test-store))
@@ -220,24 +221,26 @@
 
 (deftest change-content-test
   (let [[added-store _]
-        (add-simple-item test-store (make-id "1") (make-id "2"))
+        (add-simple-item test-store (make-item-id "1") (make-item-id "2"))
         [different-store id]
-        (add-simple-item test-store (make-id "1") (make-id "3"))
+        (add-simple-item test-store (make-item-id "1") (make-item-id "3"))
         changed-store
         (update-content (track-modified-ids different-store)
-                        id (make-id "2"))]
+                        id (make-item-id "2"))]
     (is (= changed-store (assoc added-store :modified-ids #{id})))
     ;; Test that adding nil content fails.
     (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-id "1") nil)))
+                 (update-content test-store (make-item-id "1") nil)))
     ;; Test that content that would create forward cycles fails.
     (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-id "4") (make-id "9"))))
+                 (update-content test-store (make-item-id "4")
+                                 (make-item-id "9"))))
     (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-id "0") (make-id "8"))))
+                 (update-content test-store (make-item-id "0")
+                                 (make-item-id "8"))))
     ;; Test that the non-cycle content doesn't fail.
-    (update-content test-store (make-id "9") (make-id "4"))
-    (update-content test-store (make-id "8") (make-id "0"))))
+    (update-content test-store (make-item-id "9") (make-item-id "4"))
+    (update-content test-store (make-item-id "8") (make-item-id "0"))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
@@ -343,50 +346,54 @@
 
 (deftest candidate-matching-ids-test
   (is (check (candidate-matching-ids-and-estimate test-store 5)
-             [2 (as-set [(make-id "1") (make-id "4")]) true]))
+             [2 (as-set [(make-item-id "1") (make-item-id "4")]) true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(5))
-             [2 (as-set [(make-id "1") (make-id "4")]) true]))
+             [2 (as-set [(make-item-id "1") (make-item-id "4")]) true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
-             [1 [(make-id "1")] true]))
+             [1 [(make-item-id "1")] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(5 "foo"))
-             [1 [(make-id "1")] true]))
+             [1 [(make-item-id "1")] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
              [1 [] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "baz" "bar"))
-             [1 [(make-id "2")] true]))
+             [1 [(make-item-id "2")] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
-             [2 [(make-id "2") (make-id "1")] false]))
+             [2 [(make-item-id "2") (make-item-id "1")] false]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-                        (make-id "4") (make-id "5") (make-id "6") (make-id "7")
-                       (make-id "8") (make-id "9") (make-id "10")])
+             [(as-set [(make-item-id "0") (make-item-id "1")
+                       (make-item-id "2") (make-item-id "3")
+                       (make-item-id "4") (make-item-id "5")
+                       (make-item-id "6") (make-item-id "7")
+                       (make-item-id "8") (make-item-id "9")
+                       (make-item-id "10")])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
-             [(as-set  [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-                        (make-id "5") (make-id "9")])
+             [(as-set  [(make-item-id "0") (make-item-id "1")
+                        (make-item-id "2") (make-item-id "3")
+                        (make-item-id "5") (make-item-id "9")])
               false]))
   (is (check (candidate-matching-ids test-store '(0))
-             [[(make-id "0")] true]))
+             [[(make-item-id "0")] true]))
   (is (check (candidate-matching-ids test-store 5)
-             [(as-set [(make-id "1") (make-id "4")]) true]))
+             [(as-set [(make-item-id "1") (make-item-id "4")]) true]))
     (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
-             [[(make-id "1")] false]))
+             [[(make-item-id "1")] false]))
   (is (check (candidate-matching-ids test-store '(5 nil))
-             [(as-set [(make-id "1") (make-id "4")]) false])))
+             [(as-set [(make-item-id "1") (make-item-id "4")]) false])))
 
 (deftest declare-temporary-id-test
   (is (= (:temporary-ids test-store) #{}))
   (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-id "3"))
-                            (add-simple-item (make-id "1") "hi")
+                            (declare-temporary-id (make-item-id "3"))
+                            (add-simple-item (make-item-id "1") "hi")
                             first
-                            (declare-temporary-id (make-id "8")))]
+                            (declare-temporary-id (make-item-id "8")))]
     (is (= (:temporary-ids temporary-store)
-           #{(make-id "3") (make-id "8")}))
+           #{(make-item-id "3") (make-item-id "8")}))
     (is (= (all-temporary-ids temporary-store)
-           #{(make-id "3") (make-id "6") (make-id "7")
-             (make-id "8")}))))
+           #{(make-item-id "3") (make-item-id "6") (make-item-id "7")
+             (make-item-id "8")}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
@@ -397,13 +404,13 @@
                                    (store-to-data test-store))))
   ;; Now try it with some items not serialized
   (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-id "3"))
-                            (declare-temporary-id (make-id "8")))
+                            (declare-temporary-id (make-item-id "3"))
+                            (declare-temporary-id (make-item-id "8")))
         smaller-store (-> test-store
-                          (remove-simple-item (make-id "8"))
-                          (remove-simple-item (make-id "7"))
-                          (remove-simple-item (make-id "6"))
-                          (remove-simple-item (make-id "3")))]
+                          (remove-simple-item (make-item-id "8"))
+                          (remove-simple-item (make-item-id "7"))
+                          (remove-simple-item (make-item-id "6"))
+                          (remove-simple-item (make-item-id "3")))]
     (is (= smaller-store
            (data-to-store (new-element-store)
                           (store-to-data temporary-store))))))
@@ -412,7 +419,7 @@
   (let [store (first
                ;; Add an Orderable to the store to check its serialization.
                (add-simple-item test-store
-                                (make-id "0")
+                                (make-item-id "0")
                                 (first (orderable/split orderable/initial))))
         outstr (java.io.ByteArrayOutputStream.)]
     (write-store store outstr)

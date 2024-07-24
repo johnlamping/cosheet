@@ -64,7 +64,7 @@
 (declare split)
 
 (defn- get-midpoint
-  "Internal function that picks a midpoint between two intgers, biasing
+  "Internal function that picks a midpoint between two integers, biasing
    so that most of the space is on one side, if requested. Left must be
    less than right. The result might be equal to the left input,
    but will always be less than the right one."

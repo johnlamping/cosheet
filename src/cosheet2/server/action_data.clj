@@ -3,8 +3,7 @@
                                     map-map thread-map thread-recursive-map
                                     add-elements-to-entity-list]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [StoredItemDescription
-                                     id->subject id->content]]
+                      [store :refer [is-item-id? id->subject id->content]]
                       [entity :refer [subject elements content label->elements
                               description->entity in-different-store]]
                       [canonical :refer [canonicalize-list
@@ -144,7 +143,7 @@
 (defn get-item-or-exemplars-for-id
   "Given the subject(s), find items or exemplars for the id."
   [subject-ids immutable-store id]
-  (assert (satisfies? StoredItemDescription id) id)
+  (assert (is-item-id? id) id)
   (assert (or (empty? subject-ids)
               (let [subject-id (id->subject immutable-store id)]
                 (or (nil? subject-id)

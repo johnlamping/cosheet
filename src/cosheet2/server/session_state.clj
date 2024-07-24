@@ -9,8 +9,8 @@
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
                    store-update-control-return! declare-temporary-id
-                   store-update! id-valid? update-equivalent-undo-point]]
-    [store-impl :refer [string->id]]
+                   store-update! id-valid? update-equivalent-undo-point
+                   string->id]]
     mutable-store-impl
     [store-utils :refer [add-entity remove-entity-by-id]]
     [query :refer [matching-items]]

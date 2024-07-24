@@ -1,8 +1,7 @@
 (ns cosheet2.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            (cosheet2 [store :refer [new-element-store make-id]]
-                      [store-impl :refer [->ItemId]]
+            (cosheet2 [store :refer [new-element-store make-item-id]]
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list description->entity content
                                       elements label->elements mutable-entity?
@@ -88,7 +87,7 @@
 (deftest closest-template-test
   (is (= (closest-template `(~(variable "foo" 5)
                                ~(description->entity
-                                 (make-id "test")
+                                 (make-item-id "test")
                                  (new-element-store))
                                (:foo ~(variable "baz" (variable "bar")))
                                ~(not-query 8))
@@ -316,8 +315,8 @@
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))
-  (let [ia (->ItemId "A")
-        ib (->ItemId "B")
+  (let [ia (make-item-id "A")
+        ib (make-item-id "B")
         s0 (new-element-store)
         [s1 id1] (add-entity s0 ia '(1 ("a" 3)))
         [s2 id2] (add-entity s1 ia '(3 (4 5)))
@@ -480,8 +479,8 @@
                                s2)))))
 
 (deftest matching-items-test
-  (let [ia (->ItemId "A")
-        ib (->ItemId "B")
+  (let [ia (make-item-id "A")
+        ib (make-item-id "B")
         s0 (new-element-store)
         [s1 id1] (add-entity s0 ia '(1 (2 3)))
         [s2 id2] (add-entity s1 ia '(3 (4 5)))

@@ -7,7 +7,7 @@
              [debug :refer [envs-to-list simplify-for-print]]
              [entity :refer [description->entity to-list]]
              entity-impl
-             [store :refer [make-id new-element-store]]
+             [store :refer [new-element-store]]
              store-impl
              mutable-store-impl
              [store-utils :refer [add-entity]]
@@ -328,7 +328,7 @@
                                 :class "label"
                                 :width 1.5}]
                    [:div {:class "indent-wrapper"}
-                    [:component {:template '("" (1 :label) (2 :label))
+                    [:component {:template (as-set '("" (1 :label) (2 :label)))
                                  :relative-id :content
                                  :item-id fred-id
                                  :render-dom render-content-only-DOM
@@ -474,12 +474,14 @@
   ;; Test an item with four elements, with label sharing among them.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
-                                      (0 ("zero" :label) (~o1 :order))
+                                      (0 ("zero" :label)
+                                         (~o1 :order))
                                       (2 ("two" :label (~o1 :order))
                                          ("both" :label (~o2 :order))
                                          (~o3 :order))
                                       (1 ("one" :label (~o1 :order))
-                                         ("both" :label (~o2 :order)))
+                                         ("both" :label (~o2 :order))
+                                         (~o2 :order))
                                       (3 (~o4 :order))))
         fred (description->entity fred-id store)
         item0 (first (matching-elements 0 fred))
@@ -569,8 +571,8 @@
                       [:component {:width 0.9
                                    :template '(anything ("both" :label)
                                                         ("two" :label))
-                                   :excluded-element-ids [id-label2both
-                                                          id-label2two]
+                                   :excluded-element-ids (as-set [id-label2both
+                                                                  id-label2two])
                                    :relative-id id2}]]]]]]
                 [:div {:class (str "horizontal-labels-element"
                                    " virtual-wrapper narrow")}
@@ -716,12 +718,14 @@
   ;; Test an item with four elements, with label sharing among them.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
-                                      (0 ("zero" :label) (~o1 :order))
+                                      (0 ("zero" :label)
+                                         (~o1 :order))
                                       (2 ("two" :label (~o1 :order))
                                          ("both" :label (~o2 :order))
                                          (~o3 :order))
                                       (1 ("one" :label (~o1 :order))
-                                         ("both" :label (~o2 :order)))
+                                         ("both" :label (~o2 :order))
+                                         (~o2 :order))
                                       (3 (~o4 :order))))
         fred (description->entity fred-id store)
         item0 (first (matching-elements 0 fred))
@@ -805,7 +809,8 @@
                            :relative-id id-label1one}]]]
             [:component {:width 1.03125
                          :template '(anything ("both" :label) ("one" :label))
-                         :excluded-element-ids [id-label1both id-label1one]
+                         :excluded-element-ids (as-set [id-label1both
+                                                        id-label1one])
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent bottom-border"}
@@ -819,7 +824,8 @@
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
                           :template '(anything ("both" :label) ("two" :label))
-                          :excluded-element-ids [id-label2both id-label2two]
+                          :excluded-element-ids (as-set [id-label2both
+                                                         id-label2two])
                           :relative-id id2}]]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}

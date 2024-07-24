@@ -17,7 +17,6 @@
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             current-store id-valid? id->content]]
-             [store-impl :refer [->ItemId]]
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl

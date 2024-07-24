@@ -65,6 +65,16 @@
     (let [order-info (map #(label->content % :order) entities)]
       (sort-by-order entities order-info))))
 
+(defn recursively-process-elements
+  "Given a function and an entity, apply the function to the list of
+  elements at each level, and replace the elements at that level with
+  the result."
+  [f entity]
+   (if-let [elems (elements entity)]
+     (list* (content entity)
+            (f (map #(recursively-process-elements f %) elems)))
+     entity))
+
 ;;; The next few functions implement a reporter that orders a set of
 ;;; ids, updating as either the set membership or their order
 ;;; information changes.

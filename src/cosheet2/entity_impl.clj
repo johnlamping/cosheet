@@ -14,11 +14,11 @@
                                           category-change]])))
 
 (defrecord
-    ^{:doc "An item whose elements are described by a store."}
-    StoredItem
+    ^{:doc "An entity whose elements are described by a store."}
+    ImmutableStoredEntity
 
   [store     ; The immutable store that holds the information for this item.
-   item-id]  ; The ItemDescription of the item in the store.
+   item-id]  ; The ItemId of the item in the store.
 
   StoredEntity
 
@@ -58,10 +58,10 @@
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
-    MutableStoredItem
+    MutableStoredEntity
 
     [store     ; The mutable store that holds the information for this item.
-     item-id]  ; The ItemDescription of the item in the store.
+     item-id]  ; The id of the item in the store.
 
   StoredEntity
 
@@ -203,11 +203,11 @@
 )
 
 (extend-protocol Description
-  cosheet2.store.StoredItemDescription
+  cosheet2.store.ItemId
   (description->entity [this store]
     (if (mutable-store? store)
-      (->MutableStoredItem store this)
-      (->StoredItem store this)))
+      (->MutableStoredEntity store this)
+      (->ImmutableStoredEntity store this)))
   clojure.lang.Keyword
   (description->entity [this store] this)
   clojure.lang.Symbol

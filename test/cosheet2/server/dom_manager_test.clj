@@ -14,9 +14,8 @@
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [envs-to-list]]
              entity-impl
-             [store :refer [new-element-store new-mutable-store make-id
-                            id->element-ids]]
-             [store-impl :refer [string->id]]
+             [store :refer [new-element-store new-mutable-store make-item-id
+                            id->element-ids string->id]]
              mutable-store-impl
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue
@@ -28,8 +27,8 @@
             ; :reload
             ))
 
-(def id1 (make-id "foo"))
-(def id2 (make-id "bar"))
+(def id1 (make-item-id "foo"))
+(def id2 (make-item-id "bar"))
 (def s2 {:relative-id id2
          :render-dom (fn [spec store] [:div 3])})
 (def s1 {:relative-id id1

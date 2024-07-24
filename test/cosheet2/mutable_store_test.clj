@@ -34,7 +34,7 @@
         modified-store (update-content store element 99)]
     ;; Test the accessors.
     (is (computation-value (id-valid? mutable-store element) cd))
-    (is (not (computation-value (id-valid? mutable-store (make-id "wrong"))
+    (is (not (computation-value (id-valid? mutable-store (make-item-id "wrong"))
                                 cd)))
     (is (= (computation-value
             (id-label->element-ids mutable-store element "by")

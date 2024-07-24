@@ -7,8 +7,8 @@
              [utils :refer [parse-string-as-number]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]]
-             [store :refer [new-element-store new-mutable-store]]
-             [store-impl :refer [->ItemId]]
+             [store :refer [->ItemId new-element-store new-mutable-store]]
+             store-impl
              [reporter :refer [reporter-data reporter-value]]
              [query :refer [matching-items]]
              [canonical :refer [canonicalize-list]]

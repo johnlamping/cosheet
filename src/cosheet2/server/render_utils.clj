@@ -5,7 +5,6 @@
                                      add-elements-to-entity-list
                                      separate-by]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [StoredItemDescription]]
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
                       [canonical :refer [canonicalize-list

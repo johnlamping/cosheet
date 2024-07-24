@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :refer [add-simple-item remove-simple-item
                                      id->content id->element-ids
                                      id->containing-ids
-                                     StoredItemDescription]])))
+                                     is-item-id?]])))
 
 (defn- items-to-add
   "Return a seq of items, described as [subject content], to add
@@ -58,7 +58,7 @@
                                  (id->element-ids store id))]
     (concat element-removals
             [id]
-            (when (and (satisfies? StoredItemDescription content)
+            (when (and (is-item-id? content)
                        (every? (conj (set element-removals) id)
                                (id->containing-ids store content)))
               ;; The content is an item that nobody else holds,

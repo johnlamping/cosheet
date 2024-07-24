@@ -4,7 +4,7 @@
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
                       [expression :refer [expr-let]]
-                      [store :refer [add-simple-item make-id
+                      [store :refer [add-simple-item make-item-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
                                      current-store
@@ -23,9 +23,9 @@
             ))
 
 (deftest storeditem-test
-  (let [id0 (make-id "0")
-        id1 (make-id "1")
-        id99 (make-id "99")
+  (let [id0 (make-item-id "0")
+        id1 (make-item-id "1")
+        id99 (make-item-id "99")
         [s1 ida] (add-simple-item (new-element-store) id99 3)
         [s2 idb] (add-simple-item s1 ida "foo")
         [s3 idc] (add-simple-item s2 id99 4)
@@ -75,9 +75,9 @@
     (is (= (current-version item0) item0))))
 
 (deftest mutable-storeditem-test
-  (let [id0 (make-id "0")
-        id1 (make-id "1")
-        id99 (make-id "99")
+  (let [id0 (make-item-id "0")
+        id1 (make-item-id "1")
+        id99 (make-item-id "99")
         [s1 ida] (add-simple-item (new-element-store) id99 3)
         [s2 idb] (add-simple-item s1 ida "foo")
         [s3 idc] (add-simple-item s2 id99 4)
@@ -236,7 +236,7 @@
 
 (deftest entity<->description-test
   (let [s (new-element-store)
-        id (make-id "1")
+        id (make-item-id "1")
         item (description->entity id s)]
     (is (= (description->entity 2 s) 2))
     (is (= (description->entity :foo s) :foo))

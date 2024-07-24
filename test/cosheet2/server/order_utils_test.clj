@@ -31,20 +31,22 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 5)))
+                        (range 7)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def o5 (nth orderables 4))
+(def o6 (nth orderables 5))
+(def o7 (nth orderables 6))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
                 (~o1 :order)
                 ("male" (~o2 :order))
-                (39 (~o4 :order)
-                    ("age" :label)
-                    ("doubtful" "confidence"))
                 ("married" (~o3 :order))
+                (39 (~o4 :order)
+                    ("age" :label (~o6 :order))
+                    ("doubtful" "confidence" (~o7 :order)))
                 (45 (~o5 :order)
                     ("age" :label))))
 (def t1 (add-entity (new-element-store) nil joe-list))
@@ -55,6 +57,16 @@
 (def joe-married (first (matching-elements "married" joe)))
 (def joe-39 (first (matching-elements 39 joe)))
 (def joe-45 (first (matching-elements 45 joe)))
+
+(def joe-reversed-list `("Joe"
+                         (~o1 :order)
+                         (45 ("age" :label)
+                             (~o5 :order))
+                         (39 (~o4 :order)
+                             ("doubtful" "confidence" (~o7 :order))
+                             ("age" :label (~o6 :order)))
+                         ("married" (~o3 :order))
+                         ("male" (~o2 :order))))
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
@@ -76,6 +88,14 @@
            joe-ordered-semantic-elements))
     (is (= (ordered-entities (reverse joe-semantic-elements))
            joe-ordered-semantic-elements))))
+
+(deftest recursively-process-elements-test
+  (is (check (recursively-process-elements
+              #(filter semantic-entity? %)
+              (recursively-process-elements ordered-entities joe-reversed-list))
+             (recursively-process-elements
+              #(filter semantic-entity? %)
+              joe-list))))
 
 (deftest ordered-ids-R-test
   (let [joe-semantic-elements (filter semantic-entity? (elements joe))

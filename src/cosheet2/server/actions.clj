@@ -14,10 +14,9 @@
                    store-update! store-update-control-return!
                    id->subject id-label->element-ids id-valid? undo! redo!
                    current-store
+                   id->string string->id
                    id-label->element-ids id->content
-                   StoredItemDescription
                    Store]]
-    [store-impl :refer [id->string string->id]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list label->element

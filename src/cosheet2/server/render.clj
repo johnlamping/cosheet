@@ -1,7 +1,7 @@
 (ns cosheet2.server.render
   (:require (cosheet2 [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [id-valid? StoredItemDescription]]
+                      [store :refer [id-valid?]]
                       [entity :refer [subject content label->elements
                                       label->element
                                       description->entity updating-immutable]]

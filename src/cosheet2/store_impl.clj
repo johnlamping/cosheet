@@ -4,7 +4,6 @@
                                      pseudo-set-seq
                                      pseudo-set-set-membership
                                      pseudo-set-contains?
-                                     parse-string-as-number
                                      dissoc-in
                                      update-in-clean-up]]
                       [canonical :refer [canonical-primitive-form]]
@@ -25,31 +24,6 @@
 ;;; store supports treating the content as if it were an item, by
 ;;; creating a ImplicitContentId. It will turn this into it into an
 ;;; actual item if elements are added.
-
-(def id->string)
-
-(defrecord
-    ^{:doc
-      "The id of an item in a store."}
-    ItemId
-  [id]
-
-  StoredItemDescription
-
-  (stored-item-description-name [this]
-    (clojure.string/join ["Id-" (id->string this)])))
-
-(defn id->string
-  "Return a string representation of an id."
-  [id]
-  (assert (instance? ItemId id))
-  (let [id (:id id)]
-    (if (integer? id) (str id) (str "I" id))))
-
-(defn string->id
-  "Given the string representation of an id, return the id."
-  [rep]
-  (->ItemId (if (= (first rep) \I) (subs rep 1) (parse-string-as-number rep))))
 
 (defn all-ids-eventually-holding-content
   "Return all items that contain the content, possibly through
@@ -74,7 +48,7 @@
   [store id]
   (when id
     (concat [id]
-            (mapcat #(when (instance? ItemId %)
+            (mapcat #(when (is-item-id? %)
                        (all-forward-reachable-ids store %))
                     [(id->subject store id)
                      (id->content store id)]))))
@@ -240,7 +214,7 @@
   ;; it needs.
   ;; Return the new store and new deferred.
   [store deferred id subject content]
-  (let [needed (first (filter #(and (instance? ItemId %)
+  (let [needed (first (filter #(and (is-item-id? %)
                                     (not ((:id->content-data store) %)))
                               [subject content]))]
     (if needed
@@ -391,11 +365,11 @@
     (contains? (:id->content-data this) id))
 
   (id->subject [this id]
-    (when (instance? ItemId id)
+    (when (is-item-id? id)
       (get-in this [:id->subject id])))
 
   (id->content [this id]
-    (if (instance? ItemId id)
+    (if (is-item-id? id)
       (get-in this [:id->content-data id])
       id))
 
@@ -413,7 +387,7 @@
     (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
 
   (id->containing-ids [this id]
-    (assert (satisfies? StoredItemDescription id))
+    (assert (is-item-id? id))
     (pseudo-set-set (get-in this [:content->ids id])))
 
   (candidate-matching-ids [this template]
@@ -448,7 +422,7 @@
   (update-content [this id content]
     (assert (not (nil? content)))
     ;; Check that we are not creating a forward cycle.
-    (when (instance? ItemId content)
+    (when (is-item-id? content)
       (assert (not-any? #{id} (all-forward-reachable-ids this content))))
     (-> this
         (assoc-in [:id->content-data id] content)
@@ -490,7 +464,7 @@
              :when (not (temporary-ids id))]
          [(:id id)
           (:id (get-in this [:id->subject id]))
-          (cond (instance? ItemId content)
+          (cond (is-item-id? content)
                 [:id (:id content)]
                 (instance? cosheet2.orderable.Orderable content)
                 [:ord (:left content) (:right content)]
@@ -546,7 +520,3 @@
                           :modified-ids nil
                           :equivalent-undo-point false}))
 
-(defmethod make-id true [id]
-  ;; Integers are reserved for creation by the store
-  (assert (not (integer? id)))
-  (->ItemId id))

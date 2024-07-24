@@ -6,8 +6,8 @@
                                         reporter-value valid?
                                         universal-category]]
                       [calculator :refer [propagate-calculator-data!]]
-                      [store :refer [StoredItemDescription mutable-store?]]
-                      [store-impl :refer [id->string string->id]]
+                      [store :refer [is-item-id? id->string string->id
+                                     mutable-store?]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
                                      with-latest-value
@@ -158,7 +158,7 @@
      ;; Not a character that an item id's representation
      ;; could start with.
      (not (re-matches #"^[0-9I].*" (name id))))
-    (satisfies? StoredItemDescription id)))
+    (is-item-id? id)))
 
 (defn valid-relative-id? [id]
   (every? valid-id-subpart? (if (sequential? id) id [id])))
@@ -463,7 +463,7 @@
   "Turn a subpart of a :relative-id to its client form."
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
-        (satisfies? StoredItemDescription id) (id->string id)
+        (is-item-id? id) (id->string id)
         true (assert false (str "unknown relative id subpart:" id))))
 
 (defn client-id-subpart->id-subpart

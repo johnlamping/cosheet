@@ -66,7 +66,7 @@
    and a subpart of the value if it doesn't, showing each location with
    a difference.
    A pattern can be a sequence, a map, or a set, or it can be the
-   special form [::test fn & args, which will cause the function
+   special form [::test fn & args], which will cause the function
    to be called with the value and the arguments, and will return
    whatever the function does.
    Typically, the special forms are created by a special form function."

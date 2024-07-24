@@ -1,4 +1,5 @@
-(ns cosheet2.store)
+(ns cosheet2.store
+  (:require (cosheet2 [utils :refer [parse-string-as-number]])))
 
 ;;; A store is a set of items, each of which has an identity, a
 ;;; content, and optionally a subject -- an item that it modifies. The
@@ -22,7 +23,7 @@
 ;;; yield cycles.
 
 ;;; The store needs to know three things about each item:
-;;;         id: An implementation of StoredItemDescription that is unique
+;;;         id: An ItemId that is unique
 ;;;             to the item. This is the how items are referred to in the
 ;;;             store's API.
 ;;;    content: The content of the item. This can be a string, number,
@@ -30,23 +31,69 @@
 ;;;    subject: The id of the item that this item is the subject of,
 ;;;             or nil if this item has no subject.
 
-;;; The store maintains indices that make some queries about it
+;;; The store maintains indices that make some queries to it
 ;;; faster. It provides special queries for items modified with an
 ;;; item with :label as its content.
 
-(defprotocol StoredItemDescription
-  "A description of an Item recorded by a store"
+;;; TODO: Change the store to generalize items to be symmetrical
+;;; links, so that rather than having a subject and content, they
+;;; simply have two ends, which can hold either primitives or
+;;; items. Entities become defined relative to a starting point, with
+;;; their elements defined as any links connecting to them from either
+;;; direction, and the content of the element being whatever is on the
+;;; far end. (And the elements of an element don't include the link by
+;;; which it was reached.)  Both ends of links are indexed, which lets
+;;; you find all elements of an object, as well as all objects with a
+;;; particular value.  The other user visible objects are ids, which
+;;; generally represent some user object. Then often have a "name"
+;;; element, which is used in the UI to indicate them.
 
-  (stored-item-description-name [this]
-    "A printable name for the item description"))
+(defrecord
+    ^{:doc
+      "The id of an item in a store."}
+    ItemId
+    [id])
+
+(defn make-item-id
+  "Make an item id that is not one that can be created by the store."
+  [id]
+  ;; Integers are reserved for creation by the store
+  (assert (not (integer? id)))
+  (->ItemId id))
+
+(defn is-item-id?
+  "Return true if the argument is an item id."
+  [x]
+  (instance? ItemId x))
+
+(defn id->string
+  "Return a string representation of an id."
+  [id]
+  (assert (instance? ItemId id))
+  (let [id (:id id)]
+    (if (integer? id) (str id) (str "I" id))))
+
+(defn string->id
+  "Given the string representation of an id, return the id."
+  [rep]
+  (->ItemId (if (= (first rep) \I) (subs rep 1) (parse-string-as-number rep))))
+
+(defn item-id-name [this]
+  "A printable name for the item id, indicating it is an id."
+  (clojure.string/join ["Id-" (id->string this)]))
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.
-   Mutable stores can return reporter objects as their answer
+   Mutable stores may return reporter objects as their answer
    for any of these methods, except for mutable-store?"
 
-  ;; The methods that Item and Entity rely on stores having.
-  ;; These take and return descriptions.
+  (mutable-store? [this]
+    "Return whether this store is mutable")
+
+  ;; The methods that ImmutableStoredEntity and MutableStoredEntity rely
+  ;; on stores having. They typically take a store and an ItemId, and may
+  ;; return ItemIds.
+
   (id-valid? [this id]
     "Returns true if the id is a valid id for the store.")
   
@@ -81,10 +128,7 @@
      includes the ids all items that could potentially be extensions
      of the given template. Also return boolean that is true if the
      list of ids is precise; if all of them represent items that are
-     extensions of the template.")
-
-  (mutable-store? [this]
-    "Return whether this store is mutable"))
+     extensions of the template."))
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
@@ -195,6 +239,3 @@
 (defmulti new-mutable-store
   (constantly true))
 
-;; Factory that makes element ids from primitives, which must not be integers.
-(defmulti make-id
-  (constantly true))

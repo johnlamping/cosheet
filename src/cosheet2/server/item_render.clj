@@ -1,6 +1,6 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
-                      [store :refer [StoredItemDescription]]
+                      [store :refer [is-item-id?]]
                       [entity :refer [label? description->entity
                                       content has-keyword? primitive?]]
                       [query :refer [matching-elements]]
@@ -66,7 +66,7 @@
    This is the default for :get-rendering-data."
   [specification mutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id) id)
+    (assert (is-item-id? id) id)
     [[mutable-store [id]]]))
 
 (defmethod print-method

@@ -14,17 +14,17 @@
 (deftest add-entity-test
   (let [[s1 id]
         (add-entity (new-element-store)
-                    (make-id "0") '((77 88) ("test" :label)))
+                    (make-item-id "0") '((77 88) ("test" :label)))
         [s2 element-id]
         (add-entity s1 id '("Fred" ("by" :label)))]
-    (is (= (id->subject s1 id)) (make-id "0"))
+    (is (= (id->subject s1 id)) (make-item-id "0"))
     (comment (is (#{'((77 88) ("test" :label) ("Fred" ("by" :label)))
                     '((77 88) ("Fred" ("by" :label)) ("test" :label))}
                   (to-list (description->entity element added-store2)))))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]
-        (add-entity (new-element-store) (make-id "0")
+        (add-entity (new-element-store) (make-item-id "0")
                     '(("foo") ("test" :label)))
         [added-store2 e2]
         (add-entity added-store e1 '("Fred" ("by" :label)))

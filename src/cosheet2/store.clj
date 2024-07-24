@@ -5,17 +5,14 @@
 ;;; content, and optionally a subject -- an item that it modifies. The
 ;;; set of items that modify another are called its elements.
 
-;;; More complicated items are build up with successive levels of
-;;; modification.  An item and everything that modifies it is called
-;;; an entity.  Entities can be written in the form of list whose
-;;; first member is the item's content, and whose subsequent members
-;;; are its elements, in the same format. So it looks like:
-;;;    (<content> (<content> ...) (<content ...) ...)
-;;; This form doesn't include the ids of the items, and often the ids
-;;; are only the concern of the store. For example, when querying for
-;;; an entity matching a template, the list form is
-;;; appropriate. Similarly, it can be used to describe an entity to be
-;;; added.
+;;; When an entity is stored in the store, it is represented as a root
+;;; item, with all of its elements represented as items whose subject
+;;; is the root.
+
+;; The method description->entity will convert a root item's id and a
+;; store into the entity it represents. In the other direction, there
+;; are functions to put the list form of an entity into the store, as
+;; a bunch of items.
 
 ;;; An item's subject can never change, and the subject structure is
 ;;; always a DAG; there are no circular references. But the content
@@ -35,18 +32,50 @@
 ;;; faster. It provides special queries for items modified with an
 ;;; item with :label as its content.
 
+;;; Stores have a few other bits of functionality.
+;;; Immutable stores can:
+;;;   * Track ids that have been modified.
+;;;   * Note whether they are semantically different from a
+;;;     previous version, for purposes of undo/redo.
+;;;   * Be asked for a new integer, and updating the store to
+;;;     never return that integer again.
+;;;   * Record a list of pending further actions.
+;;;   * Read and write its contents to a stream. And some of its
+;;;     contents can be marked as transitory -- not to be written.
+;;; Mutable stores can:
+;;;   * Undo and Redo.
+
 ;;; TODO: Change the store to generalize items to be symmetrical
-;;; links, so that rather than having a subject and content, they
-;;; simply have two ends, which can hold either primitives or
-;;; items. Entities become defined relative to a starting point, with
-;;; their elements defined as any links connecting to them from either
-;;; direction, and the content of the element being whatever is on the
-;;; far end. (And the elements of an element don't include the link by
-;;; which it was reached.)  Both ends of links are indexed, which lets
-;;; you find all elements of an object, as well as all objects with a
-;;; particular value.  The other user visible objects are ids, which
-;;; generally represent some user object. Then often have a "name"
-;;; element, which is used in the UI to indicate them.
+;;; links, so that rather than having a subject and content, for most
+;;; purposes, they simply have two ends.
+;;;
+;;; There would also be ids that did not identify items: but would
+;;; generally represent some user object, like a trip or a
+;;; restaurant. These would be entities that had no content, but that
+;;; still had elements. They would typically have a :name element,
+;;; which would be used in the UI to identify them. Both ends of an
+;;; item could hold these non-item ids, to set up a relationship
+;;; between them.
+;;;
+;;; One item in the store would define two entities, depending on its
+;;; orientation: which end is considered to be its content. A variant
+;;; of ItemId, OrientedItemId would give that orientation. The
+;;; entity's elements would be any links connecting to it from either
+;;; end, with their orientation determined by which end they link to
+;;; it from. Some labels on an entity could be designated is applying in
+;;; only one orientation.
+;;;
+;;; It would still be the case that only one of the ends of an item
+;;; would be allowed to can hold an item, making it an element of that
+;;; item. That avoids the "contents" of an item being another item,
+;;; which reifies items in a way that doesn't seem useful.
+;;;
+;;; Both ends of items would be indexed, which lets you find all
+;;; elements of an object, as well as all objects with a particular
+;;; value. And when a change happens and you have to find all the
+;;; entities that are modified, that may include both ends, since
+;;; either or both could be user objects.
+
 
 (defrecord
     ^{:doc
@@ -95,7 +124,8 @@
   ;; return ItemIds.
 
   (id-valid? [this id]
-    "Returns true if the id is a valid id for the store.")
+    "Returns true if the id is a valid id for the store, one that 
+    store has information about.")
   
   (id->subject [this id]
     "Given an item, return its subject. Assumes that the subject of an entity
@@ -108,35 +138,37 @@
     "Returns a seq of all ids that have the id as their subject.")
 
   (id-label->element-ids [this id label]
-    "Returns the ids of all elements of the item with given id that
-     have the structure
-        (? <label>),
-    where <label> is either a keyword or (<label> (:label))).")
+    "Returns the ids of all elements of the given id that have an element
+     of their own that has the label value as its content and that
+     counts as a label.")
 
   (id->has-keyword? [this id keyword]
-    "Returns true if the item with the given is has an element whose
+    "Returns true if the item with the given id has an element whose
     content is the given keyword.")
 
   (id->containing-ids [this id]
     "Returns the set of all ids that have the given id as their content.")
 
-  ;; TODO: Add a candidate-matching-element-ids method.
-
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity,
-     and may not have non-atomic contents. Return a seq ids that
-     includes the ids all items that could potentially be extensions
-     of the given template. Also return boolean that is true if the
-     list of ids is precise; if all of them represent items that are
-     extensions of the template."))
+     and may not have non-atomic contents. Return a seq of ids that
+     includes the ids all entities that could potentially be
+     extensions of the given template. Also return a boolean that is
+     true if the list of ids is precise; if all of them represent
+     items that are extensions of the template."))
+
+  ;; TODO: Add a candidate-matching-element-ids method that takes a
+  ;; template and gives a superset of all elements that could match
+  ;; it.
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
-   from which higher levels ones are built."
+   from which higher levels functions are built."
 
   (add-simple-item [this subject content]
-    "Add an item to the subject with the given content,
-     which must be atomic, returning the store and id of the new element.")
+    "Add an item with the given subject and content. The subject must be
+     either nil or an id that is already in the store, and the content
+     must be primitive. Return the store and id of the new element.")
   
   (remove-simple-item [this id]
     "Remove the item with the given id from the store.
@@ -151,33 +183,35 @@
      that number again.")
 
   (track-modified-ids [this]
-    "Record the ids that have been modified.")
+    "Start recording the ids of items that have been modified.")
 
   (fetch-and-clear-modified-ids [this]
     "Clear the record of modified ids.
      Returns the new store, and the original set of modified ids.")
 
-  (update-equivalent-undo-point [this equivalent]
-    "Set whether this store is equivalent to the previous store as
-     an undo point. This state persists through other changes until
-     explicitly changed.")
-
   (equivalent-undo-point? [this]
-    "Return whether this store is equivalent to the previous store as
-     an undo point. An undo/redo goes to the nearest store not equivalent to
-     the current one. This means that undo followed by redo won't
-     necessarily return the same store. This gives natural behavior when
-     persistent changes are interleaved with display changes, like selections,
-     because it means that after either an undo or a redo, the selection is
-     ends up at the item changed by the undo/redo.")
+    "Return whether this store is equivalent to the previous store as an
+     undo point. This is usually the case because an update only
+     affected display information that is recorded in the store, like
+     the current selection. An undo/redo goes to the nearest store not
+     equivalent to the current one. This means that undo followed by
+     redo won't necessarily return the same store. This gives natural
+     behavior because it means that after either an undo or a redo,
+     the selection ends up at the item changed by the undo/redo.")
+
+  (update-equivalent-undo-point [this equivalent]
+    "Set whether this store is equivalent to the previous store as an undo
+     point. This state persists through all updates until it is
+     explicitly changed.")
 
   (declare-temporary-id [this id]
     "Declare the id to be temporary. It and all its descendant elements
-     will not be written. Returns the new store.")
+     will not be written when the store is written out. Returns the
+     new store.")
 
   (store-fetch-and-clear-further-actions [this]
-    "Return the store with further actions eliminated, plus the list of
-     further actions that were there.")
+    "Return the store with any pending further actions eliminated, plus
+     the list of pending further actions that were there.")
 
   (store-to-data [this]
     "Convert the store to a clojure structure that can be serialized.")
@@ -193,9 +227,9 @@
 
 (defprotocol MutableStore
   "The basic methods that mutable stores support to change themselves,
-  from which higher levels ones are built."
+  from which higher levels functions are built."
   (current-store [this]
-    "The current store of the mutable store.")
+    "The current immutable store of the mutable store.")
 
   (store-reset! [this new-store]
     "Set the store to the new store, updating all reporters.")
@@ -209,8 +243,8 @@
   (store-update-and-act! [this update-fn]
     "Run the update function on the current state of the store.
      Update the store with the result, and notify all reporters of
-     changes noted by the update. If the updated store has any further
-     actions, perform them, and remove them from the store.")
+     changes noted by the update. If the updated store has any pending
+     further actions, perform them, and remove them from the store.")
 
   (store-update-control-return! [this update-fn]
     "Run the update function on the current state of the store.

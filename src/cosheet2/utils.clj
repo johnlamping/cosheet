@@ -2,9 +2,9 @@
   (:require clojure.set))
 
 ;;; A pseudo-set is an implementation of a set that is much more
-;;; efficient when the set has no items or just one item. It is either
-;;; nil, a non-nil atom, or a set, representing either the empty set,
-;;; a singleton item, or a set with multiple items.
+;;; storage efficient when the set has no items or just one item. It
+;;; is either nil, a non-nil atom, or a set, representing either the
+;;; empty set, a singleton item, or a set with multiple items.
 
 (defn pseudo-set-set [pseudo-set]
   (cond (nil? pseudo-set)

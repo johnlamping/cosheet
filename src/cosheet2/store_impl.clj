@@ -102,7 +102,9 @@
 
 ;; NOTE: This definition must be kept in synch with entity/label?
 (defn id-is-label?
-  "Return whether the given item counts as a label."
+  "Return whether the given item counts as a label (either has content
+  that is a keyword and is not :label, or has an element whose content
+  is :label)."
   [store id]
   (or (let [content (id->content store id)]
         (and (keyword? content) (not= content :label)))
@@ -446,6 +448,8 @@
     (:equivalent-undo-point this))
 
   (store-fetch-and-clear-further-actions [this]
+    ;; We can't dissoc :further-actions, or we will get back a map,
+    ;; not a store record.
     [(assoc this :further-actions nil) (:further-actions this)])
 
   (declare-temporary-id [this id]

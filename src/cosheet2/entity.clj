@@ -76,6 +76,9 @@
 
 ;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
 (defn label? [entity]
+  "Return whether the entity counts as a label (either has content that
+  is a keyword and is not :label, or has an element whose content
+  is :label)."
   (or (let [content (content entity)]
         (and (keyword? content) (not= content :label)))
       (some #(= (content %) :label)

@@ -131,9 +131,11 @@
   (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
         [s5 joe-test-id] (add-entity s4 joe-id "test")
         [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
-        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
+        [s6p _] (add-entity s6 joe-test-id `(~o1 :order))
+        [s7 joe-foo-id] (add-entity s6p joe-id "foo")
         [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
-        [s9 jane-id] (add-entity s8 nil "Jane")
+        [s8p _] (add-entity s8 joe-foo-id `(~o2 :order))
+        [s9 jane-id] (add-entity s8p nil "Jane")
         [s10 jane-test-id] (add-entity s9 jane-id "test")
         [s11 jane-test-label-id] (add-entity s10 jane-test-id :label)
         [store sally-id] (add-entity s11 nil "Sally")
@@ -555,10 +557,10 @@
                                   :relative-id id-label1one}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :template '(anything ("both" :label)
-                                                        ("one" :label))
-                                   :excluded-element-ids [id-label1both
-                                                          id-label1one]
+                                   :template (as-set '(anything ("both" :label)
+                                                               ("one" :label)))
+                                   :excluded-element-ids (as-set [id-label1both
+                                                                  id-label1one])
                                    :relative-id id1}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
@@ -569,8 +571,8 @@
                                   :relative-id id-label2two}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :template '(anything ("both" :label)
-                                                        ("two" :label))
+                                   :template (as-set '(anything ("both" :label)
+                                                                ("two" :label)))
                                    :excluded-element-ids (as-set [id-label2both
                                                                   id-label2two])
                                    :relative-id id2}]]]]]]
@@ -808,7 +810,8 @@
                            :excluded-element-ids [id-tag1one]
                            :relative-id id-label1one}]]]
             [:component {:width 1.03125
-                         :template '(anything ("both" :label) ("one" :label))
+                         :template (as-set '(anything ("both" :label)
+                                                      ("one" :label)))
                          :excluded-element-ids (as-set [id-label1both
                                                         id-label1one])
                          :relative-id id1}]]

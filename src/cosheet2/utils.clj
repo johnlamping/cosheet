@@ -120,6 +120,33 @@
               (concat result (take count (key-values-map key))))
             [] multiset)))
 
+;;; Disjoint sequences
+
+(defn conj-disjoint-combinations
+  "Given a sequence of tuples of elements, and a sequence of elements,
+  Return a sequence of all ways of appending one of the elements to
+  one of the tuples that doesn't have that element."
+  [combinations elements]
+  (mapcat (fn [combination]
+            (keep (fn [element] (when (not (some (partial = element)
+                                                 combination))
+                                  (conj combination element)))
+                  elements))
+          combinations))
+
+(defn disjoint-combinations
+  "Given a sequence of sequences of elements,
+   return all disjoint combinations of one element from each sequence."
+  [sequences]
+  (cond (empty? sequences)
+        [[]]
+        (some empty? sequences)
+        []
+        true
+        (reduce conj-disjoint-combinations
+                (map vector (first sequences))
+                (rest sequences))))
+
 ;;; Utilities for making maps, while cleaning up empty values.
 
 (defn dissoc-in

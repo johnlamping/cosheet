@@ -138,16 +138,16 @@
     "Returns a seq of all ids that have the id as their subject.")
 
   (id-label->element-ids [this id label]
-    "Returns the ids of all elements of the given id that have an element
-     of their own that has the label value as its content and that
-     counts as a label.")
+    "Returns a seq of the ids of all elements of the given id that have an
+     element of their own that has the label value as its content and
+     that counts as a label.")
 
   (id->has-keyword? [this id keyword]
     "Returns true if the item with the given id has an element whose
     content is the given keyword.")
 
   (id->containing-ids [this id]
-    "Returns the set of all ids that have the given id as their content.")
+    "Returns a seq of all ids that have the given id as their content.")
 
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity,

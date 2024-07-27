@@ -1,5 +1,6 @@
 (ns cosheet2.utils-test
   (:require [clojure.test :refer [deftest is]]
+            [cosheet2.test-utils :refer [check any as-set]]
             [cosheet2.utils :refer :all]
             ; :reload
             ))
@@ -53,6 +54,19 @@
   (is (= (set (multiset-to-generating-values
                {:a 1 :b 2} [:a :a :a :b :b :b] [:a1 :a2 :a3 :b1 :b2 :b3]))
          (set [:a3 :b2 :b3]))))
+
+(deftest disjoint-combinations-test
+  (is (check (disjoint-combinations [])
+             [[]]))
+  (is (check (disjoint-combinations [[1 2]])
+             [[1] [2]]))
+  (is (check (disjoint-combinations [[1 2 3] [2 3 4]])
+             (as-set [[1 2] [1 3] [1 4]
+                      [2 3] [2 4]
+                      [3 2] [3 4]])))
+  (is (check (disjoint-combinations [[1 2] [1 3] [1 4]])
+             (as-set [[1 3 4] [2 1 4] [2 3 1]
+                      [2 3 4]]))))
 
 (deftest union-seqs-test
   (is (= (union-seqs [] [1 3]) [1 3]))

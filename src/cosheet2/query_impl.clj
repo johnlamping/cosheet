@@ -18,7 +18,9 @@
                                variable-query?
                                variable-qualifier]]
                       [canonical :refer [equivalent-primitives?]]
-                      [utils :refer [prewalk-seqs]])))
+                      [utils :refer [prewalk-seqs
+                                     conj-disjoint-combinations
+                                     disjoint-combinations]])))
 
 ;;; TODO:
 ;;; Add a term syntax that lets variables bind to the subject.
@@ -26,28 +28,6 @@
 ;;;    The environment must include variable numbers, for renaming,
 ;;;    and an indication of the number of the current term, which must
 ;;;    be the highest number.
-
-(defn conj-disjoint-combinations
-  "Given a sequence of tuples of elements, and a sequence of elements,
-   choose all combinations of a tuple and an element not in the tuple,
-   returning a sequence of such combinations as tuples."
-  [combinations elements]
-  (mapcat (fn [combination]
-            (keep (fn [element] (when (not (some (partial = element)
-                                                 combination))
-                                  (conj combination element)))
-                  elements))
-          combinations))
-
-(defn disjoint-combinations
-  "Given a sequence of sequences of elements,
-   return all disjoint combinations of one element from each sequence."
-  [sequences]
-  (if (empty? sequences)
-    [[]]
-    (reduce conj-disjoint-combinations
-            (map vector (first sequences))
-            (rest sequences))))
 
 (defn distinct-concat
   "Given a sequence of sequences, each sequence having internally distinct

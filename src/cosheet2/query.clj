@@ -3,9 +3,17 @@
                                       to-list]]
                       [utils :refer [add-elements-to-entity-list]])))
 
+;;; Querying involves looking for entities that are extensions of a
+;;; query term.  For an entity to be an extension, it must be possible
+;;; to turn the term into the entity by some combination of
+;;;   * Adding elements to some of its entities.
+;;;   * Replacing some of its nil contents with entities.
+;;;   * Replacing any of its variables by entities, while using the
+;;;     same replacement for each occurrence of a variable.
+
 ;;; The simplest query is just an entity that constitutes a pattern that is to
 ;;; be matched against a target. There are three levels of elaboration
-;;; that incorporate more kinds of objects into entities to yield more
+;;; that incorporate more kinds of objects into the patterns to yield more
 ;;; involved queries.
 ;;;   fixed-term  May have nil as a content, indicating anything.
 ;;;               And may have negated elements, which match if the target
@@ -14,29 +22,31 @@
 ;;;               with the same name have to match the same value.
 ;;;        query  May also have quantifiers and conjunctions.
 
-;;; There are several querying operations, that differ in how elaborate
-;;; a kind of query they take and in whether their target is a single entity
-;;; or the whole store. All only take immutable arguments.
+;;; There are several querying operations, that differ in how
+;;; elaborate a kind of query they take and in whether they operate on
+;;; a single entity or the whole store. All only take immutable
+;;; arguments. Where an environment is mentioned, it means a binding
+;;; of some query variables to entities.
 
-;;;        extended-by?:  Takes a fixed-term and an entity
-;;;                       Says whether the entity extends the term.
-;;; matching-extensions:  Takes a term, an environment, and an entity.
-;;;                       Returns a set of extensions of the environment
-;;;                       that cause the term to be an extension
-;;;                       of the entity.
-;;;   matching-elements:  Takes a term and a target. Returns a seq of all
-;;;                       elements of the target that are extensions of
-;;;                       the term.
-;;;  most-specific-satisfied-term:  Takes a seq of terms and a target.
-;;;                       Returns the most specific of the terms for which
-;;;                       the target is an extension.
-;;;       matching-items: Takes a term and a store.  Returns
-;;;                       a seq of all items in the store that are
-;;;                       extensions of the term.
-;;;       query-matches:  Takes a query, an environment, and a store.
-;;;                       Returns a set of extensions of the environment
-;;;                       that cause some entity in the store to be
-;;;                       an extension of the query.
+;;;        extended-by?: Takes a fixed-term and a target entity. Says
+;;;                      whether the target extends the term.
+;;; matching-extensions: Takes a term, an environment, and a target
+;;;                      entity.  Returns a set of extensions of the
+;;;                      environment that cause the term to be an
+;;;                      extension of the target.
+;;;   matching-elements: Takes a term and a target entity. Returns a
+;;;                      seq of all elements of the target that are
+;;;                      extensions of the term.
+;;;  most-specific-satisfied-term: Takes a seq of terms and a target
+;;;                      entity.  Returns the most specific of the
+;;;                      terms for which the target is an extension.
+;;;      matching-items: Takes a term and a store.  Returns
+;;;                      a seq of all items in the store that denote
+;;;                      entities that are extensions of the term.
+;;;       query-matches: Takes a query, an environment, and a store.
+;;;                      Returns a set of extensions of the
+;;;                      environment that cause some entity in the
+;;;                      store to be an extension of the query.
 
 ;;; TODO: Add functions that return all items matching a query, and that return
 ;;; whether an item matches a query. Change query-calculator to use them,
@@ -50,9 +60,18 @@
 ;;; A variable can match anything, and what it matches is recorded.
 ;;;   (::special-form (:variable ::type)
 ;;;                   (<name> ::name)
-;;;                   <qualifier ::sub-query>
+;;;                   (<qualifier ::sub-query>)
 ;;;                   (true ::reference))
-;;;   Each of the elements except for the type is optional.
+;;; Each of the elements except for the type is optional.
+;;;   * A variable with a name of nil is considered distinct from any
+;;;     other variable.
+;;;   * A variable with a qualifier can only match entities satisfying
+;;;     the qualifier, which may not contain variables.
+;;;   * A variable with :reference binds to a particular item in the
+;;;     store, rather than to an entity that simply matches the
+;;;     item. Only one instance of a reference variable with a given
+;;;     name should occur in a query, since it can never match two
+;;;     different structures.
 
 ;;; A not matches if its sub-query does not match.
 ;;;   (::special-form (:not ::type) <sub-query ::sub-query>)
@@ -60,8 +79,8 @@
 ;;; An and matches if both its sub-queries match, with consistent
 ;;;   variable bidings.
 ;;;   (::special-form (:and ::type)
-;;;                   <sub-query (::sub-query :first)>
-;;;                   <sub-query (::sub-query :second)>)
+;;;                   (<sub-query (::sub-query :first)>)
+;;;                   (<sub-query (::sub-query :second)>))
 
 ;;; A forall matches if its query matches for every way its variable
 ;;;   can be bound.
@@ -75,15 +94,6 @@
 ;;;                   <variable ::variable>
 ;;;                   <sub-query ::sub-query>)
 
-;;; A variable with a name of nil is considered distinct from any
-;;; other variable.
-;;; A variable with a qualifier can only match entities satisfying
-;;; the qualifier, which may not contain variables.
-;;; A variable with :reference binds to a reference to an item
-;;; in the store, rather than to the value of the item. Only
-;;; one instance of a reference variable with a given name should occur
-;;; in a query,
-;;; since it can never match two different structures.
 (defn variable-query
   [name & {:keys [qualifier reference]
            :as keywords}]
@@ -140,7 +150,7 @@
   (fn [fixed-term target] true))
 
 (defn extended-by?
-  "Return true if the fixed-term is extended by the target"
+  "Return true if the fixed-term is extended by the target entity"
   [fixed-term target]
   (extended-by-m? fixed-term target))
 
@@ -149,8 +159,8 @@
 
 (defn matching-extensions
   "Return a lazy seq of environments that are extensions of the given
-  environment and where the target matches the term, which must be
-  immutable."
+  environment and for which the target entity matches the term, which
+  must be immutable."
   ([term target] (matching-extensions-m term {} target))
   ([term env target] (matching-extensions-m term env target)))
 
@@ -159,16 +169,16 @@
 
 (defn most-specific-satisfied-term
   "Given a sequence of immutable terms, return the most specific
-  of those that matches the target, if any."
+  of those that matches the target entity, if any."
   ([terms target] (most-specific-satisfied-term-m terms {} target))
   ([terms env target] (most-specific-satisfied-term-m terms env target)))
 
 (defmulti matching-elements-m
-  "Return all elements of the target that match the term."
+  "Return all elements of the target entity that match the term."
   (fn [term target] true))
 
 (defn matching-elements
-   "Return all elements of the target that match the term."
+   "Return all elements of the target entity that match the term."
   [term target]
   (matching-elements-m term target))
 

@@ -6,9 +6,9 @@
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
-                      [query-impl :refer [disjoint-combinations]]
                       [debug :refer [simplify-for-print]]
-                      [utils :refer [add-elements-to-entity-list separate-by]]
+                      [utils :refer [add-elements-to-entity-list separate-by
+                                     disjoint-combinations]]
                       [hiccup-utils :refer [add-attributes]]
                       [expression :refer [expr-let]])
             (cosheet2.server

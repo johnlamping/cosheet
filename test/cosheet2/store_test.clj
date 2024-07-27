@@ -25,7 +25,7 @@
      (make-item-id "8") (make-item-id "5")
      (make-item-id "9") (make-item-id "1")
      (make-item-id "10") (make-item-id "9")}
-    :id->content-data
+    :id->content
     {(make-item-id "0") 0
      (make-item-id "1") (make-item-id "4")
      (make-item-id "2") "Foo"
@@ -52,7 +52,7 @@
   [store]
   (assoc store
          :id->subject {}
-         :id->content-data {}))
+         :id->content {}))
 
 (deftest id<->string-test
   (let [id (make-item-id "a")]
@@ -65,7 +65,7 @@
   (is (= (item-id-name (->ItemId 1)) "Id-1")))
 
 (deftest index-id->elements-test
-  (let [ids (keys (:id->content-data unindexed-test-store))
+  (let [ids (keys (:id->content unindexed-test-store))
         store (reduce #(index-id->elements %1 empty-store %2)
                       unindexed-test-store ids)
         empty-indexed (clear-store-leaving-indices store)
@@ -81,7 +81,7 @@
     (is (empty? (:id->elements unindexed)))))
 
 (deftest index-content->ids-test
-  (let [ids (keys (:id->content-data unindexed-test-store))
+  (let [ids (keys (:id->content unindexed-test-store))
         store (reduce #(index-content->ids %1 empty-store %2)
                       unindexed-test-store ids)
         empty-indexed (clear-store-leaving-indices store)
@@ -91,7 +91,7 @@
                    0 (vals (:content->ids store)))
            (count ids) ))
     (doseq [id ids]
-      (let [content (get-in store [:id->content-data id])]
+      (let [content (get-in store [:id->content id])]
         (when (not (nil? content))
           (is (pseudo-set-contains?
                (get-in store [:content->ids (canonical-primitive-form content)])
@@ -99,7 +99,7 @@
     (is (empty? (:content->ids unindexed)))))
 
 (deftest index-id->keywords-test
-  (let [ids (keys (:id->content-data unindexed-test-store))
+  (let [ids (keys (:id->content unindexed-test-store))
         elements-indexed (reduce #(index-id->elements %1 empty-store %2)
                                  unindexed-test-store ids)
         store (reduce #(index-id->keywords %1 empty-store %2)
@@ -113,7 +113,7 @@
     (is (empty? (:id->keywords unindexed)))))
 
 (deftest index-id->label->ids-test
-  (let [ids (keys (:id->content-data unindexed-test-store))
+  (let [ids (keys (:id->content unindexed-test-store))
         elements-indexed (reduce #(index-id->elements %1 empty-store %2)
                                  unindexed-test-store ids)
         keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
@@ -131,7 +131,7 @@
     (is (empty? (:content->ids unindexed)))))
 
 (def test-store
-  (let [ids (keys (:id->content-data unindexed-test-store))]
+  (let [ids (keys (:id->content unindexed-test-store))]
     (as-> unindexed-test-store store
       (reduce #(index-id->elements %1 empty-store %2) store ids)
       (reduce #(index-content->ids %1 empty-store %2) store ids)
@@ -181,9 +181,9 @@
   (is (not (id->has-keyword? test-store (make-item-id "2") :baz))))
 
 (deftest id->containing-ids-test
-  (is (= (id->containing-ids test-store (make-item-id "4"))
-         #{(make-item-id "1")}))
-  (is (= (id->containing-ids test-store (make-item-id "1")) #{}))
+  (is (= (vec (id->containing-ids test-store (make-item-id "4")))
+         [(make-item-id "1")]))
+  (is (= (id->containing-ids test-store (make-item-id "1")) nil))
   (is (thrown? java.lang.AssertionError
                (id->containing-ids test-store "Foo"))))
 
@@ -258,7 +258,7 @@
     (doseq [id (pseudo-set-seq ids)]
       (is (= (canonical-primitive-form (id->content store id)) content))))
   ;; Everything that should be in :content->ids is.
-  (doseq [[id content] (:id->content-data store)]
+  (doseq [[id content] (:id->content store)]
     (is (some #{id}
               (pseudo-set-seq
                (get-in store [:content->ids (canonical-primitive-form
@@ -271,7 +271,7 @@
       (is (some #(= (id->content store %) keyword)
                 (id->element-ids store id)))))
   ;; Everything that should be in :id->keywords is.
-  (doseq [[id content] (:id->content-data store)]
+  (doseq [[id content] (:id->content store)]
     (when-let [subject (id->subject store id)]
       (when (keyword? content)
             (is (some #{content}
@@ -292,7 +292,7 @@
                  (let [content (id->content store label-id)]
                    (and (keyword? content) (not= content :label)))))))))
   ;; Everything that should be :id->label->ids is.
-  (doseq [[id content] (:id->content-data store)]
+  (doseq [[id content] (:id->content store)]
     (when-let [label-id (cond (= content :label) (id->subject store id)
                               (= content :order) id)]
       (let [label (canonical-primitive-form (id->content store label-id))]

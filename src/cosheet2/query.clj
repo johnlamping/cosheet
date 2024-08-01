@@ -1,5 +1,5 @@
 (ns cosheet2.query
-  (:require (cosheet2 [entity :refer [content label->element label->content
+  (:require (cosheet2 [entity :refer [content label->elements label->content
                                       to-list]]
                       [utils :refer [add-elements-to-entity-list]])))
 
@@ -139,12 +139,26 @@
   [query]
   (and (seq? query) (= (first query) ::special-form)))
 
+(defn special-form-type
+  [query]
+  (label->content query ::type))
+
 (defn variable-query? [query]
   (and (= (content query) ::special-form)
-        (= (label->content query ::type) :variable)))
+       (= (label->content query ::type) :variable)))
+
+(defn variable-name [variable]
+  (label->content variable ::name))
 
 (defn variable-qualifier [variable]
-  (label->element variable ::sub-query))
+  (first (label->elements variable ::sub-query)))
+
+(defn variable-reference [variable]
+  (label->content variable ::reference))
+
+(defn sub-query
+  [query]
+  (first (label->elements query ::sub-query)))
 
 ;;; We want to declare functions here, and implement them in
 ;;; query-impl.  But there doesn't seem to be a way to declare a

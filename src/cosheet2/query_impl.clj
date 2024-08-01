@@ -16,8 +16,12 @@
                                matching-items-m
                                query-matches-m
                                special-form?
+                               special-form-type
                                variable-query?
-                               variable-qualifier]]
+                               variable-name
+                               variable-qualifier
+                               variable-reference
+                               sub-query]]
                       [canonical :refer [equivalent-primitives?]]
                       [utils :refer [prewalk-seqs
                                      conj-disjoint-combinations
@@ -46,16 +50,15 @@
   [terms]
   (let [grouped (group-by
                  (fn [term]
-                   (cond (and (= (content term) ::query/special-form)
-                              (= (label->content term ::query/type) :not))
+                   (cond (and (special-form? term)
+                              (= (special-form-type term) :not))
                          :negation
                          (= (content term) ::query/sub-query)
                          :ignore
                          true
                          :positive))
                  terms)]
-    [(:positive grouped) (map #(first (label->elements % ::query/sub-query))
-                              (:negation grouped))]))
+    [(:positive grouped) (map sub-query (:negation grouped))]))
 
 (declare extended-by?)
 
@@ -86,13 +89,13 @@
   for the term, using the format expected by combine-exact-matches.)"
   [term env]
   (if (variable-query? term)
-    (let [var-name (label->content term ::query/name)
+    (let [var-name (variable-name term)
           value (env var-name)]
       (if value
         ;; We are not an exact match if the query is looking for a
         ;; particular entity, because the callers of this function
         ;; aren't aware of entity identities.
-        [value (not (label->content term ::query/reference))]
+        [value (not (variable-reference term))]
         (let [[contextual exact]
               (contextualize-variable (variable-qualifier term) env)]
           [contextual (combine-exact-matches exact #{var-name})])))
@@ -187,10 +190,9 @@
   "Return true if the term is a special form that fixed terms can
   have."
   [term]
-  (let [contents (content term)]
-    (or (= contents ::query/sub-query)
-        (and (= contents ::query/special-form)
-             (= (label->content term ::query/type) :not)))))
+  (or (= (content term) ::query/sub-query)
+      (and (special-form? term)
+           (= (special-form-type term) :not))))
 
 (defn closest-template
   "Given a term, return a template that the store can use to find
@@ -233,64 +235,12 @@
                  exact-match])
               [as-list exact-match]))))))
 
-;;; Code to bind an immutable entity in an environment
-
-(def bind-entity)
-
-(defrecord
-    ^{:doc "An entity that is another entity with its variables bound
-            by an environment.
-            It will never be an primitive, a mutable entity,
-            or a bare bound variable."}
-    BoundEntity
-
-  [wrapped  ; The entity we wrap
-   env]     ; The environment it is wrapped in
-  
-  Entity
-
-  (mutable-entity? [this] false)
-  
-  (primitive? [this] (primitive? wrapped))
-
-  (label->elements [this label]
-    (seq (filter (fn [element]
-                   (some #(and (equivalent-primitives? label
-                                                       (ultimate-content %))
-                               (label? %))
-                         (map ultimate-content (elements element))))
-                   (map #(bind-entity % env)
-                        (elements wrapped)))))
-
-  (elements [this]
-    (let [unbound-elements (elements wrapped)]
-      (seq (map #(bind-entity % env) unbound-elements))))
-
-  (content [this]
-    (bind-entity (content wrapped) env))
-
-  (has-keyword? [this keyword]
-    (some #(= (content %) keyword) (elements this)))
-
-  (updating-immutable [this] this)
-
-  (current-version [this]
-    this))
-
-(defn bind-entity [entity env]
-  (assert (not (mutable-entity? entity)))
-  (if (primitive? entity)
-    (ultimate-content entity)
-    (or (and (variable-query? entity)
-             (env (label->content entity ::query/name)))
-        (->BoundEntity entity env))))
-
 (def matching-extensions)
 
 (defn variable-matches [var env target]
-  (let [name (label->content var ::query/name)
+  (let [name (variable-name var)
         qualifier (variable-qualifier var)
-        reference (label->content var ::query/reference)]
+        reference (variable-reference var)]
     (let [value (env name)]
       (if (nil? value)
         (when (and (not (nil? target))
@@ -327,7 +277,7 @@
         (cond (empty? matching-elements)
               {}
               (variable-query? term)
-              (let [name (label->content term ::query/name)]
+              (let [name (variable-name term)]
                 (reduce (fn [result element]
                           (let [new-env (assoc env name element)]
                             (assoc result new-env [element])))
@@ -462,8 +412,8 @@
 (def query-matches)
 
 (defn variable-matches-in-store [var env store]
-  (let [name (label->content var ::query/name)
-        reference (label->content var ::query/reference)
+  (let [name (variable-name var)
+        reference (variable-reference var)
         value (env name)]
     (if (nil? value)
       (let [[template precise] (closest-template var env)
@@ -479,9 +429,9 @@
 
 (defn exists-matches-in-store [exists env store]
   (let [var (first (label->elements exists ::query/variable))
-        name (label->content var ::query/name)
-        qualifier (first (label->elements var ::query/sub-query))
-        body (first (label->elements exists ::query/sub-query))]
+        name (variable-name var)
+        qualifier (variable-qualifier var)
+        body (sub-query exists)]
     (let [matches (if qualifier
                          (mapcat #(query-matches body % store)
                                  (query-matches qualifier env store))
@@ -490,9 +440,9 @@
 
 (defn forall-matches-in-store [forall env store]
   (let [var (first (label->elements forall ::query/variable))
-        name (label->content var ::query/name)
-        qualifier (first (label->elements var ::query/sub-query))
-        body (first (label->elements forall ::query/sub-query))]
+        name (variable-name var)
+        qualifier (variable-qualifier var)
+        body (sub-query forall)]
     (let [matches (query-matches qualifier env store)
           groups (group-by #(dissoc % name) matches)]
       ;; Get [for each group of bindings matching the qualifier
@@ -536,14 +486,13 @@
   ([query store] (query-matches query {} store))
   ([query env store]
    (assert (not (mutable-entity? query)))
-   (let [query-content (content query)]
-     (if (= ::query/special-form query-content)
-       (case (label->content query ::query/type)
-         :variable (variable-matches-in-store query env store)
-         :exists (exists-matches-in-store query env store)
-         :forall (forall-matches-in-store query env store)
-         :and (and-matches-in-store query env store))
-       (item-matches-in-store query env store)))))
+   (if (special-form? query)
+     (case (special-form-type query)
+       :variable (variable-matches-in-store query env store)
+       :exists (exists-matches-in-store query env store)
+       :forall (forall-matches-in-store query env store)
+       :and (and-matches-in-store query env store))
+     (item-matches-in-store query env store))))
 
 (defmethod query-matches-m true [query env store]
   (query-matches query env store))

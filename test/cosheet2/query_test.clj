@@ -9,7 +9,7 @@
                                       has-keyword? primitive?]]
                       entity-impl
                       [query :refer :all]
-                      [query-impl :refer [bind-entity closest-template]]
+                      [query-impl :refer [closest-template]]
                       [test-utils :refer [check as-set]]
                      )
             ; :reload
@@ -124,30 +124,6 @@
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))
                                  {"bar" 7}))))
-
-(deftest bound-entity-test
-  (let [entity `(~(variable-query "foo")
-                 (4 ~(variable-query "bar")))
-        partially-bound (bind-entity entity {"foo" :a})
-        bound (bind-entity entity {"foo" :b, "bar" :c})
-        alternate-bound (bind-entity entity {"foo" :b, "bar" 9})]
-    (is (= (content bound) :b))
-    (is (= (mutable-entity? bound) false))
-    (is (= (primitive? bound) false))
-    (is (= (to-list partially-bound)
-           `(:a (4 ~(variable-query "bar")))))
-    (is (= (to-list bound)
-           '(:b (4 :c))))
-    (is (= (map to-list (label->elements bound :b))
-           ()))
-    (is (= (map to-list (label->elements bound :c))
-           '((4 :c))))
-    (is (has-keyword? (first (label->elements bound :c)) :c))
-    (is (not (has-keyword? (first (label->elements bound :c)) :b)))
-    (is (= (map to-list (label->elements alternate-bound 9))
-           ()))
-    (is (= (map to-list (label->elements partially-bound 9))
-           ()))))
 
 (deftest matching-extensions-test
   (is (= (matching-extensions 1 {} 1) [{}]))

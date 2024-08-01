@@ -15,6 +15,7 @@
                                matching-elements-m
                                matching-items-m
                                query-matches-m
+                               special-form?
                                variable-query?
                                variable-qualifier]]
                       [canonical :refer [equivalent-primitives?]]
@@ -30,9 +31,8 @@
 ;;;    be the highest number.
 
 (defn distinct-concat
-  "Given a sequence of sequences, each sequence having internally distinct
-   elements, return the concatenation of the sequences, with duplicates across
-   sequences removed."
+  "Given a sequence of sequences, each sequence having no repeated
+   elements, concatenate the sequences, and remove duplicates."
   [sequences]
   (if (empty? (rest sequences))
     (first sequences)
@@ -40,26 +40,28 @@
 
 (defn separate-negations
   "Given a seq of terms, return two seqs, one of positive terms,
-   and one of negated terms. Discard any terms with content ::query/sub-query."
+   and one of negated terms. Discard any terms whose content
+   is ::query/sub-query, as that is basically a label, not a condition
+   to be matched."
   [terms]
-  (let [grouped (group-by (fn [term]
-                            (cond (and (= (content term) ::query/special-form)
-                                       (= (label->content term ::query/type)
-                                          :not))
-                                  :negation
-                                  (= (content term) ::query/sub-query)
-                                  :ignore
-                                  true
-                                  :positive))
-                          terms)]
+  (let [grouped (group-by
+                 (fn [term]
+                   (cond (and (= (content term) ::query/special-form)
+                              (= (label->content term ::query/type) :not))
+                         :negation
+                         (= (content term) ::query/sub-query)
+                         :ignore
+                         true
+                         :positive))
+                 terms)]
     [(:positive grouped) (map #(first (label->elements % ::query/sub-query))
-                             (:negation grouped))]))
+                              (:negation grouped))]))
 
-(def extended-by?)
+(declare extended-by?)
 
 (defn contextualize-variable
   "If the term is a variable, replace it by it's value in the environment,
-  or, if there is no value, then its qualifier."
+  or, if there is no value, then by its qualifier."
   [term env]
   (if (variable-query? term)
     (or (env (label->content term ::query/name))
@@ -67,20 +69,21 @@
     term))
 
 (defn labels-for-element
-  "Given an entity that is an element of a term, find atoms that can serve
-   as labels for finding matching elements of a target. Returns either '(),
-   meaning that no labels were found; a sequence of labels, any of which
-   will work; or a single label, which means a perfect fit: an element
-   of a target will match the query iff and only if it has that label."
+  "Given an entity that is an element of a term, find primitives that
+  can serve as labels for finding matching elements of a
+  target. Returns either '(), meaning that no labels were found; a
+  sequence of labels, any of which will work; or a single label, which
+  means a perfect fit: an element of a target will match the query
+  element if and only if it has that label."
   [element env]
   (let [contextualized (contextualize-variable element env)
         elems (map #(contextualize-variable % env)
                    (elements contextualized))
         [positive negative] (separate-negations elems)
         candidates (filter label? positive)]
-    ;; Test for the special case of looking for any element with a given atomic
-    ;; tag. That is the case where we can return a single label which is a
-    ;; perfect fit.
+    ;; Test for the special case of looking for nothing but an element
+    ;; with a primitive value. That is the case where we can return a
+    ;; single label which is a perfect fit.
     (if (and (nil? (content contextualized))
              (empty? negative)
              (not (empty? candidates))
@@ -108,6 +111,9 @@
           (let [candidates (first candidateses)]
             (if (empty? candidates)
               nil
+              ;;; TODO: When there are several labels, and their
+              ;;; lengths are not that different, intersect their
+              ;;; candidates, like what store does.
               (recur (if (or (nil? best) (< (count candidates) (count best)))
                        candidates
                        best)
@@ -124,68 +130,75 @@
         ;; satisfing the fixed-term.
         (label->elements target labels)))))
 
-(defn has-element-satisfying? [fixed-term target]
-  "Return true if the target item has an element satisfying
-  the given fixed-term)."
-  (not (empty? (elements-satisfying fixed-term target))))
-
 (defn extended-by? [fixed-term target]
   (or (nil? fixed-term)
       (if (primitive? fixed-term)
         (equivalent-primitives? (ultimate-content fixed-term)
                                 (ultimate-content target))
-        (let [content-extended (extended-by? (content fixed-term)
-                                             (content target))]
-          (when content-extended
-            (or (empty? (elements fixed-term))
-                (let [[positive negative] (separate-negations
-                                           (elements fixed-term))]
-                  (let [positive-satisfying
-                        (seq (map #(elements-satisfying % target) positive))
-                        negative-satisfying
-                        (map #(elements-satisfying % target) negative)]
-                    (and (or (empty? positive)
-                             (not (empty? (disjoint-combinations
-                                           positive-satisfying))))
-                         (not-any? #(not (empty? %))
-                                   negative-satisfying))))))))))
+        (and (extended-by? (content fixed-term) (content target))
+             (or (empty? (elements fixed-term))
+                 (let [[positive negative] (separate-negations
+                                            (elements fixed-term))]
+                   (let [positive-satisfying
+                         (seq (map #(elements-satisfying % target) positive))
+                         negative-satisfying
+                         (map #(elements-satisfying % target) negative)]
+                     (and (or (empty? positive)
+                              (not (empty? (disjoint-combinations
+                                            positive-satisfying))))
+                          (not-any? #(not (empty? %))
+                                    negative-satisfying)))))))))
 
 (defmethod extended-by-m? true [fixed-term target]
   (extended-by? fixed-term target))
 
-;;; TODO: If a variable is replaced by a value, the result can still be exact.
+(defn is-fixed-term-special-form?
+  "Return true if the term is a special form that fixed terms can
+  have."
+  [term]
+  (let [contents (content term)]
+    (or (= contents ::query/sub-query)
+        (and (= contents ::query/special-form)
+             (= (label->content term ::query/type) :not)))))
+
+;;; TODO: !!! If the same variable name occurs several times, this
+;;;       can return that it is precise when it isn't.
 (defn closest-template
-  "Given a term, return a template that the store can use to find candidate
-   ids, and that is as close to the term as possible:
-      Remove variables, replacing them with their value in the environment,
-      or their qualifier.
-      Replace bound variables with their current values.
-      Remove any ::query/sub-query annotations.
-      Remove any other special forms (to eliminate any not-query terms).
-  Also return whether matching the template is exactly equal to the term"
+  "Given a term, return a template that the store can use to find
+  candidate ids, and that is as close to the term as possible:
+     Remove variables, replacing them with their value in the environment,
+     or their qualifier.
+     Remove any ::query/sub-query annotations.
+     Remove any other special forms (to eliminate any not-query terms).
+  Also return whether matching the template is exactly equal to matching
+  the term."
   [term env]
-  (let [current (if (satisfies? StoredEntity term)
-                  (current-version term)
-                  term)
-        contextualized (contextualize-variable current env)]
+  ;; TODO: Get rid of this check that we are not getting a mutable query.
+  (assert (not (mutable-entity? term)))
+  (let [contextualized (contextualize-variable term env)]
+    ;; TODO: Get rid of this check that we are not getting a mutable
+    ;; query once we contextualize. Then get rid of the following
+    ;; as-list too.
+    (assert (not (mutable-entity? contextualized)))
     ;; While the term is guaranteed to be immutable, its contextualized
     ;; value might be an item in a mutable store.
+    ;; TODO: Not any more.
     (let [as-list (to-list contextualized)]
-      (if (#{::query/sub-query ::query/special-form} (content as-list))
-        (do (assert (not (and (= ::query/special-form (content as-list))
-                              (not= :not
-                                    (label->content as-list ::query/type)))))
-            [nil false])
-        (if (seq? as-list)
-          (let [converted (map #(closest-template % env) as-list)
-                     unchanged (every? second converted)
-                     parts (map first converted)
-                     kept-elements (remove nil? (rest parts))]
-            [(if (empty? kept-elements)
-                (first parts)
-                (cons (first parts) kept-elements))
-             unchanged])
-          [as-list (not (variable-query? term))])))))
+      (if (is-fixed-term-special-form? as-list)
+        [nil false]
+        (do (assert (not (special-form? as-list)))
+            (if (seq? as-list)
+              (let [{dropped-elements true
+                     kept-elements false}
+                    (group-by is-fixed-term-special-form? (rest as-list))
+                    converted (map #(closest-template % env)
+                                   (cons (first as-list) kept-elements))
+                    unchanged (and (every? second converted)
+                                   (not-any? special-form? dropped-elements))
+                    parts (map first converted)]
+                [(if (empty? (rest parts)) (first parts) parts)
+                 unchanged])
+              [as-list (not (variable-query? term))]))))))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -194,7 +207,7 @@
 (defrecord
     ^{:doc "An entity that is another entity with its variables bound
             by an environment.
-            It will never be an atom, a mutable entity,
+            It will never be an primitive, a mutable entity,
             or a bare bound variable."}
     BoundEntity
 

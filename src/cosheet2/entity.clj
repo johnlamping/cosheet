@@ -59,6 +59,7 @@
      value of the entity. This is good if you want to do a computation
      on the entity, and not have to track every sub-dependency.")
 
+  ;; TODO: Get rid of this. It is no longer used anywhere.
   (current-version [this]
     "Return an immutable entity that is the current value of the entity."))
 

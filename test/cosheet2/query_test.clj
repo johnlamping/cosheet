@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
             (cosheet2 [store :refer [new-element-store make-item-id]]
+                      store-impl
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list description->entity content
                                       elements label->elements mutable-entity?
@@ -85,24 +86,24 @@
                    :reference reference)))
 
 (deftest closest-template-test
-  (is (= (closest-template `(~(variable "foo" 5)
-                               ~(description->entity
-                                 (make-item-id "test")
-                                 (new-element-store))
-                               (:foo ~(variable "baz" (variable "bar")))
-                               ~(not-query 8))
-                             {"bar" 7})
-         ['(5 (:foo 7)) false]))
   (is (= (closest-template '(1 2 (3 4))
-                             {"bar" 7})
+                           {"bar" 7})
          ['(1 2 (3 4)) true]))
   (is (= (closest-template `(1 2 (3 ~(variable "foo" 5)))
-                             {"bar" 7})
-         ['(1 2 (3 5)) false]))
+                           {"bar" 7})
+         ['(1 2 (3 5)) true]))
+  (is (= (closest-template `(~(variable "foo" 5)
+                             ~(description->entity
+                               (make-item-id "test")
+                               (new-element-store))
+                             (:foo ~(variable "baz" (variable "bar")))
+                             ~(not-query 8))
+                           {"bar" 7})
+         ['(5 nil (:foo 7)) false]))
   (is (thrown? java.lang.AssertionError
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))
-                                   {"bar" 7}))))
+                                 {"bar" 7}))))
 
 (deftest bound-entity-test
   (let [entity `(~(variable-query "foo")

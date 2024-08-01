@@ -8,8 +8,8 @@
 ;;; to turn the term into the entity by some combination of
 ;;;   * Adding elements to some of its entities.
 ;;;   * Replacing some of its nil contents with entities.
-;;;   * Replacing any of its variables by entities, while using the
-;;;     same replacement for each occurrence of a variable.
+;;;   * Replacing any of its variables by entities, using the same
+;;;     replacement for each occurrence of a variable.
 
 ;;; The simplest query is just an entity that constitutes a pattern that is to
 ;;; be matched against a target. There are three levels of elaboration
@@ -48,9 +48,9 @@
 ;;;                      environment that cause some entity in the
 ;;;                      store to be an extension of the query.
 
-;;; TODO: Add functions that return all items matching a query, and that return
-;;; whether an item matches a query. Change query-calculator to use them,
-;;; rather than requiring terms.
+;;; TODO: Add functions that return all items matching a query, and
+;;; that return whether an item matches a query. Change
+;;; query-calculator to use them, rather than requiring terms.
 
 ;;; Internally, the elaborations are indicated with special forms, indicated by
 ;;; their content being ::special-form and an element (<special-form> :type)
@@ -74,22 +74,22 @@
 ;;;     different structures.
 
 ;;; A not matches if its sub-query does not match.
-;;;   (::special-form (:not ::type) <sub-query ::sub-query>)
+;;;   (::special-form (:not ::type) (<sub-query> &[::sub-query]))
 
 ;;; An and matches if both its sub-queries match, with consistent
-;;;   variable bidings.
+;;; variable bidings.
 ;;;   (::special-form (:and ::type)
 ;;;                   (<sub-query (::sub-query :first)>)
 ;;;                   (<sub-query (::sub-query :second)>))
 
 ;;; A forall matches if its query matches for every way its variable
-;;;   can be bound.
+;;; can be bound.
 ;;;   (::special-form (:forall ::type)
 ;;;                   <variable ::variable>
 ;;;                   <sub-query ::sub-query>)
 
 ;;; An exists matches if its query matches for some way its variable
-;;;   can be bound.
+;;; can be bound.
 ;;;   (::special-form (:exists ::type)
 ;;;                   <variable ::variable>
 ;;;                   <sub-query ::sub-query>)
@@ -146,6 +146,13 @@
 (defn variable-qualifier [variable]
   (label->element variable ::sub-query))
 
+;;; We want to declare functions here, and implement them in
+;;; query-impl.  But there doesn't seem to be a way to declare a
+;;; function in one namespace and give its implementation in
+;;; another. So, instead, for each function, we define a related
+;;; multimethod here, which will be implemented in query-impl. Then,
+;;; we define the function to call the multimethod.
+
 (defmulti extended-by-m?
   (fn [fixed-term target] true))
 
@@ -201,7 +208,7 @@
   ([query env store] (query-matches-m query env store)))
 
 ;;; This is a utility for debugging the results of queries. We put it here
-;;; because it is query specific
+;;; because it is query specific.
 (defn envs-to-list [envs]
   "Given a vector of environments, as returned by a query, turn it into maps
    of the list form of the environments."

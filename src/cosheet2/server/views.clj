@@ -4,22 +4,23 @@
     [ring.util.response :refer [response]]
     [clojure.java.io :as io]
     (cosheet2
-      [store :refer [current-store data-to-store store-reset! id-valid?]]
-      [store-impl :refer [->ItemId]]
-      mutable-store-impl
-      [entity :refer [description->entity in-different-store
-                      content label->elements]]
-      entity-impl
-      [query :refer [matching-elements]]
-      [debug :refer [simplify-for-print]]
-      query-impl
-      [expression :refer [expr expr-let]]
-      [calculator :refer [new-calculator-data compute]]
-      [task-queue :refer [new-priority-task-queue finished-all-tasks?]]
-      [hiccup-utils :refer [dom-attributes add-attributes]]
-      [reporter :as reporter]
-      [map-state :refer [map-state-reset! map-state-get-current]]
-      [debug :refer [profile-and-print-reporters]])
+     [store :refer [current-store data-to-store store-reset!
+                    ->ItemId id-valid?]]
+     store-impl
+     mutable-store-impl
+     [entity :refer [description->entity in-different-store
+                     content label->elements]]
+     entity-impl
+     [query :refer [matching-elements]]
+     [debug :refer [simplify-for-print]]
+     query-impl
+     [expression :refer [expr expr-let]]
+     [calculator :refer [new-calculator-data compute]]
+     [task-queue :refer [new-priority-task-queue finished-all-tasks?]]
+     [hiccup-utils :refer [dom-attributes add-attributes]]
+     [reporter :as reporter]
+     [map-state :refer [map-state-reset! map-state-get-current]]
+     [debug :refer [profile-and-print-reporters]])
     (cosheet2.server
       [dom-manager :refer [request-client-refresh
                            process-acknowledgements get-response-doms]]

@@ -59,14 +59,44 @@
 
 (declare extended-by?)
 
+(defn combine-exact-matches
+  "Given two exact match indicators from different parts of a term,
+  returning their joint indicator.
+  The possible input values are:
+                       false: not an exact match
+                        true: an exact match
+     a set of variable names: an exact match, provided no other unbound
+                              references to those variables appear
+  The output is in the same format."
+  [m1 m2]
+  (if (and m1 m2)
+   (if (= m1 true)
+     m2
+     (if (= m2 true)
+       m1
+       (if (not-any? m1 m2)
+         (clojure.set/union m1 m2)
+         false)))
+   false))
+
 (defn contextualize-variable
   "If the term is a variable, replace it by it's value in the environment,
-  or, if there is no value, then by its qualifier."
+  or if there is no value, then by its qualifier. Also return the
+  information for whether the contextualized result is an exact match
+  for the term, using the format expected by combine-exact-matches.)"
   [term env]
   (if (variable-query? term)
-    (or (env (label->content term ::query/name))
-        (contextualize-variable (variable-qualifier term) env))
-    term))
+    (let [var-name (label->content term ::query/name)
+          value (env var-name)]
+      (if value
+        ;; We are not an exact match if the query is looking for a
+        ;; particular entity, because the callers of this function
+        ;; aren't aware of entity identities.
+        [value (not (label->content term ::query/reference))]
+        (let [[contextual exact]
+              (contextualize-variable (variable-qualifier term) env)]
+          [contextual (combine-exact-matches exact #{var-name})])))
+    [term true]))
 
 (defn labels-for-element
   "Given an entity that is an element of a term, find primitives that
@@ -76,8 +106,8 @@
   means a perfect fit: an element of a target will match the query
   element if and only if it has that label."
   [element env]
-  (let [contextualized (contextualize-variable element env)
-        elems (map #(contextualize-variable % env)
+  (let [[contextualized exact-match] (contextualize-variable element env)
+        elems (map #(first (contextualize-variable % env))
                    (elements contextualized))
         [positive negative] (separate-negations elems)
         candidates (filter label? positive)]
@@ -85,6 +115,7 @@
     ;; with a primitive value. That is the case where we can return a
     ;; single label which is a perfect fit.
     (if (and (nil? (content contextualized))
+             (= exact-match true)
              (empty? negative)
              (not (empty? candidates))
              (empty? (rest positive))
@@ -161,8 +192,6 @@
         (and (= contents ::query/special-form)
              (= (label->content term ::query/type) :not)))))
 
-;;; TODO: !!! If the same variable name occurs several times, this
-;;;       can return that it is precise when it isn't.
 (defn closest-template
   "Given a term, return a template that the store can use to find
   candidate ids, and that is as close to the term as possible:
@@ -171,11 +200,11 @@
      Remove any ::query/sub-query annotations.
      Remove any other special forms (to eliminate any not-query terms).
   Also return whether matching the template is exactly equal to matching
-  the term."
+  the term, using the format of combine-exact-matches."
   [term env]
   ;; TODO: Get rid of this check that we are not getting a mutable query.
   (assert (not (mutable-entity? term)))
-  (let [contextualized (contextualize-variable term env)]
+  (let [[contextualized exact-match] (contextualize-variable term env)]
     ;; TODO: Get rid of this check that we are not getting a mutable
     ;; query once we contextualize. Then get rid of the following
     ;; as-list too.
@@ -193,12 +222,16 @@
                     (group-by is-fixed-term-special-form? (rest as-list))
                     converted (map #(closest-template % env)
                                    (cons (first as-list) kept-elements))
-                    unchanged (and (every? second converted)
-                                   (not-any? special-form? dropped-elements))
+                    exact-match (reduce combine-exact-matches
+                                        (concat
+                                         [exact-match
+                                          (not (some special-form?
+                                                     dropped-elements))]
+                                         (map second converted)))
                     parts (map first converted)]
                 [(if (empty? (rest parts)) (first parts) parts)
-                 unchanged])
-              [as-list (not (variable-query? term))]))))))
+                 exact-match])
+              [as-list exact-match]))))))
 
 ;;; Code to bind an immutable entity in an environment
 

@@ -9,7 +9,8 @@
 ;;;   * Adding elements to some of its entities.
 ;;;   * Replacing some of its nil contents with entities.
 ;;;   * Replacing any of its variables by entities, using the same
-;;;     replacement for each occurrence of a variable.
+;;;     replacement for each occurrence of a variable. (And then those
+;;;     replacements may not be extended; they have to exactly match.
 
 ;;; The simplest query is just an entity that constitutes a pattern that is to
 ;;; be matched against a target. There are three levels of elaboration
@@ -37,9 +38,6 @@
 ;;;   matching-elements: Takes a term and a target entity. Returns a
 ;;;                      seq of all elements of the target that are
 ;;;                      extensions of the term.
-;;;  most-specific-satisfied-term: Takes a seq of terms and a target
-;;;                      entity.  Returns the most specific of the
-;;;                      terms for which the target is an extension.
 ;;;      matching-items: Takes a term and a store.  Returns
 ;;;                      a seq of all items in the store that denote
 ;;;                      entities that are extensions of the term.
@@ -184,15 +182,6 @@
   must be immutable."
   ([term target] (matching-extensions-m term {} target))
   ([term env target] (matching-extensions-m term env target)))
-
-(defmulti most-specific-satisfied-term-m
-  (fn [terms env target] true))
-
-(defn most-specific-satisfied-term
-  "Given a sequence of immutable terms, return the most specific
-  of those that matches the target entity, if any."
-  ([terms target] (most-specific-satisfied-term-m terms {} target))
-  ([terms env target] (most-specific-satisfied-term-m terms env target)))
 
 (defmulti matching-elements-m
   "Return all elements of the target entity that match the term."

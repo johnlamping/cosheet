@@ -4,7 +4,7 @@
             (cosheet2
              [orderable :as orderable]
              [entity  :refer [to-list]]
-             [canonical :refer [canonicalize-list]]
+             [canonical :refer [canonicalize]]
              [store :refer [new-element-store]]
              store-impl
              [store-utils :refer [add-entity]]
@@ -172,39 +172,39 @@
           tables-7 (matching-items '(nil :table) store-7)
           versions-7 (matching-items '(nil :format) store-7)]
       (is (= (count tables-1) 1))
-      (is (check (canonicalize-list (to-list (first tables-1)))
-                 (canonicalize-list table-list-1)))
+      (is (check (canonicalize (to-list (first tables-1)))
+                 (canonicalize table-list-1)))
       (is (= (count versions-1) 1))
       (is (= (to-list (first versions-1)) '(1 :format)))
       
       (is (= (count tables-3) 1))
-      (is (check (canonicalize-list (to-list (first tables-3)))
-                 (canonicalize-list table-list-3)))
+      (is (check (canonicalize (to-list (first tables-3)))
+                 (canonicalize table-list-3)))
       (is (= (count versions-3) 1))
       (is (= (to-list (first versions-3)) '(3 :format)))
       
       (is (= (count tables-4) 1))
-      (is (check (canonicalize-list (to-list (first tables-4)))
-                 (canonicalize-list table-list-4)))
+      (is (check (canonicalize (to-list (first tables-4)))
+                 (canonicalize table-list-4)))
       (is (= (count versions-4) 1))
       (is (= (to-list (first versions-4)) '(4 :format)))
  
       (is (= (count tables-5) 1))
-      (is (check (canonicalize-list (to-list (first tables-5)))
-                 (canonicalize-list table-list-5)))
+      (is (check (canonicalize (to-list (first tables-5)))
+                 (canonicalize table-list-5)))
       (is (= (count versions-5) 1))
       (is (= (to-list (first versions-5)) '([5] :format)))
       
       (is (= (count tables-6) 1))
-      (is (check (canonicalize-list (to-list (first tables-6)))
-                 (canonicalize-list table-list-6)))
+      (is (check (canonicalize (to-list (first tables-6)))
+                 (canonicalize table-list-6)))
       (is (= (count versions-6) 1))
       (is (= (to-list (first versions-6)) '(6 :format)))
 
       (is (= (count tables-7) 1))
       (println "!!!" (to-list (first tables-7)))
-      (is (check (canonicalize-list (to-list (first tables-7)))
-                 (canonicalize-list table-list-7)))
+      (is (check (canonicalize (to-list (first tables-7)))
+                 (canonicalize table-list-7)))
       (is (= (count versions-7) 1))
       (is (= (to-list (first versions-7)) '(7 :format)))
 

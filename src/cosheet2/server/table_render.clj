@@ -14,10 +14,7 @@
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
-                      [expression :refer [expr expr-let expr-seq]]
-                      [canonical :refer [canonicalize-list canonical-to-list
-                                         canonical-set-to-list
-                                         common-canonical-multisets]])
+                      [expression :refer [expr expr-let expr-seq]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes

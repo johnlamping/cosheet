@@ -15,7 +15,7 @@
                       entity-impl
                       [calculator :refer [current-value new-calculator-data
                                           propagate-calculator-data!]]
-                      [canonical :refer [canonicalize-list]]
+                      [canonical :refer [canonicalize]]
                       [task-queue :refer [new-priority-task-queue
                                           run-all-pending-tasks]]
                       [test-utils :refer [check any as-set]])
@@ -125,8 +125,8 @@
     (is (= (current-value (label->content item99 "bletch")) nil))
     (is (= (current-value (ultimate-content (description->entity idc ms))) 4))
     (let [as-list (current-value (to-list item99))]
-      (is (check (canonicalize-list as-list)
-                 (canonicalize-list list-99))))
+      (is (check (canonicalize as-list)
+                 (canonicalize list-99))))
     ;; Now make sure updating-immutable tracks right.
     (let [record (atom [])
           updating-immutable-result (expr-let [current-item (updating-immutable
@@ -147,29 +147,29 @@
       (is (not (valid? updating-immutable-result)))
       (run-all-pending-tasks queue)
       (let [orig-99 (to-list (in-different-store item99 (current-store ms)))]
-        (is (check (canonicalize-list
+        (is (check (canonicalize
                     (reporter-value updating-immutable-result))
-                   (canonicalize-list orig-99)))
-        (is (check (map canonicalize-list @record)
-                   [(canonicalize-list orig-99)]))
+                   (canonicalize orig-99)))
+        (is (check (map canonicalize @record)
+                   [(canonicalize orig-99)]))
         ;; Make sure it is not recomputed when an irrelevant change is made.
         (store-update! ms (fn [s] (update-content s id0 44)))
-        (is (check (map canonicalize-list @record)
-                   [(canonicalize-list orig-99)]))
+        (is (check (map canonicalize @record)
+                   [(canonicalize orig-99)]))
         ;; Make sure it is recomputed when a deep, but relevant, change is made.
         (store-update! ms (fn [s] (update-content s idd "bletch")))
         (run-all-pending-tasks queue)
-        (is (check (canonicalize-list
+        (is (check (canonicalize
                     (reporter-value updating-immutable-result))
-                   (canonicalize-list
+                   (canonicalize
                     (to-list (in-different-store item99 (current-store ms))))))
-        (is (check (canonicalize-list
+        (is (check (canonicalize
                     (to-list (reporter-value reporter-99)))
-                   (canonicalize-list
+                   (canonicalize
                     (to-list (in-different-store item99 (current-store ms))))))
-        (is (check (map canonicalize-list @record)
-                   [(canonicalize-list orig-99)
-                    (canonicalize-list
+        (is (check (map canonicalize @record)
+                   [(canonicalize orig-99)
+                    (canonicalize
                      (to-list (in-different-store item99
                                                   (current-store ms))))]))))
     ;; Finally, check current-version

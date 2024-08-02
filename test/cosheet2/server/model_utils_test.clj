@@ -13,7 +13,7 @@
                       [calculator :refer [request compute new-calculator-data]]
                       [task-queue :refer [new-priority-task-queue]]
                       [expression :refer [expr expr-let expr-seq]]
-                      [canonical :refer [canonicalize-list]]
+                      [canonical :refer [canonicalize]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
             (cosheet2.server
@@ -68,17 +68,17 @@
     (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
 
 (deftest semantic-test
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (map to-list (semantic-elements joe)))
-             (as-set (map canonicalize-list (rest (rest joe-list))))))
+             (as-set (map canonicalize (rest (rest joe-list))))))
   (let [expected '("Joe"
                    "male"
                    "married"
                    (39 ("age" :label)
                        ("doubtful" "confidence"))
                    (45 ("age" :label)))]
-    (is (= (canonicalize-list (semantic-to-list joe))
-           (canonicalize-list expected)))
+    (is (= (canonicalize (semantic-to-list joe))
+           (canonicalize expected)))
     (is (= (ordered-semantic-to-list joe)
            expected)))
   (let [removed (remove-semantic-elements store joe-id)

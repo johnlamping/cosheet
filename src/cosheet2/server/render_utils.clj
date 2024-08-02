@@ -7,7 +7,7 @@
                       [debug :refer [simplify-for-print]]
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
-                      [canonical :refer [canonicalize-list
+                      [canonical :refer [canonicalize
                                          canonical-extended-by
                                          canonical-have-common-elaboration]]
                       [hiccup-utils
@@ -65,7 +65,7 @@
   "Return the canonical list version of the semantic parts of an entity,
   with 'anything changed to nil."
   [entity]
-  (canonicalize-list (entity->fixed-term entity)))
+  (canonicalize (entity->fixed-term entity)))
 
 (defn competing-siblings
   "Given an entity that is functioning as a query, return a seq of its

@@ -11,7 +11,6 @@
                       [query :as query
                        :refer [extended-by-m?
                                matching-extensions-m
-                               most-specific-satisfied-term-m
                                matching-elements-m
                                matching-items-m
                                query-matches-m
@@ -22,7 +21,8 @@
                                variable-qualifier
                                variable-reference
                                sub-query]]
-                      [canonical :refer [equivalent-primitives?]]
+                      [canonical :refer [equivalent-primitives?
+                                         canonicalize]]
                       [utils :refer [prewalk-seqs
                                      conj-disjoint-combinations
                                      disjoint-combinations]])))
@@ -255,8 +255,8 @@
         (if reference
           (when (and (= value target) (satisfies? StoredEntity target))
                 [env])
-          (when (and (extended-by? value target)
-                     (extended-by? target value))
+          (when (= (canonicalize (to-list value))
+                   (canonicalize (to-list target)))
             [env]))))))
 
 (defn element-match-map
@@ -272,7 +272,7 @@
                             (update result env #(conj (or % []) candidate)))
                           result matching-envs))
                 {} (map vector candidates match-envs)))
-      ;; The special case of looking for any element with a specific label.
+      ;; The special case of looking for any element with one specific label.
       (let [matching-elements (label->elements target labels)]
         (cond (empty? matching-elements)
               {}
@@ -299,7 +299,7 @@
             (first maps) (rest maps))))
 
 (defn conj-disjoint-maps
-  "Given a collection of disallowed elements, and map from environments
+  "Given a sequence of tuples of elements, and map from environments
   to elements, do conj-disjoint-combinations between the collection and
   each pair in the map."
   [combinations match-map]
@@ -311,21 +311,20 @@
    {} match-map))
 
 (defn multiple-element-matches
-  "Given a sequence of terms, a map from environments to collections
+  "Given a sequence of terms, a map from environments to sequences
   of disallowed elements, and a target, return a sequence of environments
   where each term matches a different element in the target,
   and not a disallowed element."
   [terms env-map target]
   (if (empty? terms)
     (keys env-map)
-    (let [matching-maps
-               (map #(element-match-map (first terms) % target)
-                    (keys env-map))]
-      (let [disjoint-map (concat-maps
-                          (map conj-disjoint-maps
-                               (vals env-map) matching-maps))]
-        (multiple-element-matches
-         (rest terms) disjoint-map target)))))
+    (let [matching-maps (map #(element-match-map (first terms) % target)
+                             (keys env-map))
+          disjoint-map (concat-maps
+                        (map conj-disjoint-maps
+                             (vals env-map) matching-maps))]
+      (multiple-element-matches
+       (rest terms) disjoint-map target))))
 
 (defn no-element-matches
   "Return true if none of the queries are matched
@@ -338,55 +337,41 @@
 
 (defn item-matches [item env target]
   (let [content-match-envs
-             (if-let [item-content (content item)]
-               (matching-extensions item-content env (content target))
-               [env])]
+        (if-let [item-content (content item)]
+          (matching-extensions item-content env (content target))
+          [env])]
     (when (seq content-match-envs)
       (let [item-elements (elements item)]
         (if (empty? item-elements)
           content-match-envs
           (let [[positive negative] (separate-negations item-elements)]
-            (let
-                [envs
-                 (cond
-                   (empty? positive)
-                   content-match-envs
-                   (empty? (rest positive))
-                   (-> (map #(element-matches (first positive) % target)
-                            content-match-envs)
-                       distinct-concat)
-                   true
-                   (multiple-element-matches
-                    positive (zipmap content-match-envs (repeat [[]])) target))]
+            (let [envs
+                  (cond
+                    (empty? positive)
+                    content-match-envs
+                    (empty? (rest positive))
+                    (-> (map #(element-matches (first positive) % target)
+                             content-match-envs)
+                        distinct-concat)
+                    true
+                    (multiple-element-matches
+                     positive
+                     (zipmap content-match-envs (repeat [[]]))
+                     target))]
               (if (empty? negative)
                 envs
                 (filter #(no-element-matches negative % target) envs)))))))))
 
 (defn matching-extensions [query env target]
   (assert (not (mutable-entity? query)))
-  (let [answer
-        (if (primitive? query)
-          (when (extended-by? query target) [env])
-          (if (variable-query? query)
-            (variable-matches query env target)
-            (item-matches query env target)))]
-    answer))
+  (if (primitive? query)
+    (when (extended-by? query target) [env])
+    (if (variable-query? query)
+      (variable-matches query env target)
+      (item-matches query env target))))
 
 (defmethod matching-extensions-m true [query env target]
   (matching-extensions query env target))
-
-(defmethod most-specific-satisfied-term-m true [terms env target]
-  (let [matches (map #(matching-extensions % env target) terms)]
-    (when-let [candidates (->> (map (fn [match query]
-                                      (when (seq match) query))
-                                   matches terms)
-                               (remove nil?)
-                               (seq))]
-      (reduce (fn [best query]
-                (if (seq (matching-extensions best env query))
-                  query
-                  best))
-              (first candidates) (rest candidates)))))
 
 (defn matching-elements
   [term target]
@@ -433,9 +418,9 @@
         qualifier (variable-qualifier var)
         body (sub-query exists)]
     (let [matches (if qualifier
-                         (mapcat #(query-matches body % store)
-                                 (query-matches qualifier env store))
-                         (query-matches body env store))]
+                    (mapcat #(query-matches body % store)
+                            (query-matches qualifier env store))
+                    (query-matches body env store))]
       (seq (distinct (map #(dissoc % name) matches))))))
 
 (defn forall-matches-in-store [forall env store]

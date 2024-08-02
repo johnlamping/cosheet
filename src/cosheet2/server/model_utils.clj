@@ -3,7 +3,7 @@
                       [utils :refer [thread-map prewalk-seqs replace-in-seqs]]
                       [orderable :refer [initial]]
                       [expression :refer [expr expr-let expr-seq expr-filter]]
-                      [canonical :refer [canonicalize-list]]
+                      [canonical :refer [canonicalize]]
                       [store :refer [new-element-store update-content
                                      id-label->element-ids]]
                       [entity :refer [primitive? label? description->entity elements
@@ -135,7 +135,7 @@
   "Return the canonical form of the semantic information for the entity.
   Only works on immutable entities."
   [entity]
-  (canonicalize-list (semantic-to-list entity)))
+  (canonicalize (semantic-to-list entity)))
 
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."

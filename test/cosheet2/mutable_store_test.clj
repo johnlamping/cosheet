@@ -13,7 +13,6 @@
              [expression :refer [category-change]]
              store-impl
              [mutable-store-impl :refer :all]
-             [canonical :refer [canonicalize-list]]
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]]
              [test-utils :refer [check any as-set]])

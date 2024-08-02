@@ -6,7 +6,7 @@
                       [store :refer [is-item-id? id->subject id->content]]
                       [entity :refer [subject elements content label->elements
                               description->entity in-different-store]]
-                      [canonical :refer [canonicalize-list
+                      [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
                       [store-utils :refer [add-entity]]
@@ -102,9 +102,9 @@
           ;; It should be considered a perfect match with 'anything,
           ;; to handle selectors, and with the empty string, to handle
           ;; blank elements added to match a selector.
-          canonical1 (canonicalize-list (replace-in-seqs semantic nil ""))
-          canonical2 (canonicalize-list (replace-in-seqs
-                                         semantic nil 'anything))
+          canonical1 (canonicalize (replace-in-seqs semantic nil ""))
+          canonical2 (canonicalize (replace-in-seqs
+                                    semantic nil 'anything))
           perfect-matches (filter #(let [canonical-match
                                          (entity->canonical-semantic %)]
                                      (or (= canonical-match canonical1)
@@ -115,7 +115,7 @@
           ;; content.
           good-matches (when (and (empty? perfect-matches)
                                   (nil? (content semantic)))
-                         (let [canonical (canonicalize-list semantic)]
+                         (let [canonical (canonicalize semantic)]
                            (filter #(let [canonical-match
                                          (entity->canonical-semantic %)]
                                       (= (update-canonical-content

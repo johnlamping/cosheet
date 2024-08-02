@@ -20,7 +20,7 @@
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
-             [canonical :refer [canonicalize-list]]
+             [canonical :refer [canonicalize]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
              [dom-manager :refer [new-dom-manager add-root-dom]]
@@ -153,13 +153,13 @@
         new-jane (description->entity jane-id new-store)
         new-joe (description->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
-               (canonicalize-list
+               (canonicalize
                 '("Joe" "male" "married"
                   ("" 5)
                   (45 ("age" :label))
                   (39 ("age" :label) ("doubtful" "confidence"))))))
     (is (check (entity->canonical-semantic new-jane)
-               (canonicalize-list '("Jane" "female"
+               (canonicalize '("Jane" "female"
                                     (anything 5)
                                     (45 ("age" :label))))))
     (let [new-joe-element (first (matching-elements "" new-joe))
@@ -179,9 +179,9 @@
         new-jane-age (description->entity (:item-id jane-age) new-store)
         new-joe-age (description->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize-list '(45 ("age" :label) ""))))
+               (canonicalize '(45 ("age" :label) ""))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize-list '(45 ("age" :label) anything))))
+               (canonicalize '(45 ("age" :label) anything))))
     (let [new-joe-element (first (matching-elements "" new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (dissoc result :store)
@@ -199,9 +199,9 @@
         new-jane-age (description->entity (:item-id jane-age) new-store)
         new-joe-age (description->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize-list '(45 ("age" :label) ("" :label)))))
+               (canonicalize '(45 ("age" :label) ("" :label)))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize-list '(45 ("age" :label) (anything :label)))))
+               (canonicalize '(45 ("age" :label) (anything :label)))))
     (let [new-joe-element (first (matching-elements "" new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (dissoc result :store)
@@ -216,11 +216,11 @@
         new-jane (description->entity jane-id new-store)
         new-joe (description->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
-               (canonicalize-list
+               (canonicalize
                 '("Joe" "male" "married"
                   (39 ("age" :label) ("doubtful" "confidence"))))))
     (is (check (entity->canonical-semantic new-jane)
-               (canonicalize-list '("Jane" "female")))))
+               (canonicalize '("Jane" "female")))))
   ;; Test that deleting the only element of a column does nothing.
   (let [[store columns-id] (add-entity
                             store nil
@@ -248,15 +248,15 @@
         session-temporary (description->entity temporary-id (:store updated))
         query-item (first (label->elements session-temporary :batch-query))
         stack-item (first (label->elements session-temporary :batch-stack))]
-    (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(anything ("Joe"
+    (is (check (canonicalize (semantic-to-list query-item))
+               (canonicalize '(anything ("Joe"
                                               "male"
                                               "married"
                                               (39 ("age" :label)
                                                   ("doubtful" "confidence"))
                                               (45 ("age" :label)))))))
-    (is (check (canonicalize-list (semantic-to-list stack-item))
-               (canonicalize-list '(anything ("Jane"
+    (is (check (canonicalize (semantic-to-list stack-item))
+               (canonicalize '(anything ("Jane"
                                               (45 ("age" :label))
                                               "female")))))
     (is (= (:select-store-ids updated)
@@ -276,8 +276,8 @@
           stack-item (label->element session-temporary :batch-stack)]
       (is (check (semantic-to-list stack-item)
                  'anything))
-      (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(anything ("Joe"
+      (is (check (canonicalize (semantic-to-list query-item))
+               (canonicalize '(anything ("Joe"
                                               "male"
                                               "married"
                                               (39 ("age" :label)
@@ -325,7 +325,7 @@
           new-store (:store result)]
       (is (check (item->canonical-semantic
                   (to-list (description->entity (:item-id jane) new-store)))
-                 (canonicalize-list '("Jane"
+                 (canonicalize '("Jane"
                                       "female"
                                       (45 ("age" :label))
                                       (anything ("age" :label))))))
@@ -343,7 +343,7 @@
                    :target-key ["jane" "jane-age"]})]
       (is (check (item->canonical-semantic
                   (to-list (description->entity (:item-id jane) (:store result))))
-                 (canonicalize-list '("Jane"
+                 (canonicalize '("Jane"
                                       "female"
                                       (45 ("age" :label))
                                       (anything ("age" :label))))))
@@ -407,12 +407,12 @@
         (is (= select [[:jane new-id] [[:jane]]]))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id jane) new-store))
-                   (canonicalize-list '("Jane" "female"
+                   (canonicalize '("Jane" "female"
                                         (45 ("age" :label))
                                         anything))))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id joe) new-store))
-                   (canonicalize-list '("Joe"
+                   (canonicalize '("Joe"
                                         "male" 
                                         (39 ("age" :label)
                                             ("doubtful" "confidence"))

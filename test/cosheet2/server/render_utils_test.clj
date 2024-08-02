@@ -4,7 +4,7 @@
             (cosheet2
              [store :refer [new-element-store]]
              [entity :as entity  :refer [to-list description->entity]]
-             [canonical :refer [canonicalize-list]]
+             [canonical :refer [canonicalize]]
              [store-utils :refer [add-entity]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]])
@@ -14,27 +14,27 @@
             ))
 
 (deftest condition-satisfiers-test
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" ("B" 1) "C")
                                         '(nil "A")))
              ["a"]))
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" ("B" 1) "C")
                                         '(nil "A" "C")))
              (as-set ["a" "c"])))
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" ("B" 1) "C")
                                         '(nil "A" "B")))
              ["a"]))
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" "A" ("B" 1) "C")
                                         '(nil "A" "B")))
              ["a"]))
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" "A" ("B" 1) "C")
                                         '(nil "A" "A" "B")))
              ["a" "a"]))
-  (is (check (map canonicalize-list
+  (is (check (map canonicalize
                   (condition-satisfiers '("age" "A" ("B" 1) "C")
                                         '(nil "A" "A" "B")))
              ["a"])))

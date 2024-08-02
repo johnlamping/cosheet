@@ -20,7 +20,7 @@
              store-impl
              mutable-store-impl
              [store-utils :refer [add-entity remove-entity-by-id]]
-             [canonical :refer [canonicalize-list]]
+             [canonical :refer [canonicalize]]
              [test-utils :refer [check any]])
             (cosheet2.server
              [order-utils :refer :all])
@@ -169,10 +169,10 @@
         new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
-    (is (check (canonicalize-list (to-list new-entity))
-               (canonicalize-list `(6 (~o7 :order)
-                                      ("height" :label
-                                       (~o6 :order))))))
+    (is (check (canonicalize (to-list new-entity))
+               (canonicalize `(6 (~o7 :order)
+                                 ("height" :label
+                                  (~o6 :order))))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   ;; Check that order in the list style entity is preserved in the
@@ -190,8 +190,8 @@
         [x o5] (orderable/split unused-orderable :before)
         [x o6] (orderable/split x :before)
         [o8 o7] (orderable/split x :before)]
-    (is (check (canonicalize-list (to-list new-entity))
-               (canonicalize-list
+    (is (check (canonicalize (to-list new-entity))
+               (canonicalize
                 `(6 (~o5 :order)
                     ("height" :label (~o7 :order))
                     ("" :label (~o6 :order))

@@ -11,7 +11,7 @@
              store-impl
              [reporter :refer [reporter-data reporter-value]]
              [query :refer [matching-items]]
-             [canonical :refer [canonicalize-list]]
+             [canonical :refer [canonicalize]]
              [map-state :refer [new-map-state map-state-get-current]]
              [calculator :refer [new-calculator-data compute]]
              [task-queue :refer [new-priority-task-queue]])
@@ -44,11 +44,11 @@
                                "Hello")
         row1 (first (matching-items '(nil (1 ("a" :label))) store))
         row2 (first (matching-items '(nil (3 ("a" :label))) store))]
-    (is (= (canonicalize-list (semantic-to-list row1))
-           (canonicalize-list
+    (is (= (canonicalize (semantic-to-list row1))
+           (canonicalize
             '("" ("Hello" :label) (1 ("a" :label)) (2 ("b" :label))))))
-    (is (= (canonicalize-list (semantic-to-list row2))
-           (canonicalize-list '("" ("Hello" :label) (3 ("a" :label))))))))
+    (is (= (canonicalize (semantic-to-list row2))
+           (canonicalize '("" ("Hello" :label) (3 ("a" :label))))))))
 
 (deftest create-client-state-test
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])

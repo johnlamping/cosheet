@@ -1,6 +1,8 @@
 (ns cosheet2.canonical
   (:require (cosheet2 [utils :refer [multiset multiset-diff multiset-sum
-                                     multiset-conj]])))
+                                     multiset-conj]]
+                      [entity :refer [mutable-entity? primitive?
+                                      content elements]])))
 
 ;;; Utilities for converting to and from a canonical description
 ;;; of an entity and the list form of it, and for operating on the
@@ -39,13 +41,21 @@
       (and (string? a1) (string? a2)
            (= (canonical-primitive-form a1) (canonical-primitive-form a2)))))
 
-(defn canonicalize-list
-  "Given the list form of an entity, return a canonical representation of it."
+(defn canonicalize
+  "Given an entity, return a canonical representation of it. If the
+  entity is mutable, it is its own canonical representation."
   [entity]
-  (if (sequential? entity)
-    [(canonicalize-list (canonical-primitive-form (first entity)))
-     (multiset (map canonicalize-list (rest entity)))]
-    (canonical-primitive-form entity)))
+  (if (mutable-entity? entity)
+    entity
+    (let [contents (content entity)
+          elems (elements entity)
+          canonical-contents (if (primitive? contents)
+                               (canonical-primitive-form contents)
+                               (canonicalize contents))]
+      (if (seq? elems)
+        [canonical-contents
+         (multiset (map canonicalize elems))]
+        canonical-contents))))
 
 (def canonical-to-list)
 

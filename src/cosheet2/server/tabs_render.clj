@@ -4,9 +4,7 @@
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
                       [expression :refer [expr expr-let expr-seq cache]]
-                      [canonical :refer [canonicalize-list canonical-to-list
-                                         canonical-set-to-list
-                                         common-canonical-multisets]])
+                      [canonical :refer [canonical-set-to-list]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-by-all-elements
                                 hierarchy-node?

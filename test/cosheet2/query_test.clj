@@ -158,8 +158,8 @@
   (is (= (matching-extensions '((1 2) 3 (4 (5 6))) {:a :b}
                               '((1 2) 3 (4 (5 6))))
          [{:a :b}]))
+  
   ;; Duplicates in term
- 
   (let [s (new-element-store)
         [s1 id1] (add-entity s nil '(1 2))]
     (is (empty? (matching-extensions '(1 2 2) {:a :b}
@@ -298,17 +298,6 @@
                                        ~(not-query `(:c ~(variable "foo" nil))))
                                    '(1 (:a :b) (:c :b))))))
 
-(deftest most-specific-satisfied-term-test
-  (is (check (most-specific-satisfied-term
-              ['(1) '(1 2) '(1 2 5)] {:a :b} '(1 2 3 4))
-             '(1 2)))
-  (is (check (most-specific-satisfied-term
-              ['(1 2 5) '(1 2) '(1)] {:a :b} '(1 2 3 4))
-             '(1 2)))
-  (is (check (most-specific-satisfied-term
-              ['(1 2 5)] {:a :b} '(1 2 3 4))
-             nil)))
-
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))
@@ -330,7 +319,8 @@
 (deftest query-matches-test
   (let [s0 (new-element-store)
         [s1 id1] (add-entity s0 nil '(:a (1 (2 3)) (3 (4 5))))
-        [s2 id2] (add-entity s1 nil '(:b (1 (2 4))))]
+        [s2 id2] (add-entity s1 nil '(:b (1 (2 4))))
+        [s-more ids] (add-entity s2 nil ' (:c 1 (1 2) (1 3) 2))]
     ;; atoms
     (is (= (query-matches :a s2)
            [{}]))
@@ -473,7 +463,17 @@
                           s2)
            [{"v" '(2 4)}]))
     (is (empty? (query-matches `(1 ~(not-query 2))
-                               s2)))))
+                               s2)))
+    (is (check (query-matches `(nil (1 ~(variable "v"))
+                                    ~(not-query (variable "v")))
+                              s-more)
+               ;; Shouldn't have {"v" '(1 2)}, because of the not.
+               (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" 3}])))
+    ;; Shouldn't match because we require variables to be bound to
+    ;; exact entities, not to be bound to something that that be
+    ;; extended to match.
+    (is (empty? (query-matches `(nil ~(variable "v")  ~(variable "v"))
+                               s-more)))))
 
 (deftest matching-items-test
   (let [ia (make-item-id "A")

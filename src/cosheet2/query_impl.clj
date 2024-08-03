@@ -237,7 +237,11 @@
 
 (def matching-extensions)
 
-(defn variable-matches [var env target]
+(defn variable-matches
+  "Return a seq of environments for which the variable matches the target.
+  Each environment will a binding for this variable, if it has a name,
+  plus bindings for any other variables in the qualifier."
+  [var env target]
   (let [name (variable-name var)
         qualifier (variable-qualifier var)
         reference (variable-reference var)]
@@ -250,18 +254,17 @@
                        (matching-extensions qualifier env target))]
             (if (nil? name)
               envs
-              (let [value (if reference target (to-list target))]
-                (seq (map #(assoc % name value) envs))))))
+              (seq (map #(assoc % name target) envs)))))
         (if reference
           (when (and (= value target) (satisfies? StoredEntity target))
                 [env])
-          (when (= (canonicalize (to-list value))
-                   (canonicalize (to-list target)))
+          (when (= (canonicalize value)
+                   (canonicalize target))
             [env]))))))
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the target that match
-   the term in the environment."
+  the term in the environment."
   [term env target]
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels) (nil? (content labels)))
@@ -362,16 +365,16 @@
                 envs
                 (filter #(no-element-matches negative % target) envs)))))))))
 
-(defn matching-extensions [query env target]
-  (assert (not (mutable-entity? query)))
-  (if (primitive? query)
-    (when (extended-by? query target) [env])
-    (if (variable-query? query)
-      (variable-matches query env target)
-      (item-matches query env target))))
+(defn matching-extensions [term env target]
+  (assert (not (mutable-entity? term)))
+  (if (primitive? term)
+    (when (extended-by? term target) [env])
+    (if (variable-query? term)
+      (variable-matches term env target)
+      (item-matches term env target))))
 
-(defmethod matching-extensions-m true [query env target]
-  (matching-extensions query env target))
+(defmethod matching-extensions-m true [term env target]
+  (matching-extensions term env target))
 
 (defn matching-elements
   [term target]
@@ -408,9 +411,7 @@
                            var env (description->entity % store))
                      candidate-ids)]
         (distinct-concat matches))
-      (if reference
-        [env]
-        (when (query-matches value env store) [env])))))
+      (when (seq (query-matches value env store)) [env]))))
 
 (defn exists-matches-in-store [exists env store]
   (let [var (first (label->elements exists ::query/variable))
@@ -428,10 +429,19 @@
         name (variable-name var)
         qualifier (variable-qualifier var)
         body (sub-query forall)]
+    ;; We need to return each environment where all entities
+    ;; satisfying the qualifier also satisfy the body. And our binding
+    ;; doesn't appear in those environment. So we first find all
+    ;; matches of the qualifier, which may include bindings for our
+    ;; variable. Then we group them by their bindings for all other
+    ;; free variables. Each group is a starting point for a possible
+    ;; binding we may return. For each group, we try to match our body
+    ;; for each matching entity under that group's binding. And we
+    ;; return the interection of the bindings under that group.
     (let [matches (query-matches qualifier env store)
           groups (group-by #(dissoc % name) matches)]
       ;; Get [for each group of bindings matching the qualifier
-      ;;       [for each binding in the group (which will bind the vars)
+      ;;       [for each binding in the group (which will bind the var)
       ;;         [each extension of the binding satisfying the body]]]
       (let [binding-groups (map (fn [group]
                                   (map (fn [binding]
@@ -459,7 +469,7 @@
 (defn item-matches-in-store [item env store]
   (let [[template template-exact] (closest-template item env)
         [candidate-ids precise] (candidate-matching-ids store template)
-        candidates (map #(description->entity % store) candidate-ids) ]
+        candidates (map #(description->entity % store) candidate-ids)]
     (if (and template-exact precise)
       (when (seq candidates)
         [env])

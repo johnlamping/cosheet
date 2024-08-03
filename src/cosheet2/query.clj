@@ -42,7 +42,7 @@
 ;;;                      a seq of all items in the store that denote
 ;;;                      entities that are extensions of the term.
 ;;;       query-matches: Takes a query, an environment, and a store.
-;;;                      Returns a set of extensions of the
+;;;                      Returns a seq of extensions of the
 ;;;                      environment that cause some entity in the
 ;;;                      store to be an extension of the query.
 

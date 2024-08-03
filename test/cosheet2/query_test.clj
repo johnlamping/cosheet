@@ -15,6 +15,11 @@
             ; :reload
             ))
 
+(defn listify-map-values
+  "Given a map whose values are entities, run to-list on them."
+  [map]
+  (into {} (for [[k v] map] [k (to-list v)])))
+
 (deftest extended-by-test
   (let [element0 '(3 "Foo")
         element1 '(3 ("foo" :label))
@@ -459,14 +464,17 @@
     (is (= (query-matches `(2 ~(not-query 7))
                           s2)
            [{}]))
-    (is (= (query-matches (variable "v" `(2 ~(not-query 3)))
-                          s2)
+    (is (= (map listify-map-values
+                (query-matches (variable "v" `(2 ~(not-query 3)))
+                               s2))
+           
            [{"v" '(2 4)}]))
     (is (empty? (query-matches `(1 ~(not-query 2))
                                s2)))
-    (is (check (query-matches `(nil (1 ~(variable "v"))
-                                    ~(not-query (variable "v")))
-                              s-more)
+    (is (check (map listify-map-values
+                    (query-matches `(nil (1 ~(variable "v"))
+                                         ~(not-query (variable "v")))
+                                   s-more))
                ;; Shouldn't have {"v" '(1 2)}, because of the not.
                (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" 3}])))
     ;; Shouldn't match because we require variables to be bound to

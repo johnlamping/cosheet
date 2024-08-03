@@ -4,13 +4,15 @@
                       [entity :refer [mutable-entity? primitive?
                                       content elements]])))
 
-;;; Utilities for converting to and from a canonical description
-;;; of an entity and the list form of it, and for operating on the
-;;; canonical description.
+;;; Utilities for converting to and from a canonical description of an
+;;; entity, and for operating on the canonical description. The
+;;; canonical description doesn't support access to the parts of an
+;;; entity, but two entities are equal if and only if their canonical
+;;; forms are identical.
 
-;;; The canonical form describes primitive entities as the canonical
-;;; form of themselves, and describes non-primitive entities as a pair
-;;; of:
+;;; The canonical form describes primitive entities and mutable
+;;; entities as the canonical form of themselves, and describes
+;;; everything else as a pair of:
 ;;;    The canonical form of their content
 ;;;    A multiset of the canonical descriptions of their elements.
 
@@ -42,20 +44,22 @@
            (= (canonical-primitive-form a1) (canonical-primitive-form a2)))))
 
 (defn canonicalize
-  "Given an entity, return a canonical representation of it. If the
-  entity is mutable, it is its own canonical representation."
+  "Given an entity, return a canonical representation of it."
   [entity]
-  (if (mutable-entity? entity)
-    entity
-    (let [contents (content entity)
-          elems (elements entity)
-          canonical-contents (if (primitive? contents)
-                               (canonical-primitive-form contents)
-                               (canonicalize contents))]
-      (if (seq? elems)
-        [canonical-contents
-         (multiset (map canonicalize elems))]
+  (cond (mutable-entity? entity)
+        entity
+        (primitive? entity)
+        (canonical-primitive-form entity)
+        true
+        (let [canonical-contents (canonicalize (content entity))
+              elems (elements entity)]
+          (if (seq? elems)
+            [canonical-contents
+             (multiset (map canonicalize elems))]
         canonical-contents))))
+
+;;; TODO: None of the following functions seem to be used any more.
+;;;       Once everything is working again, consider throwing them out.
 
 (def canonical-to-list)
 
@@ -65,12 +69,7 @@
   [set]
   (when (not (empty? set))
     (reduce (fn [result [key count]]
-              ;; TODO: Remove this sanity check.
-              (when (map? key)
-                (println "XXXXXXXXX nested set in canonical" key)
-                (assert false))
-              (concat result
-                      (repeat count (canonical-to-list key))))
+              (concat result (repeat count (canonical-to-list key))))
             [] (seq set))))
 
 (defn canonical-to-list
@@ -85,19 +84,19 @@
 (def common-canonical)
 
 (defn canonical-content
-  "Return the content of a canonical representation."
+  "Return the content of a canonical representation (as a canonical)."
   [r]
   (if (sequential? r) (first r) r))
 
 (defn update-canonical-content
-  "Update the content of a canonical representation."
+  "Update the content of a canonical representation with a new primitive."
   [r c]
   (let [ac (canonical-primitive-form c)]
     (if (sequential? r) [ac (second r)] ac)))
 
 (defn common-canonical-multisets-for-same-content
   "Given two non-empty multisets of canonical representations,
-  all representing entities with the same content, return what the
+  all representing entities with the same content, return what they
   have in common.  More precisely, return as large a multiset as
   possible that can be extended to both arguments.  One multiset can
   be 'extended' to another if it can be made identical to it by some
@@ -169,7 +168,7 @@
                                (second c1) (second c2))]
           (if (empty? common-elements)
             content1
-            (list content1 common-elements)))
+            [content1 common-elements]))
         content1))))
 
 (defn canonical-extended-by

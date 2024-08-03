@@ -43,7 +43,9 @@
   may not find a valid value when it is called.  But it is guaranteed
   to be called after the final valid value has been set. And all the
   change descriptions, and their categories, will eventually be
-  provided, possibly in a series of callbacks.
+  provided, possibly in a series of callbacks, with each callback
+  happenning when the value is at or past all of the changes
+  described.
 
   The callback's key identifies it so it can be unregistered
   (We use a key, rather than just passing in a closure, because an

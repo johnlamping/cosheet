@@ -17,20 +17,24 @@
                       [utils :refer [with-latest-value
                                      update-new-further-action]])))
 
-;;; Manage the (re)computation of a term against a store.  The value
-;;; of its reporter is a set of ids whose items satisfy the term.
-;;; Both change description and changed
-;;; categories are the set ids that got added or removed.
+;;; query-calculator calculates the (re)computation of a term against
+;;; a store for a reporter. It makes the value of its reporter be the
+;;; set of ids whose items satisfy the term.
+
+;;; When the reporter's value changes to a valid value, the change's
+;;; description and its changed categories are both the set all ids
+;;; that either got added or removed since the last valid value.
 
 ;;; This manager adds following fields to the reporter:
-;;;                :term The term whose results we report.
+;;;                :term The term whose matches we report.
 ;;;               :store The mutable store to run the term against.
 ;;;    :last-valid-value The last valid value we had.
 ;;;   :ids-to-reevaluate The store ids whose items may have changed since
-;;;                      last-valid-value. If this is nil, we don't know
-;;;                      what may have changed.
+;;;                      last-valid-value was valid. If this is nil,
+;;;                      anything may have changed since then.
 
 (defn store-change
+  "The function to call asynchronously after the store has changed."
   [reporter store]
   (with-latest-value
     [immutable (reporter-value store)]
@@ -78,6 +82,7 @@
                     :ids-to-reevaluate #{}))))))))
 
 (defn store-change-callback
+  "The function we ask the store to call when its value changes."
   [& {reporter :key store :reporter categories :categories}]
   (let [data (reporter-data reporter)
         cd (:calculator-data data)]
@@ -110,9 +115,16 @@
               store reporter (+ (:priority data) 1) store-change-callback))
          (-> data
              (assoc :value :invalid)
+             ;; The following line isn't strictly necessary, since we
+             ;; the first call we get when we are attended to again will
+             ;; say that the changes aren't known. But this makes the
+             ;; data correct.
+             (assoc :ids-to-reevaluate nil)
              (update-new-further-action remove-attendee! store reporter)))))))
 
 (defn matching-item-ids-R
+  "Return a reporter whose value will track the set of item ids in the
+  store that match the term."
   [term store]
   (if (mutable-store? store)
     (new-reporter :calculator query-calculator

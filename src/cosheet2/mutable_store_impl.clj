@@ -11,11 +11,105 @@
                                      update-in-clean-up
                                      swap-control-return!]])))
 
+(defn new-mutable-store-data
+  "Return the data for a new mutable store with a state that starts out
+  equal to a given immutable store."
+  [immutable-store]
+  {:value (track-modified-ids immutable-store)
+   :priority Double/MAX_VALUE
+   
+   ;; Undo is supported by having a list of past store states,
+   ;; starting with the most recent, and going backward in time. Each
+   ;; past state is recorded along with the set of ids that differ
+   ;; between it and the next more recent state. Redo is supported
+   ;; with a similar list of future store states, this time with each
+   ;; successive state being another step forward in time, with the
+   ;; ids where it differs from the preceeding state.
+
+   ;; So at any given time, there is a list of states going into the
+   ;; past, the current state, and a list of states going into the
+   ;; future. Undo and redo then just become a matter of pushing the
+   ;; current state onto one of the lists, and popping it off the
+   ;; other one.
+
+   ;; When the user makes a significant change (not an undo or a
+   ;; redo), we push the old state onto the history, so an undo will
+   ;; get back to it. And the modified state becomes the current
+   ;; state. Additionally, redoing undone changes becomes impossible
+   ;; after that a new change, because the states on the future list
+   ;; are no longer derived from the new current state, and we don't
+   ;; support merging several changes. So we clear out the future
+   ;; whenever the user makes a significant change.
+
+   ;; But not all user changes are significant. The new state might be
+   ;; undo-equivalent. This usually means that the changes affected
+   ;; only display information that is recorded in the store, like the
+   ;; current selection, but not any persistent information.  So we
+   ;; can have sequences of states with equivalent persistent
+   ;; information. An undo or redo while we are in such a sequence
+   ;; should leave it behind entirely, because stepping within the
+   ;; sequence is just doing things like moving the focus around.
+   
+   ;; But when an undo or redo moves to such a sequence, which state
+   ;; in the sequence should we go to? The answer turns out to be to
+   ;; move to the state nearest the state we are coming from. For
+   ;; example, if we are moving backward with an undo, we want to move
+   ;; to the state just before the last significant change, because
+   ;; that state will record where the user focus was when they made
+   ;; that change, which was probably on the changed item. Putting
+   ;; them back at that focus will helping them see what the undo
+   ;; changed. In the other direction, when moving forward in time,
+   ;; with a redo, we want to go to the state right after the next
+   ;; significant change, because it will still have the user focus on
+   ;; the item that changed.
+
+   ;; So that means that we only need to record the first and last
+   ;; states in any sequence of undo-equivalent states, because those
+   ;; are the only ones we will ever have to return to.
+
+   ;; The last question is how to handle the future when the user
+   ;; makes an undo-equivalent change. Suppose we have a future (which
+   ;; means that we got to our current state with an undo). While a
+   ;; significant change requires throwing out the future, an
+   ;; undo-equivalent change doesn't, because when we move to the
+   ;; future, we can just throw that new change out. In other words,
+   ;; we switch to the future state, and we push the state we got to
+   ;; from the undo into the history, forgetting about any
+   ;; undo-equivalant changes since then. To be able to do this,
+   ;; whenever we do an undo, we record the state we got to, so it is
+   ;; available to push on the history if we make some undo-equivalent
+   ;; changes before a redo.
+   
+   ;; :history is a list of [modified-ids, store] pairs going backward
+   ;; in time.
+   :history nil
+   ;; :future is a list of [modified-ids, store] pairs going forward
+   ;; in time, starting from the next one after the current store.
+   :future nil
+
+   ;; TODO!!!: Do we need the history and future in futures-state?. It
+   ;; feels like we shouldn't because it is only relevant if the
+   ;; history and future still are as they were when we first recorded
+   ;; it.
+   
+   ;; :futures-state will only be present if future is present and
+   ;; equivalent-undo-point stores have been created, causing a push
+   ;; onto history, but without changing future. In that case,
+   ;; :futures-state holds the :value, :history, and :future that
+   ;; was current when :future was created.
+   :futures-state nil
+   ;; :futures-modified-ids is present when :futures-state is
+   ;; present, and holds the modified ids between the current :value
+   ;; and the :value in :futures-modified-ids.
+   :futures-modified-ids nil
+   })
+
 (defn add-id-to-affected-ids
-  "Takes a set of ids that contains all ids that might be affected by
-   a change to any of them. (In concrete terms, it contains all of
-   their subjects and contains all ids that contain any of them.) Add
-   the given id and restore the closure property."
+  "Takes a set of ids that contains all ids that might be affected by a
+  change to any of them. (In concrete terms, it contains all of their
+  subjects and contains all ids that contain any of them.) Add the
+  given id and restore the closure property. The store must be
+  immutable."
   [affected store id]
   (loop [pending-ids [id]
          affected affected]
@@ -33,7 +127,8 @@
 (defn categories-in-one-store-affected-by-ids
   "Return a set of categories that might be affected by a change to a
   set of modified ids in the given store.  A category is any id whose
-  elements or content could be affected by one of the changed ids."
+  elements or content could be affected by one of the changed ids. The
+  store must be immutable."
   [modified-ids store]
   (when (seq modified-ids)
     (reduce (fn [accum id] (add-id-to-affected-ids accum store id))
@@ -268,6 +363,9 @@
                                              (into state futures-state))
                    modified-ids (union-seqs modified-ids
                                             (:futures-modified-ids state))]
+               ;; TODO:!!! get rid of these asserts.
+               (assert (= history (:history futures-state)))
+               (assert (= future (:future futures-state)))
                (change-description state new-state modified-ids))
              (let [[new-state modified-ids] (rearrange-for-undo state)]
                (change-description state new-state modified-ids)))
@@ -305,38 +403,5 @@
   "Given an immutable store, create the reporter whose value is the current
    store and that also holds our history information."
   (->MutableStoreImpl
-   (atom
-    {:value (track-modified-ids immutable-store)
-     :priority Double/MAX_VALUE
-     
-     ;; The next two fields each are a list of [modified-ids, store] pairs
-     ;; where store gives one store in a sequence of stores, and
-     ;; modified-ids gives the ids that change between that store and
-     ;; the previous one in the sequence.
-     
-     ;; :history is a list of [modified-ids, store] pairs going backward
-     ;; in time.
-     :history nil
-     ;; :future is a list of [modified-ids, store] pairs going forward
-     ;; in time, starting from the next one after the current store.
-     ;; Usually, when a new action is done, future is cleared out. However,
-     ;; if a new state is undo-equivalent, then the future is not changed.
-     ;; If this is followed by a redo command, then it will be as if the
-     ;; latest change never happened. In particular, the most recent change
-     ;; will not become part of the history. This means that a redo followed
-     ;; by an undo will return to the state just before the redone action
-     ;; was originally taken.
-     :future nil
-     
-     ;; :futures-state will only be present if future is present and
-     ;; equivalent-undo-point stores have been created, causing a push
-     ;; onto history, but without changing future. In that case,
-     ;; :futures-state holds the :value, :history, and :future that
-     ;; was current when :future was created.
-     :futures-state nil
-     ;; :futures-modified-ids is present when :futures-state is
-     ;; present, and holds the modified ids between the current :value
-     ;; and the :value in :futures-modified-ids.
-     :futures-modified-ids nil
-     })))
+   (atom (new-mutable-store-data immutable-store))))
 

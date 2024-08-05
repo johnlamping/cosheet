@@ -14,7 +14,8 @@
                                      update-new-further-action
                                      assoc-if-non-empty]])))
 
-;;; Manage the (re)computation of application reporters using a priority queue.
+;;; Manage the (re)computation of application reporters, using a
+;;; priority queue.
 
 ;;; What makes applications interesting is that an application might
 ;;; return another application as a value. Here are a couple of
@@ -33,7 +34,7 @@
 ;;;
 ;;; Either the applications need to be given possibly unnecessary
 ;;; arguments that will only needed sometimes, or we need some other
-;;; mechanism. We go with them mechanism of letting an application
+;;; mechanism. We go with the mechanism of letting an application
 ;;; reporter return a reporter for another application. In the
 ;;; examples above, the arguments of the initial application are only
 ;;; the data used to determine what additional computation is
@@ -58,30 +59,33 @@
 
 ;;; Application reporters use these additional fields:
 ;;;         :application The application describing the computation that
-;;;                      gives the value of this reporter 
-;;;  :subordinate-values A map from reporters this reporter needs
-;;;                      to run its application to a pair of the last
-;;;                      valid value it saw for them and their dependent-depth.
-;;;                      The pair is kept even if the value later goes
-;;;                      invalid. The map is not present if nothing
-;;;                      is attending to this reporter.
-;;;       :needed-values A set of reporters whose values this reporter needs
-;;;                      to run its application and that it doesn't have a
-;;;                      valid value for. Not present if nothing is
-;;;                      attending to the reporter.
+;;;                      gives the value of this reporter
+
+;;;  :subordinate-values A map from reporters this reporter needs to
+;;;                      run its application to a pair of the last
+;;;                      valid value it saw for them and their
+;;;                      dependent-depth.  The pair is kept even if
+;;;                      the value later goes invalid. The map is not
+;;;                      present if nothing is attending to this
+;;;                      reporter.
+;;;       :needed-values A set of reporters whose values this reporter
+;;;                      needs to run its application and that it
+;;;                      doesn't have a valid value for. Not present
+;;;                      if nothing is attending to the reporter.
 ;;;    :old-value-source The previous :value-source, if we know it and
 ;;;                      we haven't yet gotten a value from the
 ;;;                      current value source. We maintain demand for
-;;;                      it. This serves two purposes. First, if we
-;;;                      don't yet have a current value source, and
-;;;                      some of our arguments have gone invalid, but
-;;;                      not changed values, then this will become the
-;;;                      value source again, if our arguments retake
-;;;                      their last valid values. Second, even if we
-;;;                      get a new value source, but its value is
-;;;                      still being computed, our old value source
-;;;                      can stay cached and available for reuse by
-;;;                      upcoming computations of the current value
+;;;                      it to keep it alive. This serves two
+;;;                      purposes. First, if we don't yet have a
+;;;                      current value source, and some of our
+;;;                      arguments have gone invalid, but not changed
+;;;                      values, then this will become the value
+;;;                      source again, if our arguments retake their
+;;;                      last valid values. Second, even if we get a
+;;;                      new value source, but its value is still
+;;;                      being computed, our old value source can stay
+;;;                      cached and available for reuse by upcoming
+;;;                      computations of the current value
 ;;;                      source. Sometimes, for example, our new value
 ;;;                      source returns our old value source as its
 ;;;                      value.
@@ -91,8 +95,9 @@
 ;;;                      same values as when we computed the
 ;;;                      old-value-source.
 ;;;  :requested-priority The priority that we have used to determine
-;;;                      our requests' priorities. If our :priority changes
-;;;                      from that, we have to redo our requests.
+;;;                      our requests' priorities. If our :priority
+;;;                      changes from that, we have to redo our
+;;;                      requests.
 
 ;;; The computation is multi-threaded, but can avoid using locks and
 ;;; TSM because it only provides eventual consistency; it is just copying
@@ -181,7 +186,7 @@
 
 (defn register-demand-old-value
   "Register the need to demand (or not demand) the value from the second
-   reporter."
+   reporter as our old value source."
   [reporter from cd]
   (with-latest-value
     [has-source

@@ -56,7 +56,7 @@
   (map
    #(entity/to-list (entity/description->entity % store))
    (filter #(nil? (store/id->subject store %))
-           (store/candidate-matching-ids store nil))))
+           (first (store/candidate-matching-ids store nil)))))
 
 (defn simplify-for-print [item]
   (cond (satisfies? store/Store item)

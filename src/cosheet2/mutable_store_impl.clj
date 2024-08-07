@@ -65,7 +65,19 @@
 
    ;; So that means that we only need to record the first and last
    ;; states in any sequence of undo-equivalent states, because those
-   ;; are the only ones we will ever have to return to.
+   ;; are the only ones we will ever have to return to. So the first
+   ;; time we make an undo-equivalent change, we push the previous
+   ;; state onto the history, as the first of the sequence of
+   ;; undo-equivalent states. Then we don't push again until the next
+   ;; change that is not undo-equivalent to this sequence, at which
+   ;; point the push will put the last state of the sequence into the
+   ;; history.
+
+   ;; TODO:!!! Check this
+   ;; Also, if we undo while we are in an undo-equivalent state to the
+   ;; top of the history, and we have no future, then we don't push
+   ;; the undo-equivalent state onto the future, as we will never get
+   ;; there.
 
    ;; The last question is how to handle the future when the user
    ;; makes an undo-equivalent change. Suppose we have a future (which
@@ -153,7 +165,7 @@
   [categories operation store & args]
   `(cache ~operation (category-change ~categories ~store) ~@args))
 
-(defn add-to-modified-ids-in-sequence
+(defn add-to-first-modified-ids-in-sequence
   "Given a history or future sequence, add the specified modified keys to
    the modified keys for the top item."
   [history modified-ids]
@@ -187,16 +199,23 @@
                 (let [new-history
                       (if (equivalent-undo-point? old-store)
                         ;; The new store and the current one are both
-                        ;; equivalent to the top one in the history. This
-                        ;; means that undo will never go to the current
-                        ;; store, so we don't need to push it onto the
-                        ;; history.
-                        (add-to-modified-ids-in-sequence
+                        ;; equivalent to the top one in the
+                        ;; history. This means that undo will never go
+                        ;; to the current store, so we don't need to
+                        ;; push it onto the history. We just have to
+                        ;; add the recently changed ids to the
+                        ;; difference between the top state in the
+                        ;; history and the current state.
+                        (add-to-first-modified-ids-in-sequence
                          history modified-ids)
-                        ;; The new store is equivalent to the current one.
-                        ;; We still need to push the current one, as an undo
-                        ;; followed by redo should land us there.
-                        (cons [modified-ids old-store] history))]
+                        ;; The new store is equivalent to the current
+                        ;; one, and the current one doesn't match the
+                        ;; history. So we push the current one. An
+                        ;; undo will pass over it, but if we do a redo
+                        ;; after the undo, it is where we want to
+                        ;; land.
+                        (when (some? history)
+                          (cons [modified-ids old-store] history)))]
                   (let [{:keys [futures-state futures-modified-ids]} state]
                     (cond-> {:history new-history}
                       future
@@ -239,7 +258,7 @@
                 remaining-history
                 (if (empty? future)
                   ;; Don't push an equivalent undo point as the
-                  ;; final future store, as a redo would want
+                  ;; ultimate future store, as a redo would want
                   ;; to go beyond that, and couldn't.
                   nil
                   (cons [modified-ids store] future))
@@ -349,33 +368,29 @@
                result)))))
 
   (can-undo? [this]
-    (let [{:keys [value history]} (reporter-data this)]
-      (can-undo-impl value history)))
+    (some? (:history (reporter-data this))))
 
   (undo! [this]
     (change-data!
      this
      (fn [{:keys [value history future futures-state] :as state}]
-       (let [store value]
-         (if (can-undo-impl store history)
-           (if futures-state
-             (let [[new-state modified-ids] (rearrange-for-undo
-                                             (into state futures-state))
-                   modified-ids (union-seqs modified-ids
-                                            (:futures-modified-ids state))]
-               ;; TODO:!!! get rid of these asserts.
-               (assert (= history (:history futures-state)))
-               (assert (= future (:future futures-state)))
-               (change-description state new-state modified-ids))
-             (let [[new-state modified-ids] (rearrange-for-undo state)]
-               (change-description state new-state modified-ids)))
-           [state [] []])))))
+       (if (some? history)
+         (if futures-state
+           (let [[new-state modified-ids] (rearrange-for-undo
+                                           (into state futures-state))
+                 modified-ids (union-seqs modified-ids
+                                          (:futures-modified-ids state))]
+             ;; TODO:!!! get rid of these asserts.
+             (assert (= history (:history futures-state)))
+             (assert (= future (:future futures-state)))
+             (assert (= (:state futures-state) (second (first history))))
+             (change-description state new-state modified-ids))
+           (let [[new-state modified-ids] (rearrange-for-undo state)]
+             (change-description state new-state modified-ids)))
+         [state [] []]))))
 
   (can-redo? [this]
-    (let [future (:future (reporter-data this))]
-      (some (fn [[modified-ids store]]
-              (not (equivalent-undo-point? store)))
-            future)))
+    (some? (:future (reporter-data this))))
 
   (redo! [this]
     (change-data!

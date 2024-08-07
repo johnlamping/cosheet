@@ -5,6 +5,7 @@
             (cosheet2
              [store :refer :all]
              [store-utils :refer :all]
+             entity-impl
              [reporter :refer [set-attendee! reporter-value invalid
                                ;; TODO: Remove this
                                reporter-data]]
@@ -15,9 +16,19 @@
              [mutable-store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]]
-             [test-utils :refer [check any as-set]])
+             [test-utils :refer [check any as-set]]
+             [debug :refer [store-as-list]])
             ; :reload
             ))
+
+(defn mutable-store-as-list [mutable-store]
+  (let [data (reporter-data mutable-store)
+        current (:value data)
+        history (:history data)
+        future (:future data)]
+    [(vec (map store-as-list (reverse (map second history))))
+     (store-as-list current)
+     (vec (map store-as-list (map second future)))]))
 
 (def cd (new-calculator-data (new-priority-task-queue 0)))
 
@@ -83,16 +94,25 @@
             revised-store (update-content store3 element 77)
             me (store-update-control-return!
                 mutable-store #(add-simple-item % element "foo"))
-            me1 (store-update-control-return!
-                 mutable-store #(add-simple-item % me :label))
+            s0 (current-store mutable-store)
+            _ (store-update-control-return!
+               mutable-store #(add-simple-item % me :label))
+            s1 (current-store mutable-store)
             _ (store-update! mutable-store
-                             #(update-equivalent-undo-point % true))
-            _ (store-update! mutable-store #(declare-temporary-id % me))
+                             #(-> %
+                                  (declare-temporary-id me)
+                                  (update-content element 66)
+                                  (update-equivalent-undo-point true)))
+            s1a (current-store mutable-store)
             _ (store-update! mutable-store #(update-content % element 88))
+            s1b (current-store mutable-store)
             _ (store-update! mutable-store
-                             #(update-equivalent-undo-point % false))
-            _ (store-update! mutable-store #(update-content % element 99))
-            _ (store-update! mutable-store #(update-content % element 77))]
+                             #(-> %
+                                  (update-content element 99)
+                                  (update-equivalent-undo-point false)))
+            s2 (current-store mutable-store)
+            _ (store-update! mutable-store #(update-content % element 77))
+            s3 (current-store mutable-store)]
         (run-all-pending-tasks queue)
         (is (= (reporter-value content) (id->content revised-store element)))
         (is (= (set (reporter-value element-ids))
@@ -106,15 +126,30 @@
         
         ;; Test undo and redo.
         
+        (clojure.pprint/pprint ["no undo"
+                                (mutable-store-as-list mutable-store)])
         (is (can-undo? mutable-store))
         (undo! mutable-store)
+        (clojure.pprint/pprint ["one undo"
+                                (mutable-store-as-list mutable-store)])
+        (is (check (current-store mutable-store) s2))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
+        (clojure.pprint/pprint ["two undos"
+                                (mutable-store-as-list mutable-store)])
+        ;; We should be at the last of the sequence of equivalent stores.
+        (is (check (current-store mutable-store) s1b))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
+        ;; We should be at the unequivalent store before them.
+        (clojure.pprint/pprint ["three undos"
+                                (mutable-store-as-list mutable-store)])
+        (is (check (current-store mutable-store) s0))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
+        (is (check (current-store mutable-store)
+                   (track-modified-ids modified-store)))
         (run-all-pending-tasks queue)
         (is (= (reporter-value content) (id->content modified-store element)))
         (is (= (set (reporter-value element-ids))
@@ -127,12 +162,16 @@
                (track-modified-ids modified-store)))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        (is (check (current-store mutable-store) s0))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        (is (check (current-store mutable-store) s1))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        (is (check (current-store mutable-store) s2))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        (is (check (current-store mutable-store) s3))
         (is (not (can-redo? mutable-store)))
         (run-all-pending-tasks queue)
         (is (= (reporter-value content) (id->content revised-store element)))

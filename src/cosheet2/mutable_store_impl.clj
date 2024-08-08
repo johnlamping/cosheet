@@ -32,6 +32,13 @@
    ;; current state onto one of the lists, and popping it off the
    ;; other one.
 
+   ;; :history is a list of [modified-ids, store] pairs going backward
+   ;; in time.
+   :history nil
+   ;; :future is a list of [modified-ids, store] pairs going forward
+   ;; in time, starting from the next one after the current store.
+   :future nil
+
    ;; When the user makes a significant change (not an undo or a
    ;; redo), we push the old state onto the history, so an undo will
    ;; get back to it. And the modified state becomes the current
@@ -42,26 +49,32 @@
    ;; whenever the user makes a significant change.
 
    ;; But not all user changes are significant. The new state might be
-   ;; undo-equivalent. This usually means that the changes affected
-   ;; only display information that is recorded in the store, like the
-   ;; current selection, but not any persistent information.  So we
-   ;; can have sequences of states with equivalent persistent
-   ;; information. An undo or redo while we are in such a sequence
-   ;; should leave it behind entirely, because stepping within the
-   ;; sequence is just doing things like moving the focus around.
+   ;; marked "undo-equivalent", which means it is basically equivalent
+   ;; to the previous state. This usually means that the changes
+   ;; between it and the previous store affect only display
+   ;; information that is recorded in the store, like the current
+   ;; selection, but not any persistent information.
+
+   ;; If the user clicks around a few times, we get sequences of
+   ;; states with equivalent persistent information. Stepping within
+   ;; the sequence is just doing things like moving the focus
+   ;; around. So an undo or redo while we are in such a sequence
+   ;; should go past it, to the first state is is not undo-equivalent
+   ;; to. Instead, we should go to the first non-equivalent state.
    
-   ;; But when an undo or redo moves to such a sequence, which state
-   ;; in the sequence should we go to? The answer turns out to be to
-   ;; move to the state nearest the state we are coming from. For
-   ;; example, if we are moving backward with an undo, we want to move
-   ;; to the state just before the last significant change, because
-   ;; that state will record where the user focus was when they made
-   ;; that change, which was probably on the changed item. Putting
-   ;; them back at that focus will helping them see what the undo
-   ;; changed. In the other direction, when moving forward in time,
-   ;; with a redo, we want to go to the state right after the next
-   ;; significant change, because it will still have the user focus on
-   ;; the item that changed.
+   ;; That leaves the question of what to do when an undo or redo
+   ;; moves to such a sequence. Which of its equivalent stores should
+   ;; we go to? The answer turns out to be to move to the state
+   ;; closest to the state we are coming from. For example, if we are
+   ;; moving backward with an undo, we want to move to the state just
+   ;; before the last significant change, because that state will
+   ;; record where the user focus was when they made that change,
+   ;; which was probably on the changed item. Putting them back at
+   ;; that focus will help them see what the undo changed. In the
+   ;; other direction, when moving forward in time, with a redo, we
+   ;; want to go to the state right after the next significant change,
+   ;; because it will still have the user focus on the item that
+   ;; changed.
 
    ;; So that means that we only need to record the first and last
    ;; states in any sequence of undo-equivalent states, because those
@@ -71,50 +84,50 @@
    ;; undo-equivalent states. Then we don't push again until the next
    ;; change that is not undo-equivalent to this sequence, at which
    ;; point the push will put the last state of the sequence into the
-   ;; history.
+   ;; history. We will never have more than two consequtive
+   ;; undo-equivalent states in either the history or future, with the
+   ;; second of the two marked undo-equivalent to its previous
+   ;; sequence.
 
-   ;; TODO:!!! Check this
-   ;; Also, if we undo while we are in an undo-equivalent state to the
-   ;; top of the history, and we have no future, then we don't push
-   ;; the undo-equivalent state onto the future, as we will never get
-   ;; there.
-
-   ;; The last question is how to handle the future when the user
-   ;; makes an undo-equivalent change. Suppose we have a future (which
-   ;; means that we got to our current state with an undo). While a
-   ;; significant change requires throwing out the future, an
-   ;; undo-equivalent change doesn't, because when we move to the
-   ;; future, we can just throw that new change out. In other words,
-   ;; we switch to the future state, and we push the state we got to
-   ;; from the undo into the history, forgetting about any
-   ;; undo-equivalant changes since then. To be able to do this,
-   ;; whenever we do an undo, we record the state we got to, so it is
-   ;; available to push on the history if we make some undo-equivalent
-   ;; changes before a redo.
+   ;; There another special case: when we are into a sequence of
+   ;; equivalent stores, and the user does an undo or a redo. Here is
+   ;; a sequence of steps that can get a user into the most
+   ;; general situation:
+   ;;   * Start in store state S0
+   ;;   * Make a significant change, reaching state S1
+   ;;   * Make some non-significant changes, reaching the equivalent state S1a
+   ;;   * Then make a significant change, reaching state S2
+   ;;   * Do an undo, returning to state S1a
+   ;;   * Make some more non-significant changes, reaching state S1b
+   ;;   * Do an undo or redo.
    
-   ;; :history is a list of [modified-ids, store] pairs going backward
-   ;; in time.
-   :history nil
-   ;; :future is a list of [modified-ids, store] pairs going forward
-   ;; in time, starting from the next one after the current store.
-   :future nil
+   ;; When the undo or redo happens from state S1b, it turns out that
+   ;; we want to throw out the non-significant changes that led to
+   ;; state S1b, reverting the user to state S1a before doing the undo
+   ;; or redo. That is because the state just before the first state
+   ;; in the future, S2, is state S1a. That is the state we will want
+   ;; return to if the user ever does redos up to S2 and then does an
+   ;; undo. Our current state, S1b, is never something we want to
+   ;; return to.
 
-   ;; TODO!!!: Do we need the history and future in futures-state?. It
-   ;; feels like we shouldn't because it is only relevant if the
-   ;; history and future still are as they were when we first recorded
-   ;; it.
-   
-   ;; :futures-state will only be present if future is present and
-   ;; equivalent-undo-point stores have been created, causing a push
-   ;; onto history, but without changing future. In that case,
-   ;; :futures-state holds the :value, :history, and :future that
-   ;; was current when :future was created.
-   :futures-state nil
-   ;; :futures-modified-ids is present when :futures-state is
-   ;; present, and holds the modified ids between the current :value
-   ;; and the :value in :futures-modified-ids.
-   :futures-modified-ids nil
+   ;; To support this, when we do an undo, and get to a state like S1b
+   ;; that is undo-equivalent to the previous state, we also push that
+   ;; state onto the history. Keeping it available should we need
+   ;; it. We do something special on most actions when we are in an
+   ;; undo-equivalent state and there is an undo-eqivalent state on
+   ;; top of the history:
+   ;;   * For an undo or a redo, we revert to the state on top of the
+   ;;     history.
+   ;;   * For a significant change, we replace the state on top of the
+   ;;     stack with our state before the change. (Since that is the
+   ;;     last state before the changed state.)
+   ;;   * For an undo-equivalent change, we don't do anything special;
+   ;;     the other two cases will do the right thing with our new
+   ;;     state.
    })
+
+;; TODO:!!! Replace the variables old-store and new-store with
+;;          before-store and after-store.
 
 (defn add-id-to-affected-ids
   "Takes a set of ids that contains all ids that might be affected by a
@@ -165,136 +178,178 @@
   [categories operation store & args]
   `(cache ~operation (category-change ~categories ~store) ~@args))
 
-(defn add-to-first-modified-ids-in-sequence
-  "Given a history or future sequence, add the specified modified keys to
-   the modified keys for the top item."
-  [history modified-ids]
-  (when (seq history)
-    (let [[[top-modified top-store] & remainder] history]
-      (cons [(distinct (concat top-modified modified-ids)) top-store]
-            remainder))))
-
 (defn change-description
   "Given an old state, the new state, and a list of modified ids, return a
    triple suitable for change-data!"
   [old-state new-state modified-ids]
   [new-state
    modified-ids
-   (categories-affected-by-ids modified-ids
-                               (:value old-state) (:value new-state))])
+   (categories-affected-by-ids
+    modified-ids (:value old-state) (:value new-state))])
 
+;:;TODO:!!! Change this to use move-forward-in-time.
 (defn change-and-add-to-history
-  "Given a reporter state, a new store, and the modified ids between them,
-  change the store and update the history."
-  [state new-store modified-ids]
+  "Given the mutable store's reporter state, the revised store from
+  after a change, and the modified ids between that store and the
+  store before the change, update the state's current store and
+  history."
+  [state after-store modified-ids]
   (let [{:keys [value history future]} state
-        old-store value]
-    (if (not= new-store old-store)
-      (cond-> (assoc state :value new-store)
-        (seq modified-ids)
-        (into (if (equivalent-undo-point? new-store)
-                ;; Since the new store is logically equivalent, we don't
-                ;; need to wipe out the future. We just need to make some
-                ;; changes to the history.
-                (let [new-history
-                      (if (equivalent-undo-point? old-store)
-                        ;; The new store and the current one are both
-                        ;; equivalent to the top one in the
-                        ;; history. This means that undo will never go
-                        ;; to the current store, so we don't need to
-                        ;; push it onto the history. We just have to
-                        ;; add the recently changed ids to the
-                        ;; difference between the top state in the
-                        ;; history and the current state.
-                        (add-to-first-modified-ids-in-sequence
-                         history modified-ids)
-                        ;; The new store is equivalent to the current
-                        ;; one, and the current one doesn't match the
-                        ;; history. So we push the current one. An
-                        ;; undo will pass over it, but if we do a redo
-                        ;; after the undo, it is where we want to
-                        ;; land.
-                        (when (some? history)
-                          (cons [modified-ids old-store] history)))]
-                  (let [{:keys [futures-state futures-modified-ids]} state]
-                    (cond-> {:history new-history}
-                      future
-                      (assoc :futures-state
-                             (or futures-state
-                                 (select-keys state [:value :history :future]))
-                             :futures-modified-ids (union-seqs
-                                                    futures-modified-ids
-                                                    modified-ids)))))
-                {:history (cons [modified-ids old-store] history)
-                 :future nil
-                 :futures-state nil
-                 :futures-modified-ids nil})))
-      state)))
+        before-store value]
+    (if (= after-store before-store)
+      state
+      (let [state (assoc state :value after-store)
+            equivalent (equivalent-undo-point? after-store)]
+        (if (empty? modified-ids)
+          state
+          (let [after-history
+                (if equivalent
+                  (if (equivalent-undo-point? before-store)
+                    ;; The after store and the before store are both
+                    ;; equivalent to the top one in the history, so we
+                    ;; don't need to push onto it. We just have to add
+                    ;; the recently changed ids to the difference
+                    ;; between the top store in the history and the
+                    ;; current store.
+                    (when history
+                      (let [[[top-modified top-store] & remaining-history]
+                            history]
+                        (cons [(union-seqs top-modified modified-ids)
+                               top-store]
+                              remaining-history)))
+                    ;; The after store is equivalent to the before
+                    ;; store, but the before store isn't equivalent to
+                    ;; the top of the history. So we push the before
+                    ;; store, making it available for a later redo.
+                    (cons [modified-ids before-store] history))
+                  (if (equivalent-undo-point? before-store)
+                    (if (empty? history)
+                      ;; Don't push an equivalent undo point onto an
+                      ;; empty history. (This case shouldn't even happen.)
+                      history
+                      (let [[[top-modified top-store] & remaining-history]
+                            history]
+                        (if (equivalent-undo-point? top-store)
+                          ;; Our before store is equivalent to the top of
+                          ;; the history, and that store is equivalent to
+                          ;; the store before that (which must mean it got
+                          ;; there following an undo). Rather than push,
+                          ;; replace the top of the history with our before
+                          ;; store.
+                          (cons [(union-seqs top-modified modified-ids)
+                                 before-store]
+                                remaining-history)
+                          (cons [modified-ids before-store] history))))
+                    (cons [modified-ids before-store] history)))]
+            (assoc state
+                   :history after-history
+                   :future (when equivalent future))))))))
 
-(defn can-undo-impl
-  [store history]
-  (when (not (empty? history))
-    (or (not (equivalent-undo-point? store))
-        (let [[[_ store] & remaining-history] history]
-          (can-undo-impl store remaining-history)))))
+(defn move-forward-in-time
+  "Given a history, current, and future, return a similar triple, with
+  the top store of the future popped to become the current store, and
+  the old current store pushed onto the history. Notice that this can
+  be called with the history and future arguments swapped to move
+  backward in time. Also return the ids that were changed between the
+  old and new current stores."
+  [history current future]
+  (let [[[modified-ids top-store] & remaining-future] future]
+    [[(when ;; There is no point having an undo-equivalent state as
+            ;; the end point of the history. And having one there
+            ;; messes up detection of whether we can undo.
+          (or (seq history)
+              (not (equivalent-undo-point? current)))
+        (cons [modified-ids current] history))
+      top-store
+      remaining-future]
+     modified-ids]))
+
+(defn remove-unnedded-undo-equivalent
+  "We are about to do an undo or a redo. Given our reporter's data, if
+  the current store is undo-equivalent to the store on top of the
+  history and that store is undo-equivalent to the previous one, make
+  it as if we never got to the current store. (If the condition is
+  satisfied, then the store on top of the history must be the one that
+  came just before the top of the future, while our current store is
+  just some navigation changes since then. Also return the ids
+  modified by any changes to what is the current store."
+  [state]
+  (let [{:keys [value history future]} state]
+    (if (empty? history)
+      [state nil]
+      (let [[[top-modified top-store] & remaining-history]
+            history]
+        (if (and (equivalent-undo-point? value)
+                 (equivalent-undo-point? top-store))
+          [(assoc state
+                  :history remaining-history
+                  :value top-store)
+           top-modified]
+          [state nil])))))
 
 (defn rearrange-for-undo
-  "Given our reporter's data, return the new state after an undo (ignoring
-  futures-state), and also return the modified ids."
+  "Given our reporter's data, return the new state after an undo, and
+  also return the modified ids."
   [state]
   ;; Loop until we find a store that is not equivalent to its
   ;; predecessor. We need to undo to the store before that.  (Even
   ;; though we try to avoid having several equivalent stores in the
   ;; history, that can happen if a new store is an equivalent store
   ;; and the future holds one, as well.)
-  (loop [store (:value state)
-         history (:history state)
-         future (:future state)
-         cum-modified-ids nil]
-     (let [[[modified-ids prev-store] & remaining-history] history
-           cum-modified-ids (union-seqs modified-ids cum-modified-ids)]
-       (if (equivalent-undo-point? store)
-         (recur prev-store
-                remaining-history
-                (if (empty? future)
-                  ;; Don't push an equivalent undo point as the
-                  ;; ultimate future store, as a redo would want
-                  ;; to go beyond that, and couldn't.
-                  nil
-                  (cons [modified-ids store] future))
-                cum-modified-ids)
-         [(assoc state
-                 :value prev-store
-                 :history remaining-history
-                 :future (cons [modified-ids store] future)
-                 :futures-state nil
-                 :futures-modified-ids nil)
-          cum-modified-ids]))))
+  (println "rearranging for undo")
+  (let [[cleaned cum-modified] (remove-unnedded-undo-equivalent state)
+        {:keys [value history future]} cleaned
+        current value
+        ;; If our current store is equivalent to the top of the
+        ;; history, we need to skip the top of the history.
+        [[future current history] modified-ids]
+        (if (equivalent-undo-point? current)
+          (move-forward-in-time future current history)
+          [[future current history] nil])
+        cum-modified (union-seqs cum-modified modified-ids)
+        ;; Now do the undo to the final new store. 
+        [[future current history] modified-ids] (move-forward-in-time
+                                                 future current history)
+        cum-modified (union-seqs cum-modified modified-ids)]
+    (println ["Did undo"
+              "HISTORY" (reverse history)
+              "CURRENT" current
+              "FUTURE" future])
+    [(assoc state
+            :value current
+            :history (if (equivalent-undo-point? current)
+                       ;; This is the case where we need to push the
+                       ;; popped store back onto the history stack, so
+                       ;; it is available, even if we are followed by
+                       ;; some more undo-equivalent changes.
+                       (cons [nil current] history)
+                       history)
+            :future future)
+     cum-modified]))
 
 (defn rearrange-for-redo
-  "Given a state, return the new state after a redo (ignoring
-  futures-state), and also return the modified ids."
+  "Given our reporter's data, return the new state after a redo, and
+  also return the modified ids."
   [state]
-  (loop [store (:value state)
-         history (:history state)
-         future (:future state)
-         cum-modified-ids nil]
-    (let [[[modified-ids next-store] & remaining-future] future
-          history (cons [modified-ids store] history)
-          cum-modified-ids (union-seqs modified-ids cum-modified-ids)]
-      (if (equivalent-undo-point? next-store)
-        (recur
-         next-store
-         history
-         remaining-future
-         cum-modified-ids)
-        [(assoc state
-                :value next-store
-                :history history
-                :future remaining-future
-                :futures-state nil
-                :futures-modified-ids nil)
-         cum-modified-ids]))))
+  (let [[cleaned cum-modified] (remove-unnedded-undo-equivalent state)
+        {:keys [value history future]} cleaned
+        current value
+        ;; If the top of the future is equivalent to the current
+        ;; state, we need to skip the top of the future.
+        [[history current future] modified-ids]
+        (if (equivalent-undo-point? (let [[[_ store] & _] future] store))
+          (move-forward-in-time history current future)
+          [[history current future] nil])
+        cum-modified (union-seqs cum-modified modified-ids)
+        ;; Now do the redo to the final new store
+        [[history current future] modified-ids] (move-forward-in-time
+                                                 history current future)
+        cum-modified (union-seqs cum-modified modified-ids)]
+    [(assoc state
+            :value current
+            :history history
+            :future future)
+     cum-modified]))
 
 (defrecord MutableStoreImpl
     ^{:doc
@@ -373,20 +428,10 @@
   (undo! [this]
     (change-data!
      this
-     (fn [{:keys [value history future futures-state] :as state}]
-       (if (some? history)
-         (if futures-state
-           (let [[new-state modified-ids] (rearrange-for-undo
-                                           (into state futures-state))
-                 modified-ids (union-seqs modified-ids
-                                          (:futures-modified-ids state))]
-             ;; TODO:!!! get rid of these asserts.
-             (assert (= history (:history futures-state)))
-             (assert (= future (:future futures-state)))
-             (assert (= (:state futures-state) (second (first history))))
-             (change-description state new-state modified-ids))
-           (let [[new-state modified-ids] (rearrange-for-undo state)]
-             (change-description state new-state modified-ids)))
+     (fn [state]
+       (if (some? (:history state))
+         (let [[new-state modified-ids] (rearrange-for-undo state)]
+           (change-description state new-state modified-ids))
          [state [] []]))))
 
   (can-redo? [this]
@@ -395,21 +440,11 @@
   (redo! [this]
     (change-data!
      this
-     (fn [{:keys [value history future futures-state] :as state}]
-       (let [store value]
-         (if (or (empty? future)
-                 (let [[[modified-ids next-store] & remaining-future] future]
-                   (and (equivalent-undo-point? next-store)
-                        (empty? remaining-future))))
-           [state [] []]
-           (if futures-state
-             (let [[new-state modified-ids] (rearrange-for-redo
-                                             (into state futures-state))
-                   modified-ids (union-seqs modified-ids
-                                            (:futures-modified-ids state))]
-               (change-description state new-state modified-ids))
-             (let [[new-state modified-ids] (rearrange-for-redo state)]
-               (change-description state new-state modified-ids)))))))))
+     (fn [state]
+       (if (some? (:future state))
+         (let [[new-state modified-ids] (rearrange-for-redo state)]
+           (change-description state new-state modified-ids))
+         [state [] []])))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "MutableStore"))

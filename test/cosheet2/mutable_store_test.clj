@@ -101,10 +101,10 @@
             _ (store-update! mutable-store
                              #(-> %
                                   (declare-temporary-id me)
-                                  (update-content element 66)
+                                  (update-content element 77)
                                   (update-equivalent-undo-point true)))
             s1a (current-store mutable-store)
-            _ (store-update! mutable-store #(update-content % element 88))
+            _ (store-update! mutable-store #(update-content % element 66))
             s1b (current-store mutable-store)
             _ (store-update! mutable-store
                              #(-> %
@@ -125,11 +125,14 @@
                (track-modified-ids revised-store)))
         
         ;; Test undo and redo.
-        
+
+        ;; TODO:!!! Test that the right notifications are being given.
+        ;;          Test adding some undo equivalent after an undo.
         (clojure.pprint/pprint ["no undo"
                                 (mutable-store-as-list mutable-store)])
         (is (can-undo? mutable-store))
         (undo! mutable-store)
+        (println "Undid")
         (clojure.pprint/pprint ["one undo"
                                 (mutable-store-as-list mutable-store)])
         (is (check (current-store mutable-store) s2))

@@ -126,9 +126,6 @@
    ;;     state.
    })
 
-;; TODO:!!! Replace the variables old-store and new-store with
-;;          before-store and after-store.
-
 (defn add-id-to-affected-ids
   "Takes a set of ids that contains all ids that might be affected by a
   change to any of them. (In concrete terms, it contains all of their
@@ -166,11 +163,11 @@
   could be affected by one of the changed ids. We are given both the
   old store and the new one, as some modified ids might be in only one
   of the two stores."
-  [modified-ids old-store new-store]
+  [modified-ids before-store after-store]
   (when (seq modified-ids)
     (clojure.set/union
-     (categories-in-one-store-affected-by-ids modified-ids old-store)
-     (categories-in-one-store-affected-by-ids modified-ids new-store))))
+     (categories-in-one-store-affected-by-ids modified-ids before-store)
+     (categories-in-one-store-affected-by-ids modified-ids after-store))))
 
 (defmacro cache-and-categorize
   "Return the result of the operation on the store, caching, and using
@@ -178,7 +175,7 @@
   [categories operation store & args]
   `(cache ~operation (category-change ~categories ~store) ~@args))
 
-(defn change-description
+(defn description-of-change
   "Given an old state, the new state, and a list of modified ids, return a
    triple suitable for change-data!"
   [old-state new-state modified-ids]
@@ -187,7 +184,6 @@
    (categories-affected-by-ids
     modified-ids (:value old-state) (:value new-state))])
 
-;:;TODO:!!! Change this to use move-forward-in-time.
 (defn change-and-add-to-history
   "Given the mutable store's reporter state, the revised store from
   after a change, and the modified ids between that store and the
@@ -255,8 +251,9 @@
   [history current future]
   (let [[[modified-ids top-store] & remaining-future] future]
     [[(when ;; There is no point having an undo-equivalent state as
-            ;; the end point of the history. And having one there
-            ;; messes up detection of whether we can undo.
+            ;; the end point of the history (or future). And having
+            ;; one there messes up detection of whether we can undo
+            ;; (or redo).
           (or (seq history)
               (not (equivalent-undo-point? current)))
         (cons [modified-ids current] history))
@@ -265,14 +262,16 @@
      modified-ids]))
 
 (defn remove-unnedded-undo-equivalent
-  "We are about to do an undo or a redo. Given our reporter's data, if
-  the current store is undo-equivalent to the store on top of the
-  history and that store is undo-equivalent to the previous one, make
-  it as if we never got to the current store. (If the condition is
-  satisfied, then the store on top of the history must be the one that
-  came just before the top of the future, while our current store is
-  just some navigation changes since then. Also return the ids
-  modified by any changes to what is the current store."
+  "We are about to do an undo or a redo. Take our reporter's data. See
+  if the current store is undo-equivalent to the store on top of the
+  history and that store is undo-equivalent to the previous one. If so
+  make it as if we never took the steps from the top of the history to
+  the current store. (If the condition is satisfied, then the store on
+  top of the history must be the one that came just before the top of
+  the future, while our current store is just some navigation changes
+  since then. We want to discard those changes.
+  Also return the ids modified by any changes to what is the current
+  store."
   [state]
   (let [{:keys [value history future]} state]
     (if (empty? history)
@@ -299,24 +298,23 @@
   (let [[cleaned cum-modified] (remove-unnedded-undo-equivalent state)
         {:keys [value history future]} cleaned
         current value
-        ;; If our current store is equivalent to the top of the
-        ;; history, we need to skip the top of the history.
+        ;; If our current store is undo equivalent to the top of the
+        ;; history, we need to go past it.
         [[future current history] modified-ids]
         (if (equivalent-undo-point? current)
           (move-forward-in-time future current history)
           [[future current history] nil])
         cum-modified (union-seqs cum-modified modified-ids)
-        ;; Now do the undo to the final new store. 
+        ;; Now do the undo to the new store. 
         [[future current history] modified-ids] (move-forward-in-time
                                                  future current history)
         cum-modified (union-seqs cum-modified modified-ids)]
     [(assoc state
             :value current
             :history (if (equivalent-undo-point? current)
-                       ;; This is the case where we need to push the
-                       ;; popped store back onto the history stack, so
-                       ;; it is available, even if we are followed by
-                       ;; some more undo-equivalent changes.
+                       ;; This is the case where we need to also push
+                       ;; this store back onto the history stack. (See
+                       ;; the comments at the top of this file.)
                        (cons [nil current] history)
                        history)
             :future future)
@@ -329,16 +327,16 @@
   (let [[cleaned cum-modified] (remove-unnedded-undo-equivalent state)
         {:keys [value history future]} cleaned
         current value
-        ;; If the top of the future is equivalent to the current
-        ;; state, we need to skip the top of the future.
+        ;; If the current store is undo equivalent to the top of the
+        ;; future, we need to go past it.
         [[history current future] modified-ids]
         (if (equivalent-undo-point? (let [[[_ store] & _] future] store))
           (move-forward-in-time history current future)
           [[history current future] nil])
         cum-modified (union-seqs cum-modified modified-ids)
-        ;; Now do the redo to the final new store
-        [[history current future] modified-ids] (move-forward-in-time
-                                                 history current future)
+        ;; Now do the redo to the new store.
+        [[history current future] modified-ids]
+        (move-forward-in-time history current future)
         cum-modified (union-seqs cum-modified modified-ids)]
     [(assoc state
             :value current
@@ -414,7 +412,7 @@
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)
              new-state (change-and-add-to-history state new-store modified-ids)]
-         (conj (change-description state new-state modified-ids)
+         (conj (description-of-change state new-state modified-ids)
                result)))))
 
   (can-undo? [this]
@@ -426,7 +424,7 @@
      (fn [state]
        (if (some? (:history state))
          (let [[new-state modified-ids] (rearrange-for-undo state)]
-           (change-description state new-state modified-ids))
+           (description-of-change state new-state modified-ids))
          [state [] []]))))
 
   (can-redo? [this]
@@ -438,7 +436,7 @@
      (fn [state]
        (if (some? (:future state))
          (let [[new-state modified-ids] (rearrange-for-redo state)]
-           (change-description state new-state modified-ids))
+           (description-of-change state new-state modified-ids))
          [state [] []])))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]

@@ -91,7 +91,7 @@
       (let [[store1 e] (add-simple-item store element "foo")
             [store2 _] (add-simple-item store1 e :label)
             store3 (declare-temporary-id store2 e)
-            revised-store (update-content store3 element 77)
+            revised-store (update-content store3 element "S3")
             me (store-update-control-return!
                 mutable-store #(add-simple-item % element "foo"))
             s0 (current-store mutable-store)
@@ -101,20 +101,20 @@
             _ (store-update! mutable-store
                              #(-> %
                                   (declare-temporary-id me)
-                                  (update-content element 77)
+                                  (update-content element "S1a")
                                   (update-equivalent-undo-point true)))
             s1a (current-store mutable-store)
-            _ (store-update! mutable-store #(update-content % element 66))
+            _ (store-update! mutable-store #(update-content % element "S1b"))
             s1b (current-store mutable-store)
             _ (store-update! mutable-store
                              #(-> %
-                                  (update-content element 99)
+                                  (update-content element "S2")
                                   (update-equivalent-undo-point false)))
             s2 (current-store mutable-store)
-            _ (store-update! mutable-store #(update-content % element 77))
+            _ (store-update! mutable-store #(update-content % element "S3"))
             s3 (current-store mutable-store)]
         (run-all-pending-tasks queue)
-        (is (= (reporter-value content) (id->content revised-store element)))
+        (is (= (reporter-value content) "S3"))
         (is (= (set (reporter-value element-ids))
                (set (id->element-ids revised-store element))))
         (is (= (set (reporter-value label-ids))
@@ -126,28 +126,23 @@
         
         ;; Test undo and redo.
 
-        ;; TODO:!!! Test that the right notifications are being given.
-        ;;          Test adding some undo equivalent after an undo.
-        (clojure.pprint/pprint ["no undo"
-                                (mutable-store-as-list mutable-store)])
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        (println "Undid")
-        (clojure.pprint/pprint ["one undo"
-                                (mutable-store-as-list mutable-store)])
         (is (check (current-store mutable-store) s2))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S2"))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        (clojure.pprint/pprint ["two undos"
-                                (mutable-store-as-list mutable-store)])
         ;; We should be at the last of the sequence of equivalent stores.
         (is (check (current-store mutable-store) s1b))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S1b"))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         ;; We should be at the unequivalent store before them.
-        (clojure.pprint/pprint ["three undos"
-                                (mutable-store-as-list mutable-store)])
         (is (check (current-store mutable-store) s0))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) 99))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
@@ -170,11 +165,34 @@
         (redo! mutable-store)
         (is (check (current-store mutable-store) s1))
         (is (can-redo? mutable-store))
+        ;; Test that an equivalent undo point doesn't take out the future.
+        (store-update! mutable-store
+                       #(-> %
+                            (update-content element 33)
+                            (update-equivalent-undo-point true)))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) 33))
+        (is (can-redo? mutable-store))
         (redo! mutable-store)
         (is (check (current-store mutable-store) s2))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S2"))
+        ;; Now test that we can get back to S1b if we undo.
+        (is (can-undo? mutable-store))
+        (undo! mutable-store)
+        (is (check (current-store mutable-store) s1b))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S1b"))
+        (is (can-redo? mutable-store))
+        (redo! mutable-store)
+        (is (check (current-store mutable-store) s2))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S2"))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
         (is (check (current-store mutable-store) s3))
+        (run-all-pending-tasks queue)
+        (is (= (reporter-value content) "S3"))
         (is (not (can-redo? mutable-store)))
         (run-all-pending-tasks queue)
         (is (= (reporter-value content) (id->content revised-store element)))
@@ -191,6 +209,7 @@
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
+        (undo! mutable-store)
         (undo! mutable-store)
         (undo! mutable-store)
         (undo! mutable-store)

@@ -296,7 +296,6 @@
   ;; though we try to avoid having several equivalent stores in the
   ;; history, that can happen if a new store is an equivalent store
   ;; and the future holds one, as well.)
-  (println "rearranging for undo")
   (let [[cleaned cum-modified] (remove-unnedded-undo-equivalent state)
         {:keys [value history future]} cleaned
         current value
@@ -311,10 +310,6 @@
         [[future current history] modified-ids] (move-forward-in-time
                                                  future current history)
         cum-modified (union-seqs cum-modified modified-ids)]
-    (println ["Did undo"
-              "HISTORY" (reverse history)
-              "CURRENT" current
-              "FUTURE" future])
     [(assoc state
             :value current
             :history (if (equivalent-undo-point? current)

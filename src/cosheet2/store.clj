@@ -45,7 +45,9 @@
 ;;; Mutable stores can:
 ;;;   * Undo and Redo.
 
-;;; TODO: Change the store to generalize items to be symmetrical
+;;; Long TODO:
+
+;;; Change the store to generalize items to be symmetrical
 ;;; links, so that rather than having a subject and content, for most
 ;;; purposes, they simply have two ends.
 ;;;
@@ -76,6 +78,10 @@
 ;;; entities that are modified, that may include both ends, since
 ;;; either or both could be user objects.
 
+;;; The current code supports notifying a tree of any changes to any
+;;; subtree. That is still supported, as only links to items need to
+;;; be further chased, and an item is allowed to have only one such
+;;; link. So you still get a tree structure.
 
 (defrecord
     ^{:doc
@@ -227,7 +233,10 @@
 
 (defprotocol MutableStore
   "The basic methods that mutable stores support to change themselves,
-  from which higher levels functions are built."
+  from which higher levels functions are built.
+  
+  In addition to these methods, a MutableStore is also a Reporter."
+  
   (current-store [this]
     "The current immutable store of the mutable store.")
 

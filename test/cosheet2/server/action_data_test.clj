@@ -16,7 +16,7 @@
             (cosheet2.server [action-data :refer :all]
                              [order-utils :refer [add-order-elements
                                                   ordered-entities
-                                                  recursively-process-elements]]
+                                                  order-recursively]]
                              [model-utils :refer [semantic-to-list
                                                   semantic-elements]])
             ; :reload
@@ -206,7 +206,7 @@
                  '("" 2)))
       (is (check (map semantic-to-list
                       (semantic-elements
-                       (recursively-process-elements ordered-entities
+                       (order-recursively
                         (description->entity joe-id store))))
                  '("male" "married"
                    ("" 2) (39 "age" ("doubtful" "confidence")) (45 "age"))))

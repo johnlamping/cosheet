@@ -201,3 +201,16 @@
                        '(0 (1 2 (1 2))))
          '(0 (1 2)))))
 
+(deftest call-psuedo-closure
+  (is (= (call-pseudo-closure list 1 2 3)
+         '(1 2 3)))
+  (is (= (call-pseudo-closure list "abc")
+         '("abc")))
+  (is (= (call-pseudo-closure `(~list 4 5 6) 1 2 3)
+         '(1 2 3 4 5 6)))
+  (is (= (call-pseudo-closure [list 4 5 6] 1 2 3)
+         '(1 2 3 4 5 6)))
+  (is (= (call-pseudo-closure (cons list '(4 5 6)) 1 2 3)
+         '(1 2 3 4 5 6)))
+  (is (= (call-pseudo-closure [list "def"] "abc")
+         '("abc" "def"))))

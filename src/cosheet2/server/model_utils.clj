@@ -55,29 +55,31 @@
 (defn get-n-new-strings
   "Get n new strings"
   [store n]
-  (reduce (fn [[headers store] column]
-            (let [[header store] (get-new-string store)]
-              [(conj headers header) store]))
+  (reduce (fn [[strings store] _]
+            (let [[new-string store] (get-new-string store)]
+              [(conj strings new-string) store]))
           [[] store] (range n)))
 
 ;;; We have various list forms of items for different purposes:
-;;;  query:     a form suitable for use as a query. It can have nils. It may
-;;;             include non-semantic information, like :order or :top-level
-;;;             to restrict what it matches.
-;;;  pattern:   a form of a query that can be saved in the store. It uses
-;;;             'anything for wildcards, where a query would have
-;;;             nil.
-;;; TODO: use "", rather than 'anything in patterns. That way, there is no
-;;;       need to check for selectors when setting a value. If the user
-;;;       needs to query for the empty string, they can enter "". To search
-;;;       for "", they enter """", etc.
+;;;      query: a form suitable for use as a query. It can have nils,
+;;;             which means it can't be saved in the store. It may
+;;;             include non-semantic information, like :order or
+;;;             :top-level to restrict what it matches.
+;;;    pattern: a form of a query that can be saved in the store. It
+;;;             uses 'anything for wildcards, where a query would have
+;;;             nil. We need to distiguish wildcards from an empty
+;;;             value, because the user might want to search for an
+;;;             empty value, and the only natural way to express that
+;;;             is with an empty value, distinct from a wildcard.
 ;;;  template:  the list form for the semantic content of a new item.
 ;;;             It may have 'anything as they are allowed in items. But
 ;;;             since they are only allowed in selector items, they will
 ;;;             be turned into "" when put into non-selector items. 
-;;;  generic:   a pattern or template that has '??? to indicate values
-;;;             that need to be filled out with unique strings.
+;;;    generic: a pattern or template that has '??? to indicate values
+;;;             that need to be filled in with unique strings.
 
+;;; TODO: If this never causes a failure, get rid of it; that means it
+;;; isn't needed.
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
   (a ...b... ...c...)"
@@ -85,7 +87,9 @@
   (clojure.walk/postwalk
    (fn [item]
      (if (and (seq? item) (seq? (first item)))
-       (apply list (concat (first item) (rest item)))
+       (assert false ["Template with nested content" (first item)])
+       ;; Here's the code in case we do need to handle this case after all:
+       ;; (apply list (concat (first item) (rest item)))
        item))
    item))
 

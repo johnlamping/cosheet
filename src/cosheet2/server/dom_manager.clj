@@ -14,7 +14,8 @@
                                      update-in-clean-up
                                      update-new-further-action
                                      update-new-further-actions
-                                     dissoc-in]]
+                                     dissoc-in
+                                     call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
@@ -73,7 +74,7 @@
                            ; changes.
      dom                   ; The rendered dom for this client.
      dom-version           ; A monotonically increasing version number
-                           ; for the current dom. It goes up every time
+                           ; for the current dom. It goes up every time we
                            ; compute the dom, even if the dom doesn't change.
      client-needs-dom      ; True if the client has not been sent the dom
                            ; that would currently be computed, or
@@ -243,7 +244,7 @@
       component-data
       (let [getter (or (:get-rendering-data dom-specification)
                        get-item-rendering-data)
-            pairs (getter dom-specification mutable-store)]
+            pairs (call-pseudo-closure getter dom-specification mutable-store)]
         (-> component-data
             (assoc :reporters (map first pairs))
             (update-new-further-actions
@@ -399,7 +400,9 @@
     (when (and dom-specification (<= dom-version old-dom-version))
       (with-latest-value [reporter-values (map reporter-value reporters)]
         (when (every? valid? reporter-values)
-          (let [dom (apply renderer dom-specification reporter-values)]
+          (let [dom (apply
+                     call-pseudo-closure
+                     renderer dom-specification reporter-values)]
             (swap-and-act!
              component-atom
              #(let [result (update-dom % component-atom dom)]

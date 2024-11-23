@@ -1,7 +1,8 @@
 (ns cosheet2.server.action-data
   (:require (cosheet2 [utils :refer [multiset replace-in-seqs
-                                    map-map thread-map thread-recursive-map
-                                    add-elements-to-entity-list]]
+                                     map-map thread-map thread-recursive-map
+                                     add-elements-to-entity-list
+                                     call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [is-item-id? id->subject id->content]]
                       [entity :refer [subject elements content label->elements
@@ -18,7 +19,6 @@
                                   entity->canonical-semantic
                                   pattern-to-query
                                   specialize-generic
-                                  flatten-nested-content
                                   create-possible-selector-elements]]
              [order-utils :refer [ordered-entities]])))
 
@@ -61,11 +61,9 @@
                                  :column-descriptions-R :row-template-R
                                  :row-ids-R))
   (let [store (or (:store containing-action-data) immutable-store)
-        [fun extra-args] (if (vector? getter)
-                           [(first getter) (rest getter)]
-                           [getter nil])
-        result (apply fun specification containing-action-data
-                      action store extra-args)]
+        result (call-pseudo-closure
+                getter
+                specification containing-action-data action store)]
     (println "  returning AD" (dissoc result :component))
     result))
 

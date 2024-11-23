@@ -17,12 +17,18 @@
     [utils :refer [thread-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 
+;;; Utilities for creating and using orders.
+
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information
-;;; about how to display the elements is considered irrelevant for
-;;; matching a condition. We call the elements that matter the semantic
-;;; elements.
-
+;;; about how to display the elements, is considered irrelevant for
+;;; matching a condition. We call the elements that do matter the
+;;; semantic elements.
+;;; Logically, semantic-entity? would make more sense in model-utils,
+;;; but our update-add-entity-adjacent-to needs semantic-entity?, to
+;;; know what parts need order information. And model-utils imports
+;;; update-add-entity-adjacent-to. So semantic-entity? has to go here,
+;;; or in what would be its own file, practically.
 (defn semantic-entity?
   "Return true if an item counts as semantic information."
   [immutable-entity]
@@ -44,7 +50,7 @@
               ;; It is possible to not have order information,
               ;; especially temporarily while information is being
               ;; propagated. Tolerate that.
-                    (vector (or order initial) thing))
+              (vector (or order initial) thing))
             order-info things)
        (sort orderable-comparator)
        (map second)))
@@ -52,9 +58,10 @@
 (defn ordered-ids
   "Return the ids in the correct order, based on their order data."
   [ids immutable-store]
-  (let [order-info (map #())])
-  (let [entities (map #(description->entity % immutable-store) ids)
-        order-info (map #(label->content % :order) entities)]
+  (let [order-info (map #(-> %
+                             (description->entity immutable-store)
+                             (label->content :order))
+                        ids)]
     (sort-by-order ids order-info)))
 
 (defn ordered-entities
@@ -65,15 +72,14 @@
     (let [order-info (map #(label->content % :order) entities)]
       (sort-by-order entities order-info))))
 
-(defn recursively-process-elements
-  "Given a function and an entity, apply the function to the list of
-  elements at each level, and replace the elements at that level with
-  the result."
-  [f entity]
-   (if-let [elems (elements entity)]
-     (list* (content entity)
-            (f (map #(recursively-process-elements f %) elems)))
-     entity))
+(defn order-recursively
+  "Return the list form of the immutable entity with the elements at
+  each level ordered."
+  [entity]
+  (if (elements entity)
+    (cons (content entity)
+          (ordered-entities (map order-recursively (elements entity))))
+    entity))
 
 ;;; The next few functions implement a reporter that orders a set of
 ;;; ids, updating as either the set membership or their order

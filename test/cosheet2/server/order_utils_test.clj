@@ -23,7 +23,8 @@
              [canonical :refer [canonicalize]]
              [test-utils :refer [check any]])
             (cosheet2.server
-             [order-utils :refer :all])
+             [order-utils :refer :all]
+             [model-utils :refer [semantic-to-list]])
             ; :reload
             ))
 
@@ -89,13 +90,9 @@
     (is (= (ordered-entities (reverse joe-semantic-elements))
            joe-ordered-semantic-elements))))
 
-(deftest recursively-process-elements-test
-  (is (check (recursively-process-elements
-              #(filter semantic-entity? %)
-              (recursively-process-elements ordered-entities joe-reversed-list))
-             (recursively-process-elements
-              #(filter semantic-entity? %)
-              joe-list))))
+(deftest order-recursively-test
+  (is (check (semantic-to-list (order-recursively joe-reversed-list))
+             (semantic-to-list joe-list))))
 
 (deftest ordered-ids-R-test
   (let [joe-semantic-elements (filter semantic-entity? (elements joe))

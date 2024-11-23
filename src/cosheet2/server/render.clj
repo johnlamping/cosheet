@@ -45,7 +45,7 @@
 ;;; sub-elements.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
-;;;        ("married" (->Orderable 1 2) :order)
+;;;        ("married" ((->Orderable 1 2) :order)
 ;;;        (39 ((->Orderable 5 6) :order)
 ;;;            ("age" :label ((->Orderable 7 8) :order))
 ;;;            ("doubtful" ((->Orderable 9 10) :order)))
@@ -58,17 +58,21 @@
 ;;; The overall architecture of the system is a dom renderer that
 ;;; knows how to generate various kinds of dom to display parts of the
 ;;; store, and a dom-manager that keeps track of what dom might need
-;;; to be recomputed and what dom has changed and needs to be sent to
-;;; the client.
+;;; to be recomputed and what dom has changed under recomputation and
+;;; needs to be sent to the client.
 
-;;; The dom is generated and sent to the client as a tree of
-;;; components, each component possibly containing others. Each
-;;; component is rendered separately, and is the unit of information
-;;; passed to the client. Internally, each component is identified by
-;;; a unique id relative to its containing component. When
-;;; communicating about a component with the client, the path of ids
-;;; from the root component to it are concatenated together to become
-;;; the component's identifier.
+;;; The dom is generated and sent to the client as a logical tree of
+;;; components, with branches of the tree corresponding to contained
+;;; components. The component is the unit of information passed to the
+;;; client.
+
+;;; Each component is rendered independently of the rendering of
+;;; others, including independentlymof its contained
+;;; components. Internally, each component is identified by a unique
+;;; id relative to its containing component. When communicating about
+;;; a component with the client, the path of ids from the root
+;;; component to it are concatenated together to become the
+;;; component identifier the client sees.
 
 ;;; By breaking the dom into components, we able to reuse subsidiary
 ;;; parts of the dom that the client already has, even if a containing
@@ -77,72 +81,83 @@
 ;;; other children.
 
 ;;; We use attributes, as supported by hiccup, to store information
-;;; about components. So a sub-component looks like hiccup, with this
+;;; about components. A sub-component looks like hiccup with this
 ;;; format which is recognized and processed by the dom manager:
 ;;;   [:component {
-;;;                 :class  Optional subset of classes the DOM will have
+;;;                 :class  Optional subset of CSS classes the DOM will have
 ;;;           :relative-id  The id relative to containing component
-;;;                         This is also the id the dom is about, unless
-;;;                         overridden by :item-id
+;;;                         This is also the database id the dom describes,
+;;;                         unless overridden by :item-id
 ;;;                    ...  Any attribute that a dom specification (see
 ;;;                         below) can have.
 ;;;                         
 ;;;    }]
 
-;;; The dom manager will give the client a dom with these subsidiary
-;;; components, with the initially specified class, and it will create
-;;; additional computations to compute the dom for the components,
-;;; passing them as updates to the client once they are computed.
+;;; When the dom manager first mentions a component to the client, it
+;;; will generally be as a subsidiary component of a dom it is
+;;; sending. It will give the client the initially specified class of
+;;; each subsidiary component, but not necessarily its dom
+;;; yet. Rather, it will create computations to compute the dom for
+;;; the subsidiary components, and pass their doms as updates to the
+;;; client once they are computed.
 
-;;; The store is always kept in memory, as is which parts of the store
-;;; the rendering of each component depends on. But the information
-;;; that describes how each part of the dom should be rendered and to
-;;; interpret actions on it is recreated on demand as needed.
-
-;;; A specification map is used describe how to turn part of the
-;;; store into a component of dom. The map holds the information for
-;;; what is to be rendered, such as an item id, and what style of
-;;; rendering to use. Generating the dom will require additional
-;;; information from the store, such as the content and elements of
-;;; the item to be rendered.
+;;; A component is associated with a dom specification for its dom: a
+;;; map holding the information that describes how to turn part of the
+;;; store into a dom, and how to interpret actions on that dom. It thus
+;;; holds the information for what is to be rendered, such as an
+;;; item id, and what style of rendering to use.
 
 ;;; To maximize reuse, the dom specification should not have any
-;;; extraneous information, as any change to the specification
-;;; requires a re-rendering of the dom. The specification should focus
-;;; exclusively on what is to be shown and how it should be
-;;; formatted. The actual user information conveyed by the dom should
-;;; come from the store.
+;;; extraneous information, because any change to the specification
+;;; requires a re-rendering of the dom. In particular, while it will
+;;; typically indicate an id from the store it shouldn't reflect
+;;; anything the store knows about that id. Rather, when the dom is
+;;; generated, the store will provide the substance of what is shown,
+;;; such as the content and elements of the item to be rendered.
+
+;;; The store is always kept in memory, as is which parts of the store
+;;; the rendering of each component depends on. But most dom
+;;; specifications are removed from memory once their dom has been
+;;; generated. If they are needed later, for example because the store
+;;; has changed for something they show, they are recreated, using the
+;;; the dom specification of their parent. In general, this requires
+;;; walking up the containment tree to the root dom specification,
+;;; which is always kept, and then walking back down, creating dom
+;;; specifications on the way. Fortunately the containment depth is
+;;; usually not very deep.
 
 ;;; To ask to render a dom, the dom manager uses two functions, stored
 ;;; in the spec map under :get-rendering-data and :render-dom. The
-;;; :get-rendering-data function takes specification and the mutable
-;;; store and returns a seq of <reporter, categories> pairs, which
-;;; give the information that the rendering requires and gives what
-;;; categories of changes it is sensitive to. The manager then
-;;; registers for updates to those categories for those reporters,
-;;; gets the current values of the reporters, and calls the
-;;; :render-dom function with the spec map and those values.
+;;; :get-rendering-data function takes the specification and the
+;;; mutable store and returns a seq of <reporter, categories> pairs.
+;;; Each reporter holds some of the information that the rendering
+;;; requires. And its corresponding categories indicate categories of
+;;; changes to that reporter that the rendering is sensitive to. The
+;;; manager then registers for updates to those categories for those
+;;; reporters, gets the current values of the reporters, and calls the
+;;; :render-dom function with the dom specification and those values.
 
 ;;; By doing it this way, the dom manager will learn of any changes
 ;;; that require recomputing the dom, and will have registered for
-;;; those changes before getting the data the renderer will
-;;; use. Usually, :get-rendering-data will usually just return the
-;;; mutable store and the ids there that it depends on, but the
-;;; protocol gives it the option to create additional reporters that
-;;; are smart about tracking the store. For example, reporters can
-;;; track the result of a query on the store, so the query doesn't
+;;; those changes before getting the data the renderer will use. By
+;;; default :get-rendering-data will just return the mutable store as
+;;; the reporter, and the ids there that the rendering depends on. But
+;;; the protocol gives it the option to create additional reporters
+;;; that are smart about tracking the store. For example, reporters
+;;; can track the result of a query on the store, so the query doesn't
 ;;; have to be re-run for every change to the store.
 
 ;;; When a component's dom changes, the manager only needs to
-;;; re-render sub-components with new ids. It can assume that any
-;;; pre-existing components and their renderings haven't
-;;; changed. (This means that a component that is one of several
-;;; siblings has to be rendered identically to one that is by itself,
-;;; or needs a different id for the two cases. For items in table
-;;; cells, which need different formatting if they are an entire cell
-;;; vs part of an item stack, inherited CSS can handle the
-;;; formatting. In other cases, the sub-component's id may need to
-;;; change between the two different rendering situations.)
+;;; re-render sub-components with new ids, ones for which it didn't
+;;; already have subcomponents. It can assume that any pre-existing
+;;; sub-components and their renderings haven't changed. (This means
+;;; that a component that is one of several siblings either has to be
+;;; rendered identically to one that is by itself, or needs to have
+;;; different ids for the two cases. For items in table cells, which
+;;; need different formatting if they are an entire cell vs part of an
+;;; item stack, inherited CSS can handle the formatting. In other
+;;; cases, the sub-component's id may need to change between the two
+;;; different rendering situations.)
 
 ;;; TODO: Optionally, a dom specification can have a
 ;;; :sub-dom-specification method, which gives the specification of a
@@ -160,7 +175,7 @@
 ;;; the edited dom in each of them.
 
 ;;; Rather than compute this information during rendering, it is
-;;; computed as actions are done, using with two more functions in the
+;;; computed as actions are done, using two more functions in the
 ;;; spec. :get-action-data holds a function that takes a dom
 ;;; specification, the action data for the containing dom, a user
 ;;; action, and the current store, and returns the action data for the
@@ -169,11 +184,9 @@
 ;;; action, and the current store and returns a store with the
 ;;; appropriate changes.
 
-;;; Rather than a function, :get-action-data may alternatively hold a
-;;; vector, where the first element is the function, and the rest is
-;;; extra arguments beyond the usual for :get-action-data. While
-;;; putting in a closure, rather than a vector could do the same
-;;; thing, the vector is easier to read in debugging output.
+;;; The value of :get-action-data may be a pseudo-closure, a sequence
+;;; where the first element is the function, and the rest is extra
+;;; arguments beyond the usual for :get-action-data.
 
 ;;; This protocol allows :get-action-data to pass down a modified
 ;;; store as part of its output. For example, it might want to create
@@ -188,12 +201,12 @@
 ;;; default returns the set of ids that are all represented by the
 ;;; displayed item.
 
-;;; Each component is uniquely identified with a client id, which is
+;;; Each component is uniquely identified by a client id, which is
 ;;; added by the dom manager. There must never be two components or
-;;; doms with the same id, even during updates, or all sorts of
-;;; confusion can result. The id of a component must also not change
-;;; throughout the life of its parent dom, because conserving it is
-;;; how we reuse subsidiary doms.
+;;; doms with the same id, even during the middle of updates, or all
+;;; sorts of confusion can result. The id of a component must also not
+;;; change throughout the life of its parent dom, because conserving
+;;; it is how we reuse subsidiary doms.
 
 ;;; The heart of the id is typically the :relative-id, which is the id
 ;;; of the item the dom is about. But since there can be several dom
@@ -202,15 +215,16 @@
 ;;; dom.
 
 ;;; As a rule, there should be a separate component for every thing
-;;; that the user can interact with. But the dom manager is free to
-;;; elide out components when it sends them to the client, as long as
-;;; it includes their ids.
+;;; that the user can interact with. But when the dom manager sends
+;;; components to the client, it is free to elide out components whose
+;;; dom is simply another component, as long as it doesn't affect the
+;;; ids of components it does send.
 
-;;; A dom specification can contain any of these fields.
-;;; Any of the fields that expect functions will also accept a list,
-;;; where the first element is the function, and the rest of the list
-;;; is additional arguments. (This approach is better than closures, which
-;;; are hard to display and to test.)
+;;; A dom specification can contain any of these fields.  Any of the
+;;; fields that expect functions will also accept a pseudo closure, a
+;;; sequence, where the first element is the function, and the rest of
+;;; the list is additional arguments. (This approach is better than
+;;; closures, which are hard to display and to debug.)
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is normally the id the dom is about, or an
 ;;;                         exemplar element of one of the ids the containing
@@ -239,6 +253,7 @@
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
 ;;;                         changes.
+;;;                         TODO: not currently implemented
 ;;;             :immutable  If true, the user cannot change anything about
 ;;;                         this item, and can't even select it. This
 ;;;                         property is inherited to child elements.

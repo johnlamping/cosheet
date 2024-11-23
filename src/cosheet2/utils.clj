@@ -391,3 +391,15 @@
     (concat (if (sequential? entity) entity (list entity))
             elements)))
 
+(defn call-pseudo-closure
+  "A psudeo closure is either a function or a sequence of a function and
+  some extra arguments. Call the function with the arguments given in
+  the call followed by the pseudo closure's extra arguments, if any.
+  Pseudo closures are easier to debug than actual closures, because
+  they print something understandable. Also, they put the closed over
+  arguments at the end, which can be more convenient."
+  [closure & args]
+  (if (sequential? closure)
+    (apply (first closure) (concat args (rest closure)))
+    (apply closure args)))
+

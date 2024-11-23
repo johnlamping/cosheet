@@ -80,6 +80,7 @@
   references.
 
   The atom must be in the field, data, and hold a map consisting of
+  these fields, and that may have additional fields.  
      :value            The value of the reporter.
      :priority         The priority for recomputing this reporter
                        (lower first)
@@ -208,7 +209,7 @@
   "This is the most general function for updating a reporter without
   also controlling the return value. But it must not change the demand
   information.
-  Call the function with the current data map the reporter.  It must
+  Call the function with the current data map of the reporter.  It must
   return a new data map, a description of its change since the last
   valid value, and the categories of the change.  Set the data of the
   reporter to the new map, and inform any attendees that care about

@@ -18,8 +18,9 @@
 (defn mm-get [mm key] (get @(mm-ref mm key) key))
 (defn mm-get-in [mm keys] (get-in @(mm-ref mm (first keys)) keys))
 
-;;; We reverse the usual order of function and map in the swap functions,
-;;; so we can use partial to bind the function.
+;;; We reverse the usual order of function and map arguments in these
+;;; private swap functions, so we can use partial to bind their
+;;; function.
 (defn- mm-swap! [fun mm key & args]
   (get (swap! (mm-ref mm key) #(apply fun % key args))
        key))

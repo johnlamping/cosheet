@@ -101,7 +101,7 @@
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
   [immutable-store id]
-  (let [item (description->entity id immutable-store) ]
+  (let [item (description->entity id immutable-store)]
     (reduce remove-entity-by-id
             immutable-store
             (map :item-id (semantic-elements item)))))
@@ -309,6 +309,8 @@
     (ordered-ids-R (id-label->element-ids store holder-id :tab)
                    store)))
 
+;;; TODO: This, and its comment don't agree with what tab-table-element does,
+;;; or with what render-table-DOM looks for.
 (def table-header-template
   ;; A table header is stored as an element of the row condition, so
   ;; that batch edit changes can match table headers. We strip the

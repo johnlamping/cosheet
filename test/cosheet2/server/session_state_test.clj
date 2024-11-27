@@ -111,8 +111,8 @@
         store (add-table (starting-store nil)
                          "Hello" [["a" "b"] [1 2] [3]])
         row1 (first (matching-items '(nil (1 ("a" :label))) store))
-        queue (new-priority-task-queue 0)
         ms (new-mutable-store store)
+        queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)]
     (add-session-temporary-element! ms)
     (reset! session-info {:sessions {}

@@ -230,18 +230,25 @@
 ;;;                         exemplar element of one of the ids the containing
 ;;;                         component is about.
 ;;;                         However, this may overridden by :item-id.
-;;;                         If overridden, it may be a keyword,
+;;;                         If overridden, it must be a keyword,
 ;;;                         an ItemId, or a vec of those.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
-;;;          :parallel-ids  If the dom pertains to more ids than its parent,
-;;;                         this will list them. In some cases, both this
-;;;                         and :item-id may be present, in which case
-;;;                         :item-id will be an exemplar element of one of
-;;;                         the :parallel-ids, and the dom will pertain to
-;;;                         a matching element of each
-;;;                 :class  Optional subset of classes the DOM will have.
+;;;          :parallel-ids  Sometimes a dom pertains to more ids than its
+;;;                         parent does, like a label dom that wraps
+;;;                         several items. In that case, :parallel-ids
+;;;                         gives a sequence of ids that are
+;;;                         intermediary between this dom's parent's
+;;;                         items, and this dom's items. The context
+;;;                         for this dom has an item for each id of
+;;;                         the parent context, for each id in
+;;;                         :parallel-ids.
+;;;                         TODO: Get rid of this, and just make :item-id
+;;;                               accept a sequence (for sequential
+;;;                               sub-elements) with sub-sequenques
+;;;                               (for parallelism).
+;;;                 :class  Optional subset of CSS classes the DOM will have.
 ;;;            :render-dom  Optional function that takes this specification
 ;;;                         and additional reporter values, then produces
 ;;;                         the dom.
@@ -274,15 +281,15 @@
 ;;;                         DOM, it means its new item.
 ;;;                         If the value of :template is :singular, then
 ;;;                         twins may not be created, and the item may
-;;;                         not be deleted.
+;;;                         not be deleted with a simple delete action.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before
 ;;;                         or :after the adjacent item.
-;;;                     ...  <other attributes that help define the component>
+;;;                    ...  <other attributes that help define the component>
 ;;;    }]
 
-;;; Here is a minimal dom specification, lacking its :relative-id:
+;;; Here is a minimal dom specification, but lacking its :relative-id:
 (def basic-dom-specification
   {            :width 1.5 ; A float, giving the width of this dom element
                           ; compared to the minimum width for two column

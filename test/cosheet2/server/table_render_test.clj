@@ -50,7 +50,7 @@
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
 ;;; (We use functions, rather than constants, so this file doesn't have
-;;; to be reloaded if any of the files that defines the underlying
+;;; to be reloaded if any of the files that define the underlying
 ;;; functions is reloaded.)
 
 (defn virt-DOM [] render-virtual-DOM)
@@ -103,35 +103,35 @@
 (deftest table-DOM-test
   (let [specification {:width 3.0
                        :elements-template 'anything}
-          joe-list `("Joe"
-                     :top-level
-                     (~o2 :order)
-                     ("male" (~o1 :order))
-                     ("married" (~o2 :order))
-                     (39 (~o3 :order)
-                         ("age" :label (~o3 :order))
-                         ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
-                     (45 (~o4 :order)
-                         ("age" :label (~o3 :order)))
-                     ("Joe" (~o5 :order)
-                      ("name" :label (~o3 :order)))
-                     ("Joseph" (~o6 :order)
-                      ("name" :label (~o1 :order))
-                      ("id" :label (~o2 :order))))
-          jane-list `("Jane"
-                      :top-level
-                      (~o1 :order)
-                      ("plain" (~o2 :order)) ("plain" (~o3 :order)))
-          test-list `("TEST"
-                      :top-level
-                      :test
-                      (~o3 :order)
-                      ;; Real data won't have 'anything as content,
-                      ;; but we want something that is less specific
-                      ;; than the table condition to test that it will
-                      ;; cause the condition to be eliminated in batch
-                      ;; edits.
-                      (~'anything (~o3 :order) ("age" :label (~o3 :order))))
+        joe-list `("Joe"
+                   :top-level
+                   (~o2 :order)
+                   ("male" (~o1 :order))
+                   ("married" (~o2 :order))
+                   (39 (~o3 :order)
+                       ("age" :label (~o3 :order))
+                       ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
+                   (45 (~o4 :order)
+                       ("age" :label (~o3 :order)))
+                   ("Joe" (~o5 :order)
+                    ("name" :label (~o3 :order)))
+                   ("Joseph" (~o6 :order)
+                    ("name" :label (~o1 :order))
+                    ("id" :label (~o2 :order))))
+        jane-list `("Jane"
+                    :top-level
+                    (~o1 :order)
+                    ("plain" (~o2 :order)) ("plain" (~o3 :order)))
+        test-list `("TEST"
+                    :top-level
+                    :test
+                    (~o3 :order)
+                    ;; Real data won't have 'anything as content,
+                    ;; but we want something that is less specific
+                    ;; than the table condition to test that it will
+                    ;; cause the condition to be eliminated in batch
+                    ;; edits.
+                    (~'anything (~o3 :order) ("age" :label (~o3 :order))))
         table-list `("table"
                      (~'anything
                       :row-condition
@@ -171,11 +171,11 @@
         joe-joseph (first (matching-elements "Joseph" joe))
         joe-joseph-id (:item-id joe-joseph)
         table (description->entity table-id store)
-        row-condition (first (entity/label->elements table :row-condition))
+        row-condition (entity/label->element table :row-condition)
         row-condition-id (:item-id row-condition)
         rc1 (first (matching-elements `(nil ~o8) row-condition))
         rc1-id (:item-id rc1)
-        column-headers (first (entity/label->elements table :column-headers))
+        column-headers (entity/label->element table :column-headers)
         column-headers-id (:item-id column-headers)
         c1 (first (matching-elements `(nil ~o1) column-headers))
         c1-id (:item-id c1)

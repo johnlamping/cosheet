@@ -20,7 +20,7 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [item-render :refer [render-item-DOM get-item-rendering-data]]
+             [render :refer [dom-renderer rendering-data-getter]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   update-action-data-for-component]])))
 
@@ -242,8 +242,7 @@
         mutable-store (:mutable-store @dom-manager)]
     (if (or reporters (not dom-specification))
       component-data
-      (let [getter (or (:get-rendering-data dom-specification)
-                       get-item-rendering-data)
+      (let [getter (rendering-data-getter dom-specification)
             pairs (call-pseudo-closure getter dom-specification mutable-store)]
         (-> component-data
             (assoc :reporters (map first pairs))
@@ -396,7 +395,7 @@
   "Compute the dom, unless its current version is greater than old-version."
   [component-atom old-dom-version]
   (let [{:keys [reporters dom-specification dom-version]} @component-atom
-        renderer (or (:render-dom dom-specification) render-item-DOM)]
+        renderer (dom-renderer dom-specification)]
     (when (and dom-specification (<= dom-version old-dom-version))
       (with-latest-value [reporter-values (map reporter-value reporters)]
         (when (every? valid? reporter-values)

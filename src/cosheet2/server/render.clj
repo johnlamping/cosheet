@@ -16,7 +16,7 @@
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
-             [item-render :refer [render-item-DOM]]
+             [item-render :refer [get-item-rendering-data render-item-DOM]]
              [table-render :refer [render-table-DOM]]
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
@@ -249,13 +249,17 @@
 ;;;                               sub-elements) with sub-sequenques
 ;;;                               (for parallelism).
 ;;;                 :class  Optional subset of CSS classes the DOM will have.
-;;;            :render-dom  Optional function that takes this specification
-;;;                         and additional reporter values, then produces
-;;;                         the dom.
-;;;    :get-rendering-data  Optional function that takes this map and the
-;;;                         mutable store and returns a seq of pairs of the
-;;;                         a reporter whose values is needed by :render-dom
-;;;                         and the categories of that reporter it depends on.
+;;;            :render-dom  Optional pseudo function that takes this
+;;;                         specification and the values returned by
+;;;                         :get-rendering-data, then produces the
+;;;                         dom.
+;;;                         Defaults to item-render/render-item-DOM
+;;;    :get-rendering-data  Optional pseudo function that takes this map and
+;;;                         the mutable store and returns a seq of
+;;;                         pairs of a reporter whose value is needed
+;;;                         by :render-dom and the categories of that
+;;;                         reporter that the rendering depends on.
+;;;                         Defaults to item-render/get-item-rendering-data
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
@@ -264,10 +268,13 @@
 ;;;             :immutable  If true, the user cannot change anything about
 ;;;                         this item, and can't even select it. This
 ;;;                         property is inherited to child elements.
-;;;       :get-action-data  Optional function that takes a dom specification,
-;;;                         the action data for the containing dom, a user
-;;;                         action, and the current store, and returns a map
-;;;                         consisting of the action data for the given dom.
+;;;       :get-action-data  Optional pseudo function that takes a dom
+;;;                         specification, the action data for the
+;;;                         containing dom, a user action, and the
+;;;                         current store, and returns a map
+;;;                         consisting of the action data for the
+;;;                         given dom.
+;;;                         defaults to action-data/default-get-action-data
 ;;;       :must-show-label  If true, a virtual label should be shown
 ;;;                         if there are no labels. If, additionally, it is
 ;;;                         :wide, show it with substantial space, if there
@@ -288,6 +295,20 @@
 ;;;                         or :after the adjacent item.
 ;;;                    ...  <other attributes that help define the component>
 ;;;    }]
+
+(defn dom-renderer
+  [dom-specification]
+  (or (:render-dom dom-specification)
+      render-item-DOM))
+
+(defn rendering-data-getter
+  [dom-specification]
+  (or (:get-rendering-data dom-specification)
+      get-item-rendering-data))
+
+;;; NOTE: action-data-getter is defined in action_data.clj, because it
+;;; both needs a function defined there and is used there. So putting
+;;; it here would make a circular dependency.
 
 ;;; Here is a minimal dom specification, but lacking its :relative-id:
 (def basic-dom-specification
@@ -394,7 +415,8 @@
                      subject (subject immutable-item)]
                  [:div {:class "tabbed"}
                   (make-component {:relative-id (:item-id subject)
-                                   :client-state client-state
+                                   ;; TODO: Get rid of this.
+                                   ;; :client-state client-state
                                    :chosen-tab-id id
                                    :render-dom render-tabs-DOM
                                    :get-action-data [get-id-action-data

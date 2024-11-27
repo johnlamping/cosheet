@@ -158,8 +158,8 @@
          (remove nil?))))
 
 (defn get-item-or-exemplar-action-data
-  "This is the default for :get-action-data. It is intended for doms
-  that might be in a context that makes them refer to several items."
+  "This is the vanilla action getter, for doms that might be in a
+  context that makes them refer to several items."
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
         subject-ids (:target-ids containing-action-data)]
@@ -209,6 +209,11 @@
       get-item-or-exemplar-action-data)
      containing-action-data)
    action immutable-store))
+
+(defn action-data-getter
+  [dom-specification]
+  (or (:get-action-data dom-specification)
+      default-get-action-data))
 
 (defmethod print-method
   cosheet2.server.action_data$default_get_action_data
@@ -444,8 +449,7 @@
   to the data."
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        {:keys [get-action-data
-                get-tab-action-data
+        {:keys [get-tab-action-data
                 get-column-action-data
                 get-row-action-data
                 get-do-batch-edit-action-data]} spec 
@@ -459,7 +463,7 @@
                        [(or get-do-batch-edit-action-data
                             default-get-do-batch-edit-action-data)]
                        ;; TODO: Make this list shorter, depending on the action.
-                       [(or get-action-data default-get-action-data)
+                       [(action-data-getter spec)
                         get-column-action-data
                         get-row-action-data
                         get-tab-action-data]))]

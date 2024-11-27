@@ -11,6 +11,7 @@
              batch-edit-render-test
              dom-manager-test
              session-state-test
+             render-test
              action-data-test
              actions-test)
    :reload

@@ -28,7 +28,7 @@
 
 ;;; This reporter's data must include
 ;;;    :value-source  The reporter it forwards to
-;;;      :catagories  The categories of demand it should pass down.
+;;;      :categories  The categories of demand it should pass down.
 ;;; Those may not change once the category change reporter is created.
 
 (defn category-change-calculator

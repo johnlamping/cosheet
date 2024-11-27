@@ -67,6 +67,7 @@
   categories; the tracking reporter is only guaranteed to be up to
   date as of the last such change."
   [categories reporter]
+  (assert (reporter? reporter))
   (new-reporter
    :value-source reporter
    :categories categories

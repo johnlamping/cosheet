@@ -742,8 +742,7 @@
                 :cumulative-properties {["single" {:label 1}] 1}}
                (any) (any) (any) (any)]
               :render-dom render-table-header-DOM
-              :get-rendering-data get-table-header-rendering-data
-              :get-action-data (pass-AD)}]
+              :get-rendering-data get-table-header-rendering-data}]
             [:component
              {:relative-id :body
               :row-condition-id row-condition-id

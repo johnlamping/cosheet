@@ -580,7 +580,7 @@
   (assert (:width specification)
           [specification
            (semantic-to-list (description->entity relative-id store))])
-  (let [entity (description->entity (or item-id relative-id) store)
+  (let [entity (description->entity (specification-item-id specification) store)
         elements (remove (set (map #(description->entity % store)
                                    excluded-element-ids))
                          (semantic-elements entity))

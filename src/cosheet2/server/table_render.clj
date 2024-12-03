@@ -584,8 +584,7 @@
                      :row-condition-id row-condition-id
                      :hierarchy-R hierarchy-R
                      :render-dom render-table-header-DOM
-                     :get-rendering-data get-table-header-rendering-data
-                     :get-action-data get-pass-through-action-data})
+                     :get-rendering-data get-table-header-rendering-data})
         body-dom (make-component
                   {:relative-id :body
                    :row-condition-id row-condition-id

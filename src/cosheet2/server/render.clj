@@ -137,22 +137,15 @@
 ;;; reporters, gets the current values of the reporters, and calls the
 ;;; :render-dom function with the dom specification and those values.
 
-;;; NOTE: We could use category-change-reporters, rather than have the
-;;;       DOM manager keep track of categories. But the way means that
-;;;       often the reporter can simply be the mutable store, with the
-;;;       category just indicating a dependency on the item that is
-;;;       shown. That avoids having to create a bunch of reporter
-;;;       objects.
-
 ;;; By doing it this way, the dom manager will learn of any changes
 ;;; that require recomputing the dom, and will have registered for
 ;;; those changes before getting the data the renderer will use. By
 ;;; default :get-rendering-data will just return the mutable store as
 ;;; the reporter, and the ids there that the rendering depends on. But
-;;; the protocol gives it the option to create additional reporters
-;;; that are smart about tracking the store. For example, reporters
-;;; can track the result of a query on the store, so the query doesn't
-;;; have to be re-run for every change to the store.
+;;; occasionally, the render wants more processed information, like a
+;;; hierarchy or the result of a query on the store. This protocol
+;;; supports both, without having to re-run for every change to the
+;;; store.
 
 ;;; When a component's dom changes, the manager only needs to
 ;;; re-render sub-components with new ids, ones for which it didn't

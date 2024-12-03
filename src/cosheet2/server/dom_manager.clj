@@ -134,7 +134,7 @@
                         ; dom that the client needs to know about,
                         ; prioritized by their depth.
      calculator-data    ; The calculator data we use. (Currently, we only use
-                        ; its queue.
+                        ; its queue.)
      mutable-store      ; The mutable store that holds the data the doms
                         ; rely on.
      further-actions    ; A list of [function arg arg ...] calls that
@@ -235,7 +235,7 @@
   (schedule-compute-dom-unless-newer key))
 
 (defn update-register-for-reporters
-  "Find out what the reporters the component's renderer needs,
+  "Find out what reporters the component's renderer needs,
   and register for them."
   [component-data component-atom]
   (let [{:keys [reporters dom-specification dom-manager]} component-data

@@ -32,7 +32,8 @@
                       hierarchy-node-DOM
                       transform-specification-for-elements
                       transform-specification-for-labels
-                      transform-specification-for-non-contained-labels]]
+                      transform-specification-for-non-contained-labels
+                      specification-item-id]]
              [action-data :refer [default-get-action-data
                                   default-get-do-batch-edit-action-data
                                   get-item-or-exemplar-action-data
@@ -65,7 +66,7 @@
   "Return the rendering data for a dom that presents an item.
    This is the default for :get-rendering-data."
   [specification mutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))]
+  (let [id (specification-item-id specification)]
     (assert (is-item-id? id) id)
     [[mutable-store [id]]]))
 

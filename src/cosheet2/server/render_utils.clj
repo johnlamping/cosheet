@@ -21,6 +21,10 @@
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
+(defn specification-item-id
+  [specification]
+  (or (:item-id specification) (:relative-id specification)))
+
 (defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it
   satisfy the elements of condition and nothing extra, except that

@@ -476,7 +476,7 @@
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
-                        :template ['(anything :column) '(anything :label)]
+                        :template ['anything '(anything :label)]
                         :sibling true
                         :width 0.75
                         :item-id c7-id
@@ -486,7 +486,7 @@
                         :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper"}
             [:component {:relative-id :virtual-column
-                         :template '(anything :column)
+                         :template 'anything
                          :width 0.75
                          :sibling true
                          :item-id c7-id

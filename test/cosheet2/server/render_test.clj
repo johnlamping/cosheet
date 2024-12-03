@@ -22,7 +22,7 @@
             ; :reload
             ))
 
-(defn render_dom_spec
+(defn render-dom-spec
   [spec mutable-store]
   (let [queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
@@ -33,10 +33,10 @@
         data (map #(computation-value % cd) data-reporters)]
     (apply call-pseudo-closure renderer spec data)))
 
-(defn render_component
+(defn render-component
   [component mutable-store]
   (let [spec (second component)]
-    (render_dom_spec spec mutable-store)))
+    (render-dom-spec spec mutable-store)))
 
 (deftest initial-top-level-item-DOM-R-test
   (let [store (starting-store "Tab")
@@ -61,5 +61,18 @@
                         :template ""
 			:relative-id (any)
 			:render-dom render-table-DOM}]]]))
-    ;; TODO: Try turning the second component into DOM, to see
-    ;; why the app fails when you try to change a header.))
+    ;; Try turning the table component into DOM, to see why the app fails
+    ;; in finding the action context when you try to change a header.
+    ;; (It does a lookup in the wrong item.)
+    (let [[_ _ [_ _ tabs-component table-component]] dom
+          ready-table-component (render-component table-component mutable-store)
+          table (render-component ready-table-component mutable-store)
+          [_ _ condition-component [_ _ header-component rows-component]] table
+          header (render-component header-component mutable-store)]
+      (println "ready table")
+      (println ready-table-component)
+      (println "table")
+      (println table)
+      (println "header")
+      (println header))
+    ))

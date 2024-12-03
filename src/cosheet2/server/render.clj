@@ -67,7 +67,7 @@
 ;;; client.
 
 ;;; Each component is rendered independently of the rendering of
-;;; others, including independentlymof its contained
+;;; others, including independently of its contained
 ;;; components. Internally, each component is identified by a unique
 ;;; id relative to its containing component. When communicating about
 ;;; a component with the client, the path of ids from the root
@@ -110,7 +110,7 @@
 ;;; To maximize reuse, the dom specification should not have any
 ;;; extraneous information, because any change to the specification
 ;;; requires a re-rendering of the dom. In particular, while it will
-;;; typically indicate an id from the store it shouldn't reflect
+;;; typically indicate an id from the store, it shouldn't reflect
 ;;; anything the store knows about that id. Rather, when the dom is
 ;;; generated, the store will provide the substance of what is shown,
 ;;; such as the content and elements of the item to be rendered.
@@ -136,6 +136,13 @@
 ;;; manager then registers for updates to those categories for those
 ;;; reporters, gets the current values of the reporters, and calls the
 ;;; :render-dom function with the dom specification and those values.
+
+;;; NOTE: We could use category-change-reporters, rather than have the
+;;;       DOM manager keep track of categories. But the way means that
+;;;       often the reporter can simply be the mutable store, with the
+;;;       category just indicating a dependency on the item that is
+;;;       shown. That avoids having to create a bunch of reporter
+;;;       objects.
 
 ;;; By doing it this way, the dom manager will learn of any changes
 ;;; that require recomputing the dom, and will have registered for
@@ -223,8 +230,8 @@
 ;;; A dom specification can contain any of these fields.  Any of the
 ;;; fields that expect functions will also accept a pseudo closure, a
 ;;; sequence, where the first element is the function, and the rest of
-;;; the list is additional arguments. (This approach is better than
-;;; closures, which are hard to display and to debug.)
+;;; the list is additional arguments. (This approach is easier to to
+;;; display and to debug than closures.)
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is normally the id the dom is about, or an
 ;;;                         exemplar element of one of the ids the containing
@@ -289,6 +296,10 @@
 ;;;                         If the value of :template is :singular, then
 ;;;                         twins may not be created, and the item may
 ;;;                         not be deleted with a simple delete action.
+;;;                         If the value of the template is a vector,
+;;;                         then an item matching the first element of the
+;;;                         vector must be created, with a sub-item matching
+;;;                         the rest of the vector.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before

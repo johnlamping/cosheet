@@ -309,14 +309,25 @@
     (ordered-ids-R (id-label->element-ids store holder-id :tab)
                    store)))
 
-;;; TODO: This, and its comment don't agree with what tab-table-element does,
-;;; or with what render-table-DOM looks for.
-(def table-header-template
-  ;; A table header is stored as an element of the row condition, so
-  ;; that batch edit changes can match table headers. We strip the
-  ;; headers out when we need the pure row condition.
-  '(anything :column))
-
+;;; The main consideration in how a table is represented is making
+;;; batch-edit relatively easy to pull off.
+;;; For its purposes, a table description has
+;;;    * one entity for the overall row condition
+;;;    * for each header, a logical entity that consists of the row
+;;;      condition with the header added on. All of this can match the
+;;;      batch-edit query, but only the header can match the
+;;;      batch-edit stack.
+;;; It is as if each header independently extended the row condition,
+;;; and that the batch-edit stack can only match in each extension (or
+;;; in the row condition by itself)
+;;; The easiest way to handle this seems to be to have one entity that
+;;; holds the row condition, and a separate entity that holds each
+;;; column header. That means that the logical entity for each column
+;;; has to be assembled when looking for batch-edit matches, but that
+;;; entity has to be handled specially,
+;;; 
+;;; TODO: The anything in the column headers entity should probably be
+;;; :blank, because is never matches anything.
 (defn tab-table-element
   "Return the element that gives the information for a table in a new tab
   with the given row condition and header elements."
@@ -326,11 +337,15 @@
     :table
     ~(concat '(anything :row-condition :selector :non-semantic)
               row-condition-elements)
-    ~(concat '(anything :column-headers :selector  :non-semantic)
+    ~(concat '(anything :column-headers :selector :non-semantic)
              header-elements)))
 
 (def new-tab-table-element
   (tab-table-element ['(??? :label)] ['(anything (??? :label))]))
+
+(def column-header-template
+  ;; A column header is stored as an element of the :column-headers entity.
+  'anything)
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store

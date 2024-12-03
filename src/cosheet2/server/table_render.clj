@@ -28,7 +28,7 @@
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
-                                  table-header-template exemplar-to-query]]
+                                  column-header-template exemplar-to-query]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
@@ -84,7 +84,8 @@
         {:keys [store target-ids]}
         (get-virtual-action-data
          {:sibling true
-          :template (concat table-header-template ['(??? :label)])}
+          :template (add-elements-to-entity-list
+                     column-header-template ['(??? :label)])}
          {:target-ids [last-column-id]} action immutable-store)
         new-column-id (first target-ids)
         template (semantic-to-list (description->entity new-column-id store))]
@@ -269,7 +270,7 @@
 (defn table-virtual-column-header-DOM
   [hierarchy]
   (let [spec {:relative-id :virtual-column
-              :template table-header-template
+              :template column-header-template
               :width 0.75}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM spec :vertical-wrapped)

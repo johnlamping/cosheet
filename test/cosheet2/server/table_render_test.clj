@@ -17,7 +17,10 @@
              [item-render :refer [render-virtual-DOM
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
-             [action-data :refer [composed-get-action-data
+             [action-data :refer [get-table-action-data
+                                  get-column-action-data
+                                  get-row-action-data
+                                  composed-get-action-data
                                   parallel-items-get-action-data
                                   get-pass-through-action-data
                                   get-id-action-data
@@ -65,8 +68,9 @@
 (defn id-AD [] get-id-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn virt-AD [] get-virtual-action-data)
-(defn col-AD [] get-column-action-data)
+(defn table-AD [] get-table-action-data)
 (defn row-AD [] get-row-action-data)
+(defn col-AD [] get-column-action-data)
 (defn table-head-do-batch-AD [] get-table-header-do-batch-edit-action-data)
 (defn table-cell-do-batch-AD [] get-table-cell-do-batch-edit-action-data)
 (defn table-cell-item-do-batch-AD []
@@ -532,15 +536,14 @@
     (is (check
          joe-row-component
          [:component {:relative-id joe-id
+                      :row-id joe-id
                       :class "table-row"
                       :row-condition-id row-condition-id
                       :column-headers-id column-headers-id
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :get-rendering-data get-table-row-rendering-data
-                      :get-action-data [(id-AD) joe-id]
-                      :row-template '("" :top-level ("age" :label))
-                      :get-row-action-data (row-AD)}]))
+                      :get-action-data (row-AD)}]))
 
     ;; Check rendering the list of rows.
     (is (check
@@ -555,12 +558,11 @@
           [:component {:relative-id joe-id
                        :class "table-row"
                        :row-condition-id row-condition-id
+                       :row-id joe-id
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
-                       :get-action-data [(id-AD) joe-id]
-                       :row-template 'foo
-                       :get-row-action-data (row-AD)}]
+                       :get-action-data (row-AD)}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
                        :column-descriptions-R (any)
@@ -629,6 +631,7 @@
           (any) (any) (any) (any)
           [:component {:width 0.75
                        :relative-id :virtual
+                       :row-id joe-id
                        :column-headers-id column-headers-id
                        :template ""
                        :render-dom (virt-DOM)
@@ -717,7 +720,7 @@
                        :width 0.75}]
           (any) (any) (any) (any) (any) (any)]))
 
-    ;; Check rendering the overall table, given the header id.
+    ;; Check rendering the overall table, given the necessary ids.
     (is (check
           (run-renderer
            render-ready-table-DOM {:relative-id table-id
@@ -769,4 +772,4 @@
                       :column-headers-id column-headers-id
                       :render-dom render-ready-table-DOM
                       :get-rendering-data get-ready-table-rendering-data
-                      :get-action-data (pass-AD)}]))))
+                      :get-action-data (table-AD)}]))))

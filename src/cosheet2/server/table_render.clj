@@ -25,7 +25,8 @@
                                 hierarchy-node-example-elements
                                 hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [ordered-ids-R ordered-entities]]
-             [model-utils :refer [semantic-to-list
+             [model-utils :refer [table-row-template
+                                  semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
                                   column-header-template exemplar-to-query]]
@@ -46,33 +47,10 @@
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
+                                  get-table-action-data
+                                  get-row-action-data
+                                  get-column-action-data
                                   composed-get-action-data]])))
-
-(defn get-column-action-data
-  "Add the action data for a command that acts on a header. (One
-  header can span multiple columns.)"
-  [{:keys [descendant-ids]}
-   containing-action-data action immutable-store]
-  (assoc containing-action-data :column
-         {:column-ids descendant-ids}))
-
-(defmethod print-method
-  cosheet2.server.table_render$get_column_action_data
-  [v ^java.io.Writer w]
-  (.write w "col-AD"))
-
-(defn get-row-action-data
-  "Add the action data for a command that acts on a row."
-  [{:keys [relative-id row-template]}
-   containing-action-data action immutable-store]
-  (assoc containing-action-data :row
-         {:row-id relative-id
-          :row-template row-template}))
-
-(defmethod print-method
-  cosheet2.server.table_render$get_row_action_data
-  [v ^java.io.Writer w]
-  (.write w "row-AD"))
 
 (defn get-virtual-column-cell-action-data
   "Create a new column header and an element under that column in the row.
@@ -395,8 +373,9 @@
   (assert (:row-condition-id specification)) ; Needed by do-batch-edit ADs.
   (let [spec (-> specification
                  (dissoc
-                  :column-descriptions-R :get-row-action-data :row-template)
-                 (assoc :class "table-cell has-border"))]
+                  :column-descriptions-R :get-row-action-data)
+                 (assoc :class "table-cell has-border"
+                        :get-action-data get-row-action-data))]
     (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
       (into [:div {}] cells))))
@@ -412,12 +391,12 @@
   (make-component
    (assoc specification
           :relative-id row-id
-          :row-template row-template
+          :row-id row-id ; Action data passes this down to everything
+                         ; in the row.
           :class "table-row"
           :render-dom render-table-row-DOM
-          :get-action-data [get-id-action-data row-id]
-          :get-rendering-data get-table-row-rendering-data
-          :get-row-action-data get-row-action-data)))
+          :get-action-data get-row-action-data
+          :get-rendering-data get-table-row-rendering-data)))
 
 (defn table-virtual-row-cell-DOM-component
   [{:keys [column-id query width] :as column-description}]
@@ -553,15 +532,17 @@
 
 (defn render-ready-table-DOM
   "Render a table dom, give its header."
-  [{:keys [row-condition-id column-headers-id]} {:keys [mutable-store]}]
+  [{:keys [row-condition-id column-headers-id relative-id]}
+   {:keys [mutable-store]}]
   (assert row-condition-id)
   (assert column-headers-id)
-  (let [row-condition-R (description->updating-entity-R
-                         row-condition-id mutable-store)
+  (let [table-R (description->updating-entity-R
+                 relative-id mutable-store)
+        row-template-R (expr table-row-template table-R)
+        ;; TODO: Make this use table-R
         column-headers-R (description->updating-entity-R
                           column-headers-id mutable-store)
         hierarchy-R (table-hierarchy-R column-headers-R)
-        row-template-R (table-row-template-R row-condition-R)
         row-ids-R (table-row-ids-R row-template-R mutable-store)
         virtual-column-description {:column-id :virtualColumn}
         ;; TODO: Add an "other" column if a table requests it.
@@ -604,30 +585,19 @@
 (defn render-table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
-  ;; A table item has a :table element, and has the following elements
-  ;; that describe the table:
-  ;;   :row-condition  The content is an item whose list form gives the
-  ;;                   requirements for an item to appear as a row.
-  ;;                   It is marked as :selector.
-  ;;  :column-headers  The content is an item whose list form gives the
-  ;;                   conditions for the column headers. Generally, the
-  ;;                   content will be the keyword 'anything, to
-  ;;                   indicate no constraint on the content of an
-  ;;                   element in the row, without breaking the rule
-  ;;                   that the database doesn't contain nil. The
-  ;;                   exception is the special content :other, which
-  ;;                   means to show everything not shown in any other
-  ;;                   column. (:other not yet implemented.)
-  ;;                   It is marked as :selector.
+  ;; The format of the element that describes a table is given in
+  ;; model-utils.
   [{:keys [relative-id] :as specification} store]
   (let [table-item (description->entity relative-id store)]
     (println "Generating DOM for table" (simplify-for-print table-item))
     (assert (satisfies? StoredEntity table-item))
-    ;; Don't do anything if we don't yet have the table information filled in.
+    ;; First check to see if we have the table information filled in yet.
     (let [row-condition-item (first (label->elements
                                      table-item :row-condition))
           column-headers-item (first (label->elements
                                       table-item :column-headers))]
+      ;; TODO: Don't pass in the two above ids. They can be gotten
+      ;;       easily enough. 
       ;; Render the table only if the table information has been filled in.
       (if (and row-condition-item column-headers-item)
         (make-component {:relative-id relative-id
@@ -635,5 +605,5 @@
                          :column-headers-id (:item-id column-headers-item)
                          :render-dom render-ready-table-DOM
                          :get-rendering-data get-ready-table-rendering-data
-                         :get-action-data get-pass-through-action-data})
+                         :get-action-data get-table-action-data})
         [:div {}]))))

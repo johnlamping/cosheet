@@ -19,15 +19,19 @@
                                   entity->canonical-semantic
                                   pattern-to-query
                                   specialize-generic
-                                  create-possible-selector-elements]]
+                                  create-possible-selector-elements
+                                  table-row-template]]
              [order-utils :refer [ordered-entities]])))
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
 ;;;          :column  {:target-ids
 ;;;                    :header-id}
-;;;             :row  {:row-id
-;;;                    :row-template}
+;;; TODO: column-headers-id is not needed much. But the id of the specific
+;;;       column is needed for add-column
+;;;  :column-headers-id
+;;;        :table-id
+;;;          :row-id
 ;;;          :select  {:tab-id  ; The tab this component belongs to.}
 ;;;                   For a virtual tab, the value is :virtual.
 ;;; If the action is do-batch-edit, the previous items are not present.
@@ -194,21 +198,28 @@
   [v ^java.io.Writer w]
   (.write w "parallel-AD"))
 
+;;; TODO: Get rid of :column-headers-id, now that :table-id is passed down.
+;;; The keys that should be passed down most dom to its sub-dom
+(def inherited-action-data-keys [:table-id :row-id :column-headers-id])
+
 (defn default-get-action-data
   "There must be a relative-id or an item-id. If there are no
   parallel-ids, just do get-item-or-exemplar-action-data. If there are
   parallel-ids, first do parallel-items-get-action-data on them,
-  followed by get-item-or-exemplar-action-data."
+  followed by get-item-or-exemplar-action-data.
+  Keep the information that is always passed down."
   [{:keys [parallel-ids] :as specification}
    containing-action-data action immutable-store]
-  (get-item-or-exemplar-action-data
-   specification
-   (if (seq parallel-ids)
-     (parallel-items-get-action-data
-      specification containing-action-data action immutable-store
-      get-item-or-exemplar-action-data)
-     containing-action-data)
-   action immutable-store))
+  (into
+   (select-keys containing-action-data inherited-action-data-keys)
+   (get-item-or-exemplar-action-data
+    specification
+    (if (seq parallel-ids)
+      (parallel-items-get-action-data
+       specification containing-action-data action immutable-store
+       get-item-or-exemplar-action-data)
+      containing-action-data)
+    action immutable-store)))
 
 (defn action-data-getter
   [dom-specification]
@@ -219,6 +230,46 @@
   cosheet2.server.action_data$default_get_action_data
   [v ^java.io.Writer w]
   (.write w "default-AD"))
+
+;;; Here are the action data getters for tables
+
+(defn get-table-action-data
+  "Add the action data that pertains to all of a table."
+  [{:keys [relative-id]}
+   containing-action-data action immutable-store]
+  (assoc containing-action-data
+         :table-id relative-id))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_table_action_data
+  [v ^java.io.Writer w]
+  (.write w "table-AD"))
+
+(defn get-column-action-data
+  "Add the action data for a command that acts on a header. (One
+  header can span multiple columns.)"
+  [{:keys [descendant-ids]}
+   containing-action-data action immutable-store]
+  (assoc containing-action-data :column
+         {:column-ids descendant-ids}))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_column_action_data
+  [v ^java.io.Writer w]
+  (.write w "col-AD"))
+
+(defn get-row-action-data
+  "Add the action data for the DOM of a row."
+  [{:keys [relative-id]}
+   containing-action-data action immutable-store]
+  (assoc containing-action-data
+         :target-ids [relative-id]
+         :row-id relative-id))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_row_action_data
+  [v ^java.io.Writer w]
+  (.write w "row-AD"))
 
 ;;; do-batch-edit action data generators are called only when the
 ;;; requested action is to start a batch-edit. (These are completely
@@ -320,9 +371,12 @@
 
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.
-  Our targets are our container's targets."
+  Our targets are our container's targets. But we still need to add in
+  any column information from our specification."
+  ;; TODO: Fix this to not add anything.
   [specification containing-action-data action immutable-store]
-  containing-action-data)
+  (into containing-action-data
+        (select-keys specification [:column-headers-id])))
 
 (defmethod print-method
   cosheet2.server.action_data$get_pass_through_action_data
@@ -451,7 +505,6 @@
   (let [spec (:dom-specification @component)
         {:keys [get-tab-action-data
                 get-column-action-data
-                get-row-action-data
                 get-do-batch-edit-action-data]} spec 
         data (reduce (fn [data getter]
                        (if getter
@@ -465,6 +518,5 @@
                        ;; TODO: Make this list shorter, depending on the action.
                        [(action-data-getter spec)
                         get-column-action-data
-                        get-row-action-data
                         get-tab-action-data]))]
     (assoc data :component component)))

@@ -309,25 +309,45 @@
     (ordered-ids-R (id-label->element-ids store holder-id :tab)
                    store)))
 
-;;; The main consideration in how a table is represented is making
-;;; batch-edit relatively easy to pull off.
-;;; For its purposes, a table description has
-;;;    * one entity for the overall row condition
-;;;    * for each header, a logical entity that consists of the row
-;;;      condition with the header added on. All of this can match the
-;;;      batch-edit query, but only the header can match the
-;;;      batch-edit stack.
-;;; It is as if each header independently extended the row condition,
-;;; and that the batch-edit stack can only match in each extension (or
-;;; in the row condition by itself)
-;;; The easiest way to handle this seems to be to have one entity that
-;;; holds the row condition, and a separate entity that holds each
-;;; column header. That means that the logical entity for each column
-;;; has to be assembled when looking for batch-edit matches, but that
-;;; entity has to be handled specially,
+;;; A table item has a :table element, and has the following elements
+;;; that describe the table:
+;;;   :row-condition  The content is an item whose list form gives the
+;;;                   requirements for an item to appear as a row.
+;;;                   It is marked as :selector.
+;;;  :column-headers  The content is an item whose list form gives the
+;;;                   conditions for the column headers. Generally, the
+;;;                   content will be the keyword 'anything, to
+;;;                   indicate no constraint on the content of an
+;;;                   element in the row, without breaking the rule
+;;;                   that the database doesn't contain nil. The
+;;;                   exception is the special content :other, which
+;;;                   means to show everything not shown in any other
+;;;                   column. (:other not yet implemented.)
+;;;                   It is marked as :selector.
+
+;;; For doing matches for batch edits, it is sort of like each header
+;;; is part of the row condition, but only aone header at a time. That
+;;; means that there are two ways to match the query condition:
+;;;    A The row condition matches, by itself.
+;;;      In this case, each header gets a chance to match the stack,
+;;;      as well as each part of the row condition.
+
+;;;    B Case A fails, but the combination of the row condition and a
+;;;      header.
+;;;      In this case, only a header that makes the match succeed can
+;;;      match the stack.
 ;;; 
 ;;; TODO: The anything in the column headers entity should probably be
 ;;; :blank, because is never matches anything.
+
+(defn table-row-template
+  "Return the row condition as a template."
+  [table-item]
+  (let [row-condition (first (label->elements table-item :row-condition))
+        condition-elements (semantic-elements row-condition)
+        elements-as-lists (map semantic-to-list condition-elements)]
+    (concat '(anything) elements-as-lists [:top-level])))
+
 (defn tab-table-element
   "Return the element that gives the information for a table in a new tab
   with the given row condition and header elements."

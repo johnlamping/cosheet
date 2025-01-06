@@ -31,7 +31,8 @@
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
-                         exemplar-to-query remove-semantic-elements]]
+                         exemplar-to-query remove-semantic-elements
+                         table-row-template]]
     [order-utils :refer [furthest-item
                          update-add-entity-with-order-and-temporary]])))
 
@@ -41,7 +42,9 @@
 ;;; TODO: Replace the asserts with log messages, so things are robust.
 
 (defn update-selected
-  "Make the client id stored under the temporary id be the given id."
+  "Store the client id of the currently selected dom as a temporary in
+  the store. (We put it in the store, because that that way, when
+  there is an undo, we can undo to the last selection.)"
   [store temporary-id client-id]
   (if-let [element-id (first (id-label->element-ids
                                 store temporary-id :current-selection))]
@@ -51,13 +54,21 @@
     store))
 
 (defn get-selected
-  "Return the client stored by update-selected."
+  "Retrieve the client id of the currently selected dom, as stored by
+  update-selected."
   [store temporary-id]
   (when-let [element-id (first (id-label->element-ids
                                 store temporary-id :current-selection))]
     (let [content (id->content store element-id)]
       (when (keyword? content)
         (name content)))))
+
+(defn ensure-response-map
+  "If the response is a store, turn it into a map {:store response}"
+  [response]
+  (if (satisfies? Store response)
+    {:store response}
+    response))
 
 (defn update-set-content-if-matching
   "Set the content of the id in the store provided the current content
@@ -97,10 +108,66 @@
         modified (update-set-content-if-matching store id from to)]
     (abandon-problem-changes store modified id)))
 
+(defn item-for-pattern
+  "Given a pattern and a list of items, return the item specified by the
+  pattern.
+  A pattern is of the form [:pattern <number>? :subject? <template>?]
+  number indicates which of the items in the list to use, defaulting to 0.
+  :subject, if present, indicates that the result of the pattern should be
+    the subject of the match, rather than the match, itself.
+  template, if present, must contains a variable named :v, and will return
+    the part of the item matching that variable. Otherwise, the
+    entire item is returned."
+  [pattern items]
+  (let [[_ & args] pattern
+        [item args] (if (number? (first args))
+                      [(nth items (first args)) (rest args)]
+                      [(first items) args])
+        [subject? args] (if (= (first args) :subject)
+                          [true (rest args)]
+                          [false args])
+        template (first args)
+        match (if template
+                (let [matches (matching-extensions template item)
+                      value (:v (first matches))]
+                  (assert value)
+                  value)
+                item)]
+    (:item-id (if subject? (subject match) match))))
+
+(defn substitute-in-key
+  "Substitute into the sequence of possible patterns, replacing patterns
+  with the items they specify."
+  [key items]
+  (vec (map (fn [part]
+              (if (and (sequential? part) (= (first part) :pattern))
+                (item-for-pattern part items)
+                part))
+            key)))
+
+(defn add-select-request
+  "Add a selection instruction to a response, given the sequence of items
+  to use for substituting in the pattern."
+  [response items select-pattern old-key]
+  (if select-pattern
+    (let [response (ensure-response-map response)
+          store (:store response)]
+      (assoc response :select
+             (when (not-empty items)
+               [(substitute-in-key select-pattern items)
+                [old-key]])))
+    response))
+
 (defn add-select-store-ids-request
+  "Add a :select-store-ids instruction to a response, to select an item
+  showing one of the specified ids. The ajax reply handler will
+  translate that to a :select instruction."
+  ;; TODO: If an item shows up at several places in a table, and the user
+  ;;       adds an element to it, there is no guarantee that the selected
+  ;;       element will be the one under the item view the user was editing.
   [response ids session-state]
   (let [temporary-id (:session-temporary-id session-state)
-        response (if (satisfies? Store response) {:store response} response)
+        response (ensure-response-map response)
         current-selection (get-selected (:store response) temporary-id)]
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
@@ -143,6 +210,17 @@
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
+(defn do-add-row
+  [store arguments]
+  (println "adding row")
+  (let [{:keys [id row-id table-id]} arguments
+        row-template (table-row-template (description->entity table-id store))
+        row-parent-id (id->subject store row-id)
+        [ids store] (create-possible-selector-elements
+                     row-template [row-parent-id] [row-id] :after false store)]
+    ;; TODO: add a select request
+    store))
+
 (defn do-delete 
   [store {:keys [target-ids template]}]
   (assert (= (count target-ids) (count (distinct target-ids)))
@@ -159,67 +237,6 @@
     "If the last item of the key is :content, remove it."
     [key]
     (if (= (last key) :content) (pop key) key))
-
-  (defn substitute-for-pattern
-    "Given a pattern and a list of items, replace the pattern by the id of the
-  appropriate item.
-  A pattern is of the form [:pattern <number>? :subject? <template>?]
-    number indicates which of the items in the list to use, defaulting to 0.
-    :subject, if present, indicates that the result of the pattern should be
-      the subject of the match, rather than the match, itself.
-    template, if present, must contains a variable named :v, and will return
-      the part of the item matching that variable. Otherwise, the
-      entire item is used."
-    [pattern items]
-    (let [[_ & args] pattern
-          [item args] (if (number? (first args))
-                        [(nth items (first args)) (rest args)]
-                        [(first items) args])
-          [subject? args] (if (= (first args) :subject)
-                            [true (rest args)]
-                            [false args])
-          template (first args)
-          match (if template
-                  (let [matches (matching-extensions template item)
-                        value (:v (first matches))]
-                    (assert value)
-                    value)
-                  item)]
-      (:item-id (if subject? (subject match) match))))
-
-  (defn substitute-in-key
-    "Substitute into the sequence of possible patterns, instantiating patterns
-  from the items."
-    [key items]
-    (vec (map (fn [part]
-                (if (and (sequential? part) (= (first part) :pattern))
-                  (substitute-for-pattern part items)
-                  part))
-              key)))
-
-  (defn add-select-request
-    "Add a selection request to a response, given the sequence of items
-  to use for substituting in the pattern."
-    [response items select-pattern old-key]
-    (if select-pattern
-      (let [response (if (satisfies? Store response)
-                       {:store response}
-                       response)
-            store (:store response)]
-        (assoc response :select
-               (when (not-empty items)
-                 [(substitute-in-key select-pattern items)
-                  [old-key]])))
-      response))
-
-  (defn do-add-row
-    [store arguments]
-    (println "adding row")
-    (let [{:keys [row column]} arguments]
-      (add-virtual
-       store (:target-key arguments)
-       (virtual-referent (:template row) nil (:referent row))
-       (conj (vec (butlast (:key row))) [:pattern] (:referent column)))))
 
   (defn do-expand
     [store arguments]
@@ -339,7 +356,7 @@
   ({:add-element do-add-element
     :add-label do-add-label
     :add-twin do-add-twin
-    ; :add-row do-add-row
+    :add-row do-add-row
     ; :add-column do-add-column
     :delete do-delete
     ; :delete-row do-delete-row
@@ -376,8 +393,7 @@
                    (let [action-data (client-id->action-data
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
-                         spec-info (select-keys
-                                    spec [:template])
+                         spec-info (select-keys spec [:template])
                          arguments (-> action-data
                                        (into spec-info)
                                        (into client-args)
@@ -408,7 +424,7 @@
 
 ;;; While do-selected takes a client id, like a contextual action
 ;;; does, it doesn't rely on what that client id references. In
-;;; particular, it does want create more items if a virtual id is
+;;; particular, it does not want create more items if a virtual id is
 ;;; selected. So it can not be handled like other contextual handlers.
 (defn do-selected
   [mutable-store session-state client-id & _]
@@ -454,15 +470,18 @@
 ;;; of special handlers for specific actions.
 (defn do-action
   "Update the store, in accordance with the action, and return a map
-  of any information to give the client. The map can have any of:
+  of any additional instructions to give the client.
+  The map can have any of:
                   :open  A url to open in a new window
                :set-url  A url to set as the current url
                 :select  A client id to select
       :select-store-ids  A seq of store ids such that the client should
                          select a component that represents one of them.
+                         These will get translated to :select before
+                         the response goes to the client.
            :if-selected  A seq of client ids, one of which must currently
-                         be selected by the client for select or 
-                         select-store-ids to have an effect."
+                         be selected by the client for :select or 
+                         :select-store-ids to have an effect."
   [mutable-store session-state action]
   (let [[action-type & extra-args] action]
     (println)

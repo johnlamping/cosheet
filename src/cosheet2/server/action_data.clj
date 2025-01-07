@@ -23,15 +23,37 @@
                                   table-row-template]]
              [order-utils :refer [ordered-entities]])))
 
-;;; The action data is a map that may contain any of these fields:
+;;; This file contains the basic action data getters, plus utilities for them.
+;;; Files with unique needs for action data getters define their own.
+
+;;; The action data is a map that is constructed when the user does an
+;;; action, and gives the information relevant to the display element
+;;; that is being acted on that is necessary to carry out the action.
+
+;;; It may contain any of these fields:
+;;;           :store  Always present, this gives the immutable store
+;;;                   that the action should act on to get the revised
+;;;                   store.  This may not be the starting store
+;;;                   state, as the action getter may make its own
+;;;                   changes to that. In particular, when the user
+;;;                   acts on a virtual UI element (one for which
+;;;                   there is not yet any corresponding item in the
+;;;                   store) the action getter creates the implied
+;;;                   items.
 ;;;      :target-ids  A seq of the ids that should be acted upon
 ;;;          :column  {:target-ids
 ;;;                    :header-id}
 ;;; TODO: column-headers-id is not needed much. But the id of the specific
 ;;;       column is needed for add-column
 ;;;  :column-headers-id
+;;; These three give the current table, if any, and the row and column
+;;; that the current cell is in. They are copied over from the specification,
+;;; even before the action data getter is run. So action data getters don't
+;;; have to worry about them.
 ;;;        :table-id
 ;;;          :row-id
+;;;       :column-id
+;;; This tells what tab is active.
 ;;;          :select  {:tab-id  ; The tab this component belongs to.}
 ;;;                   For a virtual tab, the value is :virtual.
 ;;; If the action is do-batch-edit, the previous items are not present.
@@ -46,12 +68,6 @@
 ;;; :selection-sequence  A sequence of successively contained elements of
 ;;;                      the selected id that terminates in the item
 ;;;                      that should be selected.
-;;; The following is filled in by virtual DOM components, which need to add
-;;; elements to the store.
-;;;           :store  A store that should replace the current immutable store
-
-;;; This file contains the basic action data getters, plus utilities for them.
-;;; Files with unique needs for action data getters define their own.
 
 (defn run-action-data-getter
   "Handle pulling the store out of the inherited action data, and handle
@@ -66,13 +82,33 @@
                                  :row-ids-R))
   (let [store (or (:store containing-action-data) immutable-store)
         result (call-pseudo-closure
-                getter
-                specification containing-action-data action store)]
+                getter specification containing-action-data action store)]
     (println "  returning AD" (dissoc result :component))
     result))
 
+(defn get-empty-action-data
+  "Return a blank action data."
+  [specification containing-action-data action immutable-store]
+  {})
+
+(defmethod print-method
+  cosheet2.server.action_data$get_empty_action_data
+  [v ^java.io.Writer w]
+  (.write w "empty-AD"))
+
+(defn get-pass-through-action-data
+  "Our DOM is a wrapper node for a position in a tabe, or a content-only Do,
+  under a DOM for the data. We don't affect anything."
+  [specification containing-action-data action immutable-store]
+  containing-action-data)
+
+(defmethod print-method
+  cosheet2.server.action_data$get_pass_through_action_data
+  [v ^java.io.Writer w]
+  (.write w "pass-AD"))
+
 (defn get-id-action-data
-  "Return the single item id as the target ids. This is only suitable
+  "Return a single item id as the target ids. This is only suitable
   for doms in a simple context where they can't possibly refer to
   several ids."
   [specification containing-action-data action immutable-store id]
@@ -198,28 +234,22 @@
   [v ^java.io.Writer w]
   (.write w "parallel-AD"))
 
-;;; TODO: Get rid of :column-headers-id, now that :table-id is passed down.
-;;; The keys that should be passed down most dom to its sub-dom
-(def inherited-action-data-keys [:table-id :row-id :column-headers-id])
-
 (defn default-get-action-data
   "There must be a relative-id or an item-id. If there are no
   parallel-ids, just do get-item-or-exemplar-action-data. If there are
   parallel-ids, first do parallel-items-get-action-data on them,
-  followed by get-item-or-exemplar-action-data.
-  Keep the information that is always passed down."
+  followed by get-item-or-exemplar-action-data."
   [{:keys [parallel-ids] :as specification}
    containing-action-data action immutable-store]
-  (into
-   (select-keys containing-action-data inherited-action-data-keys)
-   (get-item-or-exemplar-action-data
-    specification
-    (if (seq parallel-ids)
-      (parallel-items-get-action-data
-       specification containing-action-data action immutable-store
-       get-item-or-exemplar-action-data)
-      containing-action-data)
-    action immutable-store)))
+  (into containing-action-data
+        (get-item-or-exemplar-action-data
+         specification
+         (if (seq parallel-ids)
+           (parallel-items-get-action-data
+            specification containing-action-data action immutable-store
+            get-item-or-exemplar-action-data)
+           containing-action-data)
+         action immutable-store)))
 
 (defn action-data-getter
   [dom-specification]
@@ -244,32 +274,6 @@
   cosheet2.server.action_data$get_table_action_data
   [v ^java.io.Writer w]
   (.write w "table-AD"))
-
-(defn get-column-action-data
-  "Add the action data for a command that acts on a header. (One
-  header can span multiple columns.)"
-  [{:keys [descendant-ids]}
-   containing-action-data action immutable-store]
-  (assoc containing-action-data :column
-         {:column-ids descendant-ids}))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_column_action_data
-  [v ^java.io.Writer w]
-  (.write w "col-AD"))
-
-(defn get-row-action-data
-  "Add the action data for the DOM of a row."
-  [{:keys [relative-id]}
-   containing-action-data action immutable-store]
-  (assoc containing-action-data
-         :target-ids [relative-id]
-         :row-id relative-id))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_row_action_data
-  [v ^java.io.Writer w]
-  (.write w "row-AD"))
 
 ;;; do-batch-edit action data generators are called only when the
 ;;; requested action is to start a batch-edit. (These are completely
@@ -369,30 +373,6 @@
   [v ^java.io.Writer w]
   (.write w "default-do-batch-AD"))
 
-(defn get-pass-through-action-data
-  "This is a content-only node under a node for the data.
-  Our targets are our container's targets. But we still need to add in
-  any column information from our specification."
-  ;; TODO: Fix this to not add anything.
-  [specification containing-action-data action immutable-store]
-  (into containing-action-data
-        (select-keys specification [:column-headers-id])))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_pass_through_action_data
-  [v ^java.io.Writer w]
-  (.write w "pass-AD"))
-
-(defn get-empty-action-data
-  "Return a blank action data."
-  [specification containing-action-data action immutable-store]
-  {})
-
-(defmethod print-method
-  cosheet2.server.action_data$get_empty_action_data
-  [v ^java.io.Writer w]
-  (.write w "empty-AD"))
-
 (defn find-virtual-adjacents
   "Return the ids of items the virtual item should be created next
   to. We assume that that adjacent items were not explicitly
@@ -433,7 +413,8 @@
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger] ; adjacent-query also used.
+  [{:keys [template sibling position use-bigger]
+                                        ; adjacent-query also used.
     :as specification}
    containing-action-data action immutable-store]
   (assert template template)
@@ -504,19 +485,25 @@
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
         {:keys [get-tab-action-data
-                get-column-action-data
                 get-do-batch-edit-action-data]} spec 
+        ;; These keys are always copied from the spec to the action
+        ;; data, no matter what getter is run. They indicate overall context,
+        ;; like what table, row, and column a DOM is in.
+        ;; TODO: Get rid of :column-headers-id, now that
+        ;;       :table-id is passed down.
+        copied-keys [:table-id :row-id :column-id :column-headers-id]
+        action-data (into containing-action-data
+                          (select-keys spec copied-keys))
         data (reduce (fn [data getter]
                        (if getter
                          (run-action-data-getter
                           getter spec data action immutable-store)
                          data))
-                     containing-action-data
+                     action-data
                      (if (= action :batch-edit)
                        [(or get-do-batch-edit-action-data
                             default-get-do-batch-edit-action-data)]
                        ;; TODO: Make this list shorter, depending on the action.
                        [(action-data-getter spec)
-                        get-column-action-data
                         get-tab-action-data]))]
     (assoc data :component component)))

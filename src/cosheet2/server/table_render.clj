@@ -48,8 +48,6 @@
                                   get-pass-through-action-data
                                   get-virtual-action-data
                                   get-table-action-data
-                                  get-row-action-data
-                                  get-column-action-data
                                   composed-get-action-data]])))
 
 (defn get-virtual-column-cell-action-data
@@ -203,7 +201,6 @@
     (cond->
         {:row-condition-id row-condition-id
          :descendant-ids descendant-ids
-         :get-column-action-data get-column-action-data
          :get-do-batch-edit-action-data
          get-table-header-do-batch-edit-action-data
          :width (* 0.75 (count descendant-ids))
@@ -366,16 +363,13 @@
 
 (defn render-table-row-DOM
   "Generate dom for a table row. The specification must
-  have :column-headers-id, :row-condition-id, column-descriptions-R
-  and :get-row-action-data."
+  have :column-headers-id, :row-condition-id, column-descriptions-R"
   [{:keys [relative-id] :as specification} store column-descriptions]
   (assert (:column-headers-id specification)) ; Needed by virtual column.
   (assert (:row-condition-id specification)) ; Needed by do-batch-edit ADs.
   (let [spec (-> specification
-                 (dissoc
-                  :column-descriptions-R :get-row-action-data)
-                 (assoc :class "table-cell has-border"
-                        :get-action-data get-row-action-data))]
+                 (dissoc :column-descriptions-R)
+                 (assoc :class "table-cell has-border"))]
     (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
       (into [:div {}] cells))))
@@ -395,7 +389,7 @@
                          ; in the row.
           :class "table-row"
           :render-dom render-table-row-DOM
-          :get-action-data get-row-action-data
+          :get-action-data [get-id-action-data row-id]
           :get-rendering-data get-table-row-rendering-data)))
 
 (defn table-virtual-row-cell-DOM-component

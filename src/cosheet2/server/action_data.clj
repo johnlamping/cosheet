@@ -397,7 +397,7 @@
      subjects)))
 
 (defn get-virtual-action-data
-  "Create the specified virtual items.
+  "Create the specified virtual item(s) and make them the target(s).
    The new items are instances of the template. The template may be a
    vector, in which case the first element of the vector is created
    first, then the second item as an element of that, the third as an
@@ -408,7 +408,7 @@
    If sibling is true, the new items will be adjacent to the
    siblings. If not, they will be adjacent to elements of the target
    that match adjacent-query, if there are any, otherwise, they will
-   get their order from the subject.
+   be adjacent to the subject.
    The new items are ordered after what they are adjacent to, unless
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
@@ -489,9 +489,7 @@
         ;; These keys are always copied from the spec to the action
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
-        ;; TODO: Get rid of :column-headers-id, now that
-        ;;       :table-id is passed down.
-        copied-keys [:table-id :row-id :column-id :column-headers-id]
+        copied-keys [:table-id :row-id :column-id]
         action-data (into containing-action-data
                           (select-keys spec copied-keys))
         data (reduce (fn [data getter]

@@ -83,18 +83,20 @@
   (apply renderer spec (map first (data-getter spec store))))
 
 (deftest get-virtual-column-cell-action-data-test
-  (let [[s1 column-headers-id] (add-entity (new-element-store) nil
+  (let [[s1 table-id] (add-entity (new-element-store) nil
                                            (add-order-elements
-                                            '(:x
-                                              :column-headers
-                                              (anything ("c1" :label))
-                                              (anything ("c2" :label)))))
+                                            '((:x :row-condition
+                                                  anything)
+                                              (:x :column-headers
+                                                  (anything ("c1" :label))
+                                                  (anything ("c2" :label))))))
         [store row-id] (add-entity s1 nil (add-order-elements
                                            '(anything (1 ("c1" :label))
                                                       (2 ("c2" :label)))))
         data (get-virtual-column-cell-action-data
-              {:column-headers-id column-headers-id}
-              {:target-ids [row-id]} nil store)
+              {}
+              {:table-id table-id :target-ids [row-id]}
+              nil store)
         new-store (:store data)
         new-id (first (:target-ids data))]
     (is (= (semantic-to-list (description->entity new-id new-store))
@@ -216,37 +218,38 @@
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
-                {:row-condition-id row-condition-id} {} nil store)
-               {:query-ids [rc1-id]
+                {} {:table-id table-id} nil store)
+               {:table-id table-id
+                :query-ids [rc1-id]
                 :stack-ids [rc1-id]
                 :must-show-label true}))
 
     ;; Check get-table-header-do-batch-edit-action-data
     (is (check (get-table-header-do-batch-edit-action-data
-                {:row-condition-id row-condition-id
-                 :item-id c2-id
+                {:item-id c2-id
                  :descendant-ids [c1-id c2-id c3-id]
                  :competing-ids [c4-id]}
-                {} nil store)
-               {:query-ids [rc1-id]
+                {:table-id table-id} nil store)
+               {:table-id table-id
+                :query-ids [rc1-id]
                 :stack-ids [c1-id c2-id c3-id]
                 :selected-index 1}))
     (is (check (get-table-header-do-batch-edit-action-data
-                {:row-condition-id row-condition-id
-                 :item-id c2-id
+                {:item-id c2-id
                  :descendant-ids [c2-id]
                  :competing-ids [c4-id]}
-                {} nil store)
-               {:query-ids [rc1-id]
+                {:table-id table-id} nil store)
+               {:table-id table-id
+                :query-ids [rc1-id]
                 :stack-ids [c4-id c2-id]
                 :selected-index 1}))
 
     ;; Check get-table-cell-do-batch-edit-action-data
     (is (check (get-table-cell-do-batch-edit-action-data
-                    {:row-condition-id row-condition-id
-                     :competing-ids [c4-id]}
-                    {} nil store)
-               {:query-ids [rc1-id]
+                    {:competing-ids [c4-id]}
+                    {:table-id table-id} nil store)
+               {:table-id table-id
+                :query-ids [rc1-id]
                 :stack-ids [c4-id]}))
 
     ;; Check get-table-cell-item-do-batch-edit-action-data
@@ -541,7 +544,6 @@
          [:div {:class "table-rows"}
           [:component {:relative-id joe-id
                        :class "table-row"
-                       :row-condition-id row-condition-id
                        :row-id joe-id
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
@@ -561,7 +563,8 @@
     (is (check
          joe-row
          [:div {}
-          [:component {:row-condition-id row-condition-id
+          [:component {:column-id c1-id
+                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c1-id
@@ -575,7 +578,8 @@
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
-          [:component {:row-condition-id row-condition-id
+          [:component {:column-id c2-id
+                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c2-id
@@ -597,7 +601,8 @@
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
-          [:component {:row-condition-id row-condition-id
+          [:component {:column-id c3-id
+                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c3-id
@@ -696,6 +701,7 @@
                                        column-descriptions)
          [:div {:class "table-row"}
           [:component {:relative-id c1-id
+                       :column-id c1-id
                        :class "table-cell"
                        :render-dom (virt-DOM)
                        :get-rendering-data (virt-RD)
@@ -733,7 +739,6 @@
             [:component
              {:relative-id :body
               :row-condition-id row-condition-id
-              :column-headers-id column-headers-id
               :column-descriptions-R (any)
               :row-template-R '(anything (anything ("age" :label)) :top-level)
               :row-ids-R [(any) (any)]
@@ -752,6 +757,7 @@
           render-table-DOM {:relative-id table-id}
           get-item-rendering-data store)
          [:component {:relative-id table-id
+                      :table-id table-id
                       :row-condition-id row-condition-id
                       :column-headers-id column-headers-id
                       :render-dom render-ready-table-DOM

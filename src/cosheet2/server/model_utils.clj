@@ -340,6 +340,14 @@
 ;;; TODO: The anything in the column headers entity should probably be
 ;;; :blank, because is never matches anything.
 
+(defn table-column-headers-id
+  [table-id immutable-store]
+  (first (id-label->element-ids immutable-store table-id :column-headers)))
+
+(defn table-row-condition-id
+  [table-id immutable-store]
+  (first (id-label->element-ids immutable-store table-id :row-condition)))
+
 (defn table-row-template
   "Return the row condition as a template."
   [table-item]

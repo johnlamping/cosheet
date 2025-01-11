@@ -26,6 +26,8 @@
                                 hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [ordered-ids-R ordered-entities]]
              [model-utils :refer [table-row-template
+                                  table-column-headers-id
+                                  table-row-condition-id
                                   semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
@@ -53,8 +55,10 @@
 (defn get-virtual-column-cell-action-data
   "Create a new column header and an element under that column in the row.
    The containing data's target-ids are the id of the row."
-  [{:keys [column-headers-id]} containing-action-data action immutable-store]
-  (let [column-headers (description->entity column-headers-id immutable-store)
+  [specification containing-action-data action immutable-store]
+  (let [column-headers-id (table-column-headers-id
+                           (:table-id containing-action-data) immutable-store)
+        column-headers (description->entity column-headers-id immutable-store)
         columns (semantic-elements column-headers)
         last-column-id (:item-id (last (ordered-entities columns))) 
         {:keys [store target-ids]}
@@ -74,9 +78,10 @@
   (.write w "virt-col-cell-AD"))
 
 (defn get-table-condition-do-batch-edit-action-data
-  [{:keys [row-condition-id]}
-   containing-action-data action immutable-store]
-  (let [row-condition (description->entity row-condition-id immutable-store)
+  [specification containing-action-data action immutable-store]
+  (let [row-condition-id (table-row-condition-id
+                          (:table-id containing-action-data) immutable-store)
+        row-condition (description->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
@@ -89,13 +94,12 @@
   [v ^java.io.Writer w]
   (.write w "table-cond-do-batch-AD"))
 
-;;; TODO: Why is this setting selected-index? The item in the header
-;;; should do that.
 (defn get-table-header-do-batch-edit-action-data
-  [{:keys [item-id relative-id row-condition-id
-           descendant-ids competing-ids]}
+  [{:keys [item-id relative-id descendant-ids competing-ids]}
    containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
+        row-condition-id (table-row-condition-id
+                          (:table-id containing-action-data) immutable-store)
         row-condition (description->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)
@@ -116,9 +120,11 @@
 (defn get-table-cell-do-batch-edit-action-data
   "Generate the batch edit information for a cell that is independent
   of its items."
-  [{:keys [competing-ids row-condition-id]}
+  [{:keys [competing-ids]}
    containing-action-data action immutable-store]
-  (let [row-condition (description->entity row-condition-id immutable-store)
+  (let [row-condition-id (table-row-condition-id
+                          (:table-id containing-action-data) immutable-store)
+        row-condition (description->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
@@ -277,7 +283,6 @@
 
 (defn table-virtual-column-cell-DOM-component
   [specification]
-  (assert (:column-headers-id specification))
   (add-attributes
    (make-component
     (assoc specification
@@ -344,6 +349,7 @@
      (-> specification
          (dissoc :column-headers-id)
          (assoc :relative-id column-id
+                :column-id column-id
                 :row-id row-id
                 :class "table-cell"
                 :render-dom render-table-cell-DOM
@@ -362,11 +368,9 @@
    [column-descriptions-R [universal-category]]])
 
 (defn render-table-row-DOM
-  "Generate dom for a table row. The specification must
-  have :column-headers-id, :row-condition-id, column-descriptions-R"
+  "Generate dom for a table row.
+  The specification must have column-descriptions-R"
   [{:keys [relative-id] :as specification} store column-descriptions]
-  (assert (:column-headers-id specification)) ; Needed by virtual column.
-  (assert (:row-condition-id specification)) ; Needed by do-batch-edit ADs.
   (let [spec (-> specification
                  (dissoc :column-descriptions-R)
                  (assoc :class "table-cell has-border"))]
@@ -395,7 +399,8 @@
 (defn table-virtual-row-cell-DOM-component
   [{:keys [column-id query width] :as column-description}]
   (make-component
-   {:relative-id column-id 
+   {:relative-id column-id
+    :column-id column-id
     :class "table-cell"
     :render-dom render-virtual-DOM
     :get-rendering-data get-virtual-DOM-rendering-data
@@ -442,12 +447,13 @@
    [row-ids-R [universal-category]]])
 
 (defn render-table-rows-DOM
-  "The specification must have row-condition-id, column-headers-id,
-   column-descriptions-R row-template-R and row-ids-R."
+  "The specification must have
+  row-condition-id, column-descriptions-R row-template-R and row-ids-R."
   [specification row-template row-ids]
-  ;; We pass on row-condition-id, column-headers-id and column-descriptions-R.
-  (let [row-spec (-> specification
-                     (dissoc :row-template-R :row-ids-R :get-action-data))]
+  ;; We pass on column-descriptions-R.
+  (let [row-spec (dissoc specification
+                         :row-template-R :row-ids-R :row-condition-id
+                         :get-action-data)]
     (into [:div {:class "table-rows"}]
           (concat (map #(table-row-component % row-template row-spec)
                        row-ids)
@@ -462,14 +468,6 @@
   (expr-let [current-headers column-headers-R]
     (let [columns (ordered-entities (semantic-elements current-headers))]
       (replace-hierarchy-leaves-by-nodes (hierarchy-by-labels columns)))))
-
-(defn table-row-template-R
-  "Return a reporter whose value is the row condition"
-  [row-condition-R]
-  (expr-let [current-condition row-condition-R]
-    (let [condition-elements (semantic-elements current-condition)
-          elements-as-lists (map semantic-to-list condition-elements)]
-      (concat '(anything) elements-as-lists [:top-level]))))
 
 (defn table-row-ids-R
   "Return a reporter whose value is the row ids for the table, in order."
@@ -498,7 +496,7 @@
   "Given a hierarchy node, for each column under the node,
   return a map:
              :column-id  The id that identifies the column.
-                         Typically the id of the column item.
+                         (the id of the column item)
                  :query  Query that each element of the column must satisfy.
                          For a virtual column, this will not be present.
          :competing-ids  Seq of ids whose matches must not appear in the cell.
@@ -506,9 +504,9 @@
                          This is determined by :competing ids, but we put in
                          both, so that table cells can have the
                          disqualifications put in their specification,
-                         causing them to be recomputed if the contents of
-                         the competing ids change, without their having to
-                         register a dependency on it."
+                         causing them to be recomputed if the value of
+                         competing-ids change, without their having to
+                         register a dependency on that."
   [parent-node node]
   (if-let [children (:child-nodes node)]
     (mapcat #(table-hierarchy-node-column-descriptions node %)
@@ -563,7 +561,6 @@
         body-dom (make-component
                   {:relative-id :body
                    :row-condition-id row-condition-id
-                   :column-headers-id column-headers-id
                    :column-descriptions-R column-descriptions-R
                    :row-template-R row-template-R
                    :row-ids-R row-ids-R
@@ -595,6 +592,7 @@
       ;; Render the table only if the table information has been filled in.
       (if (and row-condition-item column-headers-item)
         (make-component {:relative-id relative-id
+                         :table-id relative-id
                          :row-condition-id (:item-id row-condition-item)
                          :column-headers-id (:item-id column-headers-item)
                          :render-dom render-ready-table-DOM

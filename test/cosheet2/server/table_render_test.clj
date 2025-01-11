@@ -209,9 +209,7 @@
                                :row-condition-id row-condition-id}])
         joe-row-component (table-row-component
                            joe-id '("" :top-level ("age" :label))
-                           {:column-descriptions-R column-descriptions
-                            :column-headers-id column-headers-id
-                            :row-condition-id row-condition-id})
+                           {:column-descriptions-R column-descriptions})
         joe-row (run-renderer
                  render-table-row-DOM (second joe-row-component)
                  get-table-row-rendering-data store)]
@@ -319,13 +317,11 @@
     ;; Check the header
     (is (check
          (run-renderer
-          render-table-header-DOM {:row-condition-id row-condition-id
-                                   :hierarchy-R hierarchy}
+          render-table-header-DOM {:hierarchy-R hierarchy}
           get-table-header-rendering-data store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)  
-                       :row-condition-id row-condition-id
                        :descendant-ids [c1-id]
                        :width 0.75
                        :template :singular
@@ -334,8 +330,7 @@
           ;; Three columns.
           [:div {:class "column-header label"}
            ;; The label for the three columns
-           [:component {:row-condition-id row-condition-id
-                        :descendant-ids [c2-id c3-id c4-id]
+           [:component {:descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
                         :parallel-ids [c2-id c3-id c4-id]
@@ -352,8 +347,7 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
-              {:row-condition-id row-condition-id
-               :descendant-ids [c2-id]
+              {:descendant-ids [c2-id]
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
@@ -368,7 +362,6 @@
              [:div {:class "indent-wrapper label"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                :row-condition-id row-condition-id
                 :descendant-ids [c2-id]
                 :competing-ids [c3-id]
                 :width 0.75
@@ -378,7 +371,6 @@
             ;; A column with an additional label
             [:component
              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-              :row-condition-id row-condition-id
               :descendant-ids [c3-id]
               :width 0.75
               :template :singular
@@ -389,8 +381,7 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
-              {:row-condition-id row-condition-id
-               :descendant-ids [c4-id]
+              {:descendant-ids [c4-id]
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
@@ -405,7 +396,6 @@
              [:div {:class "indent-wrapper label"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                :row-condition-id row-condition-id
                 :descendant-ids [c4-id]
                 :competing-ids [c3-id]
                 :width 0.75
@@ -414,7 +404,6 @@
                 :excluded-element-ids [(any)]}]]]]]
           ;; One column with two labels
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                       :row-condition-id row-condition-id
                        :descendant-ids [c5-id]
                        :width 0.75
                        :template :singular
@@ -423,8 +412,7 @@
           ;; One column with no labels
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:row-condition-id row-condition-id
-                        :descendant-ids [c6-id]
+           [:component {:descendant-ids [c6-id]
                         :width 0.75
                         :template '(anything :label)
                         :parallel-ids [c6-id]
@@ -437,7 +425,6 @@
                         :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                         :row-condition-id row-condition-id
                          :descendant-ids [c6-id]
                          :width 0.75
                          :template :singular
@@ -445,8 +432,7 @@
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:row-condition-id row-condition-id
-                        :descendant-ids [c7-id]
+           [:component {:descendant-ids [c7-id]
                         :width 0.75
                         :template '(anything :label)
                         :parallel-ids [c7-id]
@@ -459,7 +445,6 @@
                         :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                         :row-condition-id row-condition-id
                          :descendant-ids [c7-id]
                          :width 0.75
                          :template :singular
@@ -525,8 +510,6 @@
          [:component {:relative-id joe-id
                       :row-id joe-id
                       :class "table-row"
-                      :row-condition-id row-condition-id
-                      :column-headers-id column-headers-id
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :get-rendering-data get-table-row-rendering-data
@@ -564,7 +547,6 @@
          joe-row
          [:div {}
           [:component {:column-id c1-id
-                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c1-id
@@ -579,7 +561,6 @@
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           [:component {:column-id c2-id
-                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c2-id
@@ -602,7 +583,6 @@
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           [:component {:column-id c3-id
-                       :row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c3-id
@@ -621,7 +601,6 @@
           [:component {:width 0.75
                        :relative-id :virtual
                        :row-id joe-id
-                       :column-headers-id column-headers-id
                        :template ""
                        :render-dom (virt-DOM)
                        :get-rendering-data (virt-RD)

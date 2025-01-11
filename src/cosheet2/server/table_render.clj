@@ -201,12 +201,11 @@
 
 (defn table-header-node-specification
   "Return the specification to use for a DOM that is part of a table header."
-  [row-condition-id node parent-cover]
+  [node parent-cover]
   (let [descendant-ids (map #(:item-id (:item %))
                             (hierarchy-node-descendants node))]
     (cond->
-        {:row-condition-id row-condition-id
-         :descendant-ids descendant-ids
+        {:descendant-ids descendant-ids
          :get-do-batch-edit-action-data
          get-table-header-do-batch-edit-action-data
          :width (* 0.75 (count descendant-ids))
@@ -218,10 +217,10 @@
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
   the doms for all the children."
-  [row-condition-id node child-doms specification]
+  [node child-doms specification]
   (let [spec (into (dissoc specification :parent-cover-ids :competing-ids)
                    (table-header-node-specification
-                    row-condition-id node (:parent-cover-ids specification)))
+                    node (:parent-cover-ids specification)))
         node-dom (horizontal-label-hierarchy-node-DOM
                   node spec)
         is-leaf (empty? child-doms)
@@ -237,10 +236,10 @@
 (defn table-header-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
   Inherited describes the column requests."
-  [row-condition-id node]
+  [node]
   (hierarchy-node-DOM
    node
-   (partial table-header-subtree-DOM row-condition-id)
+   table-header-subtree-DOM
    (fn [node spec]
      (let [cover (hierarchy-node-non-immediate-descendant-cover node)]
        (-> spec
@@ -274,9 +273,8 @@
   "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-  [{:keys [row-condition-id]} hierarchy]
-  (let [doms (map #(table-header-top-level-subtree-DOM row-condition-id %)
-                  hierarchy)
+  [_ hierarchy]
+  (let [doms (map table-header-top-level-subtree-DOM hierarchy)
         virtual-header (table-virtual-column-header-DOM hierarchy)]
     (into [:div {:class "column-header-sequence table-header"}]
           (concat doms [virtual-header]))))
@@ -332,25 +330,21 @@
   (.write w "cell-DOM"))
 
 (defn table-cell-DOM-component
-  "Return a component for one cell of a table, given its row item and
-  column description.  We need to put each table cell in a component,
-  so its column-id can be included in its client id. Otherwise, if
-  several columns show the same item, we could have the same client id
-  for both."
-  [row-id
-   {:keys [column-id width] :as column-description}
+  "Return a component for one cell of a table, given its column
+  description and the row specification.  We need to put each table
+  cell in a component, so its column-id can be included in its client
+  id. Otherwise, if several columns show the same item, we could have
+  the same client id for both."
+  [{:keys [column-id width] :as column-description}
    specification]
   (if (= column-id :virtualColumn)
     (table-virtual-column-cell-DOM-component
-     (-> specification
-         (dissoc :row-condition-id)
-         (assoc :width width)))
+    (assoc specification :width width))
     (make-component
      (-> specification
          (dissoc :column-headers-id)
          (assoc :relative-id column-id
                 :column-id column-id
-                :row-id row-id
                 :class "table-cell"
                 :render-dom render-table-cell-DOM
                 :get-rendering-data get-table-cell-rendering-data
@@ -374,7 +368,7 @@
   (let [spec (-> specification
                  (dissoc :column-descriptions-R)
                  (assoc :class "table-cell has-border"))]
-    (let [cells (map #(table-cell-DOM-component relative-id % spec)
+    (let [cells (map #(table-cell-DOM-component % spec)
                      column-descriptions)]
       (into [:div {}] cells))))
 

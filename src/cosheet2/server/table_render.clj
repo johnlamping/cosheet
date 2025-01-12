@@ -95,7 +95,7 @@
   (.write w "table-cond-do-batch-AD"))
 
 (defn get-table-header-do-batch-edit-action-data
-  [{:keys [item-id relative-id descendant-ids competing-ids]}
+  [{:keys [item-id relative-id column-ids competing-ids]}
    containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
         row-condition-id (table-row-condition-id
@@ -103,9 +103,9 @@
         row-condition (description->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)
-        stack-ids (concat (when (= (count descendant-ids) 1)
-                                     competing-ids)
-                                   descendant-ids)]
+        stack-ids (concat (when (= (count column-ids) 1)
+                            competing-ids)
+                          column-ids)]
     (assoc containing-action-data
            :query-ids query-ids
            :stack-ids stack-ids
@@ -202,13 +202,13 @@
 (defn table-header-node-specification
   "Return the specification to use for a DOM that is part of a table header."
   [node parent-cover]
-  (let [descendant-ids (map #(:item-id (:item %))
-                            (hierarchy-node-descendants node))]
+  (let [column-ids (map #(:item-id (:item %))
+                        (hierarchy-node-descendants node))]
     (cond->
-        {:descendant-ids descendant-ids
+        {:column-ids column-ids
          :get-do-batch-edit-action-data
          get-table-header-do-batch-edit-action-data
-         :width (* 0.75 (count descendant-ids))
+         :width (* 0.75 (count column-ids))
          ;; Tell add-twin and delete that they must not add or remove a column.
          :template :singular}
       (and (seq parent-cover) (empty? (:properties node)))
@@ -339,12 +339,11 @@
    specification]
   (if (= column-id :virtualColumn)
     (table-virtual-column-cell-DOM-component
-    (assoc specification :width width))
+     (assoc specification :width width))
     (make-component
      (-> specification
-         (dissoc :column-headers-id)
          (assoc :relative-id column-id
-                :column-id column-id
+                :column-ids [column-id]
                 :class "table-cell"
                 :render-dom render-table-cell-DOM
                 :get-rendering-data get-table-cell-rendering-data
@@ -394,7 +393,7 @@
   [{:keys [column-id query width] :as column-description}]
   (make-component
    {:relative-id column-id
-    :column-id column-id
+    :column-ids [column-id]
     :class "table-cell"
     :render-dom render-virtual-DOM
     :get-rendering-data get-virtual-DOM-rendering-data
@@ -548,7 +547,6 @@
                         get-table-condition-do-batch-edit-action-data })
         header-dom (make-component
                     {:relative-id column-headers-id
-                     :row-condition-id row-condition-id
                      :hierarchy-R hierarchy-R
                      :render-dom render-table-header-DOM
                      :get-rendering-data get-table-header-rendering-data})

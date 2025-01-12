@@ -43,16 +43,19 @@
 ;;;      :target-ids  A seq of the ids that should be acted upon
 ;;;          :column  {:target-ids
 ;;;                    :header-id}
-;;; TODO: column-headers-id is not needed much. But the id of the specific
-;;;       column is needed for add-column
+;;; TODO: column-headers-id is not needed much.
 ;;;  :column-headers-id
-;;; These three give the current table, if any, and the row and column
-;;; that the current cell is in. They are copied over from the specification,
-;;; even before the action data getter is run. So action data getters don't
-;;; have to worry about them.
-;;;        :table-id
-;;;          :row-id
-;;;       :column-id
+;;; These three give information about the cell's position in a table,
+;;; if any.  They are copied over from the specification, even before
+;;; the action data getter is run. So action data getters don't have
+;;; to worry about handling them.
+;;;        :table-id  The id of the table.
+;;;          :row-id  The id of the item shown in the cell's row.
+;;;      :column-ids  The ids of the columns the cell is in. Usually,
+;;;                   this is a list of just one item. But when there is
+;;;                   a hierarchy of column headers, cells can span
+;;;                   multiple columns, in which case this lists them
+;;;                   from left to right.
 ;;; This tells what tab is active.
 ;;;          :select  {:tab-id  ; The tab this component belongs to.}
 ;;;                   For a virtual tab, the value is :virtual.
@@ -489,7 +492,7 @@
         ;; These keys are always copied from the spec to the action
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
-        copied-keys [:table-id :row-id :column-id]
+        copied-keys [:table-id :row-id :column-ids]
         action-data (into containing-action-data
                           (select-keys spec copied-keys))
         data (reduce (fn [data getter]

@@ -1,7 +1,7 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
-                      [store :refer [id->subject]]
+                      [store :refer [id->subject id-label->element-ids]]
                       [reporter :refer [universal-category]]
                       [entity :refer [subject content elements label->elements
                                       description->entity
@@ -49,7 +49,6 @@
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  get-table-action-data
                                   composed-get-action-data]])))
 
 (defn get-virtual-column-cell-action-data
@@ -427,11 +426,10 @@
       :column-descriptions-R column-descriptions-R
       :render-dom render-table-virtual-row-DOM
       :get-rendering-data get-table-virtual-row-rendering-data
-      :item-id adjacent-id
       :sibling true
       :template row-template
       :get-action-data [composed-get-action-data
-                        get-item-or-exemplar-action-data
+                        [get-id-action-data adjacent-id] ; our sibling
                         get-virtual-action-data]}))
 
 (defn get-table-rows-rendering-data
@@ -445,14 +443,14 @@
   [specification row-template row-ids]
   ;; We pass on column-descriptions-R.
   (let [row-spec (dissoc specification
-                         :row-template-R :row-ids-R :row-condition-id
+                         :row-template-R :row-ids-R :id-with-no-subject
                          :get-action-data)]
     (into [:div {:class "table-rows"}]
           (concat (map #(table-row-component % row-template row-spec)
                        row-ids)
                   [(table-virtual-row-DOM-component
                     row-template
-                    (or (last row-ids) (:row-condition-id specification))
+                    (or (last row-ids) (:id-with-no-subject specification))
                     (:column-descriptions-R specification))]))))
 
 (defn table-hierarchy-R
@@ -506,88 +504,79 @@
             children)
     [(table-hierarchy-leaf-column-description parent-node node)]))
 
-(defn get-ready-table-rendering-data
-  [_ mutable-store]
-  ;; We pass the renderer the mutable store. That way, it can use that
+(defn get-table-rendering-data
+  [spec mutable-store]
+  ;; We pass the render the current store, with a dependency on the
+  ;; table spec.
+  ;; We also pass it the mutable store, which it uses
   ;; to build the reporters that each of its subparts depend on.
   ;; The way we give it the store is by making a map consisting of
   ;; the store, so current-value will return the entire map, not the
   ;; current value of the store.
-  [[{:mutable-store mutable-store} nil]])
-
-(defn render-ready-table-DOM
-  "Render a table dom, give its header."
-  [{:keys [row-condition-id column-headers-id relative-id]}
-   {:keys [mutable-store]}]
-  (assert row-condition-id)
-  (assert column-headers-id)
-  (let [table-R (description->updating-entity-R
-                 relative-id mutable-store)
-        row-template-R (expr table-row-template table-R)
-        ;; TODO: Make this use table-R
-        column-headers-R (description->updating-entity-R
-                          column-headers-id mutable-store)
-        hierarchy-R (table-hierarchy-R column-headers-R)
-        row-ids-R (table-row-ids-R row-template-R mutable-store)
-        virtual-column-description {:column-id :virtualColumn}
-        ;; TODO: Add an "other" column if a table requests it.
-        column-descriptions-R (expr-let [hierarchy hierarchy-R]
-                                (concat
-                                 (mapcat
-                                  #(table-hierarchy-node-column-descriptions
-                                    nil %)
-                                  hierarchy)
-                                 [virtual-column-description]))
-        condition-dom (make-component
-                       {:relative-id row-condition-id
-                        :row-condition-id row-condition-id
-                        :render-dom render-table-condition-DOM
-                        :get-rendering-data get-table-condition-rendering-data
-                        :get-do-batch-edit-action-data
-                        get-table-condition-do-batch-edit-action-data })
-        header-dom (make-component
-                    {:relative-id column-headers-id
-                     :hierarchy-R hierarchy-R
-                     :render-dom render-table-header-DOM
-                     :get-rendering-data get-table-header-rendering-data})
-        body-dom (make-component
-                  {:relative-id :body
-                   :row-condition-id row-condition-id
-                   :column-descriptions-R column-descriptions-R
-                   :row-template-R row-template-R
-                   :row-ids-R row-ids-R
-                   :render-dom render-table-rows-DOM
-                   :get-rendering-data get-table-rows-rendering-data
-                   :get-action-data get-pass-through-action-data})]
-    [:div {:class "table"}
-     condition-dom
-     [:div {:class "table-main"}
-      header-dom
-      body-dom]]))
+  [[mutable-store [(:table-id spec)]]
+   [{:mutable-store mutable-store} nil]])
 
 (defn render-table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
   ;; The format of the element that describes a table is given in
   ;; model-utils.
-  [{:keys [relative-id] :as specification} store]
-  (let [table-item (description->entity relative-id store)]
-    (println "Generating DOM for table" (simplify-for-print table-item))
-    (assert (satisfies? StoredEntity table-item))
-    ;; First check to see if we have the table information filled in yet.
-    (let [row-condition-item (first (label->elements
-                                     table-item :row-condition))
-          column-headers-item (first (label->elements
-                                      table-item :column-headers))]
-      ;; TODO: Don't pass in the two above ids. They can be gotten
-      ;;       easily enough. 
-      ;; Render the table only if the table information has been filled in.
-      (if (and row-condition-item column-headers-item)
-        (make-component {:relative-id relative-id
-                         :table-id relative-id
-                         :row-condition-id (:item-id row-condition-item)
-                         :column-headers-id (:item-id column-headers-item)
-                         :render-dom render-ready-table-DOM
-                         :get-rendering-data get-ready-table-rendering-data
-                         :get-action-data get-table-action-data})
-        [:div {}]))))
+  [{:keys [table-id]} immutable-store {:keys [mutable-store]}]
+  (println "Generating DOM for table" (simplify-for-print table-id))
+  ;; First check to see if we have the table information filled in yet.
+  (let [row-condition-id (first (id-label->element-ids
+                                 immutable-store table-id :row-condition))
+        column-headers-id (first (id-label->element-ids
+                                  immutable-store table-id :column-headers))]
+    ;; Render the table only if the table information has been filled in.
+    (if (not (and row-condition-id column-headers-id))
+      [:div {}]
+      (let [table-R (description->updating-entity-R table-id mutable-store)
+            row-template-R (expr table-row-template table-R)
+            ;; TODO: Make this use table-R
+            column-headers-R (description->updating-entity-R
+                              column-headers-id mutable-store)
+            hierarchy-R (table-hierarchy-R column-headers-R)
+            row-ids-R (table-row-ids-R row-template-R mutable-store)
+            virtual-column-description {:column-id :virtualColumn}
+            ;; TODO: Add an "other" column if a table requests it.
+            column-descriptions-R
+            (expr-let [hierarchy hierarchy-R]
+              (concat
+               (mapcat #(table-hierarchy-node-column-descriptions nil %)
+                       hierarchy)
+               [virtual-column-description]))
+            id-with-no-subject (loop [id table-id]
+                                 (let [subject (id->subject
+                                                immutable-store id)]
+                                   (if subject
+                                     (recur subject)
+                                     id)))
+            condition-dom (make-component
+                           {:relative-id row-condition-id
+                            :row-condition-id row-condition-id
+                            :render-dom render-table-condition-DOM
+                            :get-rendering-data
+                            get-table-condition-rendering-data
+                            :get-do-batch-edit-action-data
+                            get-table-condition-do-batch-edit-action-data })
+            header-dom (make-component
+                        {:relative-id column-headers-id
+                         :hierarchy-R hierarchy-R
+                         :render-dom render-table-header-DOM
+                         :get-rendering-data get-table-header-rendering-data})
+            body-dom (make-component
+                      {:relative-id :body
+                       ;; This is used as a sibling of our initial row.
+                       :id-with-no-subject id-with-no-subject
+                       :column-descriptions-R column-descriptions-R
+                       :row-template-R row-template-R
+                       :row-ids-R row-ids-R
+                       :render-dom render-table-rows-DOM
+                       :get-rendering-data get-table-rows-rendering-data
+                       :get-action-data get-pass-through-action-data})]
+        [:div {:class "table"}
+         condition-dom
+         [:div {:class "table-main"}
+          header-dom
+          body-dom]]))))

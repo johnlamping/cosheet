@@ -264,20 +264,6 @@
   [v ^java.io.Writer w]
   (.write w "default-AD"))
 
-;;; Here are the action data getters for tables
-
-(defn get-table-action-data
-  "Add the action data that pertains to all of a table."
-  [{:keys [relative-id]}
-   containing-action-data action immutable-store]
-  (assoc containing-action-data
-         :table-id relative-id))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_table_action_data
-  [v ^java.io.Writer w]
-  (.write w "table-AD"))
-
 ;;; do-batch-edit action data generators are called only when the
 ;;; requested action is to start a batch-edit. (These are completely
 ;;; different from the action data generators called while a batch
@@ -438,6 +424,10 @@
                            [ids ids store]))
                        [subjects adjacents immutable-store]
                        (if (vector? template) template [template]))]
+    (println "Made items"
+             template
+             (simplify-for-print subjects)
+             (simplify-for-print adjacents))
     (assoc containing-action-data :target-ids ids :store store)))
 
 (defmethod print-method

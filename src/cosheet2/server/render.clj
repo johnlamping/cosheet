@@ -17,7 +17,7 @@
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
              [item-render :refer [get-item-rendering-data render-item-DOM]]
-             [table-render :refer [render-table-DOM]]
+             [table-render :refer [render-table-DOM get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
                                         get-batch-edit-rendering-data]]
@@ -418,16 +418,16 @@
                (let [topic (first (label->elements immutable-item :tab-topic))
                      subject (subject immutable-item)]
                  [:div {:class "tabbed"}
-                  (make-component {:relative-id (:item-id subject)
-                                   ;; TODO: Get rid of this.
-                                   ;; :client-state client-state
-                                   :chosen-tab-id id
-                                   :render-dom render-tabs-DOM
-                                   :get-action-data [get-id-action-data
-                                                     (:item-id subject)]})
-                  (make-component (assoc basic-dom-specification        
-                                         :relative-id (:item-id topic)
-                                         :render-dom render-table-DOM))])
+                  (make-component
+                   {:relative-id (:item-id subject)
+                    :chosen-tab-id id
+                    :render-dom render-tabs-DOM
+                    :get-action-data [get-id-action-data (:item-id subject)]})
+                  (make-component
+                   {:relative-id (:item-id topic)
+                    :table-id (:item-id topic)
+                    :render-dom render-table-DOM
+                    :get-rendering-data get-table-rendering-data})])
                ;; No tab is selected. Show just the item.
                (make-component
                 (assoc basic-dom-specification        

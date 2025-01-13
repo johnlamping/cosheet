@@ -425,7 +425,7 @@
 ;;; While do-selected takes a client id, like a contextual action
 ;;; does, it doesn't rely on what that client id references. In
 ;;; particular, it does not want create more items if a virtual id is
-;;; selected. So it can not be handled like other contextual handlers.
+;;; selected. So it can't be handled like other contextual handlers.
 (defn do-selected
   [mutable-store session-state client-id & _]
   (when client-id

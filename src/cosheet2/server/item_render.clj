@@ -116,9 +116,9 @@
 (defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
   isn't. The specification may have a :get-action-data, in which case
-  it will be run before get-virtual-action-data. The specification
-  keys unique to the virtual action data
-  are :template :sibling :position and :use-bigger."
+  it will be run before get-virtual-action-data.
+  The specification keys unique to the virtual action data are
+  :template :sibling :position and :use-bigger."
   [specification]
   (assert (:template specification) specification)
   (make-component

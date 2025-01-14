@@ -17,8 +17,7 @@
              [item-render :refer [render-virtual-DOM
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
-             [action-data :refer [get-table-action-data
-                                  composed-get-action-data
+             [action-data :refer [composed-get-action-data
                                   parallel-items-get-action-data
                                   get-pass-through-action-data
                                   get-id-action-data
@@ -66,7 +65,6 @@
 (defn id-AD [] get-id-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn virt-AD [] get-virtual-action-data)
-(defn table-AD [] get-table-action-data)
 (defn table-head-do-batch-AD [] get-table-header-do-batch-edit-action-data)
 (defn table-cell-do-batch-AD [] get-table-cell-do-batch-edit-action-data)
 (defn table-cell-item-do-batch-AD []
@@ -519,7 +517,6 @@
     (is (check
          (run-renderer render-table-rows-DOM
                        {:relative-id :body
-                        :row-condition-id row-condition-id
                         :column-descriptions-R column-descriptions
                         :row-template-R 'foo
                         :row-ids-R [joe-id]}
@@ -538,9 +535,10 @@
                        :render-dom render-table-virtual-row-DOM
                        :get-rendering-data get-table-virtual-row-rendering-data
                        :template 'foo
-                       :item-id joe-id
                        :sibling true
-                       :get-action-data [(comp-AD) (item-AD) (virt-AD) ]}]]))
+                       :get-action-data [(comp-AD)
+                                         [(id-AD) joe-id]
+                                         (virt-AD)]}]]))
 
     ;; Check rendering a row
     (is (check
@@ -692,10 +690,9 @@
     ;; Check rendering the overall table, given the necessary ids.
     (is (check
           (run-renderer
-           render-ready-table-DOM {:relative-id table-id
-                                   :row-condition-id row-condition-id
-                                   :column-headers-id column-headers-id}
-           get-ready-table-rendering-data store)
+           render-table-DOM {:relative-id table-id
+                             :table-id table-id}
+           get-table-rendering-data store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
                         :row-condition-id row-condition-id
@@ -716,7 +713,7 @@
               :get-rendering-data get-table-header-rendering-data}]
             [:component
              {:relative-id :body
-              :row-condition-id row-condition-id
+              :id-with-no-subject table-id
               :column-descriptions-R (any)
               :row-template-R '(anything (anything ("age" :label)) :top-level)
               :row-ids-R [(any) (any)]
@@ -727,17 +724,7 @@
     ;; Check getting the subsidiary ids.
     (is (check
          (run-renderer
-          render-table-DOM {:relative-id joe-id}
-          get-item-rendering-data store)
-         [:div {}]))
-    (is (check
-         (run-renderer
-          render-table-DOM {:relative-id table-id}
-          get-item-rendering-data store)
-         [:component {:relative-id table-id
-                      :table-id table-id
-                      :row-condition-id row-condition-id
-                      :column-headers-id column-headers-id
-                      :render-dom render-ready-table-DOM
-                      :get-rendering-data get-ready-table-rendering-data
-                      :get-action-data (table-AD)}]))))
+          render-table-DOM {:relative-id joe-id
+                            :table-id joe-id}
+          get-table-rendering-data store)
+         [:div {}]))))

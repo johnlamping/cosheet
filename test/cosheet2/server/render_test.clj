@@ -14,7 +14,7 @@
             (cosheet2.server
              [render :refer :all]
              [tabs-render :refer [render-tabs-DOM]]
-             [table-render :refer [render-table-DOM]]
+             [table-render :refer [render-table-DOM get-table-rendering-data]]
              [action-data :refer [get-id-action-data]]
              [model-utils :refer [starting-store]]
              [session-state :refer [update-add-session-temporary-element
@@ -57,22 +57,7 @@
 		 	 :chosen-tab-id (any)
 			 :render-dom render-tabs-DOM
 			 :get-action-data [get-id-action-data (any)]}]
-	   [:component {:width 1.5
-                        :template ""
-			:relative-id (any)
-			:render-dom render-table-DOM}]]]))
-    ;; Try turning the table component into DOM, to see why the app fails
-    ;; in finding the action context when you try to change a header.
-    ;; (It does a lookup in the wrong item.)
-    (let [[_ _ [_ _ tabs-component table-component]] dom
-          ready-table-component (render-component table-component mutable-store)
-          table (render-component ready-table-component mutable-store)
-          [_ _ condition-component [_ _ header-component rows-component]] table
-          header (render-component header-component mutable-store)]
-      (println "ready table")
-      (println ready-table-component)
-      (println "table")
-      (println table)
-      (println "header")
-      (println header))
-    ))
+	   [:component {:relative-id (any)
+                        :table-id (any)
+                        :get-rendering-data get-table-rendering-data
+			:render-dom render-table-DOM}]]]))))

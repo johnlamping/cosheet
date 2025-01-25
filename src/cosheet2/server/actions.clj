@@ -249,6 +249,25 @@
                 (abandon-problem-changes store modified subject-id)))
             store target-ids)))
 
+(defn do-delete-row
+  [store arguments]
+  (println "deleting row")
+  (let [{:keys [row-id]}  arguments]
+    (when row-id
+      (remove-entity-by-id store row-id))))
+
+(defn do-delete-column
+  [store arguments]
+  (println "deleting row")
+  (let [{:keys [column-ids table-id]}  arguments]
+    (when (and column-ids table-id)
+      (let [column-headers-id (table-column-headers-id table-id store)
+            column-headers-entity (description->entity column-headers-id store)
+            columns (semantic-elements column-headers-entity)]
+        (when (and (> (count columns) 1) ; Don't remove the last column.
+                   (= (count column-ids) 1)) ; Don't remove multiple columns.
+          (remove-entity-by-id store (first column-ids)))))))
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -351,7 +370,9 @@
 
 (defn normalize-handler-response
   "Whatever format the handler's response, normalize it to be a pair of
-  an updated store and a map of data for the client."
+  an updated store and a map of data for the client.
+  The store argument must be the original store, without any virtuals
+  instantiated. It's the store we return if the handler returns nil."
   [response store]
   (if response
     (if (satisfies? Store response)
@@ -366,9 +387,11 @@
 (defn get-contextual-handler
   "Return the handler for the command.
   A handler is a function of the current store and a map of arguments
-  and action data. It can either return nil, meaning no change, a new
-  store, or a map with a :store value and any additional information
-  it wants to convey."
+  and action data. If it doesn't want to make any changes, it must
+  return nil (which tells the calling code to throw out any virtual
+  instantiations it made to prepare for the handler). Otherwise it
+  either returns a revised store, or a map with a :store value and any
+  additional information it wants to convey."
   [action]
   ({:add-element do-add-element
     :add-label do-add-label
@@ -376,8 +399,8 @@
     :add-row do-add-row
     :add-column do-add-column
     :delete do-delete
-    ; :delete-row do-delete-row
-    ; :delete-column do-delete-column
+    :delete-row do-delete-row
+    :delete-column do-delete-column
     :set-content do-set-content
     ; :expand do-expand
     :batch-edit do-batch-edit}
@@ -419,9 +442,10 @@
                          _ (println "handler arguments: "
                                     (simplify-for-print
                                      (dissoc arguments :session-state)))
-                         store (or (:store action-data) store) 
+                         store-with-virtuals (or (:store action-data) store) 
                          response (handler
-                                   (update-equivalent-undo-point store false)
+                                   (update-equivalent-undo-point
+                                    store-with-virtuals false)
                                    arguments)]
                      (normalize-handler-response response store))))]
             (when (contains? result :batch-editing)

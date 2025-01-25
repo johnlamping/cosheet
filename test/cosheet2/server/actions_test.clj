@@ -29,7 +29,7 @@
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
                                   semantic-to-list selector?
-                                  template-to-possible-non-selector-template]]
+                                  pattern-to-query]]
              [session-state :refer [update-add-session-temporary-element]])
             ; :reload
             ))
@@ -256,8 +256,7 @@
                             :table-id table-id
                             :row-id jane-id})
         [new-store client-data] (normalize-handler-response result store)
-        row-condition (template-to-possible-non-selector-template
-                       `(nil ~@row-condition-elements))
+        row-condition (pattern-to-query `(nil ~@row-condition-elements))
         rows (matching-items row-condition store)
         new-rows (matching-items row-condition new-store)]
     (is (= (count new-rows)
@@ -283,6 +282,49 @@
            (+ 1 (count headers))))
     ;; TODO: When select is added, add a test for it here.
     ))
+
+(deftest do-delete-row-test
+  (let [result (do-delete-row store
+                              {:target-key ["jane" "jane-age"]
+                               :table-id table-id
+                               :row-id jane-id})
+        [new-store client-data] (normalize-handler-response result store)
+        row-condition (pattern-to-query
+                       `(nil ~@row-condition-elements))
+        rows (matching-items row-condition store)
+        new-rows (matching-items row-condition new-store)]
+    (is (= (count new-rows)
+           (- (count rows) 1)))))
+
+(deftest do-delete-column-test
+  (let [table-entity (description->entity table-id store)
+        headers-entity (first (label->elements table-entity :column-headers))
+        headers (semantic-elements headers-entity)
+        first-header-id (:item-id (first headers))
+        result (do-delete-column store
+                              {:target-key ["jane" "jane-age"]
+                               :table-id table-id
+                               :column-ids [first-header-id]})
+        [new-store client-data] (normalize-handler-response result store)
+        new-table-entity (description->entity table-id new-store)
+        new-headers-entity (first (label->elements new-table-entity
+                                                   :column-headers))
+        new-headers (semantic-elements new-headers-entity)]
+    (is (= (count new-headers)
+           (- (count headers) 1)))
+    ;; Make sure that an attempt to delete two columns does nothing.
+    (let [second-header-id (:item-id (first headers))
+          result (do-delete-column store
+                              {:target-key ["jane" "jane-age"]
+                               :table-id table-id
+                               :column-ids [first-header-id second-header-id]})
+        [new-store client-data] (normalize-handler-response result store)
+        new-table-entity (description->entity table-id new-store)
+        new-headers-entity (first (label->elements new-table-entity
+                                                   :column-headers))
+          new-headers (semantic-elements new-headers-entity)]
+      (is (= (count new-headers)
+             (count headers))))))
 
 (deftest do-batch-edit-test
   (let [updated (do-batch-edit

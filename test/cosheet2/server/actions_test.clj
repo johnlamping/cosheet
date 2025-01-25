@@ -25,8 +25,11 @@
             (cosheet2.server
              [dom-manager :refer [new-dom-manager add-root-dom]]
              [actions :refer :all]
+             [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
-                                  semantic-to-list selector?]]
+                                  semantic-elements
+                                  semantic-to-list selector?
+                                  template-to-possible-non-selector-template]]
              [session-state :refer [update-add-session-temporary-element]])
             ; :reload
             ))
@@ -55,13 +58,23 @@
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
                      ("age" :label))))
-(def t1 (add-entity (new-element-store) nil joe-list))
+(def row-condition-elements ['(anything ("age" :label))])
+(def column-headers ['(anything ("age" :label))
+                     '(anything ("c2" :label))])
+(def table-list (add-order-elements
+                 `(:x
+                   :selector
+                   (:x :row-condition ~@row-condition-elements)
+                   (:x :column-headers ~@column-headers))))
+(def t0 (add-entity (new-element-store) nil table-list))
+(def table-id (second t0))
+(def t1 (add-entity (first t0) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
 (def jane-id (second t2))
 (def t3 (update-add-session-temporary-element (first t2)))
-(def store (first t3))
 (def temporary-id (second t3))
+(def store (first t3))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
@@ -237,6 +250,40 @@
     (is (not (id-valid? new-store joe-id)))
     (is (id-valid? new-store (:item-id name-header)))))
 
+(deftest do-add-row-test
+  (let [result (do-add-row store
+                           {:target-key ["jane" "jane-age"]
+                            :table-id table-id
+                            :row-id jane-id})
+        [new-store client-data] (normalize-handler-response result store)
+        row-condition (template-to-possible-non-selector-template
+                       `(nil ~@row-condition-elements))
+        rows (matching-items row-condition store)
+        new-rows (matching-items row-condition new-store)]
+    (is (= (count new-rows)
+           (+ 1 (count rows))))
+      ;; TODO: When select is added, add a test for it here.
+      ))
+
+(deftest do-add-column-test
+  (let [table-entity (description->entity table-id store)
+        headers-entity (first (label->elements table-entity :column-headers))
+        headers (semantic-elements headers-entity)
+        first-header-id (:item-id (first headers))
+        result (do-add-column store
+                              {:target-key ["jane" "jane-age"]
+                               :table-id table-id
+                               :column-ids [first-header-id]})
+        [new-store client-data] (normalize-handler-response result store)
+        new-table-entity (description->entity table-id new-store)
+        new-headers-entity (first (label->elements new-table-entity
+                                                   :column-headers))
+        new-headers (semantic-elements new-headers-entity)]
+    (is (= (count new-headers)
+           (+ 1 (count headers))))
+    ;; TODO: When select is added, add a test for it here.
+    ))
+
 (deftest do-batch-edit-test
   (let [updated (do-batch-edit
                  store
@@ -349,20 +396,6 @@
                                       (anything ("age" :label))))))
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
-
-  (deftest do-add-row-test
-    (let [result (do-add-row
-                  store
-                  {:target-key ["jane" "jane-age"]
-                   :row {:referent (item-referent jane)
-                         :template '("a" :new-row)
-                         :key ["x" "y"]}
-                   :column {:referent (item-referent joe)}})
-          new-store (:store result)]
-      (let [new-rows (matching-items "a" new-store)]
-        (is (= (count new-rows) 1)))
-      (is (check (:select result)
-                 [["x" (any) (item-referent joe)] [["jane" "jane-age"]]])))  )
 
   (deftest do-expand-test
     (is (check (do-expand store

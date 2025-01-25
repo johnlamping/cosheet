@@ -31,7 +31,9 @@
                                   semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
-                                  column-header-template exemplar-to-query]]
+                                  column-header-template
+                                  unspecified-column-header-template
+                                  exemplar-to-query]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
@@ -60,11 +62,11 @@
         column-headers (description->entity column-headers-id immutable-store)
         columns (semantic-elements column-headers)
         last-column-id (:item-id (last (ordered-entities columns))) 
+        ;; Add the column header for the new column to the store.
         {:keys [store target-ids]}
         (get-virtual-action-data
          {:sibling true
-          :template (add-elements-to-entity-list
-                     column-header-template ['(??? :label)])}
+          :template unspecified-column-header-template}
          {:target-ids [last-column-id]} action immutable-store)
         new-column-id (first target-ids)
         template (semantic-to-list (description->entity new-column-id store))]

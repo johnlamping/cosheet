@@ -1,6 +1,7 @@
 (ns cosheet2.server.model-utils
   (:require (cosheet2 [debug :refer [simplify-for-print]]
-                      [utils :refer [thread-map prewalk-seqs replace-in-seqs]]
+                      [utils :refer [thread-map prewalk-seqs replace-in-seqs
+                                     add-elements-to-entity-list]]
                       [orderable :refer [initial]]
                       [expression :refer [expr expr-let expr-seq expr-filter]]
                       [canonical :refer [canonicalize]]
@@ -372,8 +373,16 @@
   (tab-table-element ['(??? :label)] ['(anything (??? :label))]))
 
 (def column-header-template
-  ;; A column header is stored as an element of the :column-headers entity.
+  ;; The minimum content for a column header.
+  ;; In addition, a column header must be stored as an element
+  ;; of the :column-headers entity.
   'anything)
+
+(def unspecified-column-header-template
+  ;; A header for a newly created column that we don't know anything about.
+  ;; We give it a new label, so that it won't start out match everything.  
+  (add-elements-to-entity-list
+   column-header-template ['(??? :label)]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store

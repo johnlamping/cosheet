@@ -32,7 +32,8 @@
                          ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
                          exemplar-to-query remove-semantic-elements
-                         table-row-template]]
+                         table-row-template table-column-headers-id
+                         unspecified-column-header-template]]
     [order-utils :refer [furthest-item
                          update-add-entity-with-order-and-temporary]])))
 
@@ -213,13 +214,29 @@
 (defn do-add-row
   [store arguments]
   (println "adding row")
-  (let [{:keys [id row-id table-id]} arguments
-        row-template (table-row-template (description->entity table-id store))
-        row-parent-id (id->subject store row-id)
-        [ids store] (create-possible-selector-elements
-                     row-template [row-parent-id] [row-id] :after false store)]
-    ;; TODO: add a select request
-    store))
+  (let [{:keys [row-id table-id]}  arguments]
+    (when (and row-id table-id)
+      (let [table-entity (description->entity table-id store)
+            row-template (table-row-template table-entity)
+            row-parent-id (id->subject store row-id)
+            [ids store] (create-possible-selector-elements
+                         row-template [row-parent-id] [row-id]
+                         :after false store)]
+        ;; TODO: add a select request
+        store))))
+
+(defn do-add-column
+  [store arguments]
+  (println "adding column")
+  (let [{:keys [column-ids table-id]}  arguments]
+    (when (and column-ids table-id)
+      (let [column-headers-id (table-column-headers-id table-id store)
+            [ids store] (create-possible-selector-elements
+                         unspecified-column-header-template
+                         [column-headers-id] [(last column-ids)]
+                         :after false store)]
+        ;; TODO: add a select request
+        store))))
 
 (defn do-delete 
   [store {:keys [target-ids template]}]
@@ -332,9 +349,9 @@
                     {:batch-editing false})
   {})
 
-(defn adjust-handler-response
-  "Adjust the handler's response to be a pair of an updated store and
-  a map of client data."
+(defn normalize-handler-response
+  "Whatever format the handler's response, normalize it to be a pair of
+  an updated store and a map of data for the client."
   [response store]
   (if response
     (if (satisfies? Store response)
@@ -357,7 +374,7 @@
     :add-label do-add-label
     :add-twin do-add-twin
     :add-row do-add-row
-    ; :add-column do-add-column
+    :add-column do-add-column
     :delete do-delete
     ; :delete-row do-delete-row
     ; :delete-column do-delete-column
@@ -406,7 +423,7 @@
                          response (handler
                                    (update-equivalent-undo-point store false)
                                    arguments)]
-                     (adjust-handler-response response store))))]
+                     (normalize-handler-response response store))))]
             (when (contains? result :batch-editing)
               (map-state-reset! (:client-state session-state)
                                 {:batch-editing (:batch-editing result)}))

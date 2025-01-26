@@ -2,7 +2,8 @@
   (:require
    (cosheet2
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number thread-map add-elements-to-entity-list
+    [utils :refer [parse-string-as-number thread-map truncate-at-value
+                   add-elements-to-entity-list
                    swap-control-return!]]
     [canonical :refer [equivalent-primitives?]]
     [map-state :refer [map-state-get-current map-state-reset!
@@ -27,7 +28,9 @@
     [orderable :refer [initial split]])
    (cosheet2.server
     [session-state :refer [queue-to-log]]
-    [dom-manager :refer [client-id->action-data component->client-id]]
+    [dom-manager :refer [client-id->action-data component->client-id
+                         client-id->relative-ids
+                         relative-ids->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
@@ -109,56 +112,6 @@
         modified (update-set-content-if-matching store id from to)]
     (abandon-problem-changes store modified id)))
 
-(defn item-for-pattern
-  "Given a pattern and a list of items, return the item specified by the
-  pattern.
-  A pattern is of the form [:pattern <number>? :subject? <template>?]
-  number indicates which of the items in the list to use, defaulting to 0.
-  :subject, if present, indicates that the result of the pattern should be
-    the subject of the match, rather than the match, itself.
-  template, if present, must contains a variable named :v, and will return
-    the part of the item matching that variable. Otherwise, the
-    entire item is returned."
-  [pattern items]
-  (let [[_ & args] pattern
-        [item args] (if (number? (first args))
-                      [(nth items (first args)) (rest args)]
-                      [(first items) args])
-        [subject? args] (if (= (first args) :subject)
-                          [true (rest args)]
-                          [false args])
-        template (first args)
-        match (if template
-                (let [matches (matching-extensions template item)
-                      value (:v (first matches))]
-                  (assert value)
-                  value)
-                item)]
-    (:item-id (if subject? (subject match) match))))
-
-(defn substitute-in-key
-  "Substitute into the sequence of possible patterns, replacing patterns
-  with the items they specify."
-  [key items]
-  (vec (map (fn [part]
-              (if (and (sequential? part) (= (first part) :pattern))
-                (item-for-pattern part items)
-                part))
-            key)))
-
-(defn add-select-request
-  "Add a selection instruction to a response, given the sequence of items
-  to use for substituting in the pattern."
-  [response items select-pattern old-key]
-  (if select-pattern
-    (let [response (ensure-response-map response)
-          store (:store response)]
-      (assoc response :select
-             (when (not-empty items)
-               [(substitute-in-key select-pattern items)
-                [old-key]])))
-    response))
-
 (defn add-select-store-ids-request
   "Add a :select-store-ids instruction to a response, to select an item
   showing one of the specified ids. The ajax reply handler will
@@ -214,7 +167,7 @@
 (defn do-add-row
   [store arguments]
   (println "adding row")
-  (let [{:keys [row-id table-id]}  arguments]
+  (let [{:keys [row-id table-id column-ids client-id]}  arguments]
     (when (and row-id table-id)
       (let [table-entity (description->entity table-id store)
             row-template (table-row-template table-entity)
@@ -222,8 +175,17 @@
             [ids store] (create-possible-selector-elements
                          row-template [row-parent-id] [row-id]
                          :after false store)]
-        ;; TODO: add a select request
-        store))))
+        (if (and column-ids client-id)
+          ;; Select the cell in the new row that is in the same column
+          ;; as the cell the user clicked on.
+          (let [relative-ids (client-id->relative-ids client-id)
+                prefix-ids (truncate-at-value relative-ids row-id)
+                new-cell-client-id (relative-ids->client-id
+                                    (concat prefix-ids
+                                            [(first ids) (first column-ids)]))]
+            {:store store
+             :select new-cell-client-id})
+          store)))))
 
 (defn do-add-column
   [store arguments]

@@ -77,6 +77,11 @@
   (is (= (remove-first even? [1 2 3 2 4])
          [1 3 2 4])))
 
+(deftest truncate-at-value-test
+  (is (= (truncate-at-value nil :a) nil))
+  (is (= (truncate-at-value [:a] :a) nil))
+  (is (= (truncate-at-value [:b :c :a :d :a] :a) [:b :c])))
+
 (deftest separate-by-test
   (is (= (separate-by even? [1 2 3 4 5 6])
          [[2 4 6] [1 3 5]])))

@@ -324,6 +324,15 @@
           (cons x (inner xs))))))
    coll))
 
+(defn truncate-at-value
+  "Given a seq, return its prefix before the first occurrence of the
+  given value."
+  [s value]
+  (when (seq s)
+    (let [f (first s)]
+      (when (not= f value)
+        (cons f (truncate-at-value (rest s) value))))))
+
 (defn separate-by
   "Split a seq into those where the predicate is true, and those where it
   is false."

@@ -16,6 +16,7 @@
              entity-impl
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
+                            id-label->element-ids
                             current-store id-valid? id->content]]
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
@@ -23,7 +24,9 @@
              [canonical :refer [canonicalize]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [dom-manager :refer [new-dom-manager add-root-dom]]
+             [dom-manager :refer [new-dom-manager add-root-dom
+                                  relative-ids->client-id
+                                  client-id->relative-ids]]
              [actions :refer :all]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
@@ -75,6 +78,10 @@
 (def t3 (update-add-session-temporary-element (first t2)))
 (def temporary-id (second t3))
 (def store (first t3))
+(def headers-id (first (id-label->element-ids
+                       store table-id :column-headers)))
+(def header-ids (map :item-id (semantic-elements
+                               (description->entity headers-id store))))       
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
@@ -251,24 +258,27 @@
     (is (id-valid? new-store (:item-id name-header)))))
 
 (deftest do-add-row-test
-  (let [result (do-add-row store
+  (let [first-header-id (first header-ids)
+        result (do-add-row store
                            {:target-key ["jane" "jane-age"]
                             :table-id table-id
-                            :row-id jane-id})
+                            :row-id jane-id
+                            :column-ids [first-header-id]
+                            :client-id (relative-ids->client-id
+                                        [table-id jane-id first-header-id])})
         [new-store client-data] (normalize-handler-response result store)
         row-condition (pattern-to-query `(nil ~@row-condition-elements))
         rows (matching-items row-condition store)
         new-rows (matching-items row-condition new-store)]
     (is (= (count new-rows)
            (+ 1 (count rows))))
-      ;; TODO: When select is added, add a test for it here.
-      ))
+    (let [new-id (first (clojure.set/difference (set (map :item-id new-rows))
+                                                (set (map :item-id rows))))]
+      (is (check (client-id->relative-ids (:select client-data))
+                 [table-id new-id first-header-id])))))
 
 (deftest do-add-column-test
-  (let [table-entity (description->entity table-id store)
-        headers-entity (first (label->elements table-entity :column-headers))
-        headers (semantic-elements headers-entity)
-        first-header-id (:item-id (first headers))
+  (let [first-header-id (first header-ids)
         result (do-add-column store
                               {:target-key ["jane" "jane-age"]
                                :table-id table-id
@@ -279,7 +289,7 @@
                                                    :column-headers))
         new-headers (semantic-elements new-headers-entity)]
     (is (= (count new-headers)
-           (+ 1 (count headers))))
+           (+ 1 (count header-ids))))
     ;; TODO: When select is added, add a test for it here.
     ))
 
@@ -302,9 +312,9 @@
         headers (semantic-elements headers-entity)
         first-header-id (:item-id (first headers))
         result (do-delete-column store
-                              {:target-key ["jane" "jane-age"]
-                               :table-id table-id
-                               :column-ids [first-header-id]})
+                                 {:target-key ["jane" "jane-age"]
+                                  :table-id table-id
+                                  :column-ids [first-header-id]})
         [new-store client-data] (normalize-handler-response result store)
         new-table-entity (description->entity table-id new-store)
         new-headers-entity (first (label->elements new-table-entity
@@ -318,10 +328,8 @@
                               {:target-key ["jane" "jane-age"]
                                :table-id table-id
                                :column-ids [first-header-id second-header-id]})
-        [new-store client-data] (normalize-handler-response result store)
-        new-table-entity (description->entity table-id new-store)
-        new-headers-entity (first (label->elements new-table-entity
-                                                   :column-headers))
+          [new-store client-data] (normalize-handler-response result store)
+          new-headers-entity (description->entity headers-id new-store)
           new-headers (semantic-elements new-headers-entity)]
       (is (= (count new-headers)
              (count headers))))))

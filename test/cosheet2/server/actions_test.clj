@@ -282,7 +282,10 @@
         result (do-add-column store
                               {:target-key ["jane" "jane-age"]
                                :table-id table-id
-                               :column-ids [first-header-id]})
+                               :column-ids [first-header-id]
+                               :row-id jane-id
+                               :client-id (relative-ids->client-id
+                                           [table-id jane-id first-header-id])})
         [new-store client-data] (normalize-handler-response result store)
         new-table-entity (description->entity table-id new-store)
         new-headers-entity (first (label->elements new-table-entity
@@ -290,8 +293,10 @@
         new-headers (semantic-elements new-headers-entity)]
     (is (= (count new-headers)
            (+ 1 (count header-ids))))
-    ;; TODO: When select is added, add a test for it here.
-    ))
+    (let [new-id (first (clojure.set/difference (set (map :item-id new-headers))
+                                                (set header-ids)))]
+      (is (check (client-id->relative-ids (:select client-data))
+                 [table-id jane-id new-id])))))
 
 (deftest do-delete-row-test
   (let [result (do-delete-row store

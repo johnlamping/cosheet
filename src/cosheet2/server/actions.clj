@@ -177,7 +177,7 @@
                          :after false store)]
         (if (and column-ids client-id)
           ;; Select the cell in the new row that is in the same column
-          ;; as the cell the user clicked on.
+          ;; as the cell that was selected.
           (let [relative-ids (client-id->relative-ids client-id)
                 prefix-ids (truncate-at-value relative-ids row-id)
                 new-cell-client-id (relative-ids->client-id
@@ -190,15 +190,24 @@
 (defn do-add-column
   [store arguments]
   (println "adding column")
-  (let [{:keys [column-ids table-id]}  arguments]
+  (let [{:keys [column-ids table-id row-id client-id]}  arguments]
     (when (and column-ids table-id)
       (let [column-headers-id (table-column-headers-id table-id store)
             [ids store] (create-possible-selector-elements
                          unspecified-column-header-template
                          [column-headers-id] [(last column-ids)]
                          :after false store)]
-        ;; TODO: add a select request
-        store))))
+        (if (and row-id client-id)
+          ;; Select the cell in the new column that is in the same row
+          ;; as the cell that was selected.
+          (let [relative-ids (client-id->relative-ids client-id)
+                prefix-ids (truncate-at-value relative-ids row-id)
+                new-cell-client-id (relative-ids->client-id
+                                    (concat prefix-ids
+                                            [row-id (first ids)]))]
+            {:store store
+             :select new-cell-client-id})
+          store)))))
 
 (defn do-delete 
   [store {:keys [target-ids template]}]

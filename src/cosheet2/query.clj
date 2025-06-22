@@ -10,7 +10,7 @@
 ;;;   * Replacing some of its nil contents with entities.
 ;;;   * Replacing any of its variables by entities, using the same
 ;;;     replacement for each occurrence of a variable. (And then those
-;;;     replacements may not be extended; they have to exactly match.
+;;;     replacements may not be extended; each replacement must be identical.
 
 ;;; The simplest query is just an entity that constitutes a pattern that is to
 ;;; be matched against a target. There are three levels of elaboration
@@ -46,7 +46,7 @@
 ;;;                      environment that cause some entity in the
 ;;;                      store to be an extension of the query.
 
-;;; TODO: Add functions that return all items matching a query, and
+;;; TODO: Add functions that return all items matching a query, and ones
 ;;; that return whether an item matches a query. Change
 ;;; query-calculator to use them, rather than requiring terms.
 
@@ -64,12 +64,13 @@
 ;;;   * A variable with a name of nil is considered distinct from any
 ;;;     other variable.
 ;;;   * A variable with a qualifier can only match entities satisfying
-;;;     the qualifier, which may not contain variables.
-;;;   * A variable with :reference binds to a particular item in the
-;;;     store, rather than to an entity that simply matches the
-;;;     item. Only one instance of a reference variable with a given
-;;;     name should occur in a query, since it can never match two
-;;;     different structures.
+;;;     the qualifier.
+;;;   * A variable with ::reference binds to an item in the
+;;;     store, rather than to an abstract pattern.
+;;;     If more than one instance of a reference variable with a given
+;;;     name occurs in a query, it can only match atoms or constants,
+;;;     since those are the only things that can be identical at
+;;;     different sites.
 
 ;;; A not matches if its sub-query does not match.
 ;;;   (::special-form (:not ::type) (<sub-query> &[::sub-query]))

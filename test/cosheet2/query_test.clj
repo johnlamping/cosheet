@@ -265,6 +265,10 @@
   (is (= (matching-extensions `(~(variable "foo" 1) ~(variable "foo")) {:a :b}
                               '(1 (1 :foo)))
          nil))
+  (is (= (matching-extensions `(1 ~(variable "foo" `(nil ~(variable "bar"))))
+                              {:a :b}
+                              '(1 (2 (3 :foo))))
+         [{:a :b, "foo" '(2 (3 :foo)) "bar" '(3 :foo)}]))
   (is (check (matching-extensions
               `(1 ~(variable "foo") ~(variable "bar")) {:a :b}
               '(1 2 3 4))

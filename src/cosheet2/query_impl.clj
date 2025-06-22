@@ -45,8 +45,8 @@
 (defn separate-negations
   "Given a seq of terms, return two seqs, one of positive terms,
    and one of negated terms. Discard any terms whose content
-   is ::query/sub-query, as that is basically a label, not a condition
-   to be matched."
+   is ::query/sub-query, as those are tags that identify sub-querys,
+   not a condition to be matched."
   [terms]
   (let [grouped (group-by
                  (fn [term]

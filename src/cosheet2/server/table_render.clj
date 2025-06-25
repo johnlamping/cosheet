@@ -495,15 +495,12 @@
                  :width  The width of the column
                  :query  Query that each element of the column must satisfy.
                          For a virtual column, this will not be present.
-         :competing-ids  Seq of ids whose matches must not appear in the cell.
      :disqualifications  Seq of conditions that elements must not satisfy,
                          even if they satisfy the query.
-                         This is determined by :competing ids, but we put in
-                         both, so that table cells can have the
-                         disqualifications put in their specification,
-                         causing them to be recomputed if the value of
-                         competing-ids change, without their having to
-                         register a dependency on that."
+         :competing-ids  Seq of ids whose matches must not appear in the cell.
+                         this determines the :disqualifications. It is not
+                         used in rendering the dom, only the disqualifications
+                         are. But it is currently used in going to batch edit."
   [parent-node node]
   (if-let [children (:child-nodes node)]
     (mapcat #(table-hierarchy-node-column-descriptions node %)

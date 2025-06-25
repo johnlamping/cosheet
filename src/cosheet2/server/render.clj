@@ -225,13 +225,14 @@
 ;;; sequence, where the first element is the function, and the rest of
 ;;; the list is additional arguments. (This approach is easier to to
 ;;; display and to debug than closures.)
-;;;           :relative-id  The id relative to containing component
+;;;           :relative-id  The id relative to containing component for
+;;;                         identifying this component in the dom.
 ;;;                         This is normally the id the dom is about, or an
 ;;;                         exemplar element of one of the ids the containing
 ;;;                         component is about.
-;;;                         However, this may overridden by :item-id.
-;;;                         If overridden, it must be a keyword,
-;;;                         an ItemId, or a vec of those.
+;;;                         However, what the component is about may be
+;;;                         overridden by :item-id. In that case, :relative-id
+;;;                         may be a keyword, or an ItemId, or a vec of those.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
@@ -297,6 +298,12 @@
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before
 ;;;                         or :after the adjacent item.
+;;;               :table id The id of the table, if any, that the dom is in.
+;;;                 :row-id The id of the row, if any, that the dom is in.
+;;;             :column-ids The ids of the columns, if any, that the dom is
+;;;                         in. For most cells, this will hold just a single
+;;;                         column. But header doms can span multiple
+;;;                         columns that share one of their labels
 ;;;                    ...  <other attributes that help define the component>
 ;;;    }]
 

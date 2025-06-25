@@ -155,14 +155,14 @@
   (.write w "table-cell-item-do-batch-AD"))
 
 (defn get-table-condition-rendering-data
-  [{:keys [row-condition-id]} mutable-store]
-  [[mutable-store [row-condition-id]]])
+  [{:keys [relative-id]} mutable-store]
+  [[mutable-store [relative-id]]])
 
 (defn render-table-condition-DOM
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header"
-  [{:keys [row-condition-id]} store]
-  (let [row-condition (description->entity row-condition-id store)
+  [{:keys [relative-id] :as spec} store]
+  (let [row-condition (description->entity relative-id store)
         condition-elements (semantic-elements row-condition)
         spec-down {:template 'anything
                    :width 0.75}
@@ -308,6 +308,8 @@
   (let [row-entity (description->entity row-id store)
         matches (matching-elements query row-entity)
         entities (if (seq disqualifications)
+                   ;; TODO: Instead of this, filter just the matches
+                   ;; that don't meet the disqualifications.
                    (let [do-not-show (map #(matching-elements % row-entity)
                                           disqualifications)]
                      (seq (clojure.set/difference
@@ -441,7 +443,7 @@
 
 (defn render-table-rows-DOM
   "The specification must have
-  row-condition-id, column-descriptions-R row-template-R and row-ids-R."
+   column-descriptions-R row-template-R and row-ids-R."
   [specification row-template row-ids]
   ;; We pass on column-descriptions-R.
   (let [row-spec (dissoc specification
@@ -490,10 +492,12 @@
   return a map:
              :column-id  The id that identifies the column.
                          (the id of the column item)
+                 :width  The width of the column
                  :query  Query that each element of the column must satisfy.
                          For a virtual column, this will not be present.
          :competing-ids  Seq of ids whose matches must not appear in the cell.
-     :disqualifications  Seq of conditions that elements must not satisfy.
+     :disqualifications  Seq of conditions that elements must not satisfy,
+                         even if they satisfy the query.
                          This is determined by :competing ids, but we put in
                          both, so that table cells can have the
                          disqualifications put in their specification,
@@ -556,7 +560,6 @@
                                      id)))
             condition-dom (make-component
                            {:relative-id row-condition-id
-                            :row-condition-id row-condition-id
                             :render-dom render-table-condition-DOM
                             :get-rendering-data
                             get-table-condition-rendering-data

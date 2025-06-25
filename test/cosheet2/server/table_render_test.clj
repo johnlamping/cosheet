@@ -261,10 +261,10 @@
     ;; Check the top level condition
     (is (check
          (run-renderer
-          render-table-condition-DOM {:row-condition-id row-condition-id}
+          render-table-condition-DOM {:relative-id row-condition-id}
           get-table-condition-rendering-data store)
          [:div {:class "horizontal-labels-element query-condition"}
-           ;; A virtual label for the condition
+          ;; A virtual label for the condition
           [:component {:template '(anything :label)
                        :position :after
                        :relative-id :virtual-label
@@ -695,7 +695,6 @@
            get-table-rendering-data store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
-                        :row-condition-id row-condition-id
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
                         :get-do-batch-edit-action-data

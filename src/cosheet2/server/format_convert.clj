@@ -5,7 +5,7 @@
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items]])))
 
-(def current-format 6)
+(def current-format 7)
 
 (defn convert-from-0-to-1
   "Convert a store from format 0 to format 1.

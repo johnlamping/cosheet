@@ -7,7 +7,7 @@
                                       description->entity
                                       description->updating-entity-R 
                                       StoredEntity
-                                      updating-immutable label?]]
+                                      label? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -536,9 +536,7 @@
       [:div {}]
       (let [table-R (description->updating-entity-R table-id mutable-store)
             row-template-R (expr table-row-template table-R)
-            ;; TODO: Make this use table-R
-            column-headers-R (description->updating-entity-R
-                              column-headers-id mutable-store)
+            column-headers-R (expr label->element table-R :column-headers)
             hierarchy-R (table-hierarchy-R column-headers-R)
             row-ids-R (table-row-ids-R row-template-R mutable-store)
             virtual-column-description {:column-id :virtualColumn}

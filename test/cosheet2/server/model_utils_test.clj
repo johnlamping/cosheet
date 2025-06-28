@@ -131,6 +131,46 @@
     (is (not (selector? non-selector-child)))
     (is (not (selector? non-selector-grandchild)))))
 
+(deftest starting-store-test
+  (let [s (starting-store "hi")
+        tabs (matching-items '(nil "hi" :tab
+                               (nil :tab-topic :table))
+                             s)
+        tab (first tabs)
+        rows (matching-items
+              '(nil :top-level) s)
+        table (first (matching-elements '(nil :table) tab))
+        row-conditions (matching-elements '(nil :row-condition) table)
+        column-headers-list (matching-elements '(nil :column-headers) table)]
+    (is (= (count tabs) 1))
+    (is (= (count row-conditions) 1))
+    (is (= (count column-headers-list) 1))
+    (println (to-list tab))
+    (is (check (to-list tab)
+               (as-set
+                `(""
+                  :tab
+                  ~(as-set
+                    `(:blank :tab-topic
+                             ~(as-set
+                               '(anything
+                                 ("hi" :label)
+                                 :row-condition :selector :non-semantic))
+                             ~(as-set
+                               '(anything
+                                 (anything (" A" :label))
+                                 :column-headers :selector :non-semantic))
+                             :table))
+                  ("hi" (~(any) :order))
+                  (~(any) :order)))))
+    (is (= rows []))
+    (is (check (semantic-to-list (first row-conditions))
+               '(anything ("hi" :label))))
+    (is (check (map semantic-to-list
+                    (ordered-entities
+                     (semantic-elements (first column-headers-list))))
+               ['(anything (" A" :label))]))))
+
 (deftest add-table-test
   (let [s (starting-store "hi")
         s1 (add-table s "there" [["a" "b"] [1 2] [3]])
@@ -174,8 +214,8 @@
                 '(anything ("there" :label)))))
     (is (check (map semantic-to-list (ordered-entities
                                       (semantic-elements column-headers)))
-               (as-set ['(anything ("a" :label))
-                        '(anything ("b" :label))])))))
+               [(as-set '(anything ("a" :label)))
+                (as-set '(anything ("b" :label)))]))))
 
 (deftest avoid-problems-test
   (let [store (starting-store "test")

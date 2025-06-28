@@ -197,13 +197,13 @@
 
   (equivalent-undo-point? [this]
     "Return whether this store is equivalent to the previous store as an
-     undo point. This is usually the case because an update only
-     affected display information that is recorded in the store, like
-     the current selection. An undo/redo goes to the nearest store not
-     equivalent to the current one. This means that undo followed by
-     redo won't necessarily return the same store. This gives natural
-     behavior because it means that after either an undo or a redo,
-     the selection ends up at the item changed by the undo/redo.")
+     undo point. When this is the case, is is usually because what
+     changed was something like the current selection, which is not
+     semantic. An undo/redo goes to the nearest store not equivalent
+     to the current one. This means that undo followed by redo won't
+     necessarily return the same store. This gives natural behavior
+     because it means that after either an undo or a redo, the
+     selection ends up at the item changed by the undo/redo.")
 
   (update-equivalent-undo-point [this equivalent]
     "Set whether this store is equivalent to the previous store as an undo

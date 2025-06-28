@@ -46,13 +46,14 @@
 (def store (first t1))
 (def joe (description->entity joe-id store))
 
-(deftest transform-pattern-toward-query-test
+(deftest transform-pattern-toward-fixed-term-test
   (let [pattern '(anything anything ("a" :label))]
-    (is (= (transform-pattern-toward-query pattern)
+    (is (= (transform-pattern-toward-fixed-term pattern)
            '(nil nil ("a" :label))))
-    (is (= (transform-pattern-toward-query pattern :require-not-labels true)
+    (is (= (transform-pattern-toward-fixed-term
+            pattern :require-not-labels true)
            `(nil (nil ~(not-query :label)) ("a" :label) ~(not-query :label))))
-    (is (= (transform-pattern-toward-query
+    (is (= (transform-pattern-toward-fixed-term
             pattern :require-not-labels true :require-orders true)
            `(nil (nil ~(not-query :label) (nil :order))
                  ("a" :label)

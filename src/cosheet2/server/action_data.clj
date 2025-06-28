@@ -17,7 +17,7 @@
             (cosheet2.server
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
-                                  pattern-to-query
+                                  pattern-to-fixed-term
                                   specialize-generic
                                   create-possible-selector-elements
                                   table-row-template]]
@@ -177,7 +177,7 @@
     exemplar-id
     (let [template (-> (description->entity exemplar-id immutable-store)
                        semantic-to-list
-                       pattern-to-query)
+                       pattern-to-fixed-term)
           subject (description->entity subject-id immutable-store)]
       (:item-id (best-match template (matching-elements template subject))))))
 

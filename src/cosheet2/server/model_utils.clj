@@ -159,7 +159,7 @@
       (if-let [subj (subject entity)]
         (selector? subj))))
 
-(defn transform-pattern-toward-query
+(defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
     * Replace 'anything by nil.
     * If require-not-labels and an element is not a label, then require it
@@ -169,7 +169,7 @@
   [pattern & {:keys [require-not-labels require-orders] :as options}]
   (let [old-content (content pattern)
         new-content (if (= 'anything old-content) nil old-content) 
-        new-elements (cond-> (map #(transform-pattern-toward-query
+        new-elements (cond-> (map #(transform-pattern-toward-fixed-term
                                     %
                                     :require-not-labels require-not-labels
                                     :require-orders require-orders)
@@ -191,7 +191,7 @@
   [entity]
   (-> entity
       semantic-to-list
-      transform-pattern-toward-query))
+      transform-pattern-toward-fixed-term))
 
 (defn entity->fixed-term-with-negations
     "Given an entity, alter it to work as a query that assumes everything
@@ -202,30 +202,30 @@
   [entity]
   (-> entity
       semantic-to-list
-      (transform-pattern-toward-query :require-not-labels true)))
+      (transform-pattern-toward-fixed-term :require-not-labels true)))
 
-(defn pattern-to-query
-  "Given a pattern, alter it to work as a query. Specifically:
+(defn pattern-to-fixed-term
+  "Given a pattern, alter it to work as a fixed-term. Specifically:
     * Replace 'anything by nil.
     * If an element is not a label, require it not to have a :label element.
     * If an entity has nil content, add a '(nil :order) element to make
       it only match user editable elements."
   [pattern]
-  (transform-pattern-toward-query pattern
-                                  :require-not-labels true
-                                  :require-orders true))
+  (transform-pattern-toward-fixed-term pattern
+                                      :require-not-labels true
+                                      :require-orders true))
 
-(defn exemplar-to-query
-  "Given an exemplar entity, turn it into a query"
+(defn exemplar-to-fixed-term
+  "Given an exemplar entity, turn it into a fixed-term"
   [entity]
-  (pattern-to-query (semantic-to-list entity)))
+  (pattern-to-fixed-term (semantic-to-list entity)))
 
-(defn query-to-template
-  "Given a query, turn it into a template by removing any (nil :order),
+(defn fixed-term-to-template
+  "Given a fixed-term, turn it into a template by removing any (nil :order),
    removing any negations, and replacing any nil by the specified replacement,
    which defaults to the empty string."
   ([query]
-   (query-to-template query ""))
+   (fixed-term-to-template query ""))
   ([query nil-replacement]
    (prewalk-seqs (fn [query] (cond (nil? query)
                                    nil-replacement

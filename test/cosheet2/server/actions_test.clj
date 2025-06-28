@@ -32,7 +32,7 @@
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
                                   semantic-to-list selector?
-                                  pattern-to-query]]
+                                  pattern-to-fixed-term]]
              [session-state :refer [update-add-session-temporary-element]])
             ; :reload
             ))
@@ -267,7 +267,7 @@
                             :client-id (relative-ids->client-id
                                         [table-id jane-id first-header-id])})
         [new-store client-data] (normalize-handler-response result store)
-        row-condition (pattern-to-query `(nil ~@row-condition-elements))
+        row-condition (pattern-to-fixed-term `(nil ~@row-condition-elements))
         rows (matching-items row-condition store)
         new-rows (matching-items row-condition new-store)]
     (is (= (count new-rows)
@@ -304,7 +304,7 @@
                                :table-id table-id
                                :row-id jane-id})
         [new-store client-data] (normalize-handler-response result store)
-        row-condition (pattern-to-query
+        row-condition (pattern-to-fixed-term
                        `(nil ~@row-condition-elements))
         rows (matching-items row-condition store)
         new-rows (matching-items row-condition new-store)]

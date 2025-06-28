@@ -30,10 +30,10 @@
                                   table-row-condition-id
                                   semantic-to-list
                                   semantic-elements semantic-non-label-elements
-                                  pattern-to-query query-to-template
+                                  pattern-to-fixed-term fixed-term-to-template
                                   column-header-template
                                   unspecified-column-header-template
-                                  exemplar-to-query]]
+                                  exemplar-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
@@ -197,7 +197,7 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (map #(pattern-to-query (semantic-to-list (:item %)))
+  (map #(pattern-to-fixed-term (semantic-to-list (:item %)))
        (hierarchy-node-non-immediate-descendant-cover node)))
 
 (defn table-header-node-specification
@@ -308,16 +308,13 @@
   (let [row-entity (description->entity row-id store)
         matches (matching-elements query row-entity)
         entities (if (seq disqualifications)
-                   ;; TODO: Instead of this, filter just the matches
-                   ;; that don't meet the disqualifications.
-                   (let [do-not-show (map #(matching-elements % row-entity)
-                                          disqualifications)]
-                     (seq (clojure.set/difference
-                           (set matches) (set (apply concat do-not-show)))))
+                   (filter (fn [element] (not (some #(extended-by? % element)
+                                                    disqualifications)))
+                           matches)
                    matches)
         spec (-> specification
                  transform-specification-for-elements
-                 (assoc :template (query-to-template query)))
+                 (assoc :template (fixed-term-to-template query)))
         non-virtual-spec (assoc spec :get-do-batch-edit-action-data
                                 get-table-cell-item-do-batch-edit-action-data)]
     (if (empty? entities)
@@ -400,7 +397,7 @@
     :class "table-cell"
     :render-dom render-virtual-DOM
     :get-rendering-data get-virtual-DOM-rendering-data
-    :template (query-to-template query)
+    :template (fixed-term-to-template query)
     :get-action-data get-virtual-action-data
     :width width}))
 
@@ -468,14 +465,14 @@
   "Return a reporter whose value is the row ids for the table, in order."
   [row-template-R mutable-store]
   (expr-let [current-template row-template-R]
-    (let [row-query (pattern-to-query current-template)
+    (let [row-query (pattern-to-fixed-term current-template)
           matching-ids-R (matching-item-ids-R row-query mutable-store)]
       (ordered-ids-R matching-ids-R mutable-store))))
 
 (defn table-hierarchy-leaf-column-description
   [parent-node node]
   (let [leaf (first (:leaves node))
-        query (exemplar-to-query (:item leaf))
+        query (exemplar-to-fixed-term (:item leaf))
         competitors (when (and  parent-node (empty? (:properties node)))
                       (hierarchy-node-non-immediate-descendant-cover
                        parent-node))]
@@ -484,7 +481,7 @@
              :width 0.75}
       (seq competitors) 
       (assoc :competing-ids (map #(:item-id (:item %)) competitors) 
-             :disqualifications (map #(exemplar-to-query (:item %))
+             :disqualifications (map #(exemplar-to-fixed-term (:item %))
                                      competitors)))))
 
 (defn table-hierarchy-node-column-descriptions

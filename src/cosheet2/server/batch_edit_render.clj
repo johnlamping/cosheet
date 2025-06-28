@@ -19,7 +19,7 @@
              [render-utils :refer [hierarchy-node-DOM make-component]]
              [model-utils :refer [semantic-elements semantic-non-label-elements
                                   semantic-to-list entity->canonical-semantic
-                                  pattern-to-query]]
+                                  pattern-to-fixed-term]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
                                   labels-and-elements-DOM
@@ -36,7 +36,7 @@
   (expr-let [query-entity query-R]
     (let [query (-> query-entity
                     semantic-to-list
-                    pattern-to-query
+                    pattern-to-fixed-term
                     (add-elements-to-entity-list [query-qualifier]))]
       (expr-let [matches (matching-item-ids-R query mutable-store)]
         (count matches)))))
@@ -95,7 +95,7 @@
   [{:keys [query-id stack-id do-not-match-query]} store]
   (let [query-entity (description->entity query-id store)
         stack-entity (description->entity stack-id store)
-        query (pattern-to-query (semantic-to-list query-entity))
+        query (pattern-to-fixed-term (semantic-to-list query-entity))
         row-query (add-elements-to-entity-list query [:row-condition])
         matching-table-conditions (matching-items row-query store)]
     (distinct
@@ -116,11 +116,11 @@
         selecting-query (-> (or item-id relative-id)
                             (description->entity store)
                             semantic-to-list
-                            pattern-to-query)
+                            pattern-to-fixed-term)
         excluding-queries (map #(-> %
                                     (description->entity store)
                                     semantic-to-list
-                                    pattern-to-query)
+                                    pattern-to-fixed-term)
                                excluding-ids)
         to-search (batch-edit-matching-rows specification store)
         matches (mapcat (fn [entity]

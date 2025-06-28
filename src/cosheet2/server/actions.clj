@@ -34,7 +34,7 @@
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
-                         exemplar-to-query remove-semantic-elements
+                         exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
                          unspecified-column-header-template]]
     [order-utils :refer [furthest-item
@@ -274,7 +274,8 @@
   return the ids of the elements that matches it."
   [id template-id store]
   (when id
-    (let [query (exemplar-to-query (description->entity template-id store))]
+    (let [query (exemplar-to-fixed-term
+                 (description->entity template-id store))]
       (map :item-id
        (matching-elements query (description->entity id store))))))
 

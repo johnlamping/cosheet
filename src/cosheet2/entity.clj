@@ -160,16 +160,6 @@
   (expr-let [element (label->element entity label)]
     (content element)))
 
-(defn ultimate-content
-  "Chase content until an atomic content is reached."
-  [entity]
-  (if (nil? entity)
-    nil
-    (expr-let [content (content entity)]
-      (if (primitive? content)
-        content
-        (ultimate-content content)))))
-
 (defn description->updating-entity-R
   [id store]
   (let [entity (description->entity id store)]

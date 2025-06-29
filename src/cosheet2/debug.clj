@@ -322,9 +322,10 @@
   (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
     (store/read-store (store/new-element-store) stream)))
 
-(defn to-limited-list [entity depth width]
+;;; Make a list form, but only to a limited depth
+(defn to-depth-limited-list [entity depth width]
   (if (entity/primitive? entity)
-    (entity/ultimate-content entity)
+    entity
     (let [content (entity/content entity)
           elements (entity/elements entity)]
       (if (empty? elements)
@@ -333,7 +334,8 @@
           (cons content '("..."))
           ;; TODO: Once Order is present, try order-items-R on the elements.
           (cons content
-                (map #(to-limited-list % (- depth 1) width) elements)))))))
+                (map #(to-depth-limited-list % (- depth 1) width)
+                     elements)))))))
 
 (def show-state
   (atom {:store nil
@@ -354,7 +356,7 @@
   (let [store (or store (read-store-file name))
         results (vec (query/matching-items pattern store))
         lists (vec (map #(-> %
-                             (to-limited-list depth width)
+                             (to-depth-limited-list depth width)
                              simplify-for-print)
                         (take width results)))]
     (clojure.pprint/pprint lists)))

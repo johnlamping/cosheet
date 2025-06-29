@@ -24,7 +24,7 @@
 ;;;             to the item. This is the how items are referred to in the
 ;;;             store's API.
 ;;;    content: The content of the item. This can be a string, number,
-;;;             orderable, atom, nil, or the id of another item.
+;;;             orderable, symbol, nil, or the id of another item.
 ;;;    subject: The id of the item that this item is the subject of,
 ;;;             or nil if this item has no subject.
 
@@ -157,7 +157,7 @@
 
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity,
-     and may not have non-atomic contents. Return a seq of ids that
+     and may not have non-primitive contents. Return a seq of ids that
      includes the ids all entities that could potentially be
      extensions of the given template. Also return a boolean that is
      true if the list of ids is precise; if all of them represent

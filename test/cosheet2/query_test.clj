@@ -23,9 +23,7 @@
 (deftest extended-by-test
   (let [element0 '(3 "Foo")
         element1 '(3 ("foo" :label))
-        element2 '((3))
-        itemx `(nil ~element0 ~element1)
-        itemy `(nil ~element2)]
+        itemx `(nil ~element0 ~element1)]
     (is (extended-by? 1 1) true)
     (is (not (extended-by? 1 2)))
     (is (extended-by? "1" "1"))
@@ -39,8 +37,6 @@
     (is (extended-by? '(nil (nil :label)) element1))
     (is (not (extended-by? element1 element0)))
     (is (extended-by? itemx itemx))
-    (is (extended-by? itemy itemx))
-    (is (not (extended-by? itemx itemy)))
     (is (extended-by? '(3 ("foo" false))
                       '(3 ("foo" false))))
     (is (extended-by? '(nil ("foo" false))
@@ -58,9 +54,6 @@
     (is (not (extended-by? '(3 2 2)
                            '(3 2))))
     (is (extended-by? 3 element0))
-    (is (extended-by? 3 element2))
-    (is (extended-by? element2 3))
-    (is (not (extended-by? element2 4)))
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
     (is (extended-by? `(1 ~(not-query :x))

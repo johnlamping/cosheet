@@ -31,8 +31,7 @@
         [s3 idc] (add-simple-item s2 id99 4)
         [s4 idd] (add-simple-item s3 idc "bar")
         [s5 ide] (add-simple-item s4 id99 "baz")
-        [s6 idf] (add-simple-item s5 idc ide)
-        [s7 idg] (add-simple-item s6 ide "bletch")
+        [s7 idg] (add-simple-item s5 ide "bletch")
         [s _] (add-simple-item s7 idb :label)
         item0 (description->entity id0 s)
         item1 (description->entity id1 s)
@@ -55,10 +54,6 @@
     (is (has-keyword? item_b :label))
     (is (not (has-keyword? item_b :foo)))
     (is (= (content (description->entity ida s)) 3))
-    (is (not (primitive? (content (description->entity idf s)))))
-    (is (content (content (description->entity idf s))) "baz")
-    (is (= (elements (content (description->entity idf s)))
-           [(description->entity idg s)]))
     (is (= (label->element item99 "foo") (description->entity ida s)))
     (is (= (label->element item99 "bletch") nil))
     (is (= (label->content item99 "foo") 3))
@@ -70,7 +65,7 @@
                    (label->element (description->entity id99 sz) "foo")))
       (is (thrown? java.lang.AssertionError
                    (label->content (description->entity id99 sz) "foo"))))
-    (is (= (ultimate-content (description->entity idc s)) 4))
+    (is (= (content (description->entity idc s)) 4))
     (is (= (to-list item0) nil))
     (is (= (current-version item0) item0))))
 
@@ -83,8 +78,7 @@
         [s3 idc] (add-simple-item s2 id99 4)
         [s4 idd] (add-simple-item s3 idc "bar")
         [s5 ide] (add-simple-item s4 id99 "baz")
-        [s6 idf] (add-simple-item s5 idc ide)
-        [s7 idg] (add-simple-item s6 ide "bletch")
+        [s7 idg] (add-simple-item s5 ide "bletch")
         [s _] (add-simple-item s7 idb :label)
         queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
@@ -94,7 +88,7 @@
         item99 (description->entity id99 ms)
         item_b (description->entity idb ms)
         list-99 `(nil ("baz" "bletch")
-                      (4 "bar" ~(description->entity ide ms))
+                      (4 "bar")
                       (3 ("foo" :label)))]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
@@ -113,17 +107,12 @@
     (is (current-value (has-keyword? item_b :label)))
     (is (not (current-value (has-keyword? item_b :foo))))
     (is (= (current-value (content (description->entity ida ms))) 3))
-    (is (not (current-value
-              (primitive? (current-value (content (description->entity idf ms)))))))
     (is (current-value
          [content (current-value (content (description->entity idc ms)))])
         4)
-    (is (= (current-value
-            (elements (current-value (content (description->entity idf ms)))))
-           [(description->entity idg ms)]))
     (is (= (current-value (label->content item99 "foo")) 3))
     (is (= (current-value (label->content item99 "bletch")) nil))
-    (is (= (current-value (ultimate-content (description->entity idc ms))) 4))
+    (is (= (current-value (content (description->entity idc ms))) 4))
     (let [as-list (current-value (to-list item99))]
       (is (check (canonicalize as-list)
                  (canonicalize list-99))))
@@ -227,12 +216,6 @@
   (is (not (has-keyword? :foo :foo)))
   (is (not (has-keyword? 'foo :foo)))
   (is (not (has-keyword? nil :foo))))
-
-(deftest ultimate-content-test
-  (is (= (ultimate-content 2) 2))
-  (is (= (ultimate-content '(((1 2) 3) 4)) 1))
-  (is (= (ultimate-content '(((nil 2) 3) 4)) nil))
-  (is (= (ultimate-content nil) nil)))
 
 (deftest entity<->description-test
   (let [s (new-element-store)

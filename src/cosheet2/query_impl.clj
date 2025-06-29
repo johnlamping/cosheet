@@ -4,7 +4,7 @@
                                       mutable-entity? primitive?
                                       description->entity
                                       content elements label->elements
-                                      label->content ultimate-content
+                                      label->content
                                       to-list current-version
                                       in-different-store]]
                       [entity :refer [label? minimal-label?]]
@@ -124,7 +124,7 @@
              (empty? (rest positive))
              (minimal-label? (first candidates)))
       (content (first candidates))
-      (mapcat #(let [label (ultimate-content %)]
+      (mapcat #(let [label (content %)]
                  (when (and (not (nil? label))
                             (not= label ::query/special-form))
                    [label]))
@@ -167,8 +167,8 @@
 (defn extended-by? [fixed-term target]
   (or (nil? fixed-term)
       (if (primitive? fixed-term)
-        (equivalent-primitives? (ultimate-content fixed-term)
-                                (ultimate-content target))
+        (equivalent-primitives? (content fixed-term)
+                                (content target))
         (and (extended-by? (content fixed-term) (content target))
              (or (empty? (elements fixed-term))
                  (let [[positive negative] (separate-negations

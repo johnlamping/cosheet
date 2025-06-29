@@ -119,8 +119,7 @@
   
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (equivalent-primitives? label
-                                                       (ultimate-content %))
+                   (some #(and (equivalent-primitives? label (content %))
                                (label? %))
                          (elements element)))
                  (elements this))))

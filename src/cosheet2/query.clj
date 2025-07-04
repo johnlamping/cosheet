@@ -13,11 +13,11 @@
 ;;;     replacements may not be extended; each replacement must be identical.
 
 ;;; The simplest query is just an entity that constitutes a pattern that is to
-;;; be matched against a target. There are three levels of elaboration
+;;; be matched against a subject. There are three levels of elaboration
 ;;; that incorporate more kinds of objects into the patterns to yield more
 ;;; involved queries.
 ;;;   fixed-term  May have nil as a content, indicating anything.
-;;;               And may have negated elements, which match if the target
+;;;               And may have negated elements, which match if the subject
 ;;;               does not have an element that matches them.
 ;;;         term  May also have variables. All occurrences of a variable
 ;;;               with the same name have to match the same value.
@@ -29,14 +29,14 @@
 ;;; arguments. Where an environment is mentioned, it means a binding
 ;;; of some query variables to entities.
 
-;;;        extended-by?: Takes a fixed-term and a target entity. Says
-;;;                      whether the target extends the term.
-;;; matching-extensions: Takes a term, an environment, and a target
+;;;        extended-by?: Takes a fixed-term and a subject entity. Says
+;;;                      whether the subject extends the term.
+;;; matching-extensions: Takes a term, an environment, and a subject
 ;;;                      entity.  Returns a set of extensions of the
 ;;;                      environment that cause the term to be an
-;;;                      extension of the target.
-;;;   matching-elements: Takes a term and a target entity. Returns a
-;;;                      seq of all elements of the target that are
+;;;                      extension of the subject.
+;;;   matching-elements: Takes a term and a subject entity. Returns a
+;;;                      seq of all elements of the subject that are
 ;;;                      extensions of the term.
 ;;;      matching-items: Takes a term and a store.  Returns
 ;;;                      a seq of all items in the store that denote
@@ -167,31 +167,31 @@
 ;;; we define the function to call the multimethod.
 
 (defmulti extended-by-m?
-  (fn [fixed-term target] true))
+  (fn [fixed-term subject] true))
 
 (defn extended-by?
-  "Return true if the fixed-term is extended by the target entity"
-  [fixed-term target]
-  (extended-by-m? fixed-term target))
+  "Return true if the fixed-term is extended by the subject entity"
+  [fixed-term subject]
+  (extended-by-m? fixed-term subject))
 
 (defmulti matching-extensions-m
-  (fn [term env target] true))
+  (fn [term env subject] true))
 
 (defn matching-extensions
   "Return a lazy seq of environments that are extensions of the given
-  environment and for which the target entity matches the term, which
+  environment and for which the subject entity matches the term, which
   must be immutable."
-  ([term target] (matching-extensions-m term {} target))
-  ([term env target] (matching-extensions-m term env target)))
+  ([term subject] (matching-extensions-m term {} subject))
+  ([term env subject] (matching-extensions-m term env subject)))
 
 (defmulti matching-elements-m
-  "Return all elements of the target entity that match the term."
-  (fn [term target] true))
+  "Return all elements of the subject entity that match the term."
+  (fn [term subject] true))
 
 (defn matching-elements
-   "Return all elements of the target entity that match the term."
-  [term target]
-  (matching-elements-m term target))
+   "Return all elements of the subject entity that match the term."
+  [term subject]
+  (matching-elements-m term subject))
 
 (defmulti matching-items-m
   "Return all items in the store that match the term."

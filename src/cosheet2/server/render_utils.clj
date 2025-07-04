@@ -81,7 +81,7 @@
   once."
   [entity]
   (let [entity-canonical (entity->canonical-term entity)
-        siblings (semantic-elements (entity/subject entity))
+        siblings (semantic-elements (entity/target entity))
         [labels non-labels] (separate-by label? siblings)
         candidates (if ((set labels) entity) labels non-labels)
         matching (filter #(= entity-canonical (entity->canonical-term %))
@@ -182,7 +182,3 @@
                               % node-f child-specification-f child-spec)
                         children)))]
      (node-f node child-doms specification))))
-
-
-
-

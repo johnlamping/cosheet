@@ -4,11 +4,11 @@
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
                       [expression :refer [expr-let]]
-                      [store :refer [add-simple-item make-item-id
+                      [store :refer [add-link make-item-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
                                      current-store
-                                     update-content store-update!]]
+                                     update-source store-update!]]
                       store-impl
                       mutable-store-impl
                       [entity :refer :all]
@@ -26,13 +26,13 @@
   (let [id0 (make-item-id "0")
         id1 (make-item-id "1")
         id99 (make-item-id "99")
-        [s1 ida] (add-simple-item (new-element-store) id99 3)
-        [s2 idb] (add-simple-item s1 ida "foo")
-        [s3 idc] (add-simple-item s2 id99 4)
-        [s4 idd] (add-simple-item s3 idc "bar")
-        [s5 ide] (add-simple-item s4 id99 "baz")
-        [s7 idg] (add-simple-item s5 ide "bletch")
-        [s _] (add-simple-item s7 idb :label)
+        [s1 ida] (add-link (new-element-store) id99 3)
+        [s2 idb] (add-link s1 ida "foo")
+        [s3 idc] (add-link s2 id99 4)
+        [s4 idd] (add-link s3 idc "bar")
+        [s5 ide] (add-link s4 id99 "baz")
+        [s7 idg] (add-link s5 ide "bletch")
+        [s _] (add-link s7 idb :label)
         item0 (description->entity id0 s)
         item1 (description->entity id1 s)
         item99 (description->entity id99 s)
@@ -40,7 +40,7 @@
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (primitive? item0)))
-    (is (= (subject (description->entity ida s)) item99))
+    (is (= (target (description->entity ida s)) item99))
     (is (= (label->elements item99 "foo") [(description->entity ida s)]))
     ;; Check that the :label is required.
     (is (= (label->elements (description->entity id99 s5) "foo") nil))
@@ -58,9 +58,9 @@
     (is (= (label->element item99 "bletch") nil))
     (is (= (label->content item99 "foo") 3))
     (is (= (label->content item99 "bletch") nil))
-    (let [[sx idx] (add-simple-item s id99 7)
-          [sy idy] (add-simple-item sx idx "foo")
-          [sz idz] (add-simple-item sy idy :label)]
+    (let [[sx idx] (add-link s id99 7)
+          [sy idy] (add-link sx idx "foo")
+          [sz idz] (add-link sy idy :label)]
       (is (thrown? java.lang.AssertionError
                    (label->element (description->entity id99 sz) "foo")))
       (is (thrown? java.lang.AssertionError
@@ -73,13 +73,13 @@
   (let [id0 (make-item-id "0")
         id1 (make-item-id "1")
         id99 (make-item-id "99")
-        [s1 ida] (add-simple-item (new-element-store) id99 3)
-        [s2 idb] (add-simple-item s1 ida "foo")
-        [s3 idc] (add-simple-item s2 id99 4)
-        [s4 idd] (add-simple-item s3 idc "bar")
-        [s5 ide] (add-simple-item s4 id99 "baz")
-        [s7 idg] (add-simple-item s5 ide "bletch")
-        [s _] (add-simple-item s7 idb :label)
+        [s1 ida] (add-link (new-element-store) id99 3)
+        [s2 idb] (add-link s1 ida "foo")
+        [s3 idc] (add-link s2 id99 4)
+        [s4 idd] (add-link s3 idc "bar")
+        [s5 ide] (add-link s4 id99 "baz")
+        [s7 idg] (add-link s5 ide "bletch")
+        [s _] (add-link s7 idb :label)
         queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
         ms (new-mutable-store s)
@@ -92,7 +92,7 @@
                       (3 ("foo" :label)))]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
-    (is (= (subject (description->entity ida ms)) item99))
+    (is (= (target (description->entity ida ms)) item99))
     (is (not (current-value (primitive? item0))))
     (is (= (current-value (label->elements item99 "foo"))
            [(description->entity ida ms)]))
@@ -142,11 +142,11 @@
         (is (check (map canonicalize @record)
                    [(canonicalize orig-99)]))
         ;; Make sure it is not recomputed when an irrelevant change is made.
-        (store-update! ms (fn [s] (update-content s id0 44)))
+        (store-update! ms (fn [s] (update-source s id0 44)))
         (is (check (map canonicalize @record)
                    [(canonicalize orig-99)]))
         ;; Make sure it is recomputed when a deep, but relevant, change is made.
-        (store-update! ms (fn [s] (update-content s idd "bletch")))
+        (store-update! ms (fn [s] (update-source s idd "bletch")))
         (run-all-pending-tasks queue)
         (is (check (canonicalize
                     (reporter-value updating-immutable-result))

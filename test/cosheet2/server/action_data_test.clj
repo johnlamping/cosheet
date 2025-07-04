@@ -6,7 +6,7 @@
                       [entity :as entity  :refer [description->entity
                                                   elements to-list]]
                       [store :refer [new-element-store ImmutableStore
-                                     id->subject id->content
+                                     id->target id->source
                                      id-label->element-ids]] 
                       [store-utils :refer [add-entity]]
                       [query :refer [matching-elements]]
@@ -135,7 +135,7 @@
 
 (defn get-order [id store]
   (let [elements (id-label->element-ids store id :order)]
-    (id->content store (first elements))))
+    (id->source store (first elements))))
 
 (deftest get-virtual-action-data-test
   (let [data (get-virtual-action-data
@@ -145,7 +145,7 @@
     (let [original-store store
           {:keys [target-ids store]} data
           id (first target-ids)]
-      (is (= (id->subject store id) joe-id))
+      (is (= (id->target store id) joe-id))
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
       (is (= (semantic-to-list (description->entity id store))
@@ -160,17 +160,17 @@
     (let [original-store store
           {:keys [target-ids store]} data
           [new-jane-id new-joe-id] target-ids]
-      (is (=  (id->subject store (id->subject store new-joe-id)) joe-id))
+      (is (=  (id->target store (id->target store new-joe-id)) joe-id))
       (is (check (semantic-to-list (description->entity new-joe-id store))
                  '(2 ("name" :label))))
       (is (check (semantic-to-list (description->entity
-                                    (id->subject store new-joe-id) store))
+                                    (id->target store new-joe-id) store))
                  '("" (2 ("name" :label)))))
-      (is (= (id->subject store (id->subject store new-jane-id)) jane-id))
+      (is (= (id->target store (id->target store new-jane-id)) jane-id))
       (is (check (semantic-to-list (description->entity new-jane-id store))
                  '(2 ("name" :label))))
       (is (check (semantic-to-list (description->entity
-                                    (id->subject store new-jane-id) store))
+                                    (id->target store new-jane-id) store))
                  '(anything (2 ("name" :label)))))))
   ;; Try :sibling true
   (let [data (get-virtual-action-data
@@ -183,7 +183,7 @@
     (let [original-store store
           {:keys [target-ids store]} data
           id (first target-ids)]
-      (is (= (id->subject store id) joe-id))
+      (is (= (id->target store id) joe-id))
       (is (= (:left (get-order id store))
              (:left (get-order (:item-id joe-age) original-store))))
       (is (< (:right (get-order id store))
@@ -201,7 +201,7 @@
     (let [original-store store
           {:keys [target-ids store]} data
           [new-jane-id new-joe-id] target-ids]
-      (is (= (id->subject store new-joe-id) joe-id))
+      (is (= (id->target store new-joe-id) joe-id))
       (is (check (semantic-to-list (description->entity new-joe-id store))
                  '("" 2)))
       (is (check (map semantic-to-list
@@ -210,7 +210,7 @@
                         (description->entity joe-id store))))
                  '("male" "married"
                    ("" 2) (39 "age" ("doubtful" "confidence")) (45 "age"))))
-      (is (= (id->subject store new-jane-id) jane-id))
+      (is (= (id->target store new-jane-id) jane-id))
       (is (check (map semantic-to-list
                       (ordered-entities
                        (semantic-elements

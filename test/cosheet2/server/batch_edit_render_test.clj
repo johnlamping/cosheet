@@ -6,9 +6,9 @@
              [reporter :refer [new-reporter set-value! reporter-value]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
-             [entity :refer [elements subject]]
+             [entity :refer [elements target]]
              [store :refer [new-element-store new-mutable-store store-reset!
-                            id->element-ids id->subject]]
+                            id->element-ids id->target]]
              store-impl
              [store-utils :refer [add-entity]]
              [query :refer [matching-items matching-elements not-query
@@ -182,7 +182,7 @@
                      {} nil s)
         target-ids (:target-ids action-data)]
     (is (= (count target-ids) 5))
-    (is (= (set (map #(id->subject s %) target-ids))
+    (is (= (set (map #(id->target s %) target-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
@@ -198,7 +198,7 @@
                      {} nil s)
         target-ids (:target-ids action-data)]
     (is (= (count target-ids) 5))
-    (is (= (set (map #(id->subject s %) target-ids))
+    (is (= (set (map #(id->target s %) target-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
@@ -215,7 +215,7 @@
                      {} nil s)
         target-ids (:target-ids action-data)]
     (is (= (count target-ids) 3))
-    (is (= (set (map #(id->subject s %) target-ids))
+    (is (= (set (map #(id->target s %) target-ids))
            #{h1 q1 stk1}))
     (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
@@ -230,7 +230,7 @@
                      {} nil s)
         target-ids (:target-ids action-data)]
     (is (= (count target-ids) 8))
-    (is (= (set (map #(id->subject s %) target-ids))
+    (is (= (set (map #(id->target s %) target-ids))
            #{h1 r1 r2 q3 stk1}))
     (doseq [id target-ids]
       (is (extended-by? '(nil (nil :label)) (description->entity id s))))))

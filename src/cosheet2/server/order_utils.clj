@@ -7,9 +7,10 @@
                       new-reporter reporter-value reporter?
                       valid?]]
     [calculator :refer [modify-and-act! propagate-calculator-data!]]
-    [store :refer [update-content add-simple-item declare-temporary-id
-                   id-label->element-ids id->content ImmutableStore]]
+    [store :refer [update-source add-link declare-temporary-id
+                   id-label->element-ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
+                    to-list ;; TODO: !!! remove
                     description->entity]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
@@ -119,7 +120,7 @@
                                 ;; have order information, especially
                                 ;; temporarily while an entity is being
                                 ;; added. Tolerate that.
-                                #(if % (id->content immutable-store %) initial)
+                                #(if % (id->source immutable-store %) initial)
                                 order-ids)
                     ordered (sort-by-order immutable-ids order-info)]
                 (set-value! reporter ordered)))))))))
@@ -188,24 +189,24 @@
 
 (defn update-add-entity-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given
-  subject.  Add ordering information to the entity and each part of it,
+  target.  Add ordering information to the entity and each part of it,
   except for :label or :category specifiers and non-semantic elements,
   splitting the provided order for the orders, and returning an unused
   piece of it.  Put the new entity in the specified position (:before
   or :after) of the returned order, and make the entity use the bigger
-  piece if use-bigger is true, otherwise return the bigger piece.  If
+  piece if use-bigger is true, otherwise use the smaller piece.  If
   the entity has a :temporary element, mark it temporary in the store.
   Return the new store, the id of the item, and the remaining order."
-  [store subject-id entity order position use-bigger]
+  [store target-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)
         trans (some (fn [element] (= (content element) :temporary))
                     entity-elements)]
     (if (not (orderable-entity? entity))
-      (let [[s1 id] (add-entity store subject-id entity)]
+      (let [[s1 id] (add-entity store target-id entity)]
         [s1 id order])
       (let [value-to-store entity-content
-            [s1 id] (add-simple-item store subject-id value-to-store)
+            [s1 id] (add-link store target-id value-to-store)
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
             ;; bigger and a smaller part, putting the bigger part in
@@ -268,17 +269,17 @@
       (first (matching-items '(nil :unused-orderable) store))))
 
 (defn update-add-entity-adjacent-to
-  "Add an entity with the given subject id and contents,
+  "Add an entity with the given target id and contents,
    taking its order from the given item, in the given position,
    and giving the entity the bigger piece if use-bigger is true.
    Return the updated store and the id of the entity."
-  [store subject-id entity adjacent-to position use-bigger]
+  [store target-id entity adjacent-to position use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store id remainder] (update-add-entity-with-order-and-temporary
-                              store subject-id entity
+                              store target-id entity
                               order position use-bigger)]
-    [(update-content store (:item-id order-element) remainder) id]))
+    [(update-source store (:item-id order-element) remainder) id]))
 
 (defn add-order-elements-internal
   "This form uses the specified order to order the elements,

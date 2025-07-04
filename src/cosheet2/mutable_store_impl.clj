@@ -1,6 +1,6 @@
 (ns cosheet2.mutable-store-impl
   (:require (cosheet2 [store :refer :all]
-                      [store-impl :refer [all-ids-eventually-holding-content]]
+                      [store-impl :refer [all-ids-eventually-holding-source]]
                       [reporter :refer [set-value! change-data!
                                         data-value reporter-data
                                         change-data-control-return!
@@ -129,7 +129,7 @@
 (defn add-id-to-affected-ids
   "Takes a set of ids that contains all ids that might be affected by a
   change to any of them. (In concrete terms, it contains all of their
-  subjects and contains all ids that contain any of them.) Add the
+  targets and contains all ids that contain any of them.) Add the
   given id and restore the closure property. The store must be
   immutable."
   [affected store id]
@@ -141,15 +141,15 @@
         (if (contains? affected id)
           (recur remaining-ids affected)
           (recur (concat pending-ids
-                         (all-ids-eventually-holding-content store id)
-                         (when-let [subject (id->subject store id)]
-                           [subject]))
+                         (all-ids-eventually-holding-source store id)
+                         (when-let [target (id->target store id)]
+                           [target]))
                  (conj affected id)))))))
 
 (defn categories-in-one-store-affected-by-ids
   "Return a set of categories that might be affected by a change to a
   set of modified ids in the given store.  A category is any id whose
-  elements or content could be affected by one of the changed ids. The
+  elements or source could be affected by one of the changed ids. The
   store must be immutable."
   [modified-ids store]
   (when (seq modified-ids)
@@ -159,7 +159,7 @@
 
 (defn categories-affected-by-ids
   "Return a set of categories that might be affected by a change to a
-  set of modified ids.  A category is any id whose elements or content
+  set of modified ids.  A category is any id whose elements or source
   could be affected by one of the changed ids. We are given both the
   old store and the new one, as some modified ids might be in only one
   of the two stores."
@@ -362,16 +362,16 @@
     (cache-and-categorize
      [id] id-valid? this id))
 
-  (id->content [this id]
+  (id->source [this id]
     (cache-and-categorize
-     [id] id->content this id))
+     [id] id->source this id))
 
   (id->element-ids [this id]
     (cache-and-categorize
      [id] id->element-ids this id))
 
-  (id->subject [this id]
-    (id->subject (reporter-value this) id))
+  (id->target [this id]
+    (id->target (reporter-value this) id))
 
   (id-label->element-ids [this id label]
     (cache-and-categorize

@@ -52,6 +52,7 @@
 (deftest tabs-DOM-test
   (let [specification {:priority 1
                        :width 3.0}
+        ;; TODO: !!! Figure out why the :blank keywords below can be "".
         tabs-list `(""
                     ("" "foo"
                      :tab
@@ -99,7 +100,7 @@
              :class "tab virtualTab"
              :template ['(""
                           :tab
-                          (:blank :tab-topic :table
+                          ("" :tab-topic :table
                                   (anything
                                    :row-condition :selector :non-semantic
                                    (??? :label))
@@ -119,7 +120,7 @@
             {:relative-id (:item-id t3)
              :width 0.75
              :template '("" :tab ""
-                         (:blank :tab-topic :table
+                         ("" :tab-topic :table
                                  (anything
                                   :row-condition :selector :non-semantic
                                   (??? :label))
@@ -128,7 +129,8 @@
                                   (anything (??? :label)))))
              :render-dom (tab-DOM)
              :get-rendering-data (tab-RD)
-             :example-element-ids [(:item-id t3-baz) (:item-id t3-bletch)]
+             :example-element-ids (as-set [(:item-id t3-baz)
+                                           (:item-id t3-bletch)])
              :get-tab-action-data [(tab-AD) (:item-id t3)]
              :class "tab"}]
            [:div {:class "tab-tree"}
@@ -136,7 +138,7 @@
              {:relative-id (:item-id t1)
               :width 1.5
               :template '("" :tab ""
-                          (:blank :tab-topic :table
+                          ("" :tab-topic :table
                                   (anything
                                    :row-condition :selector :non-semantic
                                    (??? :label))
@@ -156,7 +158,7 @@
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
                :template '("" :tab ""
-                           (:blank :tab-topic :table
+                           ("" :tab-topic :table
                                    (anything
                                     :row-condition :selector :non-semantic
                                     (??? :label))
@@ -188,11 +190,11 @@
                :class "chosen tab"}]]]]]))
     (is (check
          (render-tab-elements-DOM (second tab3-dom) store)
-         [:div {:class "vertical-stack"}
-          [:component {:relative-id (:item-id t3-baz)
-                       :width 0.75}]
-          [:component {:relative-id (:item-id t3-bletch)
-                       :width 0.75}]]))
+         (as-set [:div {:class "vertical-stack"}
+                  [:component {:relative-id (:item-id t3-baz)
+                               :width 0.75}]
+                  [:component {:relative-id (:item-id t3-bletch)
+                               :width 0.75}]])))
     (is (check
          (render-virtual-DOM (second virt-tab-dom))
          [:div {:class "tab virtualTab editable virtual"}]))

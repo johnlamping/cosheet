@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [orderable :refer [split initial]]
                       [entity :refer [in-different-store]]
-                      [store :refer [new-element-store update-content]]
+                      [store :refer [new-element-store update-source]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
@@ -146,24 +146,35 @@
     (is (= (count tabs) 1))
     (is (= (count row-conditions) 1))
     (is (= (count column-headers-list) 1))
-    (println (to-list tab))
     (is (check (to-list tab)
                (as-set
                 `(""
                   :tab
-                  ~(as-set
-                    `(:blank :tab-topic
-                             ~(as-set
-                               '(anything
-                                 ("hi" :label)
-                                 :row-condition :selector :non-semantic))
-                             ~(as-set
-                               '(anything
-                                 (anything (" A" :label))
-                                 :column-headers :selector :non-semantic))
-                             :table))
                   ("hi" (~(any) :order))
-                  (~(any) :order)))))
+                  (~(any) :order)
+                  ~(as-set
+                    `(""
+                      ~(as-set
+                        `(~'anything
+                          :selector
+                          :non-semantic
+                          ~(as-set `("hi" (~(any) :order) :label))
+                          :row-condition
+                          (~(any) :order)))
+                      (~(any) :order)
+                      ~(as-set
+                        `(~'anything
+                          (~(any) :order)
+                          :non-semantic
+                          :selector
+                          ~(as-set
+                            `(~'anything
+                              (~(any) :order)
+                              (" A" (~(any) :order) :label)))
+                          :column-headers
+                          ))
+                      :tab-topic
+                      :table))))))
     (is (= rows []))
     (is (check (semantic-to-list (first row-conditions))
                '(anything ("hi" :label))))
@@ -188,21 +199,30 @@
     (is (check (to-list tab)
                (as-set
                 `(""
+                  (~(any) :order)
                   :tab
-                  ~(as-set
-                    `(:blank :tab-topic
-                             ~(as-set
-                               '(anything
-                                 ("there" :label)
-                                 :row-condition :selector :non-semantic))
-                             ~(as-set
-                               '(anything
-                                 (anything ("a" :label))
-                                 (anything ("b" :label))
-                                 :column-headers :selector :non-semantic))
-                             :table))
                   ("there" (~(any) :order))
-                  (~(any) :order)))))
+                  ~(as-set
+                    `(""
+                       ~(as-set
+                         `(~'anything
+                           :non-semantic
+                           (~(any) :order)
+                           :selector
+                           ~(as-set `("there" :label (~(any) :order)))
+                           :row-condition))
+                      ~(as-set
+                        `(~'anything
+                          ~(as-set `(~'anything (~(any) :order)
+                                     ~(as-set `("a" :label (~(any) :order)))))
+                          ~(as-set `(~'anything (~(any) :order)
+                                     ~(as-set `("b" :label (~(any) :order)))))
+                          :selector :non-semantic :column-headers
+                          (~(any) :order)))
+                      :table
+                      :tab-topic
+                      (~(any) :order)))
+                 ))))
     (is (check (map semantic-to-list
                     (ordered-entities rows))
                [(as-set '(""
@@ -224,7 +244,7 @@
         column (first (semantic-elements columns))
         label (first (semantic-elements column))
         bad-store (remove-entity-by-id store (:item-id label))
-        good-store (update-content bad-store (:item-id column) "something")]
+        good-store (update-source bad-store (:item-id column) "something")]
     (is (not (column-header-problem column)))
     (is (column-header-problem (in-different-store column bad-store)))
     (is (not (column-header-problem (in-different-store column good-store))))

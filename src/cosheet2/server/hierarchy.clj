@@ -222,12 +222,20 @@
   [items elements]
   (map item-map-by-elements items elements))
 
+(defn hierarchy-by-selected-elements
+  "Given a sequence of items, and a filter function, generate
+   a hierarchy based on their elements that pass the filter function."
+  [items filter-function]
+  (let [items-elements (map #(filter filter-function (semantic-elements %))
+                            items)
+        item-maps (item-maps-by-elements items items-elements)]
+    (println "hierarchy items elements" items-elements)
+    (hierarchy-by-canonical-info item-maps)))
+
 (defn hierarchy-by-all-elements
   "Given a sequence of items, generate a hierarchy based on all their elements."
   [items]
-  (let [items-elements (map semantic-elements items)
-        item-maps (item-maps-by-elements items items-elements)]
-    (hierarchy-by-canonical-info item-maps)))
+  (hierarchy-by-selected-elements items #(true)))
 
 (defn hierarchy-by-labels
   "Given a sequence of items, generate a hierarchy based on all their labels."

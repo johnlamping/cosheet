@@ -115,7 +115,7 @@
               store reporter (+ (:priority data) 1) store-change-callback))
          (-> data
              (assoc :value :invalid)
-             ;; The following line isn't strictly necessary, since we
+             ;; The following line isn't strictly necessary, since
              ;; the first call we get when we are attended to again will
              ;; say that the changes aren't known. But this makes the
              ;; data correct.

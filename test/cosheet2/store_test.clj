@@ -14,34 +14,41 @@
             ; :reload
             ))
 
+(defn make-link-id [n]
+  (assert (number? n))
+  (assert (> n 0))
+  (->ItemId n))
+
 (def unindexed-test-store
   (map->ElementStoreImpl
-   {:id->subject
-    {(make-item-id "1") (make-item-id "0")
-     (make-item-id "2") (make-item-id "1")
-     (make-item-id "3") (make-item-id "2")
-     (make-item-id "5") (make-item-id "2")
-     (make-item-id "6") (make-item-id "3")
-     (make-item-id "7") (make-item-id "3")
-     (make-item-id "8") (make-item-id "5")
-     (make-item-id "9") (make-item-id "1")
-     (make-item-id "10") (make-item-id "9")}
-    :id->content
-    {(make-item-id "0") 0
-     (make-item-id "1") (make-item-id "4")
-     (make-item-id "2") "Foo"
-     (make-item-id "3") "Baz"
-     (make-item-id "4") 5
-     (make-item-id "5") "bar"
-     (make-item-id "6") :baz
-     (make-item-id "7") :label
-     (make-item-id "8") :label
-     (make-item-id "9") "Bar"
-     (make-item-id "10") :order}
+   {:id->target
+    ;; We use 0.5 as an id because we were using 0, but can no longer
+    ;; have 0 ids for links. And we need an id less than 1.
+    {(make-link-id 1) (make-link-id 0.5)
+     (make-link-id 2) (make-link-id 1)
+     (make-link-id 3) (make-link-id 2)
+     (make-link-id 5) (make-link-id 2)
+     (make-link-id 6) (make-link-id 3)
+     (make-link-id 7) (make-link-id 3)
+     (make-link-id 8) (make-link-id 5)
+     (make-link-id 9) (make-link-id 1)
+     (make-link-id 10) (make-link-id 9)}
+    :id->source
+    {(make-link-id 0.5) 0
+     (make-link-id 1) (make-link-id 4)
+     (make-link-id 2) "Foo"
+     (make-link-id 3) "Baz"
+     (make-link-id 4) 5
+     (make-link-id 5) "bar"
+     (make-link-id 6) :baz
+     (make-link-id 7) :label
+     (make-link-id 8) :label
+     (make-link-id 9) "Bar"
+     (make-link-id 10) :order}
     :temporary-ids
     #{}
     :next-id
-    8
+    1001
     :modified-ids
     nil
     :equivalent-undo-point
@@ -52,8 +59,8 @@
 (defn clear-store-leaving-indices
   [store]
   (assoc store
-         :id->subject {}
-         :id->content {}))
+         :id->target {}
+         :id->source {}))
 
 (deftest id<->string-test
   (let [id (make-item-id "a")]
@@ -62,11 +69,11 @@
     (is (= (-> id id->string string->id) id))))
 
 (deftest stored-item-description-name-test
-  (is (= (item-id-name (make-item-id "a")) "Id-Ia"))
-  (is (= (item-id-name (->ItemId 1)) "Id-1")))
+  (is (= (item-id-name (make-item-id "a")) "Id:Ia"))
+  (is (= (item-id-name (->ItemId 1)) "Id:1")))
 
 (deftest index-id->elements-test
-  (let [ids (keys (:id->content unindexed-test-store))
+  (let [ids (keys (:id->source unindexed-test-store))
         store (reduce #(index-id->elements %1 empty-store %2)
                       unindexed-test-store ids)
         empty-indexed (clear-store-leaving-indices store)
@@ -74,33 +81,33 @@
     (is (= (reduce (fn [accum elements]
                      (+ accum (count (pseudo-set-seq elements))))
                    0 (vals (:id->elements store)))
-           (count (:id->subject unindexed-test-store))))
-    (doseq [id (keys (:id->subject unindexed-test-store))]
-      (let [subject (get-in store [:id->subject id])]
-        (is (pseudo-set-contains? (get-in store [:id->elements subject])
+           (count (:id->target unindexed-test-store))))
+    (doseq [id (keys (:id->target unindexed-test-store))]
+      (let [target (get-in store [:id->target id])]
+        (is (pseudo-set-contains? (get-in store [:id->elements target])
                                   id))))
     (is (empty? (:id->elements unindexed)))))
 
-(deftest index-content->ids-test
-  (let [ids (keys (:id->content unindexed-test-store))
-        store (reduce #(index-content->ids %1 empty-store %2)
+(deftest index-source->ids-test
+  (let [ids (keys (:id->source unindexed-test-store))
+        store (reduce #(index-source->ids %1 empty-store %2)
                       unindexed-test-store ids)
         empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-content->ids %1 store %2) empty-indexed ids)]
+        unindexed (reduce #(index-source->ids %1 store %2) empty-indexed ids)]
     (is (= (reduce (fn [accum elements]
                      (+ accum (count (pseudo-set-seq elements))))
-                   0 (vals (:content->ids store)))
+                   0 (vals (:source->ids store)))
            (count ids) ))
     (doseq [id ids]
-      (let [content (get-in store [:id->content id])]
-        (when (not (nil? content))
+      (let [source (get-in store [:id->source id])]
+        (when (not (nil? source))
           (is (pseudo-set-contains?
-               (get-in store [:content->ids (canonical-primitive-form content)])
+               (get-in store [:source->ids (canonical-primitive-form source)])
                id)))))
-    (is (empty? (:content->ids unindexed)))))
+    (is (empty? (:source->ids unindexed)))))
 
 (deftest index-id->keywords-test
-  (let [ids (keys (:id->content unindexed-test-store))
+  (let [ids (keys (:id->source unindexed-test-store))
         elements-indexed (reduce #(index-id->elements %1 empty-store %2)
                                  unindexed-test-store ids)
         store (reduce #(index-id->keywords %1 empty-store %2)
@@ -108,13 +115,13 @@
         empty-indexed (clear-store-leaving-indices store)
         unindexed (reduce #(index-id->keywords %1 store %2) empty-indexed ids)]
     (is (check (:id->keywords store)
-               {(make-item-id "3") #{:label :baz}
-                (make-item-id "5") :label
-                (make-item-id "9") :order}))
+               {(make-link-id 3) #{:label :baz}
+                (make-link-id 5) :label
+                (make-link-id 9) :order}))
     (is (empty? (:id->keywords unindexed)))))
 
 (deftest index-id->label->ids-test
-  (let [ids (keys (:id->content unindexed-test-store))
+  (let [ids (keys (:id->source unindexed-test-store))
         elements-indexed (reduce #(index-id->elements %1 empty-store %2)
                                  unindexed-test-store ids)
         keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
@@ -125,123 +132,118 @@
         unindexed (reduce #(index-id->label->ids %1 store %2)
                           empty-indexed ids)]
     (is (check (:id->label->ids store)
-               {(make-item-id "1") {"baz" (make-item-id "3")
-                               "bar" (make-item-id "5")
-                               :order (make-item-id "10")}
-                (make-item-id "2") {:baz (make-item-id "6")}}))
-    (is (empty? (:content->ids unindexed)))))
+               {(make-link-id 1) {"baz" (make-link-id 3)
+                               "bar" (make-link-id 5)
+                               :order (make-link-id 10)}
+                (make-link-id 2) {:baz (make-link-id 6)}}))
+    (is (empty? (:source->ids unindexed)))))
 
 (def test-store
-  (let [ids (keys (:id->content unindexed-test-store))]
+  (let [ids (keys (:id->source unindexed-test-store))]
     (as-> unindexed-test-store store
       (reduce #(index-id->elements %1 empty-store %2) store ids)
-      (reduce #(index-content->ids %1 empty-store %2) store ids)
+      (reduce #(index-source->ids %1 empty-store %2) store ids)
       (reduce #(index-id->keywords %1 empty-store %2) store ids)
       (reduce #(index-id->label->ids %1 empty-store %2) store ids))))
 
 (deftest all-X-test
-   (is (= (set (all-ids-eventually-holding-content test-store 5))
-          #{(make-item-id "1") (make-item-id "4")}))
-  (is (= (set (all-ids-eventually-holding-id test-store (make-item-id "4")))
-         #{(make-item-id "1") (make-item-id "4")}))
-  (is (= (set (all-forward-reachable-ids test-store (make-item-id "1")))
-          #{(make-item-id "0") (make-item-id "1") (make-item-id "4")})))
+   (is (= (set (all-ids-eventually-holding-source test-store 5))
+          #{(make-link-id 1) (make-link-id 4)}))
+  (is (= (set (all-ids-eventually-holding-id test-store (make-link-id 4)))
+         #{(make-link-id 1) (make-link-id 4)}))
+  (is (= (set (all-forward-reachable-ids test-store (make-link-id 1)))
+          #{(make-link-id 0.5) (make-link-id 1) (make-link-id 4)})))
 
 (deftest id-valid?-test
-  (is (id-valid? test-store (make-item-id "1")))
-  (is (not (id-valid? test-store (make-item-id "wrong")))))
+  (is (id-valid? test-store (make-link-id 1)))
+  (is (not (id-valid? test-store (make-link-id 99)))))
 
-(deftest id->content-test
-  (is (= (id->content test-store (make-item-id "???")) nil))
-  (is (= (id->content test-store (make-item-id "1")) (make-item-id "4")))
-  (is (= (id->content test-store (make-item-id "2")) "Foo"))
-  (is (= (id->content test-store (make-item-id "6")) :baz)))
+(deftest id->source-test
+  (is (= (id->source test-store (make-link-id 999)) nil))
+  (is (= (id->source test-store (make-link-id 1)) (make-link-id 4)))
+  (is (= (id->source test-store (make-link-id 2)) "Foo"))
+  (is (= (id->source test-store (make-link-id 6)) :baz)))
 
 (deftest id->element-ids-test
-  (is (= (id->element-ids test-store (make-item-id "0")) [(make-item-id "1")]))
-  (is (= (set (id->element-ids test-store (make-item-id "1")))
-         (set [(make-item-id "2") (make-item-id "9")])))
-  (is (= (id->element-ids test-store (make-item-id "wrong")) nil)))
+  (is (= (id->element-ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
+  (is (= (set (id->element-ids test-store (make-link-id 1)))
+         (set [(make-link-id 2) (make-link-id 9)])))
+  (is (= (id->element-ids test-store (make-link-id 999)) nil)))
 
 (deftest id-label->element-ids-test
-  (is (= (id-label->element-ids test-store (make-item-id "1") "Bar")
-         [(make-item-id "2")]))
-  (is (= (id-label->element-ids test-store (make-item-id "1") "Baz")
-         [(make-item-id "2")]))
-  (is (= (id-label->element-ids test-store (make-item-id "0") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-item-id "wrong") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-item-id "1") :order)
-         [(make-item-id "9")]))
-  (is (= (id-label->element-ids test-store (make-item-id "0") :order)
+  (is (= (id-label->element-ids test-store (make-link-id 1) "Bar")
+         [(make-link-id 2)]))
+  (is (= (id-label->element-ids test-store (make-link-id 1) "Baz")
+         [(make-link-id 2)]))
+  (is (= (id-label->element-ids test-store (make-link-id 0.5) "bar") nil))
+  (is (= (id-label->element-ids test-store (make-link-id 999) "bar") nil))
+  (is (= (id-label->element-ids test-store (make-link-id 1) :order)
+         [(make-link-id 9)]))
+  (is (= (id-label->element-ids test-store (make-link-id 0.5) :order)
          nil)))
 
 (deftest id->has-keyword?-test
-  (is (id->has-keyword? test-store (make-item-id "3") :baz))
-  (is (id->has-keyword? test-store (make-item-id "3") :label))
-  (is (not (id->has-keyword? test-store (make-item-id "3") :bar)))
-  (is (not (id->has-keyword? test-store (make-item-id "2") :baz))))
+  (is (id->has-keyword? test-store (make-link-id 3) :baz))
+  (is (id->has-keyword? test-store (make-link-id 3) :label))
+  (is (not (id->has-keyword? test-store (make-link-id 3) :bar)))
+  (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
 
 (deftest id->containing-ids-test
-  (is (= (vec (id->containing-ids test-store (make-item-id "4")))
-         [(make-item-id "1")]))
-  (is (= (id->containing-ids test-store (make-item-id "1")) nil))
+  (is (= (vec (id->containing-ids test-store (make-link-id 4)))
+         [(make-link-id 1)]))
+  (is (= (id->containing-ids test-store (make-link-id 1)) nil))
   (is (thrown? java.lang.AssertionError
                (id->containing-ids test-store "Foo"))))
 
-(deftest id->subject-test
-   (is (= (id->subject test-store (make-item-id "2")) (make-item-id "1")))
-   (is (= (id->subject test-store 2) nil)))
+(deftest id->target-test
+   (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
+   (is (= (id->target test-store 2) nil)))
 
-(deftest add-simple-item-test
+(deftest add-lin-test
   (let [[added-store id]
-        (add-simple-item test-store (make-item-id "1") "test")]
+        (add-link test-store (make-link-id 1) "test")]
     (is (= (:id id) (:next-id test-store)))
-    (is (= (id->content added-store id) "test"))
-    (is (= (id->subject added-store id) (make-item-id "1"))))
-  ;; Test that adding nil content fails.
+    (is (= (id->source added-store id) "test"))
+    (is (= (id->target added-store id) (make-link-id 1))))
+  ;; Test that adding nil source fails.
   (is (thrown? java.lang.AssertionError
-               (add-simple-item test-store (make-item-id "1") nil)))
+               (add-link test-store (make-link-id 1) nil)))
   (let [[added-store id]
-        (add-simple-item
-         (track-modified-ids test-store) (make-item-id "1") "test")]
+        (add-link
+         (track-modified-ids test-store) (make-link-id 1) "test")]
     (is (= (:modified-ids added-store) #{id}))))
 
-(deftest remove-simple-item-test
+(deftest remove-link-test
   (let [[added-store id]
-        (add-simple-item test-store (make-item-id "1") (make-item-id "2"))]
-    (is (= (assoc (remove-simple-item added-store id)
+        (add-link test-store (make-link-id 1) (make-link-id 2))]
+    (is (= (assoc (remove-link added-store id)
                   :next-id (:next-id test-store))
            test-store))
     (let [removed-store
-          (remove-simple-item (track-modified-ids added-store) id)]
+          (remove-link (track-modified-ids added-store) id)]
       (is (= (:modified-ids removed-store) #{id}))
       (is (= (-> removed-store
                  (assoc :next-id (:next-id test-store))
                  (assoc :modified-ids nil))
              test-store)))))
 
-(deftest change-content-test
+(deftest change-source-test
+  ;; TODO: !!! Get rid of sources that are links.
   (let [[added-store _]
-        (add-simple-item test-store (make-item-id "1") (make-item-id "2"))
+        (add-link test-store (make-link-id 1) (make-link-id 2))
         [different-store id]
-        (add-simple-item test-store (make-item-id "1") (make-item-id "3"))
+        (add-link test-store (make-link-id 1) (make-link-id 2))
         changed-store
-        (update-content (track-modified-ids different-store)
-                        id (make-item-id "2"))]
-    (is (= changed-store (assoc added-store :modified-ids #{id})))
-    ;; Test that adding nil content fails.
+        (update-source (track-modified-ids different-store)
+                        id (make-link-id 2))]
+    (is (check (into {} changed-store)
+               (into {} (assoc added-store :modified-ids #{id}))))
+    ;; Test that adding nil source fails.
     (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-item-id "1") nil)))
-    ;; Test that content that would create forward cycles fails.
-    (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-item-id "4")
-                                 (make-item-id "9"))))
-    (is (thrown? java.lang.AssertionError
-                 (update-content test-store (make-item-id "0")
-                                 (make-item-id "8"))))
-    ;; Test that the non-cycle content doesn't fail.
-    (update-content test-store (make-item-id "9") (make-item-id "4"))
-    (update-content test-store (make-item-id "8") (make-item-id "0"))))
+                 (update-source test-store (make-link-id 1) nil)))
+    ;; Test that the non-cycle source doesn't fail.
+    (update-source test-store (make-link-id 9) (make-link-id 4))
+    (update-source test-store (make-link-id 8) (make-link-id 0.5))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
@@ -249,35 +251,35 @@
   ;; Everything in :id->elements is true.
   (doseq [[id elements] (:id->elements store)]
     (doseq [element (pseudo-set-seq elements)]
-      (is (= (id->subject store element) id))))
+      (is (= (id->target store element) id))))
   ;; Everything that should be in :id->element is.
-  (doseq [[id subject] (:id->subject store)]
-    (is (some #{id} (id->element-ids store subject))))
+  (doseq [[id target] (:id->target store)]
+    (is (some #{id} (id->element-ids store target))))
   
-  ;; Everything in :content->ids is true.
-  (doseq [[content ids] (:content->ids store)]
+  ;; Everything in :source->ids is true.
+  (doseq [[source ids] (:source->ids store)]
     (doseq [id (pseudo-set-seq ids)]
-      (is (= (canonical-primitive-form (id->content store id)) content))))
-  ;; Everything that should be in :content->ids is.
-  (doseq [[id content] (:id->content store)]
+      (is (= (canonical-primitive-form (id->source store id)) source))))
+  ;; Everything that should be in :source->ids is.
+  (doseq [[id source] (:id->source store)]
     (is (some #{id}
               (pseudo-set-seq
-               (get-in store [:content->ids (canonical-primitive-form
-                                             content)])))))
+               (get-in store [:source->ids (canonical-primitive-form
+                                             source)])))))
 
   ;; Everything in :id->keywords is true.
   (doseq [[id keywords] (:id->keywords store)]
     (doseq [keyword (pseudo-set-seq keywords)]
       (is (keyword? keyword))
-      (is (some #(= (id->content store %) keyword)
+      (is (some #(= (id->source store %) keyword)
                 (id->element-ids store id)))))
   ;; Everything that should be in :id->keywords is.
-  (doseq [[id content] (:id->content store)]
-    (when-let [subject (id->subject store id)]
-      (when (keyword? content)
-            (is (some #{content}
+  (doseq [[id source] (:id->source store)]
+    (when-let [target (id->target store id)]
+      (when (keyword? source)
+            (is (some #{source}
                       (pseudo-set-seq
-                       (get-in store [:id->keywords subject])))))))
+                       (get-in store [:id->keywords target])))))))
 
   ;; Everything in :id->label->ids is true
   (doseq [[id map] (:id->label->ids store)]
@@ -287,17 +289,17 @@
          (is (some (fn [element]
                      (some #{label-id} (id->element-ids store element))) 
                    (id->element-ids store id)))
-         (= (canonical-primitive-form (id->content store label-id)) label)
-         (is (or (some #(= (id->content store %) :label)
+         (= (canonical-primitive-form (id->source store label-id)) label)
+         (is (or (some #(= (id->source store %) :label)
                        (id->element-ids store label-id))
-                 (let [content (id->content store label-id)]
-                   (and (keyword? content) (not= content :label)))))))))
+                 (let [source (id->source store label-id)]
+                   (and (keyword? source) (not= source :label)))))))))
   ;; Everything that should be :id->label->ids is.
-  (doseq [[id content] (:id->content store)]
-    (when-let [label-id (cond (= content :label) (id->subject store id)
-                              (= content :order) id)]
-      (let [label (canonical-primitive-form (id->content store label-id))]
-        (when-let [two-up (id->subject store (id->subject store label-id))]
+  (doseq [[id source] (:id->source store)]
+    (when-let [label-id (cond (= source :label) (id->target store id)
+                              (= source :order) id)]
+      (let [label (canonical-primitive-form (id->source store label-id))]
+        (when-let [two-up (id->target store (id->target store label-id))]
           (is (some #{label-id}
                     (pseudo-set-seq
                      (get-in store [:id->label->ids two-up label])))))))))
@@ -313,88 +315,95 @@
   ;; sure that the removals are legal, an element only references
   ;; elements with at most 1/2 its id number, and we only remove at
   ;; most the last 1/2 of the elements while removing. (We remove them
-  ;; in a random order.
-  (binding [gen/*rnd* (java.util.Random. 437)]
-    (let [earlier-num (fn [n] (gen/uniform 0 (+ 1 (int (/ n 2)))))]
-      (loop [iteration 0
-             store (new-element-store)
-             items 0]
-        (let [n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
-              m (min (gen/uniform (int (/ n 2)) n) (- n 1))]
-          (let [added-store
-                (reduce (fn [store i]
-                          (first (add-simple-item
-                                  store
-                                  (when (not= 0 (earlier-num i))
-                                    (->ItemId (earlier-num i)))
-                                  (case (gen/uniform 0 4)
-                                    0 (->ItemId (earlier-num i))
-                                    1 (int (/ 100 (gen/uniform 1 100)))
-                                    2 :label
-                                    3 :order))))
-                        store (range items n))
-                removed-store
-                (reduce (fn [store i]
-                          (remove-simple-item store (->ItemId i)))
-                        added-store (gen/shuffle (range m n)))]
-            (check-derived-indices added-store)
-            (check-derived-indices removed-store)
-            (if (< iteration 20)
-              (recur (+ iteration 1)
-                     (assoc removed-store :next-id m)
-                     m))
-            ))))))
+  ;; in a random order, so this guarantees that we won't remove a
+  ;; link while another link reverences it.
+  (binding [gen/*rnd* (java.util.Random. 437)])
+  (let [earlier-num (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))]
+    (loop [iteration 0
+           store (first (add-link
+                         (first (add-link (new-element-store) nil 0))
+                         nil 1))
+           items 2]
+      (let [;; Number of items to end up with (has a long tail)
+            n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
+            ;; Number of items to keep
+            m (gen/uniform (int (/ n 2)) n)]
+        (let [added-store
+              (reduce (fn [store i]
+                        (let [[new-store id]
+                              (add-link
+                               store
+                               (when (not= 1 (earlier-num i))
+                                 (->ItemId (earlier-num i)))
+                               (case (gen/uniform 0 4)
+                                 0 (->ItemId (earlier-num i))
+                                 1 (int (/ 100 (gen/uniform 1 100)))
+                                 2 :label
+                                 3 :order))]
+                          (assert (= (:id id) i))
+                          new-store))
+                      store (range (+ items 1) (+ n 1)))
+              removed-store
+              (reduce (fn [store i]
+                        (remove-link store (->ItemId i)))
+                      added-store (gen/shuffle (range (+ m 1) (+ n 1))))]
+          (check-derived-indices added-store)
+          (check-derived-indices removed-store)
+          (if (< iteration 20)
+            (recur (+ iteration 1)
+                   (assoc removed-store :next-id (+ m 1))
+                   m)))))))
 
 (deftest candidate-matching-ids-test
   (is (check (candidate-matching-ids-and-estimate test-store 5)
-             [2 (as-set [(make-item-id "1") (make-item-id "4")]) true]))
+             [2 (as-set [(make-link-id 1) (make-link-id 4)]) true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(5))
-             [2 (as-set [(make-item-id "1") (make-item-id "4")]) true]))
+             [2 (as-set [(make-link-id 1) (make-link-id 4)]) true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
-             [1 [(make-item-id "1")] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(5 "foo"))
-             [1 [(make-item-id "1")] true]))
+             [1 [(make-link-id 1)] true]))
+  (is (check (candidate-matching-ids-and-estimate test-store '("Baz" :baz))
+             [1 [(make-link-id 3)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
              [1 [] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "baz" "bar"))
-             [1 [(make-item-id "2")] true]))
+             [1 [(make-link-id 2)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
-             [2 [(make-item-id "2") (make-item-id "1")] false]))
+             [2 [(make-link-id 2) (make-link-id 1)] false]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-item-id "0") (make-item-id "1")
-                       (make-item-id "2") (make-item-id "3")
-                       (make-item-id "4") (make-item-id "5")
-                       (make-item-id "6") (make-item-id "7")
-                       (make-item-id "8") (make-item-id "9")
-                       (make-item-id "10")])
+             [(as-set [(make-link-id 0.5) (make-link-id 1)
+                       (make-link-id 2) (make-link-id 3)
+                       (make-link-id 4) (make-link-id 5)
+                       (make-link-id 6) (make-link-id 7)
+                       (make-link-id 8) (make-link-id 9)
+                       (make-link-id 10)])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
-             [(as-set  [(make-item-id "0") (make-item-id "1")
-                        (make-item-id "2") (make-item-id "3")
-                        (make-item-id "5") (make-item-id "9")])
+             [(as-set  [(make-link-id 0.5) (make-link-id 1)
+                        (make-link-id 2) (make-link-id 3)
+                        (make-link-id 5) (make-link-id 9)])
               false]))
   (is (check (candidate-matching-ids test-store '(0))
-             [[(make-item-id "0")] true]))
+             [[(make-link-id 0.5)] true]))
   (is (check (candidate-matching-ids test-store 5)
-             [(as-set [(make-item-id "1") (make-item-id "4")]) true]))
+             [(as-set [(make-link-id 1) (make-link-id 4)]) true]))
     (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
-             [[(make-item-id "1")] false]))
+             [[(make-link-id 1)] false]))
   (is (check (candidate-matching-ids test-store '(5 nil))
-             [(as-set [(make-item-id "1") (make-item-id "4")]) false])))
+             [(as-set [(make-link-id 1) (make-link-id 4)]) false])))
 
 (deftest declare-temporary-id-test
   (is (= (:temporary-ids test-store) #{}))
   (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-item-id "3"))
-                            (add-simple-item (make-item-id "1") "hi")
+                            (declare-temporary-id (make-link-id 3))
+                            (add-link (make-link-id 1) "hi")
                             first
-                            (declare-temporary-id (make-item-id "8")))]
+                            (declare-temporary-id (make-link-id 8)))]
     (is (= (:temporary-ids temporary-store)
-           #{(make-item-id "3") (make-item-id "8")}))
+           #{(make-link-id 3) (make-link-id 8)}))
     (is (= (all-temporary-ids temporary-store)
-           #{(make-item-id "3") (make-item-id "6") (make-item-id "7")
-             (make-item-id "8")}))))
+           #{(make-link-id 3) (make-link-id 6) (make-link-id 7)
+             (make-link-id 8)}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
@@ -405,13 +414,13 @@
                                    (store-to-data test-store))))
   ;; Now try it with some items not serialized
   (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-item-id "3"))
-                            (declare-temporary-id (make-item-id "8")))
+                            (declare-temporary-id (make-link-id 3))
+                            (declare-temporary-id (make-link-id 8)))
         smaller-store (-> test-store
-                          (remove-simple-item (make-item-id "8"))
-                          (remove-simple-item (make-item-id "7"))
-                          (remove-simple-item (make-item-id "6"))
-                          (remove-simple-item (make-item-id "3")))]
+                          (remove-link (make-link-id 8))
+                          (remove-link (make-link-id 7))
+                          (remove-link (make-link-id 6))
+                          (remove-link (make-link-id 3)))]
     (is (= smaller-store
            (data-to-store (new-element-store)
                           (store-to-data temporary-store))))))
@@ -419,8 +428,8 @@
 (deftest write-read-test
   (let [store (first
                ;; Add an Orderable to the store to check its serialization.
-               (add-simple-item test-store
-                                (make-item-id "0")
+               (add-link test-store
+                                (make-link-id 0.5)
                                 (first (orderable/split orderable/initial))))
         outstr (java.io.ByteArrayOutputStream.)]
     (write-store store outstr)

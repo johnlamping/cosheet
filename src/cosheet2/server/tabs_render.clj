@@ -1,12 +1,13 @@
 (ns cosheet2.server.tabs-render
-  (:require (cosheet2 [entity :refer [description->entity label->elements]]
+  (:require (cosheet2 [entity :refer [description->entity
+                                      label->elements content elements]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
                       [expression :refer [expr expr-let expr-seq cache]]
                       [canonical :refer [canonical-set-to-list]])
             (cosheet2.server
-             [hierarchy :refer [hierarchy-by-all-elements
+             [hierarchy :refer [hierarchy-by-selected-elements
                                 hierarchy-node?
                                 hierarchy-node-descendants
                                 hierarchy-node-next-level
@@ -136,7 +137,10 @@
                    :nesting-depth 0
                    :chosen-tab-id chosen-tab-id}
         tabs (ordered-entities (label->elements tabs-entity :tab))
-        hierarchy (hierarchy-by-all-elements tabs)
+        hierarchy (hierarchy-by-selected-elements
+                   tabs
+                   (fn [item] (not (some #(= (content %) :tab-topic)
+                                         (elements item)))))
         hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
         tab-doms (map (fn [node]
                         (hierarchy-node-DOM

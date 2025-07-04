@@ -1,7 +1,7 @@
 (ns cosheet2.server.format-convert
   (:require (cosheet2 [debug :refer [simplify-for-print]]             
                       [entity :refer [to-list label->elements content]]
-                      [store :refer [update-content id-valid?]]
+                      [store :refer [update-source id-valid?]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items]])))
 
@@ -41,7 +41,7 @@
        (let [condition (first (label->elements table :row-condition))]
          (first (add-entity store (:item-id condition)
                             '(:selector :non-semantic)))))
-     (update-content store (:item-id format) 3)
+     (update-source store (:item-id format) 3)
      tables)))
 
 (defn convert-from-3-to-4
@@ -59,10 +59,10 @@
          (reduce
           (fn [store column]
             (if (= (content column) 'anything-immutable)
-              (update-content store (:item-id column) 'anything)
+              (update-source store (:item-id column) 'anything)
               store))
           store columns)))
-     (update-content store (:item-id format) 4)
+     (update-source store (:item-id format) 4)
      tables)))
 
 
@@ -81,9 +81,9 @@
                                  (matching-items '(nil :non-semantic) store))]
     (assert (= (content format) 4))
     (as-> store store
-      (update-content store (:item-id format) [5])
+      (update-source store (:item-id format) [5])
       (reduce (fn [s wrong]
-                (update-content s (:item-id wrong) :blank))
+                (update-source s (:item-id wrong) :blank))
               store wrongly-semantic)
       (reduce (fn [s non-semantic]
                 (if (id-valid? s (:item-id non-semantic))
@@ -99,9 +99,9 @@
         tags (matching-items :tag store)]
     (assert (#{5 [5]} (content format)))
     (as-> store store
-      (update-content store (:item-id format) 6)
+      (update-source store (:item-id format) 6)
       (reduce (fn [s tag]
-                (update-content s (:item-id tag) :label))
+                (update-source s (:item-id tag) :label))
               store tags))))
 
 (defn convert-from-6-to-7
@@ -113,7 +113,7 @@
   [store]
   (let [tables (matching-items '(nil :table) store)
         format (first (matching-items '(nil :format) store))
-        store (update-content store (:item-id format) 7)]
+        store (update-source store (:item-id format) 7)]
     (reduce
      (fn [store table]
        (let [condition (first (label->elements table :row-condition))

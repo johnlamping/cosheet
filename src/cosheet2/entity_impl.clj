@@ -1,7 +1,7 @@
 (ns cosheet2.entity-impl
   (:require (cosheet2 [store :refer [id-label->element-ids
                                      id->element-ids
-                                     id->content id->subject
+                                     id->source id->target
                                      id->has-keyword?
                                      mutable-store?
                                      current-store
@@ -22,9 +22,9 @@
 
   StoredEntity
 
-  (subject [this]
-    (when-let [subject-id (id->subject store item-id)]
-      (description->entity subject-id store)))
+  (target [this]
+    (when-let [target-id (id->target store item-id)]
+      (description->entity target-id store)))
 
   (in-different-store [this store-or-entity]
     (description->entity (:item-id this)
@@ -47,7 +47,7 @@
            (description->entity element-id store))))
 
   (content [this]
-    (description->entity (id->content store item-id) store))
+    (description->entity (id->source store item-id) store))
 
   (has-keyword? [this keyword]
     (id->has-keyword? store item-id keyword))
@@ -65,9 +65,9 @@
 
   StoredEntity
 
-  (subject [this]
-    (when-let [subject-id (id->subject store item-id)]
-      (description->entity subject-id store)))
+  (target [this]
+    (when-let [target-id (id->target store item-id)]
+      (description->entity target-id store)))
 
   (in-different-store [this store-or-entity]
     (description->entity (:item-id this)
@@ -92,7 +92,7 @@
              (description->entity element-id store)))))
 
   (content [this]
-    (expr-let [content (id->content store item-id)]
+    (expr-let [content (id->source store item-id)]
       (description->entity content store)))
 
   (has-keyword? [this keyword]

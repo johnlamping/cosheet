@@ -17,7 +17,7 @@
                     (make-item-id "0") '((77 88) ("test" :label)))
         [s2 element-id]
         (add-entity s1 id '("Fred" ("by" :label)))]
-    (is (= (id->subject s1 id)) (make-item-id "0"))
+    (is (= (id->target s1 id)) (make-item-id "0"))
     (comment (is (#{'((77 88) ("test" :label) ("Fred" ("by" :label)))
                     '((77 88) ("Fred" ("by" :label)) ("test" :label))}
                   (to-list (description->entity element added-store2)))))))

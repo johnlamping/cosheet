@@ -165,8 +165,8 @@
                           :excluded-element-ids [joe-foo-label-id]
                           :relative-id joe-foo-id}]
              [:div {:class "indent-wrapper"}
-              [:component {:template (as-set '(anything
-                                               ("test" :label) ("foo" :label)))
+              [:component {:template (as-set '(anything ("test" :label)
+                                                        ("foo" :label)))
                            :width 0.8
                            :excluded-element-ids (as-set [joe-test-id
                                                           joe-foo-id])
@@ -197,7 +197,8 @@
                           :excluded-element-ids [joe-foo-label-id]
                           :relative-id joe-foo-id}]
              [:div {:class "indent-wrapper"}
-              [:component {:template '(anything ("foo" :label) ("test" :label))
+              [:component {:template (as-set '(anything ("test" :label)
+                                                        ("foo" :label)))
                            :width 0.8
                            :excluded-element-ids (as-set [joe-test-id
                                                           joe-foo-id])

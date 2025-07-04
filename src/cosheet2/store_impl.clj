@@ -13,18 +13,10 @@
                       [orderable :refer [->Orderable]])
             clojure.edn))
 
-;;; The data in a store logically consists of a bunch of items
-;;; objects, each of which is completely determined by its id,
-;;; subject, and content. For efficiency, a store maintains indexes on
+;;; The data in a store logically consists of a bunch of links
+;;; each of which is completely determined by its id,
+;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
-
-;;; If the content of an item is a constant, the user might want to
-;;; add elements to it, as if it were an item with that content. The
-;;; store supports treating the content as if it were an item, by
-;;; creating a ImplicitContentId. It will turn this into it into an
-;;; actual item if elements are added.
-
-;;; TODO: The code does not use ImplicitContentId. It should be removed.
 
 (declare add-triple)
 (declare remove-triple)
@@ -41,30 +33,30 @@
    [;;; These first two maps give the primitive facts about the store's
     ;;; triples.
     
-    ;;; Map from ItemId to its subject
-    id->subject
+    ;;; Map from a link's ItemId to its target
+    id->target
     
-    ;;; Map from ItemId to its content
-    id->content
+    ;;; Map from a link's ItemId to its source
+    id->source
 
     ;;; A set of ids that have been declared temporary.
     temporary-ids
 
-    ;;; A derived map from item id to a pseudo-set of the ids of its
+    ;;; A derived map from link ItemId to a pseudo-set of the ids of its
     ;;; elements.
     id->elements
 
-    ;;; A derived index from the canonical-primitive-form of content to a
-    ;;; pseudo-set of ids with that content. Nil content is not
+    ;;; A derived index from the canonical-primitive-form of source to a
+    ;;; pseudo-set of ids with that source. Nil source is not
     ;;; indexed.
-    content->ids
+    source->ids
 
-    ;;; A derived map from item id to a pseudo-set of the keywords that
-    ;;; are the content of at least one of its elements.
+    ;;; A derived map from ItemId to a pseudo-set of the keywords that
+    ;;; are the source of at least one of its elements.
     id->keywords
 
-    ;;; A derived map from item id, then label to a pseudo-set of the
-    ;;; elements of elements of the id that have label as content and
+    ;;; A derived map from ItemId, then label to a pseudo-set of the
+    ;;; elements of elements of the id that have label as source and
     ;;; are considered to be labels.
     id->label->ids
 
@@ -90,23 +82,22 @@
   Store
 
   (id-valid? [this id]
-    (contains? (:id->content this) id))
+    (contains? (:id->source this) id))
 
-  (id->subject [this id]
-    (when (is-item-id? id)
-      (get-in this [:id->subject id])))
+  (id->target [this id]
+    (when (is-link-id? id)
+      (get-in this [:id->target id])))
 
-  (id->content [this id]
-    (if (is-item-id? id)
-      (get-in this [:id->content id])
-      id))
+  (id->source [this id]
+    (when (is-link-id? id)
+      (get-in this [:id->source id])))
 
   (id->element-ids [this id]
     (pseudo-set-seq (get-in this [:id->elements id])))
 
   (id-label->element-ids [this id label]
     (seq
-     (map #(get-in this [:id->subject %])
+     (map #(get-in this [:id->target %])
           (pseudo-set-seq
            (get-in this [:id->label->ids id (canonical-primitive-form
                                              label)])))))
@@ -116,19 +107,19 @@
 
   (id->containing-ids [this id]
     (assert (is-item-id? id))
-    (pseudo-set-seq (get-in this [:content->ids id])))
+    (pseudo-set-seq (get-in this [:source->ids id])))
 
   (candidate-matching-ids [this template]
     (let [[estimate ids precise]
           (candidate-matching-ids-and-estimate this template)]
       (if (nil? estimate)
         ;; The template is so generic that none of our indices can narrow
-        ;; it down based on any of its contents. Return basically everything.
+        ;; it down based on any of its sources. Return basically everything.
         [(if (and (sequential? template) (seq (rest template)))
             ;; The template has an element.
             ;; Return all items that have elements.
             (keys id->elements)
-            (keys (:id->content this)))
+            (keys (:id->source this)))
          false]
         [ids precise])))
 
@@ -136,24 +127,25 @@
   
   ImmutableStore
 
-  (add-simple-item [this subject content]
-    (assert (not (nil? content)))
+  (add-link [this target source]
+    (assert (not (nil? source)))
+    ;; TODO: !!! Add this once the name change is finished.
+    ;; (assert (not (is-link-id? source)))
     (let [item-id (->ItemId (:next-id this))]
       [(-> this
            (update-in [:next-id] inc)
-           (add-triple item-id subject content))
+           (add-triple item-id target source))
        item-id]))
 
-  (remove-simple-item [this id]
+  (remove-link [this id]
     (remove-triple this id))
 
-  (update-content [this id content]
-    (assert (not (nil? content)))
-    ;; Check that we are not creating a forward cycle.
-    (when (is-item-id? content)
-      (assert (not-any? #{id} (all-forward-reachable-ids this content))))
+  (update-source [this id source]
+    (assert (not (nil? source)))
+    ;; TODO: !!! Add this once the name change is finished.
+    ;; (assert (not (is-link-id? source)))
     (-> this
-        (assoc-in [:id->content id] content)
+        (assoc-in [:id->source id] source)
         (index-all this id)
         (add-modified-ids-for-id-and-containers id)))
 
@@ -179,32 +171,32 @@
     [(assoc this :further-actions nil) (:further-actions this)])
 
   (declare-temporary-id [this id]
-    (assert (:id->content this))
+    (assert (:id->source this))
     (update this :temporary-ids #(conj % id)))
 
   (store-to-data [this]
     "Extract just the essential data from the store, in preparation for
      writing it out. The data consists of the next id, and a vector of
-     triples for its items. A few things are represented as vectors
+     triples for its links. A few things are represented as vectors
      that start with a keyword:
        ItemId [:id (:id ?])
        Orderable [:ord (left ?) (right ?)]
        Vector [:vec * ?]"
     (let [temporary-ids (all-temporary-ids this)]
       [(:next-id this)
-       (for [[id content]
-             (seq (:id->content this))
+       (for [[id source]
+             (seq (:id->source this))
              :when (not (temporary-ids id))]
          [(:id id)
-          (:id (get-in this [:id->subject id]))
-          (cond (is-item-id? content)
-                [:id (:id content)]
-                (instance? cosheet2.orderable.Orderable content)
-                [:ord (:left content) (:right content)]
-                (vector? content)
-                (into [:vec] content)
+          (:id (get-in this [:id->target id]))
+          (cond (is-item-id? source)
+                [:id (:id source)]
+                (instance? cosheet2.orderable.Orderable source)
+                [:ord (:left source) (:right source)]
+                (vector? source)
+                (into [:vec] source)
                 true
-                content)])]))
+                source)])]))
 
   (write-store [this stream]
     (with-open [writer (clojure.java.io/writer stream)]
@@ -213,22 +205,22 @@
 
   (data-to-store [this data]
     "Given a store's essential data, add it to a store."
-    (let [[next-id items] data]
+    (let [[next-id links] data]
       (let [[store deferred]
-            (reduce (fn [[store deferred] [id subject content]]
+            (reduce (fn [[store deferred] [id target source]]
                       (let [id (->ItemId id)
-                            subject (when subject (->ItemId subject))
-                            content (if (vector? content)
-                                      (apply (case (first content)
+                            target (when target (->ItemId target))
+                            source (if (vector? source)
+                                      (apply (case (first source)
                                                :id ->ItemId
                                                :ord ->Orderable
                                                :vec vector)
-                                             (rest content))
-                                      content)]
+                                             (rest source))
+                                      source)]
                         (add-or-defer-triple
-                         store deferred id subject content)))
+                         store deferred id target source)))
                     [(assoc (new-element-store) :next-id next-id) {}]
-                    items)]
+                    links)]
         (assert (empty? deferred) deferred)
         store)))
 
@@ -238,131 +230,132 @@
       (binding [*in* reader]
         (data-to-store this (clojure.edn/read reader))))))
 
-(defn all-ids-eventually-holding-content
-  "Return all items that contain the content, possibly through
+;;; TODO: This needs to generalize to include objects too.
+(defn all-ids-eventually-holding-source
+  "Return all links that contain the source, possibly through
    a chain of containment."
-  [store content]
-  (let [items (pseudo-set-seq
-               (get-in store [:content->ids (canonical-primitive-form
-                                             content)]))]
-    (concat items
-            (mapcat #(all-ids-eventually-holding-content store %) items))))
+  [store source]
+  (let [links (pseudo-set-seq
+               (get-in store [:source->ids (canonical-primitive-form
+                                             source)]))]
+    (concat links
+            (mapcat #(all-ids-eventually-holding-source store %) links))))
 
 (defn all-ids-eventually-holding-id
-  "Return a seq of the ids of all items whose content chain goes
-  through this item. That includes the item, all items whose content
-  is this item, and all items eventually holding them."
+  "Return a seq of the ids of all links whose source chain goes
+  through this link. That includes the link, all links whose source
+  is this link, and all links eventually holding them."
   [store id]
-  (conj (all-ids-eventually-holding-content store id) id))
+  (conj (all-ids-eventually-holding-source store id) id))
 
 (defn all-forward-reachable-ids
   "Return a seq of all the ids that can be reached from this id
-   via subject or content links. It includes the id, itself."
+   via target or source links. It includes the id, itself."
   [store id]
   (when id
     (concat [id]
             (mapcat #(when (is-item-id? %)
                        (all-forward-reachable-ids store %))
-                    [(id->subject store id)
-                     (id->content store id)]))))
+                    [(id->target store id)
+                     (id->source store id)]))))
 
 (defn index-id->elements
-  "Reflect this item in the id->elements index."
+  "Reflect this link in the id->elements index."
   [store old-store id]
-  (let [subject (id->subject store id)
-        old-subject (id->subject old-store id)]
-    (if (= subject old-subject)
+  (let [target (id->target store id)
+        old-target (id->target old-store id)]
+    (if (= target old-target)
       store
-      ;; Since the subject of an item may never change, we are either
-      ;; adding an item or removing it. 
-      (let [adding (not old-subject)]
-        (update-in-clean-up store [:id->elements (or subject old-subject)]
+      ;; Since the target of a link may never change, we are either
+      ;; adding a link or removing it. 
+      (let [adding (not old-target)]
+        (update-in-clean-up store [:id->elements (or target old-target)]
                             #(pseudo-set-set-membership % id adding))))))
 
-(defn index-content->ids
-  "Put this item in the content->ids index."
+(defn index-source->ids
+  "Put this link in the source->ids index."
   [store old-store id]
-  (let [content (id->content store id)
-        old-content (id->content old-store id)]
-    (if (= content old-content)
+  (let [source (id->source store id)
+        old-source (id->source old-store id)]
+    (if (= source old-source)
       store
       (cond-> store
-        old-content
-        (update-in-clean-up [:content->ids (canonical-primitive-form
-                                            old-content)]
+        old-source
+        (update-in-clean-up [:source->ids (canonical-primitive-form
+                                            old-source)]
                             #(pseudo-set-disj % id))
-        content
-        (update-in [:content->ids (canonical-primitive-form
-                                   content)]
+        source
+        (update-in [:source->ids (canonical-primitive-form
+                                   source)]
                    #(pseudo-set-conj % id))))))
 
 (defn index-id->keywords
-  "Reflect this item's content in the id->keywords index.
+  "Reflect this link's source in the id->keywords index.
    The id->elements index must be valid when this is called."
   [store old-store id]
-  (let [content (id->content store id)
-        old-content (id->content old-store id)
-        subject (or (id->subject store id) (id->subject old-store id))]
-    (if (or (= content old-content) (not subject))
+  (let [source (id->source store id)
+        old-source (id->source old-store id)
+        target (or (id->target store id) (id->target old-store id))]
+    (if (or (= source old-source) (not target))
       store
       (cond-> store
-        (and (keyword? old-content)
-             (not-any? #(= (id->content store %) old-content)
-                       (id->element-ids store subject)))
-        (update-in-clean-up [:id->keywords subject]
-                            #(pseudo-set-disj % old-content))
-        (keyword? content)
-        (update-in [:id->keywords subject]
-                   #(pseudo-set-conj % content))))))
+        (and (keyword? old-source)
+             (not-any? #(= (id->source store %) old-source)
+                       (id->element-ids store target)))
+        (update-in-clean-up [:id->keywords target]
+                            #(pseudo-set-disj % old-source))
+        (keyword? source)
+        (update-in [:id->keywords target]
+                   #(pseudo-set-conj % source))))))
 
 ;; NOTE: This definition must be kept in synch with entity/label?
 (defn id-is-label?
-  "Return whether the given item counts as a label (either has content
-  that is a keyword and is not :label, or has an element whose content
+  "Return whether the given link counts as a label (either has source
+  that is a keyword and is not :label, or has an element whose source
   is :label)."
   [store id]
-  (or (let [content (id->content store id)]
-        (and (keyword? content) (not= content :label)))
+  (or (let [source (id->source store id)]
+        (and (keyword? source) (not= source :label)))
       (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
 
-(defn index-grandsubject-id->label->ids
-  "Reflect this item in id->label->ids for its grand-subject."
+(defn index-grandtarget-id->label->ids
+  "Reflect this link in id->label->ids for its grand-target."
   [store old-store id]
   (let [is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
-        canonical (canonical-primitive-form (id->content store id))
-        old-canonical (canonical-primitive-form (id->content old-store id))
-        grandsubject (or (id->subject store (id->subject store id))
-                          (id->subject old-store (id->subject old-store id)))]
+        canonical (canonical-primitive-form (id->source store id))
+        old-canonical (canonical-primitive-form (id->source old-store id))
+        grandtarget (or (id->target store (id->target store id))
+                          (id->target old-store (id->target old-store id)))]
     (if (or (and (= is-label old-is-label)
                  (= canonical old-canonical))
-            (not grandsubject))
+            (not grandtarget))
       store
       (cond-> store
         old-is-label
-        (update-in-clean-up [:id->label->ids grandsubject old-canonical]
+        (update-in-clean-up [:id->label->ids grandtarget old-canonical]
                             #(pseudo-set-disj % id))
         is-label
-        (update-in [:id->label->ids grandsubject canonical]
+        (update-in [:id->label->ids grandtarget canonical]
                    #(pseudo-set-conj % id))))))
 
 (defn index-id->label->ids
-  "Reflect the effects of this item in the id->label->ids index.
+  "Reflect the effects of this link in the id->label->ids index.
   The id->keywords index must be valid when this is called."
   [store old-store id]
   (-> store
-      ;; Our item
-      (index-grandsubject-id->label->ids old-store id)
-      ;; Our subject, which we may affect being a label
-      (index-grandsubject-id->label->ids
-       old-store (or (id->subject store id) (id->subject old-store id)))))
+      ;; Our link
+      (index-grandtarget-id->label->ids old-store id)
+      ;; Our target, which we may affect being a label
+      (index-grandtarget-id->label->ids
+       old-store (or (id->target store id) (id->target old-store id)))))
 
 (defn index-all
   "Do all indexing for adding, removing or changing the id in the store."
   [store old-store id]
   (-> store 
       (index-id->elements old-store id)
-      (index-content->ids old-store id)
+      (index-source->ids old-store id)
       (index-id->keywords old-store id)
       (index-id->label->ids old-store id)))
 
@@ -385,30 +378,30 @@
 
 (defn add-triple
   "Add a triple to the store, and do all necessary indexing."
-  [store item-id subject content]
-  (assert (not (nil? content)) [item-id subject content])
-  (assert (not= item-id subject) [item-id subject content])
+  [store item-id target source]
+  (assert (not (nil? source)) [item-id target source])
+  (assert (not= item-id target) [item-id target source])
   (when (number? (:id item-id))
-    (assert (< (:id item-id) (:next-id store)) [item-id subject content])
-    (when (number? (:id subject))
-      (assert (< (:id subject) (:id item-id)) [item-id subject content])))
-  (-> (if (nil? subject)
+    (assert (< (:id item-id) (:next-id store)) [item-id target source])
+    (when (number? (:id target))
+      (assert (< (:id target) (:id item-id)) [item-id target source])))
+  (-> (if (nil? target)
         store
-        (assoc-in store [:id->subject item-id] subject))
-      (assoc-in [:id->content item-id] content)
+        (assoc-in store [:id->target item-id] target))
+      (assoc-in [:id->source item-id] source)
       (index-all store item-id)
       (add-modified-id item-id)))
 
 (defn remove-triple [store id]
-    (assert (not (nil? (id->content store id)))
+    (assert (not (nil? (id->source store id)))
             "Removed id not present.")
     (assert (nil? (id->element-ids store id))
             "Removed id has elements.")
-    (assert (nil? (get-in store [:content->ids id]))
-            "Removed id is the content of another.")
+    (assert (nil? (get-in store [:source->ids id]))
+            "Removed id is the source of another.")
     (-> store
-        (dissoc-in [:id->content id])
-        (dissoc-in [:id->subject id])
+        (dissoc-in [:id->source id])
+        (dissoc-in [:id->target id])
         (index-all store id)
         (add-modified-id id)))
 
@@ -423,29 +416,28 @@
 (defn add-or-defer-triple
   ;; Utility function for read-store.  The triples may have been
   ;; written out in any order, but we cannot add a triple until after
-  ;; its subject has been added (and after its content has been added,
-  ;; if the content is an id). When we encounter a triple that can't
+  ;; its target has been added. When we encounter a triple that can't
   ;; yet be added, we save it in deferred, indexed under what it is
   ;; waiting for, then add it when we get what it needs.  Return the
   ;; new store and new deferred.
-  [store deferred id subject content]
-  (let [waiting-for (first (filter #(and (is-item-id? %)
-                                         (not ((:id->content store) %)))
-                                   [subject content]))]
+  [store deferred id target source]
+  (let [waiting-for (first (filter #(and (is-link-id? %)
+                                         (not ((:id->source store) %)))
+                                   [target source]))]
     (if waiting-for
       [store (update-in deferred [waiting-for]
-                        #(conj % [id subject content]))]
-      (reduce (fn [[store deferred] [id subject content]]
-                (add-or-defer-triple store deferred id subject content))
-              [(add-triple store id subject content)
+                        #(conj % [id target source]))]
+      (reduce (fn [[store deferred] [id target source]]
+                (add-or-defer-triple store deferred id target source))
+              [(add-triple store id target source)
                (dissoc deferred id)]
               (deferred id)))))
 
 ;;; TODO: If there are precise lists for each element, but the
-;;; elements don't have distinct contents, group the elements that
+;;; elements don't have distinct sources, group the elements that
 ;;; might overlap, and if they have reasonably similar costs, do
-;;; sort-by their subjects, then run utils/disjoint_combinations for
-;;; each subject to see if it qualifies.
+;;; sort-by their targets, then run utils/disjoint_combinations for
+;;; each target to see if it qualifies.
 (defn subsuming-elements-ids-and-estimates
   "Return a seq of pairs, <estimate of number of candidates, a lazy
   seq of the candidate matching ids>, one pair for each informative
@@ -458,7 +450,7 @@
     (let [candidates (map #(candidate-matching-ids-and-estimate store %)
                           elements)]
       [(keep (fn [[estimate ids precise]]
-               (when estimate [estimate (keep #(id->subject store %) ids)]))
+               (when estimate [estimate (keep #(id->target store %) ids)]))
              candidates)
        ;; We are precise if we have precise id lists for each element,
        ;; and a match for one element is never a match for
@@ -481,8 +473,8 @@
         (subsuming-elements-ids-and-estimates store elements)]
     (if (nil? content)
       [element-matches element-matches-precise]
-      (let [content-ids (all-ids-eventually-holding-content store content)]
-        [(concat [[(count content-ids) content-ids]]
+      (let [source-ids (all-ids-eventually-holding-source store content)]
+        [(concat [[(count source-ids) source-ids]]
                  element-matches)
          element-matches-precise]))))
 
@@ -529,14 +521,14 @@
   (.write w "ElementStore"))
 
 (defmethod new-element-store true []
-  (map->ElementStoreImpl {:id->subject {}
-                          :id->content {}
+  (map->ElementStoreImpl {:id->target {}
+                          :id->source {}
                           :id->elements {}
-                          :content->ids {}
+                          :source->ids {}
                           :id->keywords {}
                           :id->label->ids {}
                           :temporary-ids #{}
-                          :next-id 0
+                          :next-id 1
                           :modified-ids nil
                           :equivalent-undo-point false}))
 

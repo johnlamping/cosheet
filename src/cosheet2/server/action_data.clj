@@ -4,8 +4,8 @@
                                      add-elements-to-entity-list
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [is-item-id? id->subject id->content]]
-                      [entity :refer [subject elements content label->elements
+                      [store :refer [is-item-id? id->target id->source]]
+                      [entity :refer [target elements content label->elements
                               description->entity in-different-store]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
@@ -169,34 +169,34 @@
                  (seq (sort-by item-complexity matches)))))))
 
 (defn best-matching-element-id
-  "Return the id, if any, of the element of the subject whose item
+  "Return the id, if any, of the element of the target whose item
   best matches the exemplar id's item."
-  [exemplar-id subject-id immutable-store]
-  (if (= (id->subject immutable-store exemplar-id) subject-id)
-    ;; The exemplar id is an element of the given subject. Return it.
+  [exemplar-id target-id immutable-store]
+  (if (= (id->target immutable-store exemplar-id) target-id)
+    ;; The exemplar id is an element of the given target. Return it.
     exemplar-id
     (let [template (-> (description->entity exemplar-id immutable-store)
                        semantic-to-list
                        pattern-to-fixed-term)
-          subject (description->entity subject-id immutable-store)]
-      (:item-id (best-match template (matching-elements template subject))))))
+          target (description->entity target-id immutable-store)]
+      (:item-id (best-match template (matching-elements template target))))))
 
 (defn get-item-or-exemplars-for-id
-  "Given the subject(s), find items or exemplars for the id."
-  [subject-ids immutable-store id]
+  "Given the target(s), find items or exemplars for the id."
+  [target-ids immutable-store id]
   (assert (is-item-id? id) id)
-  (assert (or (empty? subject-ids)
-              (let [subject-id (id->subject immutable-store id)]
-                (or (nil? subject-id)
-                    (some #{subject-id} subject-ids))))
+  (assert (or (empty? target-ids)
+              (let [target-id (id->target immutable-store id)]
+                (or (nil? target-id)
+                    (some #{target-id} target-ids))))
           [id
-           (id->subject immutable-store id)
-           (id->content immutable-store id)
-           subject-ids
-           (map #(id->content immutable-store %) subject-ids)])
-  (if (<= (count subject-ids) 1)
+           (id->target immutable-store id)
+           (id->source immutable-store id)
+           target-ids
+           (map #(id->source immutable-store %) target-ids)])
+  (if (<= (count target-ids) 1)
     [id]
-    (->> subject-ids
+    (->> target-ids
          (map #(best-matching-element-id id % immutable-store))
          (remove nil?))))
 
@@ -205,9 +205,9 @@
   context that makes them refer to several items."
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
-        subject-ids (:target-ids containing-action-data)]
+        target-ids (:target-ids containing-action-data)]
     (assoc containing-action-data :target-ids
-           (get-item-or-exemplars-for-id subject-ids immutable-store id))))
+           (get-item-or-exemplars-for-id target-ids immutable-store id))))
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_or_exemplar_action_data
@@ -296,23 +296,23 @@
    containing-action-data action immutable-store]
   (let [id (or item-id relative-id)]
     (if (and id (:stack-ids containing-action-data))
-      (let [subject (id->subject immutable-store id)
+      (let [target (id->target immutable-store id)
             selected-id (batch-selected-id containing-action-data)]
         (if selected-id
           (cond (= id selected-id)
                 ;; We are the content of an item, so no change needed.
                 containing-action-data
-                (= subject selected-id)
+                (= target selected-id)
                 (update containing-action-data :selection-sequence
                         #(concat % [id]))
                 true
-                (assert false [id subject selected-id]))
+                (assert false [id target selected-id]))
           (let [ids (:stack-ids containing-action-data)
                 index (.indexOf ids id)]
             (if (>= index 0)
               (assoc containing-action-data :selected-index index)
-              (let [index (.indexOf ids subject)]
-                (assert (>= index 0) [id subject selected-id])
+              (let [index (.indexOf ids target)]
+                (assert (>= index 0) [id target selected-id])
                 (assoc containing-action-data
                         :selected-index index
                         :selection-sequence [id]))))))
@@ -366,14 +366,14 @@
   "Return the ids of items the virtual item should be created next
   to. We assume that that adjacent items were not explicitly
   specified."
-  [subjects {:keys [adjacent-query position]} immutable-store]
+  [targets {:keys [adjacent-query position]} immutable-store]
   (if (not adjacent-query)
-    subjects
+    targets
     (map
-     (fn [subject]
-       (let [subject-entity (description->entity subject immutable-store)
+     (fn [target]
+       (let [target-entity (description->entity target immutable-store)
              adjacent-elements (matching-elements
-                                adjacent-query subject-entity)
+                                adjacent-query target-entity)
              sorted (sort-by
                      (fn [element]
                        (let [order (first (label->elements element :order))]
@@ -382,8 +382,8 @@
                      adjacent-elements)
              picked ((if (= position :before) first last)
                      sorted)]
-         (if picked (:item-id picked) subject)))
-     subjects)))
+         (if picked (:item-id picked) target)))
+     targets)))
 
 (defn get-virtual-action-data
   "Create the specified virtual item(s) and make them the target(s).
@@ -392,12 +392,12 @@
    first, then the second item as an element of that, the third as an
    element of that, etc. With the id of the final item being the final
    target.
-   The containing data's target-ids are the subject of the new items,
+   The containing data's target-ids are the target of the new items,
    unless sibling is true in which case they are the siblings.
    If sibling is true, the new items will be adjacent to the
    siblings. If not, they will be adjacent to elements of the target
    that match adjacent-query, if there are any, otherwise, they will
-   be adjacent to the subject.
+   be adjacent to the target.
    The new items are ordered after what they are adjacent to, unless
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
@@ -408,25 +408,25 @@
    containing-action-data action immutable-store]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
-        subjects (if sibling
-                  (map #(id->subject immutable-store %) incoming-ids)
+        targets (if sibling
+                  (map #(id->target immutable-store %) incoming-ids)
                   incoming-ids)
         adjacents (if sibling
                     incoming-ids
                     (find-virtual-adjacents
-                     subjects specification immutable-store))
+                     targets specification immutable-store))
         [ids _ store] (reduce
-                       (fn [[subjects adjacents store] template]
+                       (fn [[targets adjacents store] template]
                          (let [[ids store]
                                (create-possible-selector-elements
-                                template subjects adjacents
+                                template targets adjacents
                                 (or position :after) use-bigger store)]
                            [ids ids store]))
-                       [subjects adjacents immutable-store]
+                       [targets adjacents immutable-store]
                        (if (vector? template) template [template]))]
     (println "Made items"
              template
-             (simplify-for-print subjects)
+             (simplify-for-print targets)
              (simplify-for-print adjacents))
     (assoc containing-action-data :target-ids ids :store store)))
 

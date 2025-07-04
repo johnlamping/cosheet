@@ -1,87 +1,88 @@
 (ns cosheet2.store
   (:require (cosheet2 [utils :refer [parse-string-as-number]])))
 
-;;; A store is a set of items, each of which has an identity, a
-;;; content, and optionally a subject -- an item that it modifies. The
-;;; set of items that modify another are called its elements.
+;;; TODO: Once store is fully updated, check that all of the below is true.
 
-;;; When an entity is stored in the store, it is represented as a root
-;;; item, with all of its elements represented as items whose subject
-;;; is the root.
+;;; A store deals with three kinds of items:
+;;;   primitives: string, number, orderable, or symbol.
+;;;      objects: atomic items that come with a unique id and nothing else.
+;;;        links: which have a unique id and two endpoints, their source and
+;;;               target, each of which are items.
 
-;; The method description->entity will convert a root item's id and a
-;; store into the entity it represents. In the other direction, there
-;; are functions to put the list form of an entity into the store, as
-;; a bunch of items.
+;;; A store is primarily a record of a set of links. When an endpoint
+;;; of a link is another link or an object, the store records that
+;;; with the id of that item. A link is often thought of as giving
+;;; information about its target item. Given an item, all the links
+;;; that target it are called its elements, and all their sources are
+;;; said to qualify the item. And those link's qualifiers can give
+;;; information about how they quality it.
 
-;;; An item's subject can never change, and the subject structure is
-;;; always a DAG; there are no circular references. But the content
-;;; can change, and chasing subject links and ids in content can together
-;;; yield cycles.
+;;; Ids are distinguished from primitives by being wrapped in ItemId
+;;; records. Object ids are either wrapped strings or wrapped negative
+;;; numbers, while link ids are wrapped positive numbers. This makes
+;;; it possible to tell immediately which kind of item an id
+;;; indicates.
 
-;;; The store needs to know three things about each item:
+;;; A link can never be a source of another. And a primitive can
+;;; never be a target of a link.
+
+;;; A link's target can't change if it is another link. And a link's
+;;; target can never be changed to be a link. In other words, a link's
+;;; target can only be a link if the link was created that way. This
+;;; ensures that the target structure is always a DAG; there are no
+;;; circular references in chasing targets through links. Change
+;;; tracking relies on this, as it propagates change notifications
+;;; through targets to links. (It doesn't propagate changes through
+;;; objects, and there can be loops if targets are also chased through
+;;; objects.)
+
+;;; Objects are not saved in the store, as such. All that is known
+;;; about objects comes from the links that link to them.
+
+;;; There are two special objects, whose ids are the strings "Type"
+;;; and "Name", respectively. An object counts as a label or a class
+;;; if it is qualified by the "Type" object. And a link counts as a
+;;; name if it is qualified by the "Name" object. And a couple of
+;;; links are added to the store so that the "Name" object has the
+;;; name, "Name".
+
+;;; The store maintains a map from name to object. It uses this to
+;;; return the object id for a given name, and to ensure that no two
+;;; objects get the same name. This map isn't written out when the
+;;; store is written, as it can be derived from the links.
+
+;;; A link or object, plus all its qualifiers, and their qualifiers,
+;;; etc, determines an entity. And the Entity code knows how to use a
+;;; store to satisfy the Entity APIs. The method description->entity
+;;; will convert an item's id and a store into the entity it
+;;; represents. The source of links becomes the content of entities,
+;;; In the other direction, there are functions to put the list form
+;;; of an entity into the store, as a bunch of links.
+
+;;; The store needs to know three things about each link:
 ;;;         id: An ItemId that is unique
-;;;             to the item. This is the how items are referred to in the
+;;;             to the link. This is the how links are referred to in the
 ;;;             store's API.
-;;;    content: The content of the item. This can be a string, number,
-;;;             orderable, symbol, nil, or the id of another item.
-;;;    subject: The id of the item that this item is the subject of,
-;;;             or nil if this item has no subject.
+;;;     source: either a primitive or the id of the source object.
+;;;     target: The id of the link's target.
 
 ;;; The store maintains indices that make some queries to it
-;;; faster. It provides special queries for items modified with an
-;;; item with :label as its content.
+;;; faster. It provides special queries for items modified with labels
+;;; or classes.
 
 ;;; Stores have a few other bits of functionality.
 ;;; Immutable stores can:
 ;;;   * Track ids that have been modified.
 ;;;   * Note whether they are semantically different from a
 ;;;     previous version, for purposes of undo/redo.
-;;;   * Be asked for a new integer, and updating the store to
+;;;   * Be asked for a new integer, updating the store to
 ;;;     never return that integer again.
 ;;;   * Record a list of pending further actions.
 ;;;   * Read and write its contents to a stream. And some of its
 ;;;     contents can be marked as transitory -- not to be written.
+;;;   * Return the id for the object with a given name.
 ;;; Mutable stores can:
 ;;;   * Undo and Redo.
-
-;;; Long TODO:
-
-;;; Change the store to generalize items to be symmetrical
-;;; links, so that rather than having a subject and content, for most
-;;; purposes, they simply have two ends.
-;;;
-;;; There would also be ids that did not identify items: but would
-;;; generally represent some user object, like a trip or a
-;;; restaurant. These would be entities that had no content, but that
-;;; still had elements. They would typically have a :name element,
-;;; which would be used in the UI to identify them. Both ends of an
-;;; item could hold these non-item ids, to set up a relationship
-;;; between them.
-;;;
-;;; One item in the store would define two entities, depending on its
-;;; orientation: which end is considered to be its content. A variant
-;;; of ItemId, OrientedItemId would give that orientation. The
-;;; entity's elements would be any links connecting to it from either
-;;; end, with their orientation determined by which end they link to
-;;; it from. Some labels on an entity could be designated is applying in
-;;; only one orientation.
-;;;
-;;; It would still be the case that only one of the ends of an item
-;;; would be allowed to can hold an item, making it an element of that
-;;; item. That avoids the "contents" of an item being another item,
-;;; which reifies items in a way that doesn't seem useful.
-;;;
-;;; Both ends of items would be indexed, which lets you find all
-;;; elements of an object, as well as all objects with a particular
-;;; value. And when a change happens and you have to find all the
-;;; entities that are modified, that may include both ends, since
-;;; either or both could be user objects.
-
-;;; The current code supports notifying a tree of any changes to any
-;;; subtree. That is still supported, as only links to items need to
-;;; be further chased, and an item is allowed to have only one such
-;;; link. So you still get a tree structure.
 
 (defrecord
     ^{:doc
@@ -90,7 +91,7 @@
     [id])
 
 (defn make-item-id
-  "Make an item id that is not one that can be created by the store."
+  "Make an item id that is not one that will be given out by the store."
   [id]
   ;; Integers are reserved for creation by the store
   (assert (not (integer? id)))
@@ -100,6 +101,14 @@
   "Return true if the argument is an item id."
   [x]
   (instance? ItemId x))
+
+(defn is-link-id?
+  "Return true if the argument is an item id for a link."
+  [x]
+  (and (instance? ItemId x)
+       (let [id (:id x)]
+         (and (number? id)
+              (> id 0)))))
 
 (defn id->string
   "Return a string representation of an id."
@@ -115,7 +124,7 @@
 
 (defn item-id-name [this]
   "A printable name for the item id, indicating it is an id."
-  (clojure.string/join ["Id-" (id->string this)]))
+  (clojure.string/join ["Id:" (id->string this)]))
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.
@@ -133,35 +142,37 @@
     "Returns true if the id is a valid id for the store, one that 
     store has information about.")
   
-  (id->subject [this id]
-    "Given an item, return its subject. Assumes that the subject of an entity
-    never changes, so doesn't return a reporter even for a mutable store.")
+  (id->target [this id]
+    "Given a link id, return its target. If the target is a link it,
+    assumes that it never changes, so doesn't return a reporter even
+    for a mutable store.")
 
-  (id->content [this id]
-    "Given the id of an element, return a description of its content.")
+  (id->source [this id]
+    "Given the id of a link, return a description of its source.")
 
   (id->element-ids [this id]
-    "Returns a seq of all ids that have the id as their subject.")
+    "Returns a seq of all ids that have the id as their target.")
 
   (id-label->element-ids [this id label]
     "Returns a seq of the ids of all elements of the given id that have an
-     element of their own that has the label value as its content and
+     element of their own that has the label value as its source and
      that counts as a label.")
 
+  ;; TODO: Probably get rid of this.
   (id->has-keyword? [this id keyword]
-    "Returns true if the item with the given id has an element whose
-    content is the given keyword.")
+    "Returns true if the link with the given id has an element whose
+    source is the given keyword.")
 
+  ;; TODO: Rename this to id->links-with-source
   (id->containing-ids [this id]
-    "Returns a seq of all ids that have the given id as their content.")
+    "Returns a seq of all ids that have the given id as their source.")
 
   (candidate-matching-ids [this template]
-    "Takes a template, which must be the list form of an entity,
-     and may not have non-primitive contents. Return a seq of ids that
-     includes the ids all entities that could potentially be
-     extensions of the given template. Also return a boolean that is
-     true if the list of ids is precise; if all of them represent
-     items that are extensions of the template."))
+    "Takes a template, which must be the list form of an entity. Return a
+     seq of ids that includes the ids all entities that could
+     potentially be extensions of the given template. Also return a
+     boolean that is true if the list of ids is precise; if all of
+     them represent items that are extensions of the template."))
 
   ;; TODO: Add a candidate-matching-element-ids method that takes a
   ;; template and gives a superset of all elements that could match
@@ -171,19 +182,21 @@
   "The basic methods that immutable stores support to create variants,
    from which higher levels functions are built."
 
-  (add-simple-item [this subject content]
-    "Add an item with the given subject and content. The subject must be
-     either nil or an id that is already in the store, and the content
-     must be primitive. Return the store and id of the new element.")
+  (add-link [this target source]
+    "Add an item with the given target and source. The target must be
+     either nil or an object id or a link id that is already in the
+     store, and the source must be primitive or an object id. Return
+     the modified store and the id of the new element.")
   
-  (remove-simple-item [this id]
-    "Remove the item with the given id from the store.
-     It must have no elements.")
+  (remove-link [this id]
+    "Remove the link with the given id from the store.
+     It must not be the target of any other links.")
 
-  (update-content [this id content]
-    "Change the content of the item with the given id to be the
-     specified content.")
+  (update-source [this id source]
+    "Change the source of the link with the given id to be the
+     specified source.")
 
+  ;; TODO: replace this with get-unique-atom-id
   (get-unique-number [this]
     "Return a number and an updated store that will never return
      that number again.")

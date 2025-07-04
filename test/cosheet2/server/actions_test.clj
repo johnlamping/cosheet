@@ -17,7 +17,7 @@
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             id-label->element-ids
-                            current-store id-valid? id->content]]
+                            current-store id-valid? id->source]]
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
@@ -114,7 +114,7 @@
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
-    (is (= (id->content (:store result) (:item-id joe-age))
+    (is (= (id->source (:store result) (:item-id joe-age))
            "")))
   ;; Test making the new content be 'anything.
   (let [result (do-set-content store
@@ -123,7 +123,7 @@
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
-    (is (= (id->content (:store result) (:item-id jane-age))
+    (is (= (id->source (:store result) (:item-id jane-age))
            'anything)))
   ;; Test doing nothing when the old doesn't match.
   (let [result (do-set-content store
@@ -131,7 +131,7 @@
                                  :from "47"
                                  :to "46"
                                  :session-state session-state})]
-    (is (= (id->content (:store result) (:item-id joe-age))
+    (is (= (id->source (:store result) (:item-id joe-age))
            45)))
   ;; Test updating multiple ids
   (let [result (do-set-content store
@@ -140,9 +140,9 @@
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
-    (is (= (id->content (:store result) (:item-id joe-age))
+    (is (= (id->source (:store result) (:item-id joe-age))
            ""))
-    (is (= (id->content (:store result) (:item-id jane-age))
+    (is (= (id->source (:store result) (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
   (let [[store columns-id] (add-entity
@@ -159,7 +159,7 @@
                                    :from "name"
                                    :to ""
                                    :session-state session-state})]
-    (is (= (id->content (:store result) (:item-id name-header))
+    (is (= (id->source (:store result) (:item-id name-header))
            "name"))))
 
 (deftest do-add-twin-test
@@ -546,7 +546,7 @@
                       mutable-store session-state
                       [[:set-content "root" :from "joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
-      (is (= (id->content new-store joe-id) "Joseph"))
+      (is (= (id->source new-store joe-id) "Joseph"))
       (is (= for-client {:select-store-ids [joe-id]}))
       ;; TODO: Once we support selected, check that undo and redo ask
       ;; for the old selection.

@@ -2,7 +2,7 @@
   (:require (cosheet2 [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid?]]
-                      [entity :refer [subject content label->elements
+                      [entity :refer [target content label->elements
                                       label->element
                                       description->entity updating-immutable]]
                       [reporter :refer [reporter-value universal-category]]
@@ -345,10 +345,10 @@
                                 (let [[exemplar subject-ref]
                                       (referent->exemplar-and-subject referent)]
                                   (or subject-ref
-                                      (when-let [subject (subject item)]
+                                      (when-let [target (target item)]
                                         (when (current-value
-                                               (semantic-entity? subject))
-                                          (item-referent subject))))))
+                                               (semantic-entity? target))
+                                          (item-referent target))))))
                 inherited (cond-> inherited
                             subject-ref
                             (update
@@ -423,13 +423,13 @@
              (if is-tab
                ;; Show the tabs, plus the topic of the selected tab
                (let [topic (first (label->elements immutable-item :tab-topic))
-                     subject (subject immutable-item)]
+                     target (target immutable-item)]
                  [:div {:class "tabbed"}
                   (make-component
-                   {:relative-id (:item-id subject)
+                   {:relative-id (:item-id target)
                     :chosen-tab-id id
                     :render-dom render-tabs-DOM
-                    :get-action-data [get-id-action-data (:item-id subject)]})
+                    :get-action-data [get-id-action-data (:item-id target)]})
                   (make-component
                    {:relative-id (:item-id topic)
                     :table-id (:item-id topic)
@@ -516,10 +516,10 @@
                   (top-level-item-DOM-R item referent inherited)
                   ;; Show a selection of tabs.
                   (expr-let [topic (expr first (label->elements item :tab-topic))
-                             subject (cosheet.entity/subject item)]
+                             target (target item)]
                     [:div {:class "tabbed"}
                      (make-component {:key [:tabs]}
-                                     [tabs-DOM-R subject item inherited])
+                                     [tabs-DOM-R target item inherited])
                      (make-component
                       {:key [:tab (:item-id topic)]}
                       [top-level-item-DOM-R topic nil

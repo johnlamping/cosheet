@@ -2,7 +2,7 @@
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [description->entity updating-immutable
                                       elements to-list label? label->elements
-                                      subject]]
+                                      target]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -105,7 +105,7 @@
       (matching-items (add-elements-to-entity-list query [:top-level])
                       store)
       matching-table-conditions
-      (map #(first (label->elements (subject %) :column-headers))
+      (map #(first (label->elements (target %) :column-headers))
            matching-table-conditions)))))
 
 (defn get-batch-edit-stack-element-action-data
@@ -202,7 +202,7 @@
   ;; TODO: Add-twin is a problem here with not knowing what template
   ;; to use, because it is different for different items. Add-twin
   ;; needs to know about :column, the same way it knows about
-  ;; selectors. If a template has :column, but the subject is not
+  ;; selectors. If a template has :column, but the target is not
   ;; suitable, then the :column should be removed from the template
   ;; for that item.
   (let [specification {:query-id query-id

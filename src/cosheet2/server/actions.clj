@@ -9,19 +9,19 @@
     [map-state :refer [map-state-get-current map-state-reset!
                        map-state-change-value!
                        map-state-change-value-control-return!]]
-    [store :refer [update-content
+    [store :refer [update-source
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->subject id-label->element-ids id-valid? undo! redo!
+                   id->target id-label->element-ids id-valid? undo! redo!
                    current-store
                    id->string string->id
-                   id-label->element-ids id->content
+                   id-label->element-ids id->source
                    Store]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list label->element
-                    content elements label->elements label->content subject]]
+                    content elements label->elements label->content target]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
     query-impl
@@ -54,7 +54,7 @@
                                 store temporary-id :current-selection))]
     ;; We store the client id as a keyword, rather than a string, so it
     ;; is not semantic.
-    (update-content store element-id (keyword client-id))
+    (update-source store element-id (keyword client-id))
     store))
 
 (defn get-selected
@@ -63,9 +63,9 @@
   [store temporary-id]
   (when-let [element-id (first (id-label->element-ids
                                 store temporary-id :current-selection))]
-    (let [content (id->content store element-id)]
-      (when (keyword? content)
-        (name content)))))
+    (let [source (id->source store element-id)]
+      (when (keyword? source)
+        (name source)))))
 
 (defn ensure-response-map
   "If the response is a store, turn it into a map {:store response}"
@@ -74,23 +74,23 @@
     {:store response}
     response))
 
-(defn update-set-content-if-matching
-  "Set the content of the id in the store provided the current content
+(defn update-set-source-if-matching
+  "Set the source of the id in the store provided the current source
    matches 'from'."
   [store id from to]
   ;; There are several special cases to match: If we have a number,
   ;; the client will have a string. If the client had ..., it was a
   ;; a wild card, and we could have anything.
   (let [from (parse-string-as-number from)
-        content (id->content store id)]
-    (println "Old content" content)
+        source (id->source store id)]
+    (println "Old source" source)
     (if (and
-         (or (equivalent-primitives? from content)
+         (or (equivalent-primitives? from source)
              ;; Wildcard text matches anything,
              ;; because it has to match instances too
              (= from "\u00A0...")
              ;; Setting a new selector.
-             (and (= from "") (= content 'anything)))
+             (and (= from "") (= source 'anything)))
          ;; When the user edits a heading whose value was filled in
          ;; automatically, the UI clears the text to blank. Don't match
          ;; in that case, as we don't want to remove the original heading
@@ -99,17 +99,17 @@
                    (= (first from) \u00A0)
                    (not= from "\u00A0...")
                    (= to ""))))
-      (update-content store id (parse-string-as-number to))
-      (do (println "content doesn't match" from content)
+      (update-source store id (parse-string-as-number to))
+      (do (println "source doesn't match" from source)
           store))))
 
-(defn update-set-content
+(defn update-set-source
   [store id from to]
   (let [to (if (and (= to "")
                     (selector? (description->entity id store)))
              'anything
              to)
-        modified (update-set-content-if-matching store id from to)]
+        modified (update-set-source-if-matching store id from to)]
     (abandon-problem-changes store modified id)))
 
 (defn add-select-store-ids-request
@@ -134,9 +134,9 @@
       (->
        (reduce
         (fn [store id]
-          (update-set-content store id from to))
+          (update-set-source store id from to))
         store target-ids)
-       ;; We might have set the content on a virtual item.
+       ;; We might have set the source on a virtual item.
        ;; This will make sure any newly created item is selected.
        (add-select-store-ids-request target-ids session-state)))))
 
@@ -145,7 +145,7 @@
   (when (not= template :singular)
    (let [[ids store] (create-possible-selector-elements
                       (or template 'anything)
-                      (map #(id->subject store %) target-ids)
+                      (map #(id->target store %) target-ids)
                       target-ids
                       :after true store)]
      (add-select-store-ids-request store ids session-state))))
@@ -171,7 +171,7 @@
     (when (and row-id table-id)
       (let [table-entity (description->entity table-id store)
             row-template (table-row-template table-entity)
-            row-parent-id (id->subject store row-id)
+            row-parent-id (id->target store row-id)
             [ids store] (create-possible-selector-elements
                          row-template [row-parent-id] [row-id]
                          :after false store)]
@@ -215,9 +215,9 @@
           target-ids)
   (when (not= template :singular)
     (reduce (fn [store id]
-              (let [subject-id (id->subject store id) 
+              (let [target-id (id->target store id) 
                     modified (remove-entity-by-id store id)]
-                (abandon-problem-changes store modified subject-id)))
+                (abandon-problem-changes store modified target-id)))
             store target-ids)))
 
 (defn do-delete-row
@@ -250,7 +250,7 @@
     (let [{:keys [referent session-state]} arguments]
       (when (referent? referent)
         ;; If the target is a single item with no elements, switch the target
-        ;; to its subject.
+        ;; to its target.
         (let [items (instantiate-referent referent store)
               item (first items)
               [_ subject-ref] (referent->exemplar-and-subject referent)
@@ -294,7 +294,7 @@
              ;; [store order] pair.
              (fn [[_ [store order]] [item-label ids]]
                (let [item (label->element temporary-item item-label)
-                     subject-id (:item-id item)
+                     target-id (:item-id item)
                      new-lists (map #(ordered-semantic-to-list
                                       (description->entity % store))
                                     ids)
@@ -303,7 +303,7 @@
                   (fn [new-list [store order]]
                     (let [[store id remainder]
                           (update-add-entity-with-order-and-temporary
-                           store subject-id new-list
+                           store target-id new-list
                            order :before :false)]
                       [id [store remainder]]))
                   new-lists

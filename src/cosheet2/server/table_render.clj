@@ -1,9 +1,9 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
-                      [store :refer [id->subject id-label->element-ids]]
+                      [store :refer [id->target id-label->element-ids]]
                       [reporter :refer [universal-category]]
-                      [entity :refer [subject content elements label->elements
+                      [entity :refer [target content elements label->elements
                                       description->entity
                                       description->updating-entity-R 
                                       StoredEntity
@@ -545,10 +545,10 @@
                        hierarchy)
                [virtual-column-description]))
             id-with-no-subject (loop [id table-id]
-                                 (let [subject (id->subject
+                                 (let [target (id->target
                                                 immutable-store id)]
-                                   (if subject
-                                     (recur subject)
+                                   (if target
+                                     (recur target)
                                      id)))
             condition-dom (make-component
                            {:relative-id row-condition-id

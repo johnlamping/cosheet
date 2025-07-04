@@ -5,10 +5,11 @@
                       [orderable :refer [initial]]
                       [expression :refer [expr expr-let expr-seq expr-filter]]
                       [canonical :refer [canonicalize]]
-                      [store :refer [new-element-store update-content
+                      [store :refer [new-element-store update-source
                                      id-label->element-ids]]
-                      [entity :refer [primitive? label? description->entity elements
-                                      content subject label->elements
+                      [entity :refer [primitive? label? description->entity
+                                      to-list ; TODO: !!! remove
+                                      content target elements label->elements
                                       in-different-store]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
@@ -49,7 +50,7 @@
           (recur next-new)
           [next-new
            (if last-string-item
-             (update-content
+             (update-source
               store (:item-id last-string-item) next-new)
              (first (add-entity store nil `(~next-new :last-new-string))))])))))
 
@@ -156,7 +157,7 @@
   "Return whether the entity is (or is part of) a selector."
   [entity]
   (or (some #(= (content %) :selector) (elements entity))
-      (if-let [subj (subject entity)]
+      (if-let [subj (target entity)]
         (selector? subj))))
 
 (defn transform-pattern-toward-fixed-term
@@ -268,31 +269,31 @@
       pattern)))
 
 (defn create-selector-or-non-selector-element
-  "Create an element, modifying the template if the subject is not a
+  "Create an element, modifying the template if the target is not a
    a selector. Return the updated store and the id of the new element."
-  [template subject-id adjacent-id position use-bigger store]
-  (let [template (if (and subject-id
-                          (selector? (description->entity subject-id store)))
+  [template target-id adjacent-id position use-bigger store]
+  (let [template (if (and target-id
+                          (selector? (description->entity target-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
-    (update-add-entity-adjacent-to store subject-id template
+    (update-add-entity-adjacent-to store target-id template
                                    (description->entity adjacent-id store)
                                    position use-bigger)))
 
 (defn create-possible-selector-elements
   "Create elements, specializing the template as appropriate, depending on
-   whether each subject is a selector. Return the new ids and the updated
+   whether each target is a selector. Return the new ids and the updated
    store."
-  [template subjects adjacents position use-bigger store]
+  [template targets adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-generic template store) 
         flattened-template (flatten-nested-content specialized-template)]
     (thread-map
-     (fn [[subject adjacent] store]
+     (fn [[target adjacent] store]
        (let [[store id] (create-selector-or-non-selector-element
                          flattened-template
-                         subject adjacent position use-bigger store)]
+                         target adjacent position use-bigger store)]
          [id store]))
-     (map vector subjects adjacents)
+     (map vector targets adjacents)
      store)))
 
 ;;; Creating new tabs and tables.
@@ -337,9 +338,6 @@
 ;;;      header.
 ;;;      In this case, only a header that makes the match succeed can
 ;;;      match the stack.
-;;; 
-;;; TODO: The anything in the column headers entity should probably be
-;;; :blank, because is never matches anything.
 
 (defn table-column-headers-id
   [table-id immutable-store]
@@ -361,7 +359,7 @@
   "Return the element that gives the information for a table in a new tab
   with the given row condition and header elements."
   [row-condition-elements header-elements]
-  `(:blank
+  `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
     :table
     ~(concat '(anything :row-condition :selector :non-semantic)
@@ -376,7 +374,9 @@
   ;; The minimum content for a column header.
   ;; In addition, a column header must be stored as an element
   ;; of the :column-headers entity.
-  'anything)
+  'anything ; a keyword here would make this non-semantic
+            ; and hence not orderable
+  )
 
 (def unspecified-column-header-template
   ;; A header for a newly created column that we don't know anything about.
@@ -418,7 +418,7 @@
    ;; It has universal content
    (= 'anything (content entity))
    ;; It is a column header.
-   (some #(= (content %) :column-headers) (elements (subject entity)))
+   (some #(= (content %) :column-headers) (elements (target entity)))
    ;; It has no elements, or only a :label element.
    (let [semantic (semantic-elements entity)]
      (or (empty? semantic)
@@ -435,16 +435,17 @@
   (if (and id
            (let [revised-entity (description->entity id new-store)]
              (or (column-header-problem revised-entity)
-                 (column-header-problem (subject revised-entity)))))
+                 (column-header-problem (target revised-entity)))))
     old-store
     new-store))
 
 ;;; CSV file importing
 
 (defn add-rows
-  "Given a sequence of rows, each a sequence of values,
-  add data corresponding to them to the store. Return the store and
-  values corresponding to the column headers."
+  "Given a sequence of rows, each of which is a sequence of values,
+  add data corresponding to them to the store, each following the
+  row-template in the order.
+  Return the store and the column header names."
   [store rows row-template]
   (let [num-columns (apply max (map count rows))
         first-row (first rows)
@@ -488,9 +489,9 @@
                            :tab
                            ~table-name
                            ~(tab-table-element
-                            [`(~table-name :label)]
-                            (map (fn [header] `(~'anything (~header :label)))
-                                 headers)))
+                             [`(~table-name :label)]
+                             (map (fn [header] `(~'anything (~header :label)))
+                                  headers)))
                          last-tab :after true)]
     store))
 

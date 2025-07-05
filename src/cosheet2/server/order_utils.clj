@@ -10,7 +10,6 @@
     [store :refer [update-source add-link declare-temporary-id
                    id-label->element-ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
-                    to-list ;; TODO: !!! remove
                     description->entity]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]

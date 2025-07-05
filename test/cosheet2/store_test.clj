@@ -7,11 +7,8 @@
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
              [canonical :refer [canonical-primitive-form]]
-             ;; [entity :refer [to-list description->entity]]
-             ;; entity-impl
              [orderable :as orderable]
-             [test-utils :refer [check any as-set]])
-            ; :reload
+             [test-utils :refer [check as-set]])
             ))
 
 (defn make-link-id [n]
@@ -35,7 +32,7 @@
      (make-link-id 10) (make-link-id 9)}
     :id->source
     {(make-link-id 0.5) 0
-     (make-link-id 1) (make-link-id 4)
+     (make-link-id 1) 44
      (make-link-id 2) "Foo"
      (make-link-id 3) "Baz"
      (make-link-id 4) 5
@@ -147,12 +144,12 @@
       (reduce #(index-id->label->ids %1 empty-store %2) store ids))))
 
 (deftest all-X-test
-   (is (= (set (all-ids-eventually-holding-source test-store 5))
-          #{(make-link-id 1) (make-link-id 4)}))
+  (is (= (set (all-ids-eventually-holding-source test-store 5))
+         #{(make-link-id 4)}))
   (is (= (set (all-ids-eventually-holding-id test-store (make-link-id 4)))
-         #{(make-link-id 1) (make-link-id 4)}))
+         #{(make-link-id 4)}))
   (is (= (set (all-forward-reachable-ids test-store (make-link-id 1)))
-          #{(make-link-id 0.5) (make-link-id 1) (make-link-id 4)})))
+          #{(make-link-id 0.5) (make-link-id 1)})))
 
 (deftest id-valid?-test
   (is (id-valid? test-store (make-link-id 1)))
@@ -160,7 +157,7 @@
 
 (deftest id->source-test
   (is (= (id->source test-store (make-link-id 999)) nil))
-  (is (= (id->source test-store (make-link-id 1)) (make-link-id 4)))
+  (is (= (id->source test-store (make-link-id 1)) 44))
   (is (= (id->source test-store (make-link-id 2)) "Foo"))
   (is (= (id->source test-store (make-link-id 6)) :baz)))
 
@@ -189,8 +186,9 @@
   (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
 
 (deftest id->containing-ids-test
+  ;; TODO: !!! Once objects can be sources, revise this to use them.
   (is (= (vec (id->containing-ids test-store (make-link-id 4)))
-         [(make-link-id 1)]))
+         []))
   (is (= (id->containing-ids test-store (make-link-id 1)) nil))
   (is (thrown? java.lang.AssertionError
                (id->containing-ids test-store "Foo"))))
@@ -215,7 +213,7 @@
 
 (deftest remove-link-test
   (let [[added-store id]
-        (add-link test-store (make-link-id 1) (make-link-id 2))]
+        (add-link test-store (make-link-id 1) 22)]
     (is (= (assoc (remove-link added-store id)
                   :next-id (:next-id test-store))
            test-store))
@@ -228,22 +226,18 @@
              test-store)))))
 
 (deftest change-source-test
-  ;; TODO: !!! Get rid of sources that are links.
   (let [[added-store _]
-        (add-link test-store (make-link-id 1) (make-link-id 2))
+        (add-link test-store (make-link-id 1) 22)
         [different-store id]
-        (add-link test-store (make-link-id 1) (make-link-id 2))
+        (add-link test-store (make-link-id 1) 22)
         changed-store
         (update-source (track-modified-ids different-store)
-                        id (make-link-id 2))]
-    (is (check (into {} changed-store)
-               (into {} (assoc added-store :modified-ids #{id}))))
+                        id "changed")]
+    (is (= (:modified-ids changed-store) #{id}))
+    (is (= (id->source changed-store id) "changed"))
     ;; Test that adding nil source fails.
     (is (thrown? java.lang.AssertionError
-                 (update-source test-store (make-link-id 1) nil)))
-    ;; Test that the non-cycle source doesn't fail.
-    (update-source test-store (make-link-id 9) (make-link-id 4))
-    (update-source test-store (make-link-id 8) (make-link-id 0.5))))
+                 (update-source test-store (make-link-id 1) nil)))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
@@ -333,13 +327,12 @@
                         (let [[new-store id]
                               (add-link
                                store
-                               (when (not= 1 (earlier-num i))
+                               (when (not= 0 (gen/uniform 0 10))
                                  (->ItemId (earlier-num i)))
-                               (case (gen/uniform 0 4)
-                                 0 (->ItemId (earlier-num i))
-                                 1 (int (/ 100 (gen/uniform 1 100)))
-                                 2 :label
-                                 3 :order))]
+                               (case (gen/uniform 0 3)
+                                 0 (int (/ 100 (gen/uniform 1 100)))
+                                 1 :label
+                                 2 :order))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
@@ -356,9 +349,9 @@
 
 (deftest candidate-matching-ids-test
   (is (check (candidate-matching-ids-and-estimate test-store 5)
-             [2 (as-set [(make-link-id 1) (make-link-id 4)]) true]))
+             [1 [(make-link-id 4)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(5))
-             [2 (as-set [(make-link-id 1) (make-link-id 4)]) true]))
+             [1 [(make-link-id 4)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
              [1 [(make-link-id 1)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '("Baz" :baz))
@@ -386,11 +379,11 @@
   (is (check (candidate-matching-ids test-store '(0))
              [[(make-link-id 0.5)] true]))
   (is (check (candidate-matching-ids test-store 5)
-             [(as-set [(make-link-id 1) (make-link-id 4)]) true]))
+             [[(make-link-id 4)] true]))
     (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
              [[(make-link-id 1)] false]))
   (is (check (candidate-matching-ids test-store '(5 nil))
-             [(as-set [(make-link-id 1) (make-link-id 4)]) false])))
+             [[(make-link-id 4)] false])))
 
 (deftest declare-temporary-id-test
   (is (= (:temporary-ids test-store) #{}))

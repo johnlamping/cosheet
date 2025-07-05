@@ -4,31 +4,37 @@
             (cosheet2
              [store :refer :all]
              [store-utils :refer :all]
+             [entity :refer [to-list description->entity]]
              entity-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
-             [test-utils :refer [check]])
+             [test-utils :refer [check as-set]])
             ; :reload
             ))
 
 (deftest add-entity-test
   (let [[s1 id]
         (add-entity (new-element-store)
-                    (make-item-id "0") '((77 88) ("test" :label)))
+                    (make-item-id "0") '(77 ("test" :label)))
         [s2 element-id]
         (add-entity s1 id '("Fred" ("by" :label)))]
     (is (= (id->target s1 id)) (make-item-id "0"))
-    (comment (is (#{'((77 88) ("test" :label) ("Fred" ("by" :label)))
-                    '((77 88) ("Fred" ("by" :label)) ("test" :label))}
-                  (to-list (description->entity element added-store2)))))))
+    (is (= (to-list (description->entity element-id s2))
+           '("Fred" ("by" :label))))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]
         (add-entity (new-element-store) (make-item-id "0")
-                    '(("foo") ("test" :label)))
+                    '("foo" ("test" :label)))
         [added-store2 e2]
         (add-entity added-store e1 '("Fred" ("by" :label)))
-        removed-store (remove-entity-by-id added-store2 e1)]
-    (is (= (assoc removed-store :next-id (:next-id (new-element-store)))
-           (new-element-store)))))
+        removed-store (remove-entity-by-id added-store2 e2)]
+    (is (check (to-list (description->entity e1 added-store2))
+               (as-set '("foo"
+                         ("test" :label)
+                         ("Fred" ("by" :label))))))
+    (is (= (to-list (description->entity e1 removed-store))
+           '("foo" ("test" :label))))
+    (is (= (assoc removed-store :next-id (:next-id added-store))
+           added-store))))
 

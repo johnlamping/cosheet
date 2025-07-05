@@ -83,7 +83,8 @@
 (deftest get-virtual-column-cell-action-data-test
   (let [[s1 table-id] (add-entity (new-element-store) nil
                                   (add-order-elements
-                                   '((:x :row-condition
+                                   '(""
+                                     (:x :row-condition
                                          anything)
                                      (:x :column-headers
                                          (anything ("c1" :label))

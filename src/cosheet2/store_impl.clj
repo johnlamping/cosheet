@@ -128,9 +128,10 @@
   ImmutableStore
 
   (add-link [this target source]
+    (assert (or (nil? target)
+                (is-item-id? target)))
     (assert (not (nil? source)))
-    ;; TODO: !!! Add this once the name change is finished.
-    ;; (assert (not (is-link-id? source)))
+    (assert (not (is-link-id? source)))
     (let [item-id (->ItemId (:next-id this))]
       [(-> this
            (update-in [:next-id] inc)
@@ -142,8 +143,7 @@
 
   (update-source [this id source]
     (assert (not (nil? source)))
-    ;; TODO: !!! Add this once the name change is finished.
-    ;; (assert (not (is-link-id? source)))
+    (assert (not (is-link-id? source)))
     (-> this
         (assoc-in [:id->source id] source)
         (index-all this id)

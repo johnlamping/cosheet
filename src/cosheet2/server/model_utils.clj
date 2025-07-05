@@ -8,7 +8,6 @@
                       [store :refer [new-element-store update-source
                                      id-label->element-ids]]
                       [entity :refer [primitive? label? description->entity
-                                      to-list ; TODO: !!! remove
                                       content target elements label->elements
                                       in-different-store]]
                       [store-utils :refer [add-entity remove-entity-by-id]]

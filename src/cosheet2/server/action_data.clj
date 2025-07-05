@@ -73,7 +73,7 @@
 (defn run-action-data-getter
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
-  [getter specification containing-action-data action immutable-store]
+  [getter specification inherited-action-data action immutable-store]
   (println)
   (println "getting ACTION DATA" getter)
   (println "  from spec" (dissoc specification
@@ -81,15 +81,15 @@
                                  :get-rendering-data :hierarchy-R
                                  :column-descriptions-R :row-template-R
                                  :row-ids-R))
-  (let [store (or (:store containing-action-data) immutable-store)
+  (let [store (or (:store inherited-action-data) immutable-store)
         result (call-pseudo-closure
-                getter specification containing-action-data action store)]
+                getter specification inherited-action-data action store)]
     (println "  returning AD" (dissoc result :component))
     result))
 
 (defn get-empty-action-data
   "Return a blank action data."
-  [specification containing-action-data action immutable-store]
+  [specification inherited-action-data action immutable-store]
   {})
 
 (defmethod print-method
@@ -100,8 +100,8 @@
 (defn get-pass-through-action-data
   "Our DOM is a wrapper node for a position in a table, or a content-only DOM,
   under a DOM for the data. We don't affect anything."
-  [specification containing-action-data action immutable-store]
-  containing-action-data)
+  [specification inherited-action-data action immutable-store]
+  inherited-action-data)
 
 (defmethod print-method
   cosheet2.server.action_data$get_pass_through_action_data
@@ -112,8 +112,8 @@
   "Return a single item id as the target ids. This is only suitable
   for doms in a simple context where they can't possibly refer to
   several ids."
-  [specification containing-action-data action immutable-store id]
-  (assoc containing-action-data :target-ids [id]))
+  [specification inherited-action-data action immutable-store id]
+  (assoc inherited-action-data :target-ids [id]))
 
 (defmethod print-method
   cosheet2.server.action_data$get_id_action_data
@@ -201,10 +201,10 @@
 (defn get-item-or-exemplar-action-data
   "This is the vanilla action getter, for doms that might be in a
   context that makes them refer to several items."
-  [specification containing-action-data action immutable-store]
+  [specification inherited-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
-        target-ids (:target-ids containing-action-data)]
-    (assoc containing-action-data :target-ids
+        target-ids (:target-ids inherited-action-data)]
+    (assoc inherited-action-data :target-ids
            (get-item-or-exemplars-for-id target-ids immutable-store id))))
 
 (defmethod print-method
@@ -214,12 +214,12 @@
 
 (defn parallel-items-get-action-data
   "For each of parallel-ids, run the data getter on the specification modified
-  to have that item id. Update the target-id of containing-action-data
+  to have that item id. Update the target-id of inherited-action-data
   to be the union of the target-id of each of the results."
   [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store getter]
+   inherited-action-data action immutable-store getter]
   (assoc
-   containing-action-data :target-ids
+   inherited-action-data :target-ids
    (distinct
     (mapcat (fn [id] (:target-ids
                       (run-action-data-getter
@@ -227,7 +227,7 @@
                        (-> specification
                            (assoc :item-id id)
                            (dissoc :parallel-ids))
-                       containing-action-data action immutable-store)))
+                       inherited-action-data action immutable-store)))
             parallel-ids))))
 
 (defmethod print-method
@@ -241,15 +241,15 @@
   parallel-ids, first do parallel-items-get-action-data on them,
   followed by get-item-or-exemplar-action-data."
   [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store]
-  (into containing-action-data
+   inherited-action-data action immutable-store]
+  (into inherited-action-data
         (get-item-or-exemplar-action-data
          specification
          (if (seq parallel-ids)
            (parallel-items-get-action-data
-            specification containing-action-data action immutable-store
+            specification inherited-action-data action immutable-store
             get-item-or-exemplar-action-data)
-           containing-action-data)
+           inherited-action-data)
          action immutable-store)))
 
 (defn action-data-getter
@@ -291,30 +291,30 @@
 (defn get-item-do-batch-edit-action-data
   "Find the dom's id or extend the selection sequence with it."
   [{:keys [item-id relative-id]}
-   containing-action-data action immutable-store]
+   inherited-action-data action immutable-store]
   (let [id (or item-id relative-id)]
-    (if (and id (:stack-ids containing-action-data))
+    (if (and id (:stack-ids inherited-action-data))
       (let [target (id->target immutable-store id)
-            selected-id (batch-selected-id containing-action-data)]
+            selected-id (batch-selected-id inherited-action-data)]
         (if selected-id
           (cond (= id selected-id)
                 ;; We are the content of an item, so no change needed.
-                containing-action-data
+                inherited-action-data
                 (= target selected-id)
-                (update containing-action-data :selection-sequence
+                (update inherited-action-data :selection-sequence
                         #(concat % [id]))
                 true
                 (assert false [id target selected-id]))
-          (let [ids (:stack-ids containing-action-data)
+          (let [ids (:stack-ids inherited-action-data)
                 index (.indexOf ids id)]
             (if (>= index 0)
-              (assoc containing-action-data :selected-index index)
+              (assoc inherited-action-data :selected-index index)
               (let [index (.indexOf ids target)]
                 (assert (>= index 0) [id target selected-id])
-                (assoc containing-action-data
+                (assoc inherited-action-data
                         :selected-index index
                         :selection-sequence [id]))))))
-      containing-action-data)))
+      inherited-action-data)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_do_batch_edit_action_data
@@ -327,11 +327,11 @@
   ;; Note: This assumes that when an exemplar is chosen, it will be an
   ;; element of the first of the parallel-ids.
   [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store getter]
+   inherited-action-data action immutable-store getter]
   (getter (-> specification
               (assoc :item-id (first parallel-ids))
               (dissoc :parallel-ids))
-          containing-action-data action immutable-store))
+          inherited-action-data action immutable-store))
 
 (defmethod print-method
   cosheet2.server.action_data$parallel_items_get_do_batch_edit_action_data
@@ -345,14 +345,14 @@
   parallel-items-get-do-batch-edit-action-data on them, followed by
   get-item-do-batch-edit-action-data."
   [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store]
+   inherited-action-data action immutable-store]
   (get-item-do-batch-edit-action-data
    specification
    (if (seq parallel-ids)
      (parallel-items-get-do-batch-edit-action-data
-      specification containing-action-data action immutable-store
+      specification inherited-action-data action immutable-store
       get-item-do-batch-edit-action-data)
-     containing-action-data)
+     inherited-action-data)
    action immutable-store))
 
 (defmethod print-method
@@ -403,9 +403,9 @@
   [{:keys [template sibling position use-bigger]
                                         ; adjacent-query also used.
     :as specification}
-   containing-action-data action immutable-store]
+   inherited-action-data action immutable-store]
   (assert template template)
-  (let [incoming-ids (:target-ids containing-action-data)
+  (let [incoming-ids (:target-ids inherited-action-data)
         targets (if sibling
                   (map #(id->target immutable-store %) incoming-ids)
                   incoming-ids)
@@ -426,7 +426,7 @@
              template
              (simplify-for-print targets)
              (simplify-for-print adjacents))
-    (assoc containing-action-data :target-ids ids :store store)))
+    (assoc inherited-action-data :target-ids ids :store store)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_action_data
@@ -436,11 +436,11 @@
 (defn composed-get-action-data
   "Run each argument getter in turn, feeding the output of each into
   the next."
-  [specification containing-action-data action immutable-store & getters]
+  [specification inherited-action-data action immutable-store & getters]
   (reduce (fn [action-data getter]
             (run-action-data-getter
              getter specification action-data action immutable-store))
-          containing-action-data getters))
+          inherited-action-data getters))
 
 (defmethod print-method
   cosheet2.server.action_data$composed_get_action_data
@@ -470,22 +470,17 @@
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
         copied-keys [:table-id :row-id :column-ids :tab-id]
-        action-data (into containing-action-data
-                          (select-keys spec copied-keys))
-        ;; TODO: !!! This doesn't need to be a loop any more.
-        data (reduce (fn [data getter]
-                       (if getter
-                         (run-action-data-getter
-                          getter spec data action immutable-store)
-                         data))
-                     action-data
-                     (if (= action :batch-edit)
-                       [(or get-do-batch-edit-action-data
-                            default-get-do-batch-edit-action-data)]
-                       [(action-data-getter spec)]))]
+        partial-action-data (into containing-action-data
+                                  (select-keys spec copied-keys))
+        action-data (let [getter (if (= action :batch-edit)
+                                   (or get-do-batch-edit-action-data
+                                       default-get-do-batch-edit-action-data)
+                                   (action-data-getter spec))]
+                      (run-action-data-getter
+                       getter spec partial-action-data action immutable-store))]
     ;; TODO: !!! These assertions are only here to make sure that
     ;;       some old fields have been removed. Get rid of them
     ;;       once it is clear that they aren't firing.
-    (assert (not (:column data)))
-    (assert (not (:column-headers-id data)))
-    (assoc data :component component)))
+    (assert (not (:column  action-data)))
+    (assert (not (:column-headers-id  action-data)))
+    (assoc  action-data :component component)))

@@ -281,13 +281,13 @@
                                                           [:div 3])}]])}])
       :get-action-data [(fn [s c a i extra]
                           (is (= extra "test"))
-                          {:target-ids [id1 id1]})
+                          {:subject-ids [id1 id1]})
                         "test"]})
     (let [c1 (client-id->component @manager client1)
           ad1 (client-id->action-data
                @manager client1 nil (reporter-value ms))]
       (is (check ad1 {:component c1
-                     :target-ids [id1 id1]}))
+                     :subject-ids [id1 id1]}))
       (compute cd)
       (let [c2 (first (vals (:id->subcomponent @c1)))
             c3 (client-id->component @manager client3)
@@ -297,10 +297,10 @@
                 @manager client3 nil (reporter-value ms))]
         ;; The containing component should refer its actions to its contained.
         (is (check ad1 {:component c2
-                       :target-ids [id2 id2]}))
+                       :subject-ids [id2 id2]}))
         (is (= c3 ((:id->subcomponent @c2) id3)))
         (is (check ad3 {:component c3
-                        :target-ids [id3 id3]}))
+                        :subject-ids [id3 id3]}))
         ;; The elided dom should not need to go to the manager.
         (is (check (:client-ready-dom @manager)
                    {c1 1 c3 3}))))))

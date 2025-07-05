@@ -110,7 +110,7 @@
 
 (deftest do-set-content-test
   (let [result (do-set-content store
-                                {:target-ids [(:item-id joe-age)]
+                                {:subject-ids [(:item-id joe-age)]
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
@@ -119,7 +119,7 @@
   ;; Test making the new content be 'anything.
   (let [result (do-set-content store
                                 ;; Jane is a selector
-                                {:target-ids [(:item-id jane-age)]
+                                {:subject-ids [(:item-id jane-age)]
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
@@ -127,7 +127,7 @@
            'anything)))
   ;; Test doing nothing when the old doesn't match.
   (let [result (do-set-content store
-                                {:target-ids [(:item-id joe-age)]
+                                {:subject-ids [(:item-id joe-age)]
                                  :from "47"
                                  :to "46"
                                  :session-state session-state})]
@@ -135,8 +135,8 @@
            45)))
   ;; Test updating multiple ids
   (let [result (do-set-content store
-                                {:target-ids [(:item-id jane-age)
-                                              (:item-id joe-age)]
+                                {:subject-ids [(:item-id jane-age)
+                                               (:item-id joe-age)]
                                  :from "45"
                                  :to ""
                                  :session-state session-state})]
@@ -155,7 +155,7 @@
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         result (do-set-content store
-                                  {:target-ids [(:item-id name-header)]
+                                  {:subject-ids [(:item-id name-header)]
                                    :from "name"
                                    :to ""
                                    :session-state session-state})]
@@ -165,8 +165,8 @@
 (deftest do-add-twin-test
   (let [store (update-selected store temporary-id "old selection")
         result (do-add-twin store
-                            {:target-ids [(:item-id joe-age)
-                                          (:item-id jane-age)]
+                            {:subject-ids [(:item-id joe-age)
+                                           (:item-id jane-age)]
                              :session-state session-state
                              :template '(anything 5)})
         new-store (:store result)
@@ -192,8 +192,8 @@
 (deftest do-add-element-test
   (let [store (update-selected store temporary-id "old selection")
         result (do-add-element store
-                               {:target-ids [(:item-id joe-age)
-                                             (:item-id jane-age)]
+                               {:subject-ids [(:item-id joe-age)
+                                              (:item-id jane-age)]
                                 :session-state session-state})
         new-store (:store result)
         new-jane-age (description->entity (:item-id jane-age) new-store)
@@ -212,8 +212,8 @@
 (deftest do-add-label-test
   (let [store (update-selected store temporary-id "old selection")
         result (do-add-label store
-                               {:target-ids [(:item-id joe-age)
-                                             (:item-id jane-age)]
+                               {:subject-ids [(:item-id joe-age)
+                                              (:item-id jane-age)]
                                 :session-state session-state})
         new-store (:store result)
         new-jane-age (description->entity (:item-id jane-age) new-store)
@@ -231,8 +231,8 @@
 
 (deftest do-delete-test
   (let [new-store (do-delete store
-                             {:target-ids [(:item-id joe-age)
-                                           (:item-id jane-age)]})
+                             {:subject-ids [(:item-id joe-age)
+                                            (:item-id jane-age)]})
         new-jane (description->entity jane-id new-store)
         new-joe (description->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
@@ -252,8 +252,8 @@
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         new-store (do-delete store
-                             {:target-ids [joe-id
-                                           (:item-id name-header)]})]
+                             {:subject-ids [joe-id
+                                            (:item-id name-header)]})]
     (is (not (id-valid? new-store joe-id)))
     (is (id-valid? new-store (:item-id name-header)))))
 

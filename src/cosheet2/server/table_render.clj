@@ -55,7 +55,7 @@
 
 (defn get-virtual-column-cell-action-data
   "Create a new column header and an element under that column in the row.
-   The containing data's target-ids are the id of the row."
+   The containing data's subject-ids are the id of the row."
   [specification containing-action-data action immutable-store]
   (let [column-headers-id (table-column-headers-id
                            (:table-id containing-action-data) immutable-store)
@@ -63,12 +63,13 @@
         columns (semantic-elements column-headers)
         last-column-id (:item-id (last (ordered-entities columns))) 
         ;; Add the column header for the new column to the store.
-        {:keys [store target-ids]}
+        {:keys [store subject-ids]}
         (get-virtual-action-data
          {:sibling true
           :template unspecified-column-header-template}
-         {:target-ids [last-column-id]} action immutable-store)
-        new-column-id (first target-ids)
+         {:subject-ids [last-column-id]}
+         action immutable-store)
+        new-column-id (first subject-ids)
         template (semantic-to-list (description->entity new-column-id store))]
     (get-virtual-action-data
      {:template template} containing-action-data action store)))

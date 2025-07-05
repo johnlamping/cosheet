@@ -127,40 +127,40 @@
       current-selection (assoc :if-selected [current-selection]))))
 
 (defn do-set-content
-  [store {:keys [target-ids from to session-state]}]
-  (when (and from to (seq target-ids))
+  [store {:keys [subject-ids from to session-state]}]
+  (when (and from to (seq subject-ids))
     (let [to (parse-string-as-number (clojure.string/trim to))]
-      (println "Setting " (count target-ids) "items from" from "to" to)
+      (println "Setting " (count subject-ids) "items from" from "to" to)
       (->
        (reduce
         (fn [store id]
           (update-set-source store id from to))
-        store target-ids)
+        store subject-ids)
        ;; We might have set the source on a virtual item.
        ;; This will make sure any newly created item is selected.
-       (add-select-store-ids-request target-ids session-state)))))
+       (add-select-store-ids-request subject-ids session-state)))))
 
 (defn do-add-twin
-  [store {:keys [target-ids template session-state]}]
+  [store {:keys [subject-ids template session-state]}]
   (when (not= template :singular)
    (let [[ids store] (create-possible-selector-elements
                       (or template 'anything)
-                      (map #(id->target store %) target-ids)
-                      target-ids
+                      (map #(id->target store %) subject-ids)
+                      subject-ids
                       :after true store)]
      (add-select-store-ids-request store ids session-state))))
 
 (defn do-add-element
-  [store {:keys [target-ids session-state]}]
+  [store {:keys [subject-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
-                     'anything target-ids target-ids
+                     'anything subject-ids subject-ids
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
 (defn do-add-label
-  [store {:keys [target-ids session-state]}]
+  [store {:keys [subject-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
-                     '(anything :label) target-ids target-ids
+                     '(anything :label) subject-ids subject-ids
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
@@ -210,15 +210,15 @@
           store)))))
 
 (defn do-delete 
-  [store {:keys [target-ids template]}]
-  (assert (= (count target-ids) (count (distinct target-ids)))
-          target-ids)
+  [store {:keys [subject-ids template]}]
+  (assert (= (count subject-ids) (count (distinct subject-ids)))
+          subject-ids)
   (when (not= template :singular)
     (reduce (fn [store id]
               (let [target-id (id->target store id) 
                     modified (remove-entity-by-id store id)]
                 (abandon-problem-changes store modified target-id)))
-            store target-ids)))
+            store subject-ids)))
 
 (defn do-delete-row
   [store arguments]
@@ -245,6 +245,7 @@
     [key]
     (if (= (last key) :content) (pop key) key))
 
+  ;; NOTE: subject-referent in here is obsolete.
   (defn do-expand
     [store arguments]
     (let [{:keys [referent session-state]} arguments]
@@ -264,10 +265,7 @@
                          referent)]
           {:store store
            :open (cond-> (str (:url-path session-state)
-                              "?referent=" (referent->string referent)))}))))
-
-  
-  )
+                              "?referent=" (referent->string referent)))})))))
 
 (defn matching-element-ids
   "Given an id and an id that is a template for one of its elements,

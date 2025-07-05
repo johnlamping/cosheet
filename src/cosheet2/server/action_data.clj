@@ -40,7 +40,7 @@
 ;;;                   there is not yet any corresponding item in the
 ;;;                   store) the action getter creates the implied
 ;;;                   items.
-;;;      :target-ids  A seq of the ids that should be acted upon
+;;;      :subject-ids  A seq of the ids that should be acted upon
 ;;; These three give information about the cell's position in a table,
 ;;; if any.  They are copied over from the specification, even before
 ;;; the action data getter is run. So action data getters don't have
@@ -113,7 +113,7 @@
   for doms in a simple context where they can't possibly refer to
   several ids."
   [specification inherited-action-data action immutable-store id]
-  (assoc inherited-action-data :target-ids [id]))
+  (assoc inherited-action-data :subject-ids [id]))
 
 (defmethod print-method
   cosheet2.server.action_data$get_id_action_data
@@ -167,34 +167,36 @@
                  (seq (sort-by item-complexity matches)))))))
 
 (defn best-matching-element-id
-  "Return the id, if any, of the element of the target whose item
-  best matches the exemplar id's item."
-  [exemplar-id target-id immutable-store]
-  (if (= (id->target immutable-store exemplar-id) target-id)
-    ;; The exemplar id is an element of the given target. Return it.
+  "Find the element of the subject that best matches the exemplar id's item.
+   Return that element's id, if there is any match."
+  [exemplar-id subject-id immutable-store]
+  (if (= (id->target immutable-store exemplar-id) subject-id)
+    ;; The exemplar id is an element of the given subject. Return it.
     exemplar-id
     (let [template (-> (description->entity exemplar-id immutable-store)
                        semantic-to-list
                        pattern-to-fixed-term)
-          target (description->entity target-id immutable-store)]
-      (:item-id (best-match template (matching-elements template target))))))
+          subject (description->entity subject-id immutable-store)]
+      (:item-id (best-match template (matching-elements template subject))))))
 
 (defn get-item-or-exemplars-for-id
-  "Given the target(s), find items or exemplars for the id."
-  [target-ids immutable-store id]
+  "Given the subject(s), find items or exemplars for the id."
+  [subject-ids immutable-store id]
   (assert (is-item-id? id) id)
-  (assert (or (empty? target-ids)
+  ;; If there are any subjects, and exemplar id has a target,
+  ;; it must be an element of one of the subjects.
+  (assert (or (empty? subject-ids)
               (let [target-id (id->target immutable-store id)]
                 (or (nil? target-id)
-                    (some #{target-id} target-ids))))
+                    (some #{target-id} subject-ids))))
           [id
            (id->target immutable-store id)
            (id->source immutable-store id)
-           target-ids
-           (map #(id->source immutable-store %) target-ids)])
-  (if (<= (count target-ids) 1)
+           subject-ids
+           (map #(id->source immutable-store %) subject-ids)])
+  (if (<= (count subject-ids) 1)
     [id]
-    (->> target-ids
+    (->> subject-ids
          (map #(best-matching-element-id id % immutable-store))
          (remove nil?))))
 
@@ -203,9 +205,9 @@
   context that makes them refer to several items."
   [specification inherited-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
-        target-ids (:target-ids inherited-action-data)]
-    (assoc inherited-action-data :target-ids
-           (get-item-or-exemplars-for-id target-ids immutable-store id))))
+        subject-ids (:subject-ids inherited-action-data)]
+    (assoc inherited-action-data :subject-ids
+           (get-item-or-exemplars-for-id subject-ids immutable-store id))))
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_or_exemplar_action_data
@@ -214,14 +216,14 @@
 
 (defn parallel-items-get-action-data
   "For each of parallel-ids, run the data getter on the specification modified
-  to have that item id. Update the target-id of inherited-action-data
-  to be the union of the target-id of each of the results."
+  to have that item id. Update the subject-ids of inherited-action-data
+  to be the union of the subject-ids of each of the results."
   [{:keys [parallel-ids] :as specification}
    inherited-action-data action immutable-store getter]
   (assoc
-   inherited-action-data :target-ids
+   inherited-action-data :subject-ids
    (distinct
-    (mapcat (fn [id] (:target-ids
+    (mapcat (fn [id] (:subject-ids
                       (run-action-data-getter
                        getter
                        (-> specification
@@ -390,7 +392,7 @@
    first, then the second item as an element of that, the third as an
    element of that, etc. With the id of the final item being the final
    target.
-   The containing data's target-ids are the target of the new items,
+   The containing data's subject-ids are the target of the new items,
    unless sibling is true in which case they are the siblings.
    If sibling is true, the new items will be adjacent to the
    siblings. If not, they will be adjacent to elements of the target
@@ -405,7 +407,7 @@
     :as specification}
    inherited-action-data action immutable-store]
   (assert template template)
-  (let [incoming-ids (:target-ids inherited-action-data)
+  (let [incoming-ids (:subject-ids inherited-action-data)
         targets (if sibling
                   (map #(id->target immutable-store %) incoming-ids)
                   incoming-ids)
@@ -426,7 +428,7 @@
              template
              (simplify-for-print targets)
              (simplify-for-print adjacents))
-    (assoc inherited-action-data :target-ids ids :store store)))
+    (assoc inherited-action-data :subject-ids ids :store store)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_action_data

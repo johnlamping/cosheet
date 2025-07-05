@@ -132,12 +132,12 @@
                            (set (mapcat #(matching-elements % entity)
                                         excluding-queries))))
                         to-search)]
-    (assoc containing-action-data :target-ids (map :item-id matches))))
+    (assoc containing-action-data :subject-ids (map :item-id matches))))
 
 (defn get-batch-edit-stack-virtual-element-subject-action-data
   [specification containing-action-data action store]
   (let [matches (batch-edit-matching-rows specification store)]
-    (assoc containing-action-data :target-ids (map :item-id matches))))
+    (assoc containing-action-data :subject-ids (map :item-id matches))))
 
 (defn stack-subtree-DOM
   "Generate the dom for a subtree of a stack selector hierarchy, given

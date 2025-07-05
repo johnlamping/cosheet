@@ -113,25 +113,25 @@
   (is (= (get-id-action-data
           {:relative-id joe-id} {:foo :bar} nil store :test-id)
          {:foo :bar
-          :target-ids [:test-id]})))
+          :subject-ids [:test-id]})))
 
 (deftest get-item-or-exemplar-action-data-test
   (is (= (get-item-or-exemplar-action-data
           {:relative-id joe-id} {:foo :bar} nil store)
          {:foo :bar
-          :target-ids [joe-id]}))
+          :subject-ids [joe-id]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id joe-age)}
-          {:target-ids [joe-id]} nil store)
-         {:target-ids [(:item-id joe-age)]}))
+          {:subject-ids [joe-id]} nil store)
+         {:subject-ids [(:item-id joe-age)]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id jane-age)}
-          {:target-ids [joe-id jane-id]} nil store)
-         {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
+          {:subject-ids [joe-id jane-id]} nil store)
+         {:subject-ids [(:item-id joe-age) (:item-id jane-age)]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id dup-female-2)}
-          {:target-ids [joe-id jane-id dup-id]} nil store)
-         {:target-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
+          {:subject-ids [joe-id jane-id dup-id]} nil store)
+         {:subject-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
 
 (defn get-order [id store]
   (let [elements (id-label->element-ids store id :order)]
@@ -139,12 +139,12 @@
 
 (deftest get-virtual-action-data-test
   (let [data (get-virtual-action-data
-              {:template 'anything} {:target-ids [joe-id]} nil store)]
-    (is (check data {:target-ids [(any)]
+              {:template 'anything} {:subject-ids [joe-id]} nil store)]
+    (is (check data {:subject-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
-          {:keys [target-ids store]} data
-          id (first target-ids)]
+          {:keys [subject-ids store]} data
+          id (first subject-ids)]
       (is (= (id->target store id) joe-id))
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
@@ -154,12 +154,12 @@
   ;; vector as the template.
   (let [data (get-virtual-action-data
               {:template ['anything '(2 ("name" :label))]}
-              {:target-ids [jane-id joe-id]} nil store)]
-    (is (check data {:target-ids [(any) (any)]
+              {:subject-ids [jane-id joe-id]} nil store)]
+    (is (check data {:subject-ids [(any) (any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
-          {:keys [target-ids store]} data
-          [new-jane-id new-joe-id] target-ids]
+          {:keys [subject-ids store]} data
+          [new-jane-id new-joe-id] subject-ids]
       (is (=  (id->target store (id->target store new-joe-id)) joe-id))
       (is (check (semantic-to-list (description->entity new-joe-id store))
                  '(2 ("name" :label))))
@@ -177,12 +177,12 @@
               {:template 'anything
                :sibling true
                :position :before}
-              {:target-ids [(:item-id joe-age)]} nil store)]
-    (is (check data {:target-ids [(any)]
+              {:subject-ids [(:item-id joe-age)]} nil store)]
+    (is (check data {:subject-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
-          {:keys [target-ids store]} data
-          id (first target-ids)]
+          {:keys [subject-ids store]} data
+          id (first subject-ids)]
       (is (= (id->target store id) joe-id))
       (is (= (:left (get-order id store))
              (:left (get-order (:item-id joe-age) original-store))))
@@ -195,12 +195,12 @@
               {:template '(anything 2)
                :adjacent-query '(nil "age")
                :position :before}
-              {:target-ids [jane-id joe-id]} nil store)]
-    (is (check data {:target-ids [(any) (any)]
+              {:subject-ids [jane-id joe-id]} nil store)]
+    (is (check data {:subject-ids [(any) (any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
-          {:keys [target-ids store]} data
-          [new-jane-id new-joe-id] target-ids]
+          {:keys [subject-ids store]} data
+          [new-jane-id new-joe-id] subject-ids]
       (is (= (id->target store new-joe-id) joe-id))
       (is (check (semantic-to-list (description->entity new-joe-id store))
                  '("" 2)))
@@ -294,22 +294,22 @@
   (is (= (parallel-items-get-action-data
           {:parallel-ids [joe-id]}
           {} nil store get-item-or-exemplar-action-data)
-         {:target-ids [joe-id]}))
+         {:subject-ids [joe-id]}))
   (is (= (parallel-items-get-action-data
           {:parallel-ids [(:item-id joe-age)]}
-          {:target-ids [joe-id]} nil store 
+          {:subject-ids [joe-id]} nil store 
           get-item-or-exemplar-action-data)
-         {:target-ids [(:item-id joe-age)]}))
+         {:subject-ids [(:item-id joe-age)]}))
   (is (check (parallel-items-get-action-data
               {:parallel-ids  [(:item-id jane-age)]}
-              {:target-ids [joe-id jane-id]} nil store
+              {:subject-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data) 
-             {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
+             {:subject-ids [(:item-id joe-age) (:item-id jane-age)]}))
   (is (check (parallel-items-get-action-data
               {:parallel-ids [(:item-id jane-age) (:item-id joe-male)]}
-              {:target-ids [joe-id jane-id]} nil store
+              {:subject-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data)
-             {:target-ids [(:item-id joe-age) (:item-id jane-age)
+             {:subject-ids [(:item-id joe-age) (:item-id jane-age)
                            (:item-id joe-male)]})))
 
 (deftest parallel-items-get-do-batch-edit-action-data-test

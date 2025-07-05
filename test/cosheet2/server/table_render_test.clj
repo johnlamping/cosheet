@@ -94,10 +94,10 @@
                                                       (2 ("c2" :label)))))
         data (get-virtual-column-cell-action-data
               {}
-              {:table-id table-id :target-ids [row-id]}
+              {:table-id table-id :subject-ids [row-id]}
               nil store)
         new-store (:store data)
-        new-id (first (:target-ids data))]
+        new-id (first (:subject-ids data))]
     (is (= (semantic-to-list (description->entity new-id new-store))
            '("" (" A" :label))))))
 

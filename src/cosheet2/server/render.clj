@@ -333,6 +333,7 @@
 ;;; --- Top level item ---
 
 (comment
+  ;; NOTE: subject-referent in here is obsolete.
   (defn top-level-item-DOM-R
     "Make a dom for an item, testing the item to see what sort of dom to make."
     [item referent inherited]
@@ -488,6 +489,7 @@
            :render-dom reporter-specification-render-dom)))
 
 (comment ;; Copy stuff out of here as we support more kinds of top levels.
+  ;; NOTE: subject-referent in here is obsolete.
   (defn top-level-DOM-R
     [store session-temporary-id client-state]
     (expr-let [batch-editing-items (batch-editing-selector-items

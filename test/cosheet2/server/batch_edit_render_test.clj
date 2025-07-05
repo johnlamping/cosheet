@@ -180,11 +180,11 @@
                       :query-id q1
                       :stack-id stk1}
                      {} nil s)
-        target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 5))
-    (is (= (set (map #(id->target s %) target-ids))
+        subject-ids (:subject-ids action-data)]
+    (is (= (count subject-ids) 5))
+    (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
-    (doseq [id target-ids]
+    (doseq [id subject-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
   ;; But as a stack selector, we only require the '(nil "c1") to match.
@@ -196,11 +196,11 @@
                       :query-id q1
                       :stack-id stk1}
                      {} nil s)
-        target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 5))
-    (is (= (set (map #(id->target s %) target-ids))
+        subject-ids (:subject-ids action-data)]
+    (is (= (count subject-ids) 5))
+    (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
-    (doseq [id target-ids]
+    (doseq [id subject-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
   ;; Test excluding ids. Neither of the rows should match, as their
   ;; (nil ("c1" :label)) elements are all have content 2
@@ -213,11 +213,11 @@
                       :query-id q1
                       :stack-id stk1}
                      {} nil s)
-        target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 3))
-    (is (= (set (map #(id->target s %) target-ids))
+        subject-ids (:subject-ids action-data)]
+    (is (= (count subject-ids) 3))
+    (is (= (set (map #(id->target s %) subject-ids))
            #{h1 q1 stk1}))
-    (doseq [id target-ids]
+    (doseq [id subject-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
   ;; Test a query that matches multiple elements in some rows.
   (let [q3-entity (description->entity q3 s)
@@ -228,11 +228,11 @@
                       :query-id q3
                       :stack-id stk1}
                      {} nil s)
-        target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 8))
-    (is (= (set (map #(id->target s %) target-ids))
+        subject-ids (:subject-ids action-data)]
+    (is (= (count subject-ids) 8))
+    (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q3 stk1}))
-    (doseq [id target-ids]
+    (doseq [id subject-ids]
       (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
 
 ;;; TODO: Test a query element that doesn't match the stack element.

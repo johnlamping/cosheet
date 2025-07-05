@@ -446,7 +446,7 @@
           action-data (client-id->action-data
                        @dom-manager client-id :select
                        (current-store mutable-store))
-          {:keys [select]} action-data]
+          {:keys [tab-id]} action-data]
       (map-state-reset! client-state {:select-store-ids nil
                                       :if-selected nil})
       (store-update!
@@ -457,12 +457,11 @@
                (update-selected session-temporary-id client-id)
                (update-equivalent-undo-point true))
            store)))
-      (when select
-        (when-let [tab-id (:tab-id select)]
-          (do
-            (map-state-reset! client-state {:root-id tab-id})
-            {:set-url (str (:url-path session-state)
-                           "?root=" (id->string tab-id))}))))))
+      (when tab-id
+        (do
+          (map-state-reset! client-state {:root-id tab-id})
+          {:set-url (str (:url-path session-state)
+                         "?root=" (id->string tab-id))})))))
 
 (defn do-undo
   [mutable-store session-state & _]

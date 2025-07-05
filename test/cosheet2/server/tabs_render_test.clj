@@ -17,7 +17,7 @@
              [model-utils :refer [semantic-to-list]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
-                                  get-tab-action-data get-virtual-action-data
+                                  get-virtual-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data
                                   parallel-items-get-do-batch-edit-action-data]]
@@ -35,7 +35,6 @@
 (defn parallel-AD [] parallel-items-get-action-data)
 (defn item-do-batch-AD [] get-item-do-batch-edit-action-data)
 (defn parallel-do-batch-AD [] parallel-items-get-do-batch-edit-action-data)
-(defn tab-AD [] get-tab-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn comp-AD [] composed-get-action-data)
 
@@ -131,7 +130,7 @@
              :get-rendering-data (tab-RD)
              :example-element-ids (as-set [(:item-id t3-baz)
                                            (:item-id t3-bletch)])
-             :get-tab-action-data [(tab-AD) (:item-id t3)]
+             :tab-id (:item-id t3)
              :class "tab"}]
            [:div {:class "tab-tree"}
             [:component
@@ -173,7 +172,7 @@
                :get-action-data [(parallel-AD) (item-AD)]
                :get-do-batch-edit-action-data [(parallel-do-batch-AD)
                                                (item-do-batch-AD)]
-               :get-tab-action-data [(tab-AD) (:item-id t2)]
+               :tab-id (:item-id t2)
                :class "tab"}]
              [:component
               {:relative-id [(:item-id t1) :D1]
@@ -186,7 +185,7 @@
                :get-action-data [(parallel-AD) (item-AD)]
                :get-do-batch-edit-action-data [(parallel-do-batch-AD)
                                                (item-do-batch-AD)]
-               :get-tab-action-data [(tab-AD) (:item-id t1)]
+               :tab-id (:item-id t1)
                :class "chosen tab"}]]]]]))
     (is (check
          (render-tab-elements-DOM (second tab3-dom) store)

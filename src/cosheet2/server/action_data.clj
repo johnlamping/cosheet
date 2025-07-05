@@ -41,10 +41,6 @@
 ;;;                   store) the action getter creates the implied
 ;;;                   items.
 ;;;      :target-ids  A seq of the ids that should be acted upon
-;;;          :column  {:target-ids
-;;;                    :header-id}
-;;; TODO: column-headers-id is not needed much.
-;;;  :column-headers-id
 ;;; These three give information about the cell's position in a table,
 ;;; if any.  They are copied over from the specification, even before
 ;;; the action data getter is run. So action data getters don't have
@@ -56,8 +52,10 @@
 ;;;                   a hierarchy of column headers, cells can span
 ;;;                   multiple columns, in which case this lists them
 ;;;                   from left to right.
-;;; This tells what tab is active.
-;;;          :select  {:tab-id  ; The tab this component belongs to.}
+;;; This gives the tab id if the component is part of the display of a
+;;; single tab (not whatever the tab brings up, just the tab
+;;; description, itself)
+;;;          :tab-id  The tab that this component belongs to.
 ;;;                   For a virtual tab, the value is :virtual.
 ;;; If the action is do-batch-edit, the previous items are not present.
 ;;; The first two following ones will be present, and the later ones may be.
@@ -100,7 +98,7 @@
   (.write w "empty-AD"))
 
 (defn get-pass-through-action-data
-  "Our DOM is a wrapper node for a position in a tabe, or a content-only Do,
+  "Our DOM is a wrapper node for a position in a table, or a content-only DOM,
   under a DOM for the data. We don't affect anything."
   [specification containing-action-data action immutable-store]
   containing-action-data)
@@ -435,16 +433,6 @@
   [v ^java.io.Writer w]
   (.write w "virt-AD"))
 
-(defn get-tab-action-data
-  "Add the action data for a tab."
-  [specification containing-action-data action immutable-store tab-id]
-  (assoc containing-action-data :select {:tab-id tab-id}))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_tab_action_data
-  [v ^java.io.Writer w]
-  (.write w "tab-AD"))
-
 (defn composed-get-action-data
   "Run each argument getter in turn, feeding the output of each into
   the next."
@@ -477,14 +465,14 @@
   to the data."
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        {:keys [get-tab-action-data
-                get-do-batch-edit-action-data]} spec 
+        {:keys [get-do-batch-edit-action-data]} spec 
         ;; These keys are always copied from the spec to the action
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
-        copied-keys [:table-id :row-id :column-ids]
+        copied-keys [:table-id :row-id :column-ids :tab-id]
         action-data (into containing-action-data
                           (select-keys spec copied-keys))
+        ;; TODO: !!! This doesn't need to be a loop any more.
         data (reduce (fn [data getter]
                        (if getter
                          (run-action-data-getter
@@ -494,7 +482,10 @@
                      (if (= action :batch-edit)
                        [(or get-do-batch-edit-action-data
                             default-get-do-batch-edit-action-data)]
-                       ;; TODO: Make this list shorter, depending on the action.
-                       [(action-data-getter spec)
-                        get-tab-action-data]))]
+                       [(action-data-getter spec)]))]
+    ;; TODO: !!! These assertions are only here to make sure that
+    ;;       some old fields have been removed. Get rid of them
+    ;;       once it is clear that they aren't firing.
+    (assert (not (:column data)))
+    (assert (not (:column-headers-id data)))
     (assoc data :component component)))

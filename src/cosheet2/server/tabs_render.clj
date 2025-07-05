@@ -21,7 +21,6 @@
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
              [action-data :refer [get-item-or-exemplar-action-data
-                                  get-tab-action-data
                                   get-virtual-action-data
                                   compose-action-data-getter]])))
 
@@ -40,7 +39,7 @@
   [specification immutable-store]
   "Generate the dom for a node of the tabs hierarchy, but not any of
   its children. The component must already have get-action-data
-  that targets each of the tab items, and get-tab-action-data if there
+  that targets each of the tab items, and :tab-id if there
   is only one tab item."
   (let [{:keys [example-element-ids]} specification
         example-elements (map #(description->entity % immutable-store)
@@ -81,8 +80,7 @@
           :get-rendering-data get-tab-elements-rendering-data
           :example-element-ids example-element-ids}
        (= (count tab-ids) 1)
-       (assoc :get-tab-action-data
-              [get-tab-action-data (first tab-ids)])
+       (assoc :tab-id (first tab-ids))
        (and (= (count tab-ids) 1) (= chosen-tab-id (first tab-ids)))
        (into-attributes {:class "chosen"})
        (not= [relative-id] tab-ids)

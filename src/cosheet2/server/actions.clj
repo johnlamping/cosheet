@@ -13,7 +13,7 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->target target-id-label->ids id-valid-link? undo! redo!
+                   id->target target-label->ids id-valid-link? undo! redo!
                    current-store
                    id->string string->id id->source
                    Store]]
@@ -49,7 +49,7 @@
   the store. (We put it in the store, because that way, when
   there is an undo, we can undo to the last selection.)"
   [store temporary-id client-id]
-  (if-let [element-id (first (target-id-label->ids
+  (if-let [element-id (first (target-label->ids
                               store temporary-id :current-selection))]
     ;; We store the client id as a keyword, rather than a string, so it
     ;; is not semantic.
@@ -60,7 +60,7 @@
   "Retrieve the client id of the currently selected dom, as stored by
   update-selected."
   [store temporary-id]
-  (when-let [element-id (first (target-id-label->ids
+  (when-let [element-id (first (target-label->ids
                                 store temporary-id :current-selection))]
     (let [source (id->source store element-id)]
       (when (keyword? source)

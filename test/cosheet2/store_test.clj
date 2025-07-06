@@ -153,22 +153,22 @@
   (is (= (id->source test-store (make-link-id 2)) "Foo"))
   (is (= (id->source test-store (make-link-id 6)) :baz)))
 
-(deftest target-id->ids-test
-  (is (= (target-id->ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
-  (is (= (set (target-id->ids test-store (make-link-id 1)))
+(deftest target->ids-test
+  (is (= (target->ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
+  (is (= (set (target->ids test-store (make-link-id 1)))
          (set [(make-link-id 2) (make-link-id 9)])))
-  (is (= (target-id->ids test-store (make-link-id 999)) nil)))
+  (is (= (target->ids test-store (make-link-id 999)) nil)))
 
-(deftest target-id-label->ids-test
-  (is (= (target-id-label->ids test-store (make-link-id 1) "Bar")
+(deftest target-label->ids-test
+  (is (= (target-label->ids test-store (make-link-id 1) "Bar")
          [(make-link-id 2)]))
-  (is (= (target-id-label->ids test-store (make-link-id 1) "Baz")
+  (is (= (target-label->ids test-store (make-link-id 1) "Baz")
          [(make-link-id 2)]))
-  (is (= (target-id-label->ids test-store (make-link-id 0.5) "bar") nil))
-  (is (= (target-id-label->ids test-store (make-link-id 999) "bar") nil))
-  (is (= (target-id-label->ids test-store (make-link-id 1) :order)
+  (is (= (target-label->ids test-store (make-link-id 0.5) "bar") nil))
+  (is (= (target-label->ids test-store (make-link-id 999) "bar") nil))
+  (is (= (target-label->ids test-store (make-link-id 1) :order)
          [(make-link-id 9)]))
-  (is (= (target-id-label->ids test-store (make-link-id 0.5) :order)
+  (is (= (target-label->ids test-store (make-link-id 0.5) :order)
          nil)))
 
 (deftest id->has-keyword?-test
@@ -177,13 +177,13 @@
   (is (not (id->has-keyword? test-store (make-link-id 3) :bar)))
   (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
 
-(deftest source-id->ids-test
+(deftest source->ids-test
   ;; TODO: !!! Once objects can be sources, revise this to use them.
-  (is (= (vec (source-id->ids test-store (make-link-id 4)))
+  (is (= (vec (source->ids test-store (make-link-id 4)))
          []))
-  (is (= (source-id->ids test-store (make-link-id 1)) nil))
+  (is (= (source->ids test-store (make-link-id 1)) nil))
   (is (thrown? java.lang.AssertionError
-               (source-id->ids test-store "Foo"))))
+               (source->ids test-store "Foo"))))
 
 (deftest id->target-test
    (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
@@ -240,7 +240,7 @@
       (is (= (id->target store element) id))))
   ;; Everything that should be in :target->ids is.
   (doseq [[id target] (:id->target store)]
-    (is (some #{id} (target-id->ids store target))))
+    (is (some #{id} (target->ids store target))))
   
   ;; Everything in :source->ids is true.
   (doseq [[source ids] (:source->ids store)]
@@ -258,7 +258,7 @@
     (doseq [keyword (pseudo-set-seq keywords)]
       (is (keyword? keyword))
       (is (some #(= (id->source store %) keyword)
-                (target-id->ids store id)))))
+                (target->ids store id)))))
   ;; Everything that should be in :id->keywords is.
   (doseq [[id source] (:id->source store)]
     (when-let [target (id->target store id)]
@@ -273,11 +273,11 @@
       (doseq [label-id (pseudo-set-seq ids)]
         (and
          (is (some (fn [element]
-                     (some #{label-id} (target-id->ids store element))) 
-                   (target-id->ids store id)))
+                     (some #{label-id} (target->ids store element))) 
+                   (target->ids store id)))
          (= (canonical-primitive-form (id->source store label-id)) label)
          (is (or (some #(= (id->source store %) :label)
-                       (target-id->ids store label-id))
+                       (target->ids store label-id))
                  (let [source (id->source store label-id)]
                    (and (keyword? source) (not= source :label)))))))))
   ;; Everything that should be :target->label->label-ids is.

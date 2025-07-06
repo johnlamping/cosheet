@@ -8,7 +8,7 @@
                       valid?]]
     [calculator :refer [modify-and-act! propagate-calculator-data!]]
     [store :refer [update-source add-link declare-temporary-id
-                   target-id-label->ids id->source ImmutableStore]]
+                   target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
                     description->entity]]
     [query :refer [matching-items]]
@@ -98,7 +98,7 @@
         (when (valid? immutable-ids)
           (with-latest-value [immutable-store (reporter-value (:store data))]
             (let [immutable-ids (seq immutable-ids)
-                  order-ids (map #(first (target-id-label->ids
+                  order-ids (map #(first (target-label->ids
                                           immutable-store % :order))
                                  immutable-ids)
                   ;; If an item has an order element, we can watch

@@ -1,7 +1,7 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
-                      [store :refer [id->target target-id-label->ids]]
+                      [store :refer [id->target target-label->ids]]
                       [reporter :refer [universal-category]]
                       [entity :refer [target content elements label->elements
                                       description->entity
@@ -525,9 +525,9 @@
   [{:keys [table-id]} immutable-store {:keys [mutable-store]}]
   (println "Generating DOM for table" (simplify-for-print table-id))
   ;; First check to see if we have the table information filled in yet.
-  (let [row-condition-id (first (target-id-label->ids
+  (let [row-condition-id (first (target-label->ids
                                  immutable-store table-id :row-condition))
-        column-headers-id (first (target-id-label->ids
+        column-headers-id (first (target-label->ids
                                   immutable-store table-id :column-headers))]
     ;; Render the table only if the table information has been filled in.
     (if (not (and row-condition-id column-headers-id))

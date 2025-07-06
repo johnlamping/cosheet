@@ -370,16 +370,16 @@
     (cache-and-categorize
      [id] id->source this id))
 
-  (target-id->ids [this id]
+  (target->ids [this id]
     (cache-and-categorize
-     [id] target-id->ids this id))
+     [id] target->ids this id))
 
   (id->target [this id]
     (id->target (reporter-value this) id))
 
-  (target-id-label->ids [this id label]
+  (target-label->ids [this id label]
     (cache-and-categorize
-     [id] target-id-label->ids this id label))
+     [id] target-label->ids this id label))
 
   (id->has-keyword? [this id keyword]
     (cache-and-categorize

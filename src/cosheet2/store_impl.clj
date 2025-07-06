@@ -106,10 +106,10 @@
     (when (is-link-id? id)
       (get-in this [:id->source id])))
 
-  (target-id->ids [this id]
+  (target->ids [this id]
     (pseudo-set-seq (get-in this [:target->ids id])))
 
-  (target-id-label->ids [this id label]
+  (target-label->ids [this id label]
     (let [canonnical-label (canonical-primitive-form label)]
       (seq
        (map #(get-in this [:id->target %])
@@ -119,7 +119,7 @@
   (id->has-keyword? [this id keyword]
     (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
 
-  (source-id->ids [this id]
+  (source->ids [this id]
     ;; TODO: !!! Remove this assert
     (assert (is-item-id? id))
     (pseudo-set-seq (get-in this [:source->ids id])))
@@ -305,7 +305,7 @@
       (cond-> store
         (and (keyword? old-source)
              (not-any? #(= (id->source store %) old-source)
-                       (target-id->ids store target)))
+                       (target->ids store target)))
         (update-in-clean-up [:id->keywords target]
                             #(pseudo-set-disj % old-source))
         (keyword? source)
@@ -401,7 +401,7 @@
 (defn remove-link-impl [store id]
     (assert (not (nil? (id->source store id)))
             "Removed id not present.")
-    (assert (nil? (target-id->ids store id))
+    (assert (nil? (target->ids store id))
             "Removed id is a target.")
     (assert (nil? (get-in store [:source->ids id]))
             "Removed id is the source of another.")
@@ -413,7 +413,7 @@
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."
-  (cons id (mapcat #(descendant-ids store %) (target-id->ids store id))))
+  (cons id (mapcat #(descendant-ids store %) (target->ids store id))))
 
 (defn all-temporary-ids [store]
   "Return a set of all declared temporary ids and their descendant elements."

@@ -6,7 +6,7 @@
                       [expression :refer [expr expr-let expr-seq expr-filter]]
                       [canonical :refer [canonicalize]]
                       [store :refer [new-element-store update-source
-                                     target-id-label->ids]]
+                                     target-label->ids]]
                       [entity :refer [primitive? label? description->entity
                                       content target elements label->elements
                                       in-different-store]]
@@ -307,7 +307,7 @@
   "Return the ids of the tabs, in order."
   [store]
   (expr-let [holder-id (tabs-holder-id-R store)]
-    (ordered-ids-R (target-id-label->ids store holder-id :tab)
+    (ordered-ids-R (target-label->ids store holder-id :tab)
                    store)))
 
 ;;; A table item has a :table element, and has the following elements
@@ -340,11 +340,11 @@
 
 (defn table-column-headers-id
   [table-id immutable-store]
-  (first (target-id-label->ids immutable-store table-id :column-headers)))
+  (first (target-label->ids immutable-store table-id :column-headers)))
 
 (defn table-row-condition-id
   [table-id immutable-store]
-  (first (target-id-label->ids immutable-store table-id :row-condition)))
+  (first (target-label->ids immutable-store table-id :row-condition)))
 
 (defn table-row-template
   "Return the row condition as a template."

@@ -48,15 +48,15 @@
               (id-valid-link? mutable-store (make-item-id "wrong"))
               cd)))
     (is (= (computation-value
-            (target-id-label->ids mutable-store element "by")
+            (target-label->ids mutable-store element "by")
             cd)
-           (target-id-label->ids store element "by")))
-    (is (= (computation-value (target-id->ids mutable-store element) cd)
-           (target-id->ids store element)))
+           (target-label->ids store element "by")))
+    (is (= (computation-value (target->ids mutable-store element) cd)
+           (target->ids store element)))
     (is (= (computation-value (id->source mutable-store element) cd)
            (id->source store element)))
-    (let [fred (first (target-id-label->ids store element "by"))
-          label (first (target-id->ids store fred))]
+    (let [fred (first (target-label->ids store element "by"))
+          label (first (target->ids store fred))]
       (is (computation-value
            (id->has-keyword? mutable-store label :label) cd))
       (is (not (computation-value
@@ -66,8 +66,8 @@
     (is (mutable-store? mutable-store))
     ;; Test that subscriptions track.
     (let [source (id->source mutable-store element)
-          element-ids (target-id->ids mutable-store element)
-          label-ids (target-id-label->ids mutable-store element :label)
+          element-ids (target->ids mutable-store element)
+          label-ids (target-label->ids mutable-store element :label)
           candidate-ids (candidate-matching-ids mutable-store nil)
           tracking-store (category-change [element] mutable-store)
           callback (fn [& {:keys [key reporter description categories]}]
@@ -117,9 +117,9 @@
         (run-all-pending-tasks queue)
         (is (= (reporter-value source) "S3"))
         (is (= (set (reporter-value element-ids))
-               (set (target-id->ids revised-store element))))
+               (set (target->ids revised-store element))))
         (is (= (set (reporter-value label-ids))
-               (set (target-id-label->ids revised-store element :label))))
+               (set (target-label->ids revised-store element :label))))
         (is (= (set (reporter-value candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
         (is (check (reporter-value tracking-store)
@@ -152,9 +152,9 @@
         (run-all-pending-tasks queue)
         (is (= (reporter-value source) (id->source modified-store element)))
         (is (= (set (reporter-value element-ids))
-               (set (target-id->ids store element))))
+               (set (target->ids store element))))
         (is (= (set (reporter-value label-ids))
-               (set (target-id-label->ids store element :label))))
+               (set (target-label->ids store element :label))))
         (is (= (set (reporter-value candidate-ids))
                (set (candidate-matching-ids store nil))))
         (is (= (reporter-value tracking-store)
@@ -198,9 +198,9 @@
         (run-all-pending-tasks queue)
         (is (= (reporter-value source) (id->source revised-store element)))
         (is (= (set (reporter-value element-ids))
-               (set (target-id->ids revised-store element))))
+               (set (target->ids revised-store element))))
         (is (= (set (reporter-value label-ids))
-               (set (target-id-label->ids revised-store element :label))))
+               (set (target-label->ids revised-store element :label))))
         (is (= (set (reporter-value candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
         (is (= (reporter-value tracking-store)
@@ -220,7 +220,7 @@
         (run-all-pending-tasks queue)
         ;; Still tracked, so should be equal to the original store
         (is (= (set (reporter-value element-ids))
-               (set (target-id->ids store element))))
+               (set (target->ids store element))))
         (is (= (set (reporter-value candidate-ids))
                (set (candidate-matching-ids store nil))))
         ;; Not tracked, so should be invalid
@@ -230,4 +230,4 @@
         (set-attendee! label-ids :a 0 callback)
         (run-all-pending-tasks queue)
         (is (= (set (reporter-value label-ids))
-               (set (target-id-label->ids store element :label))))))))
+               (set (target-label->ids store element :label))))))))

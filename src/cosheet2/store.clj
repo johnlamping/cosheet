@@ -155,21 +155,20 @@
     for. In other words, one that is the target of some link in the store.")
   
   (id->target [this id]
-    "Given a link id, return its target. If the target is a link it,
+    "Given a link id, return its target. If the target is a link, it
     assumes that it never changes, so doesn't return a reporter even
     for a mutable store.")
 
   (id->source [this id]
     "Given the id of a link, return a description of its source.")
 
-  ;; TODO: !!! Change the next three to not required ids in their arguments.
-  (target-id->ids [this id]
+  (target->ids [this id]
     "Returns a seq of all ids that have the given target.")
 
-  (source-id->ids [this id]
+  (source->ids [this id]
     "Returns a seq of all ids that have the given source.")
 
-  (target-id-label->ids [this id label]
+  (target-label->ids [this id label]
     "Returns a seq of the ids that have the given id as their target and
     that are themselves targeted by a link that counts as a label and
     that has the given label as its source.")

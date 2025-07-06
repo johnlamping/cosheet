@@ -1,6 +1,6 @@
 (ns cosheet2.store-utils
   (:require (cosheet2 [store :refer [add-link remove-link
-                                     id->source target-id->ids
+                                     id->source target->ids
                                      is-link-id?]])))
 
 (defn- items-to-add
@@ -54,7 +54,7 @@
   [store id]
   (let [source (id->source store id)
         element-removals (mapcat (partial links-to-remove store)
-                                 (target-id->ids store id))]
+                                 (target->ids store id))]
     (concat element-removals
             ;; We can only remove the id once everythig pointing to
             ;; it is gone.

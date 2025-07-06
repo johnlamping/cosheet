@@ -110,6 +110,14 @@
          (and (number? id)
               (> id 0)))))
 
+(defn is-object-id?
+   "Return true if the argument is an item id for an object."
+  [x]
+  (and (instance? ItemId x)
+       (let [id (:id x)]
+         (or (not (number? id))
+             (< id 0)))))
+
 (defn id->string
   "Return a string representation of an id."
   [id]
@@ -138,9 +146,13 @@
   ;; on stores having. They typically take a store and an ItemId, and may
   ;; return ItemIds.
 
-  (id-valid? [this id]
-    "Returns true if the id is a valid id for the store, one that 
+  (id-valid-link? [this id]
+    "Returns true if the id is a valid link id for the store, one that 
     store has information about.")
+
+  (id-described-object? [this id]
+    "Returns true if the id is an object id that the store has some description
+    for. In other words, one that is the target of some link in the store.")
   
   (id->target [this id]
     "Given a link id, return its target. If the target is a link it,
@@ -150,7 +162,7 @@
   (id->source [this id]
     "Given the id of a link, return a description of its source.")
 
-  (id->element-ids [this id]
+  (target-id->ids [this id]
     "Returns a seq of all ids that have the id as their target.")
 
   (id-label->element-ids [this id label]

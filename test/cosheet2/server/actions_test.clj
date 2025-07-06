@@ -17,7 +17,7 @@
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             id-label->element-ids
-                            current-store id-valid? id->source]]
+                            current-store id-valid-link? id->source]]
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
@@ -254,8 +254,8 @@
         new-store (do-delete store
                              {:subject-ids [joe-id
                                             (:item-id name-header)]})]
-    (is (not (id-valid? new-store joe-id)))
-    (is (id-valid? new-store (:item-id name-header)))))
+    (is (not (id-valid-link? new-store joe-id)))
+    (is (id-valid-link? new-store (:item-id name-header)))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

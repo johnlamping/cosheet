@@ -13,7 +13,7 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->target id-label->element-ids id-valid? undo! redo!
+                   id->target id-label->element-ids id-valid-link? undo! redo!
                    current-store
                    id->string string->id
                    id-label->element-ids id->source
@@ -540,7 +540,7 @@
         ;; that id, we will try to focus on it.
         (if (and root-id
                  (not (:set-url client-info))
-                 (not (id-valid? (current-store mutable-store) root-id)))
+                 (not (id-valid-link? (current-store mutable-store) root-id)))
           (do
             (map-state-change-value! client-state :root-id (constantly nil))
             (assoc client-info :set-url (str (:url-path session-state) "?")))

@@ -220,7 +220,7 @@
         (run-all-pending-tasks queue)
         ;; Still tracked, so should be equal to the original store
         (is (= (set (reporter-value element-ids))
-               (set (target-id->ids store element))))
+               (set (target-id->idsg store element))))
         (is (= (set (reporter-value candidate-ids))
                (set (candidate-matching-ids store nil))))
         ;; Not tracked, so should be invalid

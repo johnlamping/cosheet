@@ -358,17 +358,21 @@
 
   Store
 
-  (id-valid? [this id]
+  (id-valid-link? [this id]
     (cache-and-categorize
-     [id] id-valid? this id))
+     [id] id-valid-link? this id))
+
+  (id-described-object? [this id]
+    (cache-and-categorize
+     [id] id-described-object? this id))
 
   (id->source [this id]
     (cache-and-categorize
      [id] id->source this id))
 
-  (id->element-ids [this id]
+  (target-id->ids [this id]
     (cache-and-categorize
-     [id] id->element-ids this id))
+     [id] target-id->ids this id))
 
   (id->target [this id]
     (id->target (reporter-value this) id))

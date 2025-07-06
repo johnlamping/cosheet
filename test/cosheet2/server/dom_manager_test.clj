@@ -15,7 +15,7 @@
              [debug :refer [envs-to-list]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-item-id
-                            id->element-ids string->id]]
+                            string->id]]
              mutable-store-impl
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue

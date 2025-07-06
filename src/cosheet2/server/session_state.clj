@@ -9,7 +9,7 @@
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
                    store-update-control-return! declare-temporary-id
-                   store-update! id-valid? update-equivalent-undo-point
+                   store-update! id-valid-link? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
     [store-utils :refer [add-entity remove-entity-by-id]]
@@ -450,7 +450,7 @@
              (let [session-temporary-id (:session-temporary-id state)]
                (store-update!
                 (:store state)
-                (fn [store] (if (id-valid? store session-temporary-id)
+                (fn [store] (if (id-valid-link? store session-temporary-id)
                               (remove-entity-by-id store session-temporary-id)
                               store))))
              (assoc session-info :sessions

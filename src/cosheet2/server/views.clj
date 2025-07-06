@@ -4,8 +4,7 @@
     [ring.util.response :refer [response]]
     [clojure.java.io :as io]
     (cosheet2
-     [store :refer [current-store data-to-store store-reset!
-                    ->ItemId id-valid?]]
+     [store :refer [current-store data-to-store store-reset!]]
      store-impl
      mutable-store-impl
      [entity :refer [description->entity in-different-store

@@ -8,7 +8,7 @@
              [calculator :refer [new-calculator-data request compute]]
              [entity :refer [elements target]]
              [store :refer [new-element-store new-mutable-store store-reset!
-                            id->element-ids id->target]]
+                            id->target]]
              store-impl
              [store-utils :refer [add-entity]]
              [query :refer [matching-items matching-elements not-query

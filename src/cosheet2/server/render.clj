@@ -1,7 +1,7 @@
 (ns cosheet2.server.render
   (:require (cosheet2 [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [id-valid?]]
+                      [store :refer [id-valid-link?]]
                       [entity :refer [target content label->elements
                                       label->element
                                       description->entity updating-immutable]]
@@ -387,7 +387,7 @@
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
   (expr-let [id (map-state-get client-state :root-id)
-             id-valid (id-valid? store id)]
+             id-valid (id-valid-link? store id)]
     (or (when id-valid id)
         (expr first (ordered-tabs-ids-R store)))))
 

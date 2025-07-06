@@ -69,21 +69,21 @@
   (is (= (item-id-name (make-item-id "a")) "Id:Ia"))
   (is (= (item-id-name (->ItemId 1)) "Id:1")))
 
-(deftest index-id->elements-test
+(deftest index-target->ids-test
   (let [ids (keys (:id->source unindexed-test-store))
-        store (reduce #(index-id->elements %1 empty-store %2)
+        store (reduce #(index-target->ids %1 empty-store %2)
                       unindexed-test-store ids)
         empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-id->elements %1 store %2) empty-indexed ids)]
+        unindexed (reduce #(index-target->ids %1 store %2) empty-indexed ids)]
     (is (= (reduce (fn [accum elements]
                      (+ accum (count (pseudo-set-seq elements))))
-                   0 (vals (:id->elements store)))
+                   0 (vals (:target->ids store)))
            (count (:id->target unindexed-test-store))))
     (doseq [id (keys (:id->target unindexed-test-store))]
       (let [target (get-in store [:id->target id])]
-        (is (pseudo-set-contains? (get-in store [:id->elements target])
+        (is (pseudo-set-contains? (get-in store [:target->ids target])
                                   id))))
-    (is (empty? (:id->elements unindexed)))))
+    (is (empty? (:target->ids unindexed)))))
 
 (deftest index-source->ids-test
   (let [ids (keys (:id->source unindexed-test-store))
@@ -105,7 +105,7 @@
 
 (deftest index-id->keywords-test
   (let [ids (keys (:id->source unindexed-test-store))
-        elements-indexed (reduce #(index-id->elements %1 empty-store %2)
+        elements-indexed (reduce #(index-target->ids %1 empty-store %2)
                                  unindexed-test-store ids)
         store (reduce #(index-id->keywords %1 empty-store %2)
                       elements-indexed ids)
@@ -119,7 +119,7 @@
 
 (deftest index-id->label->ids-test
   (let [ids (keys (:id->source unindexed-test-store))
-        elements-indexed (reduce #(index-id->elements %1 empty-store %2)
+        elements-indexed (reduce #(index-target->ids %1 empty-store %2)
                                  unindexed-test-store ids)
         keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
                       elements-indexed ids)
@@ -138,7 +138,7 @@
 (def test-store
   (let [ids (keys (:id->source unindexed-test-store))]
     (as-> unindexed-test-store store
-      (reduce #(index-id->elements %1 empty-store %2) store ids)
+      (reduce #(index-target->ids %1 empty-store %2) store ids)
       (reduce #(index-source->ids %1 empty-store %2) store ids)
       (reduce #(index-id->keywords %1 empty-store %2) store ids)
       (reduce #(index-id->label->ids %1 empty-store %2) store ids))))
@@ -151,9 +151,9 @@
   (is (= (set (all-forward-reachable-ids test-store (make-link-id 1)))
           #{(make-link-id 0.5) (make-link-id 1)})))
 
-(deftest id-valid?-test
-  (is (id-valid? test-store (make-link-id 1)))
-  (is (not (id-valid? test-store (make-link-id 99)))))
+(deftest id-valid-link?-test
+  (is (id-valid-link? test-store (make-link-id 1)))
+  (is (not (id-valid-link? test-store (make-link-id 99)))))
 
 (deftest id->source-test
   (is (= (id->source test-store (make-link-id 999)) nil))
@@ -161,11 +161,11 @@
   (is (= (id->source test-store (make-link-id 2)) "Foo"))
   (is (= (id->source test-store (make-link-id 6)) :baz)))
 
-(deftest id->element-ids-test
-  (is (= (id->element-ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
-  (is (= (set (id->element-ids test-store (make-link-id 1)))
+(deftest target-id->ids-test
+  (is (= (target-id->ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
+  (is (= (set (target-id->ids test-store (make-link-id 1)))
          (set [(make-link-id 2) (make-link-id 9)])))
-  (is (= (id->element-ids test-store (make-link-id 999)) nil)))
+  (is (= (target-id->ids test-store (make-link-id 999)) nil)))
 
 (deftest id-label->element-ids-test
   (is (= (id-label->element-ids test-store (make-link-id 1) "Bar")
@@ -242,13 +242,13 @@
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
   [store]
-  ;; Everything in :id->elements is true.
-  (doseq [[id elements] (:id->elements store)]
+  ;; Everything in :target->ids is true.
+  (doseq [[id elements] (:target->ids store)]
     (doseq [element (pseudo-set-seq elements)]
       (is (= (id->target store element) id))))
-  ;; Everything that should be in :id->element is.
+  ;; Everything that should be in :target->ids is.
   (doseq [[id target] (:id->target store)]
-    (is (some #{id} (id->element-ids store target))))
+    (is (some #{id} (target-id->ids store target))))
   
   ;; Everything in :source->ids is true.
   (doseq [[source ids] (:source->ids store)]
@@ -266,7 +266,7 @@
     (doseq [keyword (pseudo-set-seq keywords)]
       (is (keyword? keyword))
       (is (some #(= (id->source store %) keyword)
-                (id->element-ids store id)))))
+                (target-id->ids store id)))))
   ;; Everything that should be in :id->keywords is.
   (doseq [[id source] (:id->source store)]
     (when-let [target (id->target store id)]
@@ -281,11 +281,11 @@
       (doseq [label-id (pseudo-set-seq ids)]
         (and
          (is (some (fn [element]
-                     (some #{label-id} (id->element-ids store element))) 
-                   (id->element-ids store id)))
+                     (some #{label-id} (target-id->ids store element))) 
+                   (target-id->ids store id)))
          (= (canonical-primitive-form (id->source store label-id)) label)
          (is (or (some #(= (id->source store %) :label)
-                       (id->element-ids store label-id))
+                       (target-id->ids store label-id))
                  (let [source (id->source store label-id)]
                    (and (keyword? source) (not= source :label)))))))))
   ;; Everything that should be :id->label->ids is.

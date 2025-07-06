@@ -42,9 +42,9 @@
     ;;; A set of ids that have been declared temporary.
     temporary-ids
 
-    ;;; A derived map from link ItemId to a pseudo-set of the ids of its
-    ;;; elements.
-    id->elements
+    ;;; A derived map from ItemId to a pseudo-set of the ids of the linke
+    ;;; that target it.
+    target->ids
 
     ;;; A derived index from the canonical-primitive-form of source to a
     ;;; pseudo-set of ids with that source. Nil source is not
@@ -81,8 +81,12 @@
 
   Store
 
-  (id-valid? [this id]
+  (id-valid-link? [this id]
     (contains? (:id->source this) id))
+
+  (id-described-object? [this id]
+    (and (is-object-id? id))
+    (contains? (:target->ids this) id))
 
   (id->target [this id]
     (when (is-link-id? id)
@@ -92,8 +96,8 @@
     (when (is-link-id? id)
       (get-in this [:id->source id])))
 
-  (id->element-ids [this id]
-    (pseudo-set-seq (get-in this [:id->elements id])))
+  (target-id->ids [this id]
+    (pseudo-set-seq (get-in this [:target->ids id])))
 
   (id-label->element-ids [this id label]
     (seq
@@ -118,7 +122,7 @@
         [(if (and (sequential? template) (seq (rest template)))
             ;; The template has an element.
             ;; Return all items that have elements.
-            (keys id->elements)
+            (keys target->ids)
             (keys (:id->source this)))
          false]
         [ids precise])))
@@ -259,8 +263,8 @@
                     [(id->target store id)
                      (id->source store id)]))))
 
-(defn index-id->elements
-  "Reflect this link in the id->elements index."
+(defn index-target->ids
+  "Reflect this link in the target->ids index."
   [store old-store id]
   (let [target (id->target store id)
         old-target (id->target old-store id)]
@@ -269,7 +273,7 @@
       ;; Since the target of a link may never change, we are either
       ;; adding a link or removing it. 
       (let [adding (not old-target)]
-        (update-in-clean-up store [:id->elements (or target old-target)]
+        (update-in-clean-up store [:target->ids (or target old-target)]
                             #(pseudo-set-set-membership % id adding))))))
 
 (defn index-source->ids
@@ -291,7 +295,7 @@
 
 (defn index-id->keywords
   "Reflect this link's source in the id->keywords index.
-   The id->elements index must be valid when this is called."
+   The target->ids index must be valid when this is called."
   [store old-store id]
   (let [source (id->source store id)
         old-source (id->source old-store id)
@@ -301,7 +305,7 @@
       (cond-> store
         (and (keyword? old-source)
              (not-any? #(= (id->source store %) old-source)
-                       (id->element-ids store target)))
+                       (target-id->ids store target)))
         (update-in-clean-up [:id->keywords target]
                             #(pseudo-set-disj % old-source))
         (keyword? source)
@@ -354,7 +358,7 @@
   "Do all indexing for adding, removing or changing the id in the store."
   [store old-store id]
   (-> store 
-      (index-id->elements old-store id)
+      (index-target->ids old-store id)
       (index-source->ids old-store id)
       (index-id->keywords old-store id)
       (index-id->label->ids old-store id)))
@@ -395,8 +399,8 @@
 (defn remove-triple [store id]
     (assert (not (nil? (id->source store id)))
             "Removed id not present.")
-    (assert (nil? (id->element-ids store id))
-            "Removed id has elements.")
+    (assert (nil? (target-id->ids store id))
+            "Removed id is a target.")
     (assert (nil? (get-in store [:source->ids id]))
             "Removed id is the source of another.")
     (-> store
@@ -407,7 +411,7 @@
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."
-  (cons id (mapcat #(descendant-ids store %) (id->element-ids store id))))
+  (cons id (mapcat #(descendant-ids store %) (target-id->ids store id))))
 
 (defn all-temporary-ids [store]
   "Return a set of all declared temporary ids and their descendant elements."
@@ -523,7 +527,7 @@
 (defmethod new-element-store true []
   (map->ElementStoreImpl {:id->target {}
                           :id->source {}
-                          :id->elements {}
+                          :target->ids {}
                           :source->ids {}
                           :id->keywords {}
                           :id->label->ids {}

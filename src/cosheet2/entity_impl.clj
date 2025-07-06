@@ -1,6 +1,6 @@
 (ns cosheet2.entity-impl
   (:require (cosheet2 [store :refer [id-label->element-ids
-                                     id->element-ids
+                                     target-id->ids
                                      id->source id->target
                                      id->has-keyword?
                                      mutable-store?
@@ -43,7 +43,7 @@
            (description->entity element-id store))))
 
   (elements [this]
-    (seq (for [element-id (id->element-ids store item-id)]
+    (seq (for [element-id (target-id->ids store item-id)]
            (description->entity element-id store))))
 
   (content [this]
@@ -87,7 +87,7 @@
              (description->entity element-id store)))))
 
   (elements [this]
-    (expr-let [element-ids (id->element-ids store item-id)]
+    (expr-let [element-ids (target-id->ids store item-id)]
       (seq (for [element-id element-ids]
              (description->entity element-id store)))))
 

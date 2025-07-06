@@ -1,7 +1,7 @@
 (ns cosheet2.server.format-convert
   (:require (cosheet2 [debug :refer [simplify-for-print]]             
                       [entity :refer [to-list label->elements content]]
-                      [store :refer [update-source id-valid?]]
+                      [store :refer [update-source id-valid-link?]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items]])))
 
@@ -86,7 +86,7 @@
                 (update-source s (:item-id wrong) :blank))
               store wrongly-semantic)
       (reduce (fn [s non-semantic]
-                (if (id-valid? s (:item-id non-semantic))
+                (if (id-valid-link? s (:item-id non-semantic))
                   (remove-entity-by-id s (:item-id non-semantic))
                   s))
               store (matching-items :non-semantic store)))))

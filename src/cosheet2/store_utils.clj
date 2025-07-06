@@ -1,8 +1,8 @@
 (ns cosheet2.store-utils
   (:require (cosheet2 [store :refer [add-link remove-link
-                                     id->source id->element-ids
+                                     id->source target-id->ids
                                      id->containing-ids
-                                     is-item-id?]])))
+                                     is-link-id?]])))
 
 (defn- items-to-add
   "Return a seq of items, described as [target source], to add
@@ -55,15 +55,11 @@
   [store id]
   (let [source (id->source store id)
         element-removals (mapcat (partial links-to-remove store)
-                                 (id->element-ids store id))]
+                                 (target-id->ids store id))]
     (concat element-removals
-            [id]
-            (when (and (is-item-id? source)
-                       (every? (conj (set element-removals) id)
-                               (id->containing-ids store source)))
-              ;; The source is an item that nobody else holds,
-              ;; so remove it too.
-              (links-to-remove store source)))))
+            ;; We can only remove the id once everythig pointing to
+            ;; it is gone.
+            (if (is-link-id? id) [id] []))))
 
 (defn remove-entity-by-id
   "Remove the entity with the given id, and all its elements and source."

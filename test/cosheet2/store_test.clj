@@ -117,21 +117,21 @@
                 (make-link-id 9) :order}))
     (is (empty? (:id->keywords unindexed)))))
 
-(deftest index-id->label->ids-test
+(deftest index-target->label->label-ids-test
   (let [ids (keys (:id->source unindexed-test-store))
-        elements-indexed (reduce #(index-target->ids %1 empty-store %2)
+        targets-indexed (reduce #(index-target->ids %1 empty-store %2)
                                  unindexed-test-store ids)
         keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
-                      elements-indexed ids)
-        store (reduce #(index-id->label->ids %1 empty-store %2)
+                                 targets-indexed ids)
+        store (reduce #(index-target->label->label-ids %1 empty-store %2)
                       keywords-indexed ids)
         empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-id->label->ids %1 store %2)
+        unindexed (reduce #(index-target->label->label-ids %1 store %2)
                           empty-indexed ids)]
-    (is (check (:id->label->ids store)
+    (is (check (:target->label->label-ids store)
                {(make-link-id 1) {"baz" (make-link-id 3)
-                               "bar" (make-link-id 5)
-                               :order (make-link-id 10)}
+                                  "bar" (make-link-id 5)
+                                  :order (make-link-id 10)}
                 (make-link-id 2) {:baz (make-link-id 6)}}))
     (is (empty? (:source->ids unindexed)))))
 
@@ -141,7 +141,7 @@
       (reduce #(index-target->ids %1 empty-store %2) store ids)
       (reduce #(index-source->ids %1 empty-store %2) store ids)
       (reduce #(index-id->keywords %1 empty-store %2) store ids)
-      (reduce #(index-id->label->ids %1 empty-store %2) store ids))))
+      (reduce #(index-target->label->label-ids %1 empty-store %2) store ids))))
 
 (deftest all-X-test
   (is (= (set (all-ids-eventually-holding-source test-store 5))
@@ -167,16 +167,16 @@
          (set [(make-link-id 2) (make-link-id 9)])))
   (is (= (target-id->ids test-store (make-link-id 999)) nil)))
 
-(deftest id-label->element-ids-test
-  (is (= (id-label->element-ids test-store (make-link-id 1) "Bar")
+(deftest target-id-label->ids-test
+  (is (= (target-id-label->ids test-store (make-link-id 1) "Bar")
          [(make-link-id 2)]))
-  (is (= (id-label->element-ids test-store (make-link-id 1) "Baz")
+  (is (= (target-id-label->ids test-store (make-link-id 1) "Baz")
          [(make-link-id 2)]))
-  (is (= (id-label->element-ids test-store (make-link-id 0.5) "bar") nil))
-  (is (= (id-label->element-ids test-store (make-link-id 999) "bar") nil))
-  (is (= (id-label->element-ids test-store (make-link-id 1) :order)
+  (is (= (target-id-label->ids test-store (make-link-id 0.5) "bar") nil))
+  (is (= (target-id-label->ids test-store (make-link-id 999) "bar") nil))
+  (is (= (target-id-label->ids test-store (make-link-id 1) :order)
          [(make-link-id 9)]))
-  (is (= (id-label->element-ids test-store (make-link-id 0.5) :order)
+  (is (= (target-id-label->ids test-store (make-link-id 0.5) :order)
          nil)))
 
 (deftest id->has-keyword?-test
@@ -275,8 +275,8 @@
                       (pseudo-set-seq
                        (get-in store [:id->keywords target])))))))
 
-  ;; Everything in :id->label->ids is true
-  (doseq [[id map] (:id->label->ids store)]
+  ;; Everything in :target->label->label-ids is true
+  (doseq [[id map] (:target->label->label-ids store)]
     (doseq [[label ids] map]
       (doseq [label-id (pseudo-set-seq ids)]
         (and
@@ -288,7 +288,7 @@
                        (target-id->ids store label-id))
                  (let [source (id->source store label-id)]
                    (and (keyword? source) (not= source :label)))))))))
-  ;; Everything that should be :id->label->ids is.
+  ;; Everything that should be :target->label->label-ids is.
   (doseq [[id source] (:id->source store)]
     (when-let [label-id (cond (= source :label) (id->target store id)
                               (= source :order) id)]
@@ -296,7 +296,8 @@
         (when-let [two-up (id->target store (id->target store label-id))]
           (is (some #{label-id}
                     (pseudo-set-seq
-                     (get-in store [:id->label->ids two-up label])))))))))
+                     (get-in store [:target->label->label-ids two-up label]))))
+          )))))
 
 (deftest all-indices-test
   (check-derived-indices test-store))

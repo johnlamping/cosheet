@@ -16,7 +16,7 @@
              entity-impl
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
-                            id-label->element-ids
+                            target-id-label->ids
                             current-store id-valid-link? id->source]]
              [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue]]
@@ -78,7 +78,7 @@
 (def t3 (update-add-session-temporary-element (first t2)))
 (def temporary-id (second t3))
 (def store (first t3))
-(def headers-id (first (id-label->element-ids
+(def headers-id (first (target-id-label->ids
                        store table-id :column-headers)))
 (def header-ids (map :item-id (semantic-elements
                                (description->entity headers-id store))))       

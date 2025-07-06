@@ -13,10 +13,9 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->target id-label->element-ids id-valid-link? undo! redo!
+                   id->target target-id-label->ids id-valid-link? undo! redo!
                    current-store
-                   id->string string->id
-                   id-label->element-ids id->source
+                   id->string string->id id->source
                    Store]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
@@ -47,11 +46,11 @@
 
 (defn update-selected
   "Store the client id of the currently selected dom as a temporary in
-  the store. (We put it in the store, because that that way, when
+  the store. (We put it in the store, because that way, when
   there is an undo, we can undo to the last selection.)"
   [store temporary-id client-id]
-  (if-let [element-id (first (id-label->element-ids
-                                store temporary-id :current-selection))]
+  (if-let [element-id (first (target-id-label->ids
+                              store temporary-id :current-selection))]
     ;; We store the client id as a keyword, rather than a string, so it
     ;; is not semantic.
     (update-source store element-id (keyword client-id))
@@ -61,7 +60,7 @@
   "Retrieve the client id of the currently selected dom, as stored by
   update-selected."
   [store temporary-id]
-  (when-let [element-id (first (id-label->element-ids
+  (when-let [element-id (first (target-id-label->ids
                                 store temporary-id :current-selection))]
     (let [source (id->source store element-id)]
       (when (keyword? source)

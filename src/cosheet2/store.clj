@@ -165,10 +165,10 @@
   (target-id->ids [this id]
     "Returns a seq of all ids that have the id as their target.")
 
-  (id-label->element-ids [this id label]
-    "Returns a seq of the ids of all elements of the given id that have an
-     element of their own that has the label value as its source and
-     that counts as a label.")
+  (target-id-label->ids [this id label]
+    "Returns a seq of the ids that have the given id as their target and
+    that are themselves targeted by a link that counts as a label and
+    that has the given label as its source.")
 
   ;; TODO: Probably get rid of this.
   (id->has-keyword? [this id keyword]

@@ -42,23 +42,33 @@
     ;;; A set of ids that have been declared temporary.
     temporary-ids
 
-    ;;; A derived map from ItemId to a pseudo-set of the ids of the linke
+    ;;; A derived map from ItemId to a pseudo-set of the ids of the links
     ;;; that target it.
     target->ids
 
-    ;;; A derived index from the canonical-primitive-form of source to a
-    ;;; pseudo-set of ids with that source. Nil source is not
-    ;;; indexed.
+    ;;; A derived map from the canonical-primitive-form of source to a
+    ;;; pseudo-set of ids with that source.
+    ;;; TODO: !!! Remove the following once sources can no longer be nil.
+    ;;; Nil source is not indexed.
     source->ids
 
     ;;; A derived map from ItemId to a pseudo-set of the keywords that
     ;;; are the source of at least one of its elements.
     id->keywords
 
-    ;;; A derived map from ItemId, then label to a pseudo-set of the
-    ;;; elements of elements of the id that have label as source and
-    ;;; are considered to be labels.
-    id->label->ids
+    ;;; A derived map that indexes everything that looks like
+    ;;;    target <- link1 <- link2 -o label
+    ;;; The map takes the target, then the label and returns the ids of
+    ;;; the link2s in the diagram, whose source is that label.
+    ;;; In other words, given a target id and a label, this map give
+    ;;; the pseudo set of all links whose source is that label, and
+    ;;; that target links that target to the provided target id.
+    ;;; This is priarily used to find link1s in the diagram, all links
+    ;;; with a given target and that have a given label. But this
+    ;;; index is easier to maintain than than an index to the link1s,
+    ;;; because it lists the liks that make them have those labels, so
+    ;;; it is easier to check for changes.
+    target->label->label-ids
 
     ;;; The next id to assign to an item to be stored here.
     next-id
@@ -99,12 +109,12 @@
   (target-id->ids [this id]
     (pseudo-set-seq (get-in this [:target->ids id])))
 
-  (id-label->element-ids [this id label]
-    (seq
-     (map #(get-in this [:id->target %])
-          (pseudo-set-seq
-           (get-in this [:id->label->ids id (canonical-primitive-form
-                                             label)])))))
+  (target-id-label->ids [this id label]
+    (let [canonnical-label (canonical-primitive-form label)]
+      (seq
+       (map #(get-in this [:id->target %])
+            (pseudo-set-seq
+             (get-in this [:target->label->label-ids id canonnical-label]))))))
 
   (id->has-keyword? [this id keyword]
     (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
@@ -322,8 +332,8 @@
         (and (keyword? source) (not= source :label)))
       (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
 
-(defn index-grandtarget-id->label->ids
-  "Reflect this link in id->label->ids for its grand-target."
+(defn index-grandtarget-target->label->label-ids
+  "Reflect this link in target->label->label-ids for its grand-target."
   [store old-store id]
   (let [is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
@@ -337,21 +347,23 @@
       store
       (cond-> store
         old-is-label
-        (update-in-clean-up [:id->label->ids grandtarget old-canonical]
+        (update-in-clean-up [:target->label->label-ids
+                             grandtarget
+                             old-canonical]
                             #(pseudo-set-disj % id))
         is-label
-        (update-in [:id->label->ids grandtarget canonical]
+        (update-in [:target->label->label-ids grandtarget canonical]
                    #(pseudo-set-conj % id))))))
 
-(defn index-id->label->ids
-  "Reflect the effects of this link in the id->label->ids index.
+(defn index-target->label->label-ids
+  "Reflect the effects of this link in the target->label->label-ids index.
   The id->keywords index must be valid when this is called."
   [store old-store id]
   (-> store
       ;; Our link
-      (index-grandtarget-id->label->ids old-store id)
+      (index-grandtarget-target->label->label-ids old-store id)
       ;; Our target, which we may affect being a label
-      (index-grandtarget-id->label->ids
+      (index-grandtarget-target->label->label-ids
        old-store (or (id->target store id) (id->target old-store id)))))
 
 (defn index-all
@@ -361,7 +373,7 @@
       (index-target->ids old-store id)
       (index-source->ids old-store id)
       (index-id->keywords old-store id)
-      (index-id->label->ids old-store id)))
+      (index-target->label->label-ids old-store id)))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -494,9 +506,10 @@
 ;;; option of asking for the less precise result if it is going to
 ;;; drop precision anyway.
 
-;;; TODO: If a template element has a label, filter with id->label->ids
-;;; if the label intersection list would be too large. Likewise, if the
-;;; template is tagged :label, filter with id->keywords.
+;;; TODO: If a template element has a label, filter with
+;;; target->label->label-ids if the label intersection list would be
+;;; too large. Likewise, if the template is tagged :label, filter with
+;;; id->keywords.
 (defn candidate-matching-ids-and-estimate
   "Return a triple consisting of:
      * an estimate of number of candidates,
@@ -530,7 +543,7 @@
                           :target->ids {}
                           :source->ids {}
                           :id->keywords {}
-                          :id->label->ids {}
+                          :target->label->label-ids {}
                           :temporary-ids #{}
                           :next-id 1
                           :modified-ids nil

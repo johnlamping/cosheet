@@ -377,9 +377,9 @@
   (id->target [this id]
     (id->target (reporter-value this) id))
 
-  (id-label->element-ids [this id label]
+  (target-id-label->ids [this id label]
     (cache-and-categorize
-     [id] id-label->element-ids this id label))
+     [id] target-id-label->ids this id label))
 
   (id->has-keyword? [this id keyword]
     (cache-and-categorize

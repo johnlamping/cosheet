@@ -7,7 +7,7 @@
                                                   elements to-list]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
-                                     id-label->element-ids]] 
+                                     target-id-label->ids]] 
                       [store-utils :refer [add-entity]]
                       [query :refer [matching-elements]]
                       [expression :refer [expr expr-let expr-seq]]
@@ -134,7 +134,7 @@
          {:subject-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
 
 (defn get-order [id store]
-  (let [elements (id-label->element-ids store id :order)]
+  (let [elements (target-id-label->ids store id :order)]
     (id->source store (first elements))))
 
 (deftest get-virtual-action-data-test

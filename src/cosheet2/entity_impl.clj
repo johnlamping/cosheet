@@ -1,5 +1,5 @@
 (ns cosheet2.entity-impl
-  (:require (cosheet2 [store :refer [id-label->element-ids
+  (:require (cosheet2 [store :refer [target-id-label->ids
                                      target-id->ids
                                      id->source id->target
                                      id->has-keyword?
@@ -39,7 +39,7 @@
   (primitive? [this] false)
 
   (label->elements [this label]
-    (seq (for [element-id (id-label->element-ids store item-id label)]
+    (seq (for [element-id (target-id-label->ids store item-id label)]
            (description->entity element-id store))))
 
   (elements [this]
@@ -82,7 +82,7 @@
   (primitive? [this?] false)
 
   (label->elements [this label]
-    (expr-let [element-ids (id-label->element-ids store item-id label)]
+    (expr-let [element-ids (target-id-label->ids store item-id label)]
       (seq (for [element-id element-ids]
              (description->entity element-id store)))))
 

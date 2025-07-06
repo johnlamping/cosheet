@@ -175,7 +175,7 @@
     "Returns true if the link with the given id has an element whose
     source is the given keyword.")
 
-  ;; TODO: Rename this to id->links-with-source
+  ;; TODO: Rename this to source->ids
   (id->containing-ids [this id]
     "Returns a seq of all ids that have the given id as their source.")
 

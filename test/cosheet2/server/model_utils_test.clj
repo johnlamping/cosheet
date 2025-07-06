@@ -157,7 +157,6 @@
                       ~(as-set
                         `(~'anything
                           :selector
-                          :non-semantic
                           ~(as-set `("hi" (~(any) :order) :label))
                           :row-condition
                           (~(any) :order)))
@@ -165,7 +164,6 @@
                       ~(as-set
                         `(~'anything
                           (~(any) :order)
-                          :non-semantic
                           :selector
                           ~(as-set
                             `(~'anything
@@ -206,7 +204,6 @@
                     `(""
                        ~(as-set
                          `(~'anything
-                           :non-semantic
                            (~(any) :order)
                            :selector
                            ~(as-set `("there" :label (~(any) :order)))
@@ -217,7 +214,7 @@
                                      ~(as-set `("a" :label (~(any) :order)))))
                           ~(as-set `(~'anything (~(any) :order)
                                      ~(as-set `("b" :label (~(any) :order)))))
-                          :selector :non-semantic :column-headers
+                          :selector :column-headers
                           (~(any) :order)))
                       :table
                       :tab-topic

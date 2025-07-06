@@ -361,9 +361,9 @@
   `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
     :table
-    ~(concat '(anything :row-condition :selector :non-semantic)
+    ~(concat '(anything :row-condition :selector)
               row-condition-elements)
-    ~(concat '(anything :column-headers :selector :non-semantic)
+    ~(concat '(anything :column-headers :selector)
              header-elements)))
 
 (def new-tab-table-element

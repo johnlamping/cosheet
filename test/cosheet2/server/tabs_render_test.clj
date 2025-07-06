@@ -101,10 +101,10 @@
                           :tab
                           ("" :tab-topic :table
                                   (anything
-                                   :row-condition :selector :non-semantic
+                                   :row-condition :selector
                                    (??? :label))
                                   (anything
-                                   :column-headers :selector :non-semantic
+                                   :column-headers :selector
                                    (anything (??? :label)))))
                         'anything]
              :sibling true
@@ -121,10 +121,10 @@
              :template '("" :tab ""
                          ("" :tab-topic :table
                                  (anything
-                                  :row-condition :selector :non-semantic
+                                  :row-condition :selector
                                   (??? :label))
                                  (anything
-                                  :column-headers :selector :non-semantic
+                                  :column-headers :selector
                                   (anything (??? :label)))))
              :render-dom (tab-DOM)
              :get-rendering-data (tab-RD)
@@ -139,10 +139,10 @@
               :template '("" :tab ""
                           ("" :tab-topic :table
                                   (anything
-                                   :row-condition :selector :non-semantic
+                                   :row-condition :selector
                                    (??? :label))
                                   (anything
-                                   :column-headers :selector :non-semantic
+                                   :column-headers :selector
                                    (anything (??? :label)))))
               :render-dom (tab-DOM)
               :get-rendering-data (tab-RD)
@@ -159,10 +159,10 @@
                :template '("" :tab ""
                            ("" :tab-topic :table
                                    (anything
-                                    :row-condition :selector :non-semantic
+                                    :row-condition :selector
                                     (??? :label))
                                    (anything
-                                    :column-headers :selector :non-semantic
+                                    :column-headers :selector
                                     (anything (??? :label))))
                            "foo")
                :render-dom (tab-DOM)

@@ -858,10 +858,10 @@
   (deftest item-DOM-R-test-labels
     ;; First, test when there is a label.
     (let [element-as-list `(39
-                            ("age" :tag (~o1 :order :non-semantic))
+                            ("age" :tag (~o1 :order))
                             ("Ke"
-                             ("according-to" :tag (~o1 :order :non-semantic))
-                             (~o1 :order :non-semantic)))
+                             ("according-to" :tag (~o1 :order))
+                             (~o1 :order)))
           inherited  (assoc base-inherited :width 1.0)
           [dom element] (let-mutated [element element-as-list]
                           (expr-let [dom (item-DOM-R element [] inherited)]
@@ -891,8 +891,8 @@
                        [:div (any) "Ke"]]]]]))))
     ;; Then test when there is no label, but labels must be shown.
     (let [item-as-list `(39 ("Ke"
-                             ("according-to" :tag (~o1 :order :non-semantic))
-                             (~o1 :order :non-semantic)))
+                             ("according-to" :tag (~o1 :order))
+                             (~o1 :order)))
           inherited  (assoc base-inherited :width 1.0)
           [dom item] (let-mutated [item item-as-list]
                        (expr-let [dom (item-DOM-R
@@ -925,10 +925,10 @@
 ;;; TODO: Add a test where some of the arguments are true.
   (deftest labels-and-elements-DOM-R-test
     (let [element-as-list `(39
-                            ("age" :tag (~o1 :order :non-semantic))
+                            ("age" :tag (~o1 :order))
                             ("Ke"
-                             ("according-to" :tag (~o1 :order :non-semantic))
-                             (~o1 :order :non-semantic)))
+                             ("according-to" :tag (~o1 :order))
+                             (~o1 :order)))
 
           element (let-mutated [element element-as-list]
                     element)
@@ -967,10 +967,10 @@
 
   (deftest item-content-and-elements-DOM-R-test
     (let [element-as-list `(39
-                            ("age" :tag (~o1 :order :non-semantic))
+                            ("age" :tag (~o1 :order))
                             ("Ke"
-                             ("according-to" :tag (~o1 :order :non-semantic))
-                             (~o1 :order :non-semantic)))
+                             ("according-to" :tag (~o1 :order))
+                             (~o1 :order)))
 
           element (let-mutated [element element-as-list]
                     element)

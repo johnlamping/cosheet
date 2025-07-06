@@ -48,18 +48,18 @@
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
-                (~o2 :order :non-semantic)
-                ("male" (~o1 :order :non-semantic))
-                (39 (~o3 :order :non-semantic)
+                (~o2 :order)
+                ("male" (~o1 :order))
+                (39 (~o3 :order)
                     ("age" :label)
                     ("doubtful" "confidence"))
-                ("married" (~o2 :order :non-semantic))
-                (45 (~o4 :order :non-semantic)
+                ("married" (~o2 :order))
+                (45 (~o4 :order)
                     ("age" :label))))
-(def jane-list `("Jane" (~o1 :order :non-semantic)
-                 (:selector :non-semantic)
-                 ("female" (~o2 :order :non-semantic))
-                 (45 (~o3 :order :non-semantic)
+(def jane-list `("Jane" (~o1 :order)
+                 (:selector)
+                 ("female" (~o2 :order))
+                 (45 (~o3 :order)
                      ("age" :label))))
 (def row-condition-elements ['(anything ("age" :label))])
 (def column-headers ['(anything ("age" :label))
@@ -149,8 +149,8 @@
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything
-                               ("name" :label (~o1 :order :non-semantic))
-                               (~o1 :order :non-semantic))))
+                               ("name" :label (~o1 :order))
+                               (~o1 :order))))
         columns (description->entity columns-id store)
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
@@ -246,8 +246,8 @@
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything
-                               ("name" :label (~o1 :order :non-semantic))
-                               (~o1 :order :non-semantic))))
+                               ("name" :label (~o1 :order))
+                               (~o1 :order))))
         columns (description->entity columns-id store)
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))

@@ -371,38 +371,38 @@
   (is (check (hierarchy-node-next-level :foo)
              [:foo])))
 
-(def jane-list `("Jane" (1 :order :non-semantic) "plain" "plain"))
+(def jane-list `("Jane" (1 :order) "plain" "plain"))
 (def joe-list `("Joe"
-               (2 :order :non-semantic)
-               ("male" (1 :order :non-semantic))
-               ("married" (2 :order :non-semantic))
-               (39 (3 :order :non-semantic)
+               (2 :order)
+               ("male" (1 :order))
+               ("married" (2 :order))
+               (39 (3 :order)
                    ("age" :tag)
                    ("doubtful" "confidence"))
-               (45 (4 :order :non-semantic)
+               (45 (4 :order)
                    ("age" :tag))))
 
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:property-canonicals [:a] :item `(:i (1 :order :non-semantic))}
-         {:property-canonicals [:a :b] :item `(:j (2 :order :non-semantic))}
-         {:property-canonicals [:a :c] :item `(:k (3 :order :non-semantic))}])
+        [{:property-canonicals [:a] :item `(:i (1 :order))}
+         {:property-canonicals [:a :b] :item `(:j (2 :order))}
+         {:property-canonicals [:a :c] :item `(:k (3 :order))}])
        [{::hierarchy/hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1}
          :leaves [{:property-canonicals [:a]
-                    :item `(:i (1 :order :non-semantic))}]
+                    :item `(:i (1 :order))}]
          :child-nodes [{::hierarchy/hierarchy-node true
                         :properties {:b 1}
                         :cumulative-properties {:b 1 :a 1}
                         :leaves [{:property-canonicals [:a :b]
-                                   :item `(:j (2 :order :non-semantic))}]}
+                                   :item `(:j (2 :order))}]}
                        {::hierarchy/hierarchy-node true
                         :properties {:c 1}
                         :cumulative-properties {:c 1 :a 1}
                         :leaves [{:property-canonicals [:a :c]
-                                   :item `(:k (3 :order :non-semantic))}]}]}])))
+                                   :item `(:k (3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendant-cover-test
   (let [h {::hierarchy/hierarchy-node true

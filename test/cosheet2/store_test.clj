@@ -69,43 +69,34 @@
   (is (= (item-id-name (make-item-id "a")) "Id:Ia"))
   (is (= (item-id-name (->ItemId 1)) "Id:1")))
 
-(deftest index-target->ids-test
-  (let [ids (keys (:id->source unindexed-test-store))
-        store (reduce #(index-target->ids %1 empty-store %2)
-                      unindexed-test-store ids)
-        empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-target->ids %1 store %2) empty-indexed ids)]
-    (is (= (reduce (fn [accum elements]
-                     (+ accum (count (pseudo-set-seq elements))))
-                   0 (vals (:target->ids store)))
-           (count (:id->target unindexed-test-store))))
-    (doseq [id (keys (:id->target unindexed-test-store))]
-      (let [target (get-in store [:id->target id])]
-        (is (pseudo-set-contains? (get-in store [:target->ids target])
-                                  id))))
-    (is (empty? (:target->ids unindexed)))))
-
-(deftest index-source->ids-test
-  (let [ids (keys (:id->source unindexed-test-store))
-        store (reduce #(index-source->ids %1 empty-store %2)
-                      unindexed-test-store ids)
-        empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-source->ids %1 store %2) empty-indexed ids)]
-    (is (= (reduce (fn [accum elements]
-                     (+ accum (count (pseudo-set-seq elements))))
-                   0 (vals (:source->ids store)))
-           (count ids) ))
-    (doseq [id ids]
-      (let [source (get-in store [:id->source id])]
-        (when (not (nil? source))
-          (is (pseudo-set-contains?
-               (get-in store [:source->ids (canonical-primitive-form source)])
-               id)))))
-    (is (empty? (:source->ids unindexed)))))
+(deftest index-endpoint->ids-test
+  (doseq [endpoint [:target :source]] 
+    (let [value-key (case endpoint :target :id->target :source :id->source)
+          index-key (case endpoint :target :target->ids :source :source->ids)
+          ids (keys (:id->source unindexed-test-store))
+          ;; Index the unindexed test store.
+          store (reduce #(index-endpoint->ids %1 empty-store endpoint %2)
+                        unindexed-test-store ids)
+          ;; Then unindex it, as if all the links had been removed.
+          empty-indexed (clear-store-leaving-indices store)
+          unindexed (reduce #(index-endpoint->ids %1 store endpoint %2)
+                            empty-indexed ids)]
+      (is (= (reduce (fn [accum elements]
+                       (+ accum (count (pseudo-set-seq elements))))
+                     0 (vals (index-key store)))
+             (count (value-key unindexed-test-store))))
+      (doseq [id (keys (value-key unindexed-test-store))]
+        (let [endpoint-canonical (canonical-primitive-form
+                                  (get-in store [value-key id]))]
+          (is (pseudo-set-contains? (get-in store [index-key
+                                                   endpoint-canonical])
+                                    id))))
+      (is (empty? (index-key unindexed))))))
 
 (deftest index-id->keywords-test
   (let [ids (keys (:id->source unindexed-test-store))
-        elements-indexed (reduce #(index-target->ids %1 empty-store %2)
+        elements-indexed (reduce #(index-endpoint->ids
+                                   %1 empty-store :target %2)
                                  unindexed-test-store ids)
         store (reduce #(index-id->keywords %1 empty-store %2)
                       elements-indexed ids)
@@ -119,7 +110,8 @@
 
 (deftest index-target->label->label-ids-test
   (let [ids (keys (:id->source unindexed-test-store))
-        targets-indexed (reduce #(index-target->ids %1 empty-store %2)
+        targets-indexed (reduce #(index-endpoint->ids
+                                  %1 empty-store :target %2)
                                  unindexed-test-store ids)
         keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
                                  targets-indexed ids)
@@ -138,8 +130,8 @@
 (def test-store
   (let [ids (keys (:id->source unindexed-test-store))]
     (as-> unindexed-test-store store
-      (reduce #(index-target->ids %1 empty-store %2) store ids)
-      (reduce #(index-source->ids %1 empty-store %2) store ids)
+      (reduce #(index-endpoint->ids %1 empty-store :target %2) store ids)
+      (reduce #(index-endpoint->ids %1 empty-store :source %2) store ids)
       (reduce #(index-id->keywords %1 empty-store %2) store ids)
       (reduce #(index-target->label->label-ids %1 empty-store %2) store ids))))
 
@@ -185,13 +177,13 @@
   (is (not (id->has-keyword? test-store (make-link-id 3) :bar)))
   (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
 
-(deftest id->containing-ids-test
+(deftest source-id->ids-test
   ;; TODO: !!! Once objects can be sources, revise this to use them.
-  (is (= (vec (id->containing-ids test-store (make-link-id 4)))
+  (is (= (vec (source-id->ids test-store (make-link-id 4)))
          []))
-  (is (= (id->containing-ids test-store (make-link-id 1)) nil))
+  (is (= (source-id->ids test-store (make-link-id 1)) nil))
   (is (thrown? java.lang.AssertionError
-               (id->containing-ids test-store "Foo"))))
+               (source-id->ids test-store "Foo"))))
 
 (deftest id->target-test
    (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))

@@ -1,7 +1,6 @@
 (ns cosheet2.store-utils
   (:require (cosheet2 [store :refer [add-link remove-link
                                      id->source target-id->ids
-                                     id->containing-ids
                                      is-link-id?]])))
 
 (defn- items-to-add

@@ -162,8 +162,12 @@
   (id->source [this id]
     "Given the id of a link, return a description of its source.")
 
+  ;; TODO: !!! Change the next three to not required ids in their arguments.
   (target-id->ids [this id]
-    "Returns a seq of all ids that have the id as their target.")
+    "Returns a seq of all ids that have the given target.")
+
+  (source-id->ids [this id]
+    "Returns a seq of all ids that have the given source.")
 
   (target-id-label->ids [this id label]
     "Returns a seq of the ids that have the given id as their target and
@@ -174,10 +178,6 @@
   (id->has-keyword? [this id keyword]
     "Returns true if the link with the given id has an element whose
     source is the given keyword.")
-
-  ;; TODO: Rename this to source->ids
-  (id->containing-ids [this id]
-    "Returns a seq of all ids that have the given id as their source.")
 
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity. Return a

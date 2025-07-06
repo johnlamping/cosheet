@@ -18,9 +18,9 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
-(declare add-triple)
-(declare remove-triple)
-(declare add-or-defer-triple)
+(declare add-link-impl)
+(declare remove-link-impl)
+(declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
 (declare all-forward-reachable-ids)
 (declare all-temporary-ids)
@@ -31,7 +31,7 @@
     ^{:doc
       "An immutable store with some indexing."}
    [;;; These first two maps give the primitive facts about the store's
-    ;;; triples.
+    ;;; links.
     
     ;;; Map from a link's ItemId to its target
     id->target
@@ -119,7 +119,8 @@
   (id->has-keyword? [this id keyword]
     (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
 
-  (id->containing-ids [this id]
+  (source-id->ids [this id]
+    ;; TODO: !!! Remove this assert
     (assert (is-item-id? id))
     (pseudo-set-seq (get-in this [:source->ids id])))
 
@@ -149,11 +150,11 @@
     (let [item-id (->ItemId (:next-id this))]
       [(-> this
            (update-in [:next-id] inc)
-           (add-triple item-id target source))
+           (add-link-impl item-id target source))
        item-id]))
 
   (remove-link [this id]
-    (remove-triple this id))
+    (remove-link-impl this id))
 
   (update-source [this id source]
     (assert (not (nil? source)))
@@ -191,8 +192,8 @@
   (store-to-data [this]
     "Extract just the essential data from the store, in preparation for
      writing it out. The data consists of the next id, and a vector of
-     triples for its links. A few things are represented as vectors
-     that start with a keyword:
+     (link-id target source) triples for its links. A few things are
+     represented as vectors that start with a keyword:
        ItemId [:id (:id ?])
        Orderable [:ord (left ?) (right ?)]
        Vector [:vec * ?]"
@@ -231,7 +232,7 @@
                                                :vec vector)
                                              (rest source))
                                       source)]
-                        (add-or-defer-triple
+                        (add-or-defer-link
                          store deferred id target source)))
                     [(assoc (new-element-store) :next-id next-id) {}]
                     links)]
@@ -273,34 +274,23 @@
                     [(id->target store id)
                      (id->source store id)]))))
 
-(defn index-target->ids
-  "Reflect this link in the target->ids index."
-  [store old-store id]
-  (let [target (id->target store id)
-        old-target (id->target old-store id)]
-    (if (= target old-target)
-      store
-      ;; Since the target of a link may never change, we are either
-      ;; adding a link or removing it. 
-      (let [adding (not old-target)]
-        (update-in-clean-up store [:target->ids (or target old-target)]
-                            #(pseudo-set-set-membership % id adding))))))
-
-(defn index-source->ids
-  "Put this link in the source->ids index."
-  [store old-store id]
-  (let [source (id->source store id)
-        old-source (id->source old-store id)]
-    (if (= source old-source)
+(defn index-endpoint->ids
+  "Reflect this link correctly in either the target->ids or source->ids index,
+   depending on the value of endpoint."
+  [store old-store endpoint id]
+  (let [fetcher (case endpoint :target id->target :source id->source)
+        index-key (case endpoint :target :target->ids :source :source->ids)
+        new-endpoint (fetcher store id)
+        old-endpoint (fetcher old-store id)]
+    (if (= new-endpoint old-endpoint)
       store
       (cond-> store
-        old-source
-        (update-in-clean-up [:source->ids (canonical-primitive-form
-                                            old-source)]
+        old-endpoint
+        (update-in-clean-up [index-key (canonical-primitive-form old-endpoint)]
                             #(pseudo-set-disj % id))
-        source
-        (update-in [:source->ids (canonical-primitive-form
-                                   source)]
+        ;; TODO: !!! Remove this condition once links must have both endpoints.
+        new-endpoint
+        (update-in [index-key (canonical-primitive-form new-endpoint)]
                    #(pseudo-set-conj % id))))))
 
 (defn index-id->keywords
@@ -370,8 +360,8 @@
   "Do all indexing for adding, removing or changing the id in the store."
   [store old-store id]
   (-> store 
-      (index-target->ids old-store id)
-      (index-source->ids old-store id)
+      (index-endpoint->ids old-store :target id)
+      (index-endpoint->ids old-store :source id)
       (index-id->keywords old-store id)
       (index-target->label->label-ids old-store id)))
 
@@ -392,8 +382,8 @@
                #(into % (all-ids-eventually-holding-id store id)))
     store))
 
-(defn add-triple
-  "Add a triple to the store, and do all necessary indexing."
+(defn add-link-impl
+  "Add a link to the store, and do all necessary indexing."
   [store item-id target source]
   (assert (not (nil? source)) [item-id target source])
   (assert (not= item-id target) [item-id target source])
@@ -408,7 +398,7 @@
       (index-all store item-id)
       (add-modified-id item-id)))
 
-(defn remove-triple [store id]
+(defn remove-link-impl [store id]
     (assert (not (nil? (id->source store id)))
             "Removed id not present.")
     (assert (nil? (target-id->ids store id))
@@ -429,10 +419,10 @@
   "Return a set of all declared temporary ids and their descendant elements."
   (set (mapcat #(descendant-ids store %) (:temporary-ids store))))
 
-(defn add-or-defer-triple
-  ;; Utility function for read-store.  The triples may have been
-  ;; written out in any order, but we cannot add a triple until after
-  ;; its target has been added. When we encounter a triple that can't
+(defn add-or-defer-link
+  ;; Utility function for read-store.  The liniks may have been
+  ;; written out in any order, but we cannot add a link until after
+  ;; its target has been added. When we encounter a link that can't
   ;; yet be added, we save it in deferred, indexed under what it is
   ;; waiting for, then add it when we get what it needs.  Return the
   ;; new store and new deferred.
@@ -444,8 +434,8 @@
       [store (update-in deferred [waiting-for]
                         #(conj % [id target source]))]
       (reduce (fn [[store deferred] [id target source]]
-                (add-or-defer-triple store deferred id target source))
-              [(add-triple store id target source)
+                (add-or-defer-link store deferred id target source))
+              [(add-link-impl store id target source)
                (dissoc deferred id)]
               (deferred id)))))
 

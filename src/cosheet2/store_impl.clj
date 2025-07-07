@@ -70,6 +70,10 @@
     ;;; it is easier to check for changes.
     target->label->label-ids
 
+    ;;; This is the analogue of target->label->label-ids, but for
+    ;;;    source o- link1 <- link2 -o label
+    source->label->label-ids
+
     ;;; The next id to assign to an item to be stored here.
     next-id
 
@@ -293,6 +297,58 @@
         (update-in [index-key (canonical-primitive-form new-endpoint)]
                    #(pseudo-set-conj % id))))))
 
+;; NOTE: This definition must be kept in synch with entity/label?
+(defn id-is-label?
+  "Return whether the given link counts as a label (either has source
+  that is a keyword and is not :label, or has an element whose source
+  is :label)."
+  [store id]
+  (or (let [source (id->source store id)]
+        (and (keyword? source) (not= source :label)))
+      (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
+
+(defn index-grandparent-endpoint->label->label-ids
+  "Reflect this link in endpoint->label->label-ids for its grand-endpoint."
+  [store old-store endpoint id]
+  (let [fetcher (case endpoint :target id->target :source id->source)
+        index-key (case endpoint
+                    :target :target->label->label-ids
+                    :source :source->label->label-ids)
+        is-label (id-is-label? store id)
+        old-is-label (id-is-label? old-store id)
+        canonical (canonical-primitive-form (id->source store id))
+        old-canonical (canonical-primitive-form (id->source old-store id))
+        grandparent (or (fetcher store (id->target store id))
+                        (fetcher old-store (id->target old-store id)))]
+    (if (or (and (= is-label old-is-label)
+                 (= canonical old-canonical))
+            (not grandparent))
+      store
+      (cond-> store
+              old-is-label
+              (update-in-clean-up [index-key
+                                   grandparent
+                                   old-canonical]
+                                  #(pseudo-set-disj % id))
+              is-label
+              (update-in [index-key grandparent canonical]
+                         #(pseudo-set-conj % id))))))
+
+;;; TODO: !!! This now has to account for a link's target changing. So when
+;;;       a link's target changes, it also has to go through each of its labels,
+;;;       and call index grandendpoint on them.
+(defn index-target->label->label-ids
+  "Reflect the effects of this link in the target->label->label-ids index.
+  The id->keywords index must be valid when this is called."
+  [store old-store id]
+  (-> store
+      ;; Our link
+      (index-grandparent-endpoint->label->label-ids old-store :target id)
+      ;; Our target, which we may affect being a label
+      (index-grandparent-endpoint->label->label-ids
+       old-store :target
+       (or (id->target store id) (id->target old-store id)))))
+
 (defn index-id->keywords
   "Reflect this link's source in the id->keywords index.
    The target->ids index must be valid when this is called."
@@ -312,56 +368,13 @@
         (update-in [:id->keywords target]
                    #(pseudo-set-conj % source))))))
 
-;; NOTE: This definition must be kept in synch with entity/label?
-(defn id-is-label?
-  "Return whether the given link counts as a label (either has source
-  that is a keyword and is not :label, or has an element whose source
-  is :label)."
-  [store id]
-  (or (let [source (id->source store id)]
-        (and (keyword? source) (not= source :label)))
-      (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
-
-(defn index-grandtarget-target->label->label-ids
-  "Reflect this link in target->label->label-ids for its grand-target."
-  [store old-store id]
-  (let [is-label (id-is-label? store id)
-        old-is-label (id-is-label? old-store id)
-        canonical (canonical-primitive-form (id->source store id))
-        old-canonical (canonical-primitive-form (id->source old-store id))
-        grandtarget (or (id->target store (id->target store id))
-                          (id->target old-store (id->target old-store id)))]
-    (if (or (and (= is-label old-is-label)
-                 (= canonical old-canonical))
-            (not grandtarget))
-      store
-      (cond-> store
-        old-is-label
-        (update-in-clean-up [:target->label->label-ids
-                             grandtarget
-                             old-canonical]
-                            #(pseudo-set-disj % id))
-        is-label
-        (update-in [:target->label->label-ids grandtarget canonical]
-                   #(pseudo-set-conj % id))))))
-
-(defn index-target->label->label-ids
-  "Reflect the effects of this link in the target->label->label-ids index.
-  The id->keywords index must be valid when this is called."
-  [store old-store id]
-  (-> store
-      ;; Our link
-      (index-grandtarget-target->label->label-ids old-store id)
-      ;; Our target, which we may affect being a label
-      (index-grandtarget-target->label->label-ids
-       old-store (or (id->target store id) (id->target old-store id)))))
-
 (defn index-all
   "Do all indexing for adding, removing or changing the id in the store."
   [store old-store id]
   (-> store 
       (index-endpoint->ids old-store :target id)
       (index-endpoint->ids old-store :source id)
+      ;; This must be done before the next two, as they depend on id->keywords.
       (index-id->keywords old-store id)
       (index-target->label->label-ids old-store id)))
 
@@ -420,7 +433,7 @@
   (set (mapcat #(descendant-ids store %) (:temporary-ids store))))
 
 (defn add-or-defer-link
-  ;; Utility function for read-store.  The liniks may have been
+  ;; Utility function for read-store.  The links may have been
   ;; written out in any order, but we cannot add a link until after
   ;; its target has been added. When we encounter a link that can't
   ;; yet be added, we save it in deferred, indexed under what it is
@@ -534,6 +547,7 @@
                           :source->ids {}
                           :id->keywords {}
                           :target->label->label-ids {}
+                          :source->label->label-ids {}
                           :temporary-ids #{}
                           :next-id 1
                           :modified-ids nil

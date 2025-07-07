@@ -169,9 +169,14 @@
     "Returns a seq of all ids that have the given source.")
 
   (target-label->ids [this id label]
-    "Returns a seq of the ids that have the given id as their target and
-    that are themselves targeted by a link that counts as a label and
-    that has the given label as its source.")
+    "Returns a seq of the ids that have the given value as their target
+    and that are themselves targeted by a link that counts as a label
+    and that has the given label as its source.")
+
+  (source-label->ids [this id label]
+    "Returns a seq of the ids that have the given value as their source
+    and that are themselves targeted by a link that counts as a label
+    and that has the given label as its source.")
 
   ;; TODO: Probably get rid of this.
   (id->has-keyword? [this id keyword]

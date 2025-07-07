@@ -42,14 +42,11 @@
      (make-link-id 8) :label
      (make-link-id 9) "Bar"
      (make-link-id 10) :order}
-    :temporary-ids
-    #{}
-    :next-id
-    1001
-    :modified-ids
-    nil
-    :equivalent-undo-point
-    false}))
+    :temporary-ids  #{}
+    :next-id 1001
+    :modified-ids nil
+    :source->label->label-ids {} ;; TODO: !!! Remove
+    :equivalent-undo-point false}))
 
 (def empty-store (new-element-store))
 
@@ -189,7 +186,7 @@
    (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
    (is (= (id->target test-store 2) nil)))
 
-(deftest add-lin-test
+(deftest add-link-test
   (let [[added-store id]
         (add-link test-store (make-link-id 1) "test")]
     (is (= (:id id) (:next-id test-store)))
@@ -231,27 +228,65 @@
     (is (thrown? java.lang.AssertionError
                  (update-source test-store (make-link-id 1) nil)))))
 
+(defn check-endpoint->ids
+  "Check that the derived index <endpoint>->ids is right"
+  [store endpoint]
+  (let [primary-key (case endpoint :target :id->target :source :id->source)
+        index-key (case endpoint :target :target->ids :source :source->ids)]
+    ;; Everything in :endpoint->ids is true.
+    (doseq [[id links] (index-key store)]
+      (doseq [link (pseudo-set-seq links)]
+        (is (= (canonical-primitive-form (get-in store [primary-key link]))
+               id))))
+    ;; Everything that should be in :endpoint->ids is.
+    (doseq [[id endpoint] (primary-key store)]
+      (is (some #{id}
+                (pseudo-set-seq
+                 (get-in store
+                         [index-key (canonical-primitive-form endpoint)])))))))
+
+(defn check-endpoint->label->label-ids
+  "Check that the derived index <endpoint>->label->label-ids is right.
+  Assumes that the endpoint->ids and the id->keywords indices are correct."
+  [store endpoint]
+  (let [primary-key (case endpoint :target :id->target :source :id->source)
+        reverse-primary-key (case endpoint
+                              :target :target->ids
+                              :source :source->ids)
+        index-key (case endpoint
+                    :target :target->label->label-ids
+                    :source :source->label->label-ids)]
+    ;; Everything in :endpoint->label->label-ids is true
+    (doseq [[id map] (index-key store)]
+      (doseq [[label ids] map]
+        (doseq [label-id (pseudo-set-seq ids)]
+          (and
+           ;; All the label-ids are two levels from the id.
+           (is (some (fn [link]
+                       (some #{label-id} (target->ids store link))) 
+                     (pseudo-set-seq (get-in store [reverse-primary-key id]))))
+           ;; All the label-ids have the right source.
+           (= (canonical-primitive-form (id->source store label-id)) label)
+           ;; All the label-ids are labels.
+           (is (id-is-label? store label-id))))))
+    ;; Everything that should be in :endpoint->label->label-ids is.
+    (doseq [[id source] (:id->source store)]
+      ;; Note: must be kept in synch with entity/label?
+      (when-let [label-id (cond (= source :label) (id->target store id)
+                                (= source :order) id)]
+        (let [label (canonical-primitive-form (id->source store label-id))
+              label-target (id->target store label-id)]
+          (when-let [two-up (get-in store [primary-key label-target])]
+            (is (some #{label-id}
+                      (pseudo-set-seq
+                       (get-in store [index-key two-up label]))))))))))
+
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
   [store]
-  ;; Everything in :target->ids is true.
-  (doseq [[id elements] (:target->ids store)]
-    (doseq [element (pseudo-set-seq elements)]
-      (is (= (id->target store element) id))))
-  ;; Everything that should be in :target->ids is.
-  (doseq [[id target] (:id->target store)]
-    (is (some #{id} (target->ids store target))))
   
-  ;; Everything in :source->ids is true.
-  (doseq [[source ids] (:source->ids store)]
-    (doseq [id (pseudo-set-seq ids)]
-      (is (= (canonical-primitive-form (id->source store id)) source))))
-  ;; Everything that should be in :source->ids is.
-  (doseq [[id source] (:id->source store)]
-    (is (some #{id}
-              (pseudo-set-seq
-               (get-in store [:source->ids (canonical-primitive-form
-                                             source)])))))
+  (check-endpoint->ids store :target)
+  (check-endpoint->ids store :source)
 
   ;; Everything in :id->keywords is true.
   (doseq [[id keywords] (:id->keywords store)]
@@ -267,35 +302,12 @@
                       (pseudo-set-seq
                        (get-in store [:id->keywords target])))))))
 
-  ;; Everything in :target->label->label-ids is true
-  (doseq [[id map] (:target->label->label-ids store)]
-    (doseq [[label ids] map]
-      (doseq [label-id (pseudo-set-seq ids)]
-        (and
-         (is (some (fn [element]
-                     (some #{label-id} (target->ids store element))) 
-                   (target->ids store id)))
-         (= (canonical-primitive-form (id->source store label-id)) label)
-         (is (or (some #(= (id->source store %) :label)
-                       (target->ids store label-id))
-                 (let [source (id->source store label-id)]
-                   (and (keyword? source) (not= source :label)))))))))
-  ;; Everything that should be :target->label->label-ids is.
-  (doseq [[id source] (:id->source store)]
-    (when-let [label-id (cond (= source :label) (id->target store id)
-                              (= source :order) id)]
-      (let [label (canonical-primitive-form (id->source store label-id))]
-        (when-let [two-up (id->target store (id->target store label-id))]
-          (is (some #{label-id}
-                    (pseudo-set-seq
-                     (get-in store [:target->label->label-ids two-up label]))))
-          )))))
+  (check-endpoint->label->label-ids store :target))
 
 (deftest all-indices-test
   (check-derived-indices test-store))
 
 (require '[clojure.data.generators :as gen])
-
 (deftest lots-of-changes-indices-test
   ;; We repeatedly add a bunch of elements and remove a bunch of
   ;; elements and check that the derived indices are correct. To make
@@ -311,6 +323,7 @@
                          (first (add-link (new-element-store) nil 0))
                          nil 1))
            items 2]
+      ;; TODO: !!! Test mutations of endpoints.
       (let [;; Number of items to end up with (has a long tail)
             n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
             ;; Number of items to keep
@@ -322,10 +335,11 @@
                                store
                                (when (not= 0 (gen/uniform 0 10))
                                  (->ItemId (earlier-num i)))
-                               (case (gen/uniform 0 3)
-                                 0 (int (/ 100 (gen/uniform 1 100)))
-                                 1 :label
-                                 2 :order))]
+                               (case (gen/uniform 0 4)
+                                 0 (str "N" (int (/ 100 (gen/uniform 1 100))))
+                                 1 (int (/ 100 (gen/uniform 1 100)))
+                                 2 :label
+                                 3 :order))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))

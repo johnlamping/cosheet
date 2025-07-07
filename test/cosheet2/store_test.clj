@@ -68,8 +68,8 @@
 
 (deftest index-endpoint->ids-test
   (doseq [endpoint [:target :source]] 
-    (let [value-key (case endpoint :target :id->target :source :id->source)
-          index-key (case endpoint :target :target->ids :source :source->ids)
+    (let [value-key (endpoint-value-key endpoint)
+          index-key (endpoint-index-key endpoint)
           ids (keys (:id->source unindexed-test-store))
           ;; Index the unindexed test store.
           store (reduce #(index-endpoint->ids %1 empty-store endpoint %2)
@@ -231,8 +231,8 @@
 (defn check-endpoint->ids
   "Check that the derived index <endpoint>->ids is right"
   [store endpoint]
-  (let [primary-key (case endpoint :target :id->target :source :id->source)
-        index-key (case endpoint :target :target->ids :source :source->ids)]
+  (let [primary-key (endpoint-value-key endpoint)
+        index-key (endpoint-index-key endpoint)]
     ;; Everything in :endpoint->ids is true.
     (doseq [[id links] (index-key store)]
       (doseq [link (pseudo-set-seq links)]
@@ -249,26 +249,19 @@
   "Check that the derived index <endpoint>->label->label-ids is right.
   Assumes that the endpoint->ids and the id->keywords indices are correct."
   [store endpoint]
-  (let [primary-key (case endpoint :target :id->target :source :id->source)
-        reverse-primary-key (case endpoint
-                              :target :target->ids
-                              :source :source->ids)
-        index-key (case endpoint
-                    :target :target->label->label-ids
-                    :source :source->label->label-ids)]
+  (let [primary-key (endpoint-value-key endpoint)
+        reverse-primary-key (endpoint-index-key endpoint)
+        index-key (endpoint-label-index-key endpoint)]
     ;; Everything in :endpoint->label->label-ids is true
     (doseq [[id map] (index-key store)]
       (doseq [[label ids] map]
         (doseq [label-id (pseudo-set-seq ids)]
-          (and
-           ;; All the label-ids are two levels from the id.
-           (is (some (fn [link]
-                       (some #{label-id} (target->ids store link))) 
-                     (pseudo-set-seq (get-in store [reverse-primary-key id]))))
-           ;; All the label-ids have the right source.
-           (= (canonical-primitive-form (id->source store label-id)) label)
-           ;; All the label-ids are labels.
-           (is (id-is-label? store label-id))))))
+          ;; The label-id is a grandchild of the id.
+          (is (= (get-in store [primary-key (id->target store label-id)]) id))
+          ;; The label-id has the right source.
+          (is (= (canonical-primitive-form (id->source store label-id)) label))
+          ;; The label-id is a label.
+          (is (id-is-label? store label-id)))))
     ;; Everything that should be in :endpoint->label->label-ids is.
     (doseq [[id source] (:id->source store)]
       ;; Note: must be kept in synch with entity/label?

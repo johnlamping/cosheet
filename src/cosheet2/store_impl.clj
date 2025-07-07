@@ -278,12 +278,37 @@
                     [(id->target store id)
                      (id->source store id)]))))
 
+;;; These are utility functions for abstracting from target and source
+;;; to endpoint.
+(defn endpoint-fetcher
+  "Return the accessor for the given endpoint"
+  [endpoint]
+  (case endpoint :target id->target :source id->source))
+
+(defn endpoint-value-key
+    "Return the key in a store for the map that holds id-><endpoint>."
+  [endpoint]
+  (case endpoint :target :id->target :source :id->source))
+
+(defn endpoint-index-key
+  "Return the key in a store for the map that holds <endpoint>->ids."
+  [endpoint]
+  (case endpoint :target :target->ids :source :source->ids))
+
+(defn endpoint-label-index-key
+  "Return the key in a store for the map that holds
+  <endpoint>->label->label-ids."
+  [endpoint]
+  (case endpoint
+    :target :target->label->label-ids
+    :source :source->label->label-ids))
+
 (defn index-endpoint->ids
   "Reflect this link correctly in either the target->ids or source->ids index,
    depending on the value of endpoint."
   [store old-store endpoint id]
-  (let [fetcher (case endpoint :target id->target :source id->source)
-        index-key (case endpoint :target :target->ids :source :source->ids)
+  (let [fetcher (endpoint-fetcher endpoint)
+        index-key (endpoint-index-key endpoint)
         new-endpoint (fetcher store id)
         old-endpoint (fetcher old-store id)]
     (if (= new-endpoint old-endpoint)
@@ -310,44 +335,53 @@
 (defn index-grandparent-endpoint->label->label-ids
   "Reflect this link in endpoint->label->label-ids for its grand-endpoint."
   [store old-store endpoint id]
-  (let [fetcher (case endpoint :target id->target :source id->source)
-        index-key (case endpoint
-                    :target :target->label->label-ids
-                    :source :source->label->label-ids)
+  (let [fetcher (endpoint-fetcher endpoint)
+        index-key (endpoint-label-index-key endpoint)
         is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
         canonical (canonical-primitive-form (id->source store id))
         old-canonical (canonical-primitive-form (id->source old-store id))
-        grandparent (or (fetcher store (id->target store id))
-                        (fetcher old-store (id->target old-store id)))]
+        grandparent (fetcher store (id->target store id))
+        old-grandparent (fetcher old-store (id->target old-store id))]
     (if (or (and (= is-label old-is-label)
-                 (= canonical old-canonical))
-            (not grandparent))
+                 (= canonical old-canonical)
+                 (= grandparent old-grandparent))
+            (and (nil? grandparent) (nil? old-grandparent)))
       store
       (cond-> store
-              old-is-label
-              (update-in-clean-up [index-key
-                                   grandparent
-                                   old-canonical]
-                                  #(pseudo-set-disj % id))
-              is-label
-              (update-in [index-key grandparent canonical]
-                         #(pseudo-set-conj % id))))))
+        (and old-is-label old-grandparent)
+        (update-in-clean-up [index-key
+                             old-grandparent
+                             old-canonical]
+                            #(pseudo-set-disj % id))
+        (and is-label grandparent)
+        (update-in [index-key grandparent canonical]
+                   #(pseudo-set-conj % id))))))
 
-;;; TODO: !!! This now has to account for a link's target changing. So when
-;;;       a link's target changes, it also has to go through each of its labels,
-;;;       and call index grandendpoint on them.
+;;; TODO: Make this work for both endpoints.
 (defn index-target->label->label-ids
   "Reflect the effects of this link in the target->label->label-ids index.
   The id->keywords index must be valid when this is called."
   [store old-store id]
-  (-> store
-      ;; Our link
-      (index-grandparent-endpoint->label->label-ids old-store :target id)
-      ;; Our target, which we may affect being a label
+  (as-> store store
+      ;; Handle when id is a label.
+      (index-grandparent-endpoint->label->label-ids store old-store :target id)
+      ;; Handle when id makes its target a label.
       (index-grandparent-endpoint->label->label-ids
-       old-store :target
-       (or (id->target store id) (id->target old-store id)))))
+       store old-store :target
+       (or (id->target store id) (id->target old-store id)))
+      ;; Handle when id is a link that got a label, and its endpoint changed
+      (let [endpoint :target ;; TODO: !!! Get rid of this
+            fetcher (endpoint-fetcher endpoint)]
+        (if (= (fetcher store id) (fetcher old-store id))
+          store
+          (let [label-ids (filter #(id-is-label? store %)
+                                  (target->ids store id))]
+            (reduce
+             (fn [store label-id]
+               (index-grandparent-endpoint->label->label-ids
+                store old-store endpoint label-id))
+             store label-ids))))))
 
 (defn index-id->keywords
   "Reflect this link's source in the id->keywords index.

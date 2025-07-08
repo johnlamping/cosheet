@@ -45,7 +45,6 @@
     :temporary-ids  #{}
     :next-id 1001
     :modified-ids nil
-    :source->label->label-ids {} ;; TODO: !!! Remove
     :equivalent-undo-point false}))
 
 (def empty-store (new-element-store))
@@ -105,24 +104,33 @@
                 (make-link-id 9) :order}))
     (is (empty? (:id->keywords unindexed)))))
 
-(deftest index-target->label->label-ids-test
-  (let [ids (keys (:id->source unindexed-test-store))
-        targets-indexed (reduce #(index-endpoint->ids
-                                  %1 empty-store :target %2)
-                                 unindexed-test-store ids)
-        keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
-                                 targets-indexed ids)
-        store (reduce #(index-target->label->label-ids %1 empty-store %2)
-                      keywords-indexed ids)
-        empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-target->label->label-ids %1 store %2)
-                          empty-indexed ids)]
-    (is (check (:target->label->label-ids store)
-               {(make-link-id 1) {"baz" (make-link-id 3)
-                                  "bar" (make-link-id 5)
-                                  :order (make-link-id 10)}
-                (make-link-id 2) {:baz (make-link-id 6)}}))
-    (is (empty? (:source->ids unindexed)))))
+(deftest index-endpoint->label->label-ids-test
+  (doseq [endpoint [:target :source]]
+    (let [ids (keys (:id->source unindexed-test-store))
+          targets-indexed (reduce #(index-endpoint->ids
+                                    %1 empty-store :target %2)
+                                  unindexed-test-store ids)
+          keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
+                                   targets-indexed ids)
+          store (reduce #(index-endpoint->label->label-ids
+                          %1 empty-store endpoint %2)
+                        keywords-indexed ids)
+          empty-indexed (clear-store-leaving-indices store)
+          unindexed (reduce #(index-endpoint->label->label-ids
+                              %1 store endpoint %2)
+                            empty-indexed ids)
+          index-key (endpoint-label-index-key endpoint)]
+      (is (check (index-key store)
+                 (case endpoint
+                   :target {(make-link-id 1) {"baz" (make-link-id 3)
+                                              "bar" (make-link-id 5)
+                                              :order (make-link-id 10)}
+                            (make-link-id 2) {:baz (make-link-id 6)}}
+                   :source {"bar" {:order (make-link-id 10)}
+                            "foo" {"baz" (make-link-id 3)
+                                   "bar" (make-link-id 5)}
+                            "baz" {:baz (make-link-id 6)}})))
+      (is (empty? (index-key unindexed))))))
 
 (def test-store
   (let [ids (keys (:id->source unindexed-test-store))]
@@ -130,7 +138,10 @@
       (reduce #(index-endpoint->ids %1 empty-store :target %2) store ids)
       (reduce #(index-endpoint->ids %1 empty-store :source %2) store ids)
       (reduce #(index-id->keywords %1 empty-store %2) store ids)
-      (reduce #(index-target->label->label-ids %1 empty-store %2) store ids))))
+      (reduce #(index-endpoint->label->label-ids %1 empty-store :target %2)
+              store ids)
+      (reduce #(index-endpoint->label->label-ids %1 empty-store :source %2)
+              store ids))))
 
 (deftest all-X-test
   (is (= (set (all-ids-eventually-holding-source test-store 5))
@@ -179,8 +190,7 @@
   (is (= (vec (source->ids test-store (make-link-id 4)))
          []))
   (is (= (source->ids test-store (make-link-id 1)) nil))
-  (is (thrown? java.lang.AssertionError
-               (source->ids test-store "Foo"))))
+  (is (= (source->ids test-store "foo") [(make-link-id 2)])))
 
 (deftest id->target-test
    (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
@@ -253,11 +263,13 @@
         reverse-primary-key (endpoint-index-key endpoint)
         index-key (endpoint-label-index-key endpoint)]
     ;; Everything in :endpoint->label->label-ids is true
-    (doseq [[id map] (index-key store)]
+    (doseq [[endpoint-value map] (index-key store)]
       (doseq [[label ids] map]
         (doseq [label-id (pseudo-set-seq ids)]
-          ;; The label-id is a grandchild of the id.
-          (is (= (get-in store [primary-key (id->target store label-id)]) id))
+          ;; The label-id is a grandchild of the endpoint-value.
+          (is (= (canonical-primitive-form
+                  (get-in store [primary-key (id->target store label-id)]))
+                 endpoint-value))
           ;; The label-id has the right source.
           (is (= (canonical-primitive-form (id->source store label-id)) label))
           ;; The label-id is a label.
@@ -269,10 +281,11 @@
                                 (= source :order) id)]
         (let [label (canonical-primitive-form (id->source store label-id))
               label-target (id->target store label-id)]
-          (when-let [two-up (get-in store [primary-key label-target])]
+          (when-let [endpoint-value (canonical-primitive-form
+                                     (get-in store [primary-key label-target]))]
             (is (some #{label-id}
                       (pseudo-set-seq
-                       (get-in store [index-key two-up label]))))))))))
+                       (get-in store [index-key endpoint-value label]))))))))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
@@ -295,7 +308,8 @@
                       (pseudo-set-seq
                        (get-in store [:id->keywords target])))))))
 
-  (check-endpoint->label->label-ids store :target))
+  (check-endpoint->label->label-ids store :target)
+  (check-endpoint->label->label-ids store :source))
 
 (deftest all-indices-test
   (check-derived-indices test-store))

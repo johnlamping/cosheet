@@ -16,6 +16,7 @@
   (assert (> n 0))
   (->ItemId n))
 
+;;; TODO: once the store accepts objects, put some of them in here.
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->target
@@ -155,6 +156,10 @@
   (is (id-valid-link? test-store (make-link-id 1)))
   (is (not (id-valid-link? test-store (make-link-id 99)))))
 
+(deftest id->target-test
+  (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
+  (is (= (id->target test-store 2) nil)))
+
 (deftest id->source-test
   (is (= (id->source test-store (make-link-id 999)) nil))
   (is (= (id->source test-store (make-link-id 1)) 44))
@@ -166,6 +171,12 @@
   (is (= (set (target->ids test-store (make-link-id 1)))
          (set [(make-link-id 2) (make-link-id 9)])))
   (is (= (target->ids test-store (make-link-id 999)) nil)))
+
+(deftest source->ids-test
+  (is (= (source->ids test-store 0) [(make-link-id 0.5)]))
+  (is (check (source->ids test-store :label)
+             (as-set [(make-link-id 7) (make-link-id 8)])))
+  (is (= (source->ids test-store 123) nil)))
 
 (deftest target-label->ids-test
   (is (= (target-label->ids test-store (make-link-id 1) "Bar")
@@ -179,22 +190,25 @@
   (is (= (target-label->ids test-store (make-link-id 0.5) :order)
          nil)))
 
+(deftest source-label->ids-test
+  (is (= (source-label->ids test-store "Foo" "Bar")
+         [(make-link-id 2)]))
+  (is (= (source-label->ids test-store "foo" "bar")
+         [(make-link-id 2)]))
+  (is (= (source-label->ids test-store "foo" "Baz")
+         [(make-link-id 2)]))
+  (is (= (source-label->ids test-store "foo" :order) nil))
+  (is (= (source-label->ids test-store (make-link-id 1) "bar") nil))
+  (is (= (source-label->ids test-store "Bar" :order)
+         [(make-link-id 9)]))
+  (is (= (source-label->ids test-store (make-link-id 0.5) :order)
+         nil)))
+
 (deftest id->has-keyword?-test
   (is (id->has-keyword? test-store (make-link-id 3) :baz))
   (is (id->has-keyword? test-store (make-link-id 3) :label))
   (is (not (id->has-keyword? test-store (make-link-id 3) :bar)))
   (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
-
-(deftest source->ids-test
-  ;; TODO: !!! Once objects can be sources, revise this to use them.
-  (is (= (vec (source->ids test-store (make-link-id 4)))
-         []))
-  (is (= (source->ids test-store (make-link-id 1)) nil))
-  (is (= (source->ids test-store "foo") [(make-link-id 2)])))
-
-(deftest id->target-test
-   (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
-   (is (= (id->target test-store 2) nil)))
 
 (deftest add-link-test
   (let [[added-store id]
@@ -255,6 +269,23 @@
                  (get-in store
                          [index-key (canonical-primitive-form endpoint)])))))))
 
+(defn check-id->keywords
+  "Check that the derived index id->keywords is right."
+  [store]
+  ;; Everything in :id->keywords is true.
+  (doseq [[id keywords] (:id->keywords store)]
+    (doseq [keyword (pseudo-set-seq keywords)]
+      (is (keyword? keyword))
+      (is (some #(= (id->source store %) keyword)
+                (target->ids store id)))))
+  ;; Everything that should be in :id->keywords is.
+  (doseq [[id source] (:id->source store)]
+    (when-let [target (id->target store id)]
+      (when (keyword? source)
+            (is (some #{source}
+                      (pseudo-set-seq
+                       (get-in store [:id->keywords target]))))))))
+
 (defn check-endpoint->label->label-ids
   "Check that the derived index <endpoint>->label->label-ids is right.
   Assumes that the endpoint->ids and the id->keywords indices are correct."
@@ -290,24 +321,9 @@
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
   [store]
-  
   (check-endpoint->ids store :target)
   (check-endpoint->ids store :source)
-
-  ;; Everything in :id->keywords is true.
-  (doseq [[id keywords] (:id->keywords store)]
-    (doseq [keyword (pseudo-set-seq keywords)]
-      (is (keyword? keyword))
-      (is (some #(= (id->source store %) keyword)
-                (target->ids store id)))))
-  ;; Everything that should be in :id->keywords is.
-  (doseq [[id source] (:id->source store)]
-    (when-let [target (id->target store id)]
-      (when (keyword? source)
-            (is (some #{source}
-                      (pseudo-set-seq
-                       (get-in store [:id->keywords target])))))))
-
+  (check-id->keywords store)
   (check-endpoint->label->label-ids store :target)
   (check-endpoint->label->label-ids store :source))
 
@@ -324,16 +340,21 @@
   ;; in a random order, so this guarantees that we won't remove a
   ;; link while another link reverences it.
   (binding [gen/*rnd* (java.util.Random. 437)])
-  (let [earlier-num (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))]
+  (let [earlier-num (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
+        random-primitive (fn [] (case (gen/uniform 0 4)
+                                  0 (str "N" (int (/ 100 (gen/uniform 1 100))))
+                                  1 (int (/ 100 (gen/uniform 1 100)))
+                                  2 :label
+                                  3 :order))]
     (loop [iteration 0
            store (first (add-link
                          (first (add-link (new-element-store) nil 0))
                          nil 1))
            items 2]
-      ;; TODO: !!! Test mutations of endpoints.
-      (let [;; Number of items to end up with (has a long tail)
+      ;; TODO: !!! Test mutations of target, when that goes in.
+      (let [;; Number of items to end up with after adding (has a long tail)
             n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
-            ;; Number of items to keep
+            ;; Number of items to keep after removing
             m (gen/uniform (int (/ n 2)) n)]
         (let [added-store
               (reduce (fn [store i]
@@ -341,19 +362,22 @@
                               (add-link
                                store
                                (when (not= 0 (gen/uniform 0 10))
-                                 (->ItemId (earlier-num i)))
-                               (case (gen/uniform 0 4)
-                                 0 (str "N" (int (/ 100 (gen/uniform 1 100))))
-                                 1 (int (/ 100 (gen/uniform 1 100)))
-                                 2 :label
-                                 3 :order))]
+                                 (make-link-id (earlier-num i)))
+                               (random-primitive))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
+              mutated-store
+              (reduce (fn [store i]
+                        (if (not= 0 (gen/uniform 0 4))
+                          store
+                          (update-source
+                           store (make-link-id i) (random-primitive))))
+                      added-store (range 1 (+ n 1)))
               removed-store
               (reduce (fn [store i]
-                        (remove-link store (->ItemId i)))
-                      added-store (gen/shuffle (range (+ m 1) (+ n 1))))]
+                        (remove-link store (make-link-id i)))
+                      mutated-store (gen/shuffle (range (+ m 1) (+ n 1))))]
           (check-derived-indices added-store)
           (check-derived-indices removed-store)
           (if (< iteration 20)

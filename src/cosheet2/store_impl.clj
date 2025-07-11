@@ -18,7 +18,7 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
-(declare add-link-impl)
+(declare add-link-from-triple)
 (declare remove-link-impl)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
@@ -156,14 +156,10 @@
   ImmutableStore
 
   (add-link [this target source]
-    (assert (or (nil? target)
-                (is-item-id? target)))
-    (assert (not (nil? source)))
-    (assert (not (is-link-id? source)))
     (let [item-id (->ItemId (:next-id this))]
       [(-> this
            (update-in [:next-id] inc)
-           (add-link-impl item-id target source))
+           (add-link-from-triple item-id target source))
        item-id]))
 
   (remove-link [this id]
@@ -399,11 +395,17 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
-(defn add-link-impl
-  "Add a link to the store, and do all necessary indexing."
+(defn add-link-from-triple
+  "Add a link to the store, given its target, source, and id. And do all
+  necessary indexing."
   [store item-id target source]
-  (assert (not (nil? source)) [item-id target source])
-  (assert (not= item-id target) [item-id target source])
+  ;; TODO: !!! disallow nil once objects are supported.
+  (assert (or (nil? target)
+              (is-item-id? target))
+          [item-id target source])
+  (assert (and (not (nil? source))
+               (not (is-link-id? source)))
+          [item-id target source])
   (when (number? (:id item-id))
     (assert (< (:id item-id) (:next-id store)) [item-id target source])
     (when (number? (:id target))
@@ -452,7 +454,7 @@
                         #(conj % [id target source]))]
       (reduce (fn [[store deferred] [id target source]]
                 (add-or-defer-link store deferred id target source))
-              [(add-link-impl store id target source)
+              [(add-link-from-triple store id target source)
                (dissoc deferred id)]
               (deferred id)))))
 

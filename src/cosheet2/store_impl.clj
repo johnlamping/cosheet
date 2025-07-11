@@ -22,7 +22,6 @@
 (declare remove-link-impl)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
-(declare all-forward-reachable-ids)
 (declare all-temporary-ids)
 (declare add-modified-id)
 (declare index-all)
@@ -258,18 +257,6 @@
                         (java.io.InputStreamReader. stream))]
       (binding [*in* reader]
         (data-to-store this (clojure.edn/read reader))))))
-
-;;; TODO: !!! This needs to not go through objects.
-(defn all-forward-reachable-ids
-  "Return a seq of all the ids that can be reached from this id
-   via target or source links. It includes the id, itself."
-  [store id]
-  (when id
-    (concat [id]
-            (mapcat #(when (is-item-id? %)
-                       (all-forward-reachable-ids store %))
-                    [(id->target store id)
-                     (id->source store id)]))))
 
 ;;; These are utility functions for abstracting from target and source
 ;;; to endpoint.

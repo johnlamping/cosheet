@@ -144,10 +144,6 @@
       (reduce #(index-endpoint->label->label-ids %1 empty-store :source %2)
               store ids))))
 
-(deftest all-forward-reachable-ids-test
-  (is (= (set (all-forward-reachable-ids test-store (make-link-id 1)))
-          #{(make-link-id 0.5) (make-link-id 1)})))
-
 (deftest id-valid-link?-test
   (is (id-valid-link? test-store (make-link-id 1)))
   (is (not (id-valid-link? test-store (make-link-id 99)))))

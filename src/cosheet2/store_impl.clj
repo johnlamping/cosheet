@@ -1,5 +1,5 @@
 (ns cosheet2.store-impl
-  (:require (cosheet2 [store :refer :all]
+  (:require (cosheet2 [store :refer :all :as store]
                       [entity :as entity]
                       [utils :refer [pseudo-set-set
                                      pseudo-set-seq
@@ -19,7 +19,6 @@
 ;;; that data.
 
 (declare add-link-from-triple)
-(declare remove-link-impl)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
 (declare all-temporary-ids)
@@ -163,7 +162,20 @@
        item-id]))
 
   (remove-link [this id]
-    (remove-link-impl this id))
+    (assert (is-link-id? id)
+            ["Not a link id "id])
+    ;; We have to explicitly ask for the versions of id->source and
+    ;; target->ids from the store namespace, because inside
+    ;; ElementStoreImpl, they reference its fields of those names.
+    (assert (not (nil? (store/id->source this id)))
+            ["Removed id not present." id])
+    (assert (nil? (store/target->ids this id))
+            ["Removed id is a target." id])
+    (-> this
+        (dissoc-in [:id->source id])
+        (dissoc-in [:id->target id])
+        (index-all this id)
+        (add-modified-id id)))
 
   (update-source [this id source]
     (assert (not (nil? source)))
@@ -416,19 +428,6 @@
       (assoc-in [:id->source item-id] source)
       (index-all store item-id)
       (add-modified-id item-id)))
-
-;;; Note: the calls here to id->source and targets->ids don't
-;;;       work if this code is moved into the record.
-(defn remove-link-impl [store id]
-    (assert (not (nil? (id->source store id)))
-            "Removed id not present.")
-    (assert (nil? (target->ids store id))
-            "Removed id is a target.")
-    (-> store
-        (dissoc-in [:id->source id])
-        (dissoc-in [:id->target id])
-        (index-all store id)
-        (add-modified-id id)))
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."

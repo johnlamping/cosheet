@@ -1,6 +1,5 @@
 (ns cosheet2.mutable-store-impl
   (:require (cosheet2 [store :refer :all]
-                      [store-impl :refer [all-ids-eventually-holding-source]]
                       [reporter :refer [set-value! change-data!
                                         data-value reporter-data
                                         change-data-control-return!
@@ -140,8 +139,7 @@
       (let [[id & remaining-ids] pending-ids]
         (if (contains? affected id)
           (recur remaining-ids affected)
-          (recur (concat pending-ids
-                         (all-ids-eventually-holding-source store id)
+          (recur (concat remaining-ids
                          (when-let [target (id->target store id)]
                            [target]))
                  (conj affected id)))))))

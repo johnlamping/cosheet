@@ -24,7 +24,7 @@
 (declare candidate-matching-ids-and-estimate)
 (declare all-forward-reachable-ids)
 (declare all-temporary-ids)
-(declare add-modified-ids-for-id-and-containers)
+(declare add-modified-id)
 (declare index-all)
 
 (defrecord ElementStoreImpl
@@ -176,7 +176,7 @@
     (-> this
         (assoc-in [:id->source id] source)
         (index-all this id)
-        (add-modified-ids-for-id-and-containers id)))
+        (add-modified-id id)))
 
   (get-unique-number [this]
     [(:next-id this) (update-in this [:next-id] inc)])
@@ -259,24 +259,7 @@
       (binding [*in* reader]
         (data-to-store this (clojure.edn/read reader))))))
 
-;;; TODO: This needs to generalize to include objects too.
-(defn all-ids-eventually-holding-source
-  "Return all links that contain the source, possibly through
-   a chain of containment."
-  [store source]
-  (let [links (pseudo-set-seq
-               (get-in store [:source->ids (canonical-primitive-form
-                                             source)]))]
-    (concat links
-            (mapcat #(all-ids-eventually-holding-source store %) links))))
-
-(defn all-ids-eventually-holding-id
-  "Return a seq of the ids of all links whose source chain goes
-  through this link. That includes the link, all links whose source
-  is this link, and all links eventually holding them."
-  [store id]
-  (conj (all-ids-eventually-holding-source store id) id))
-
+;;; TODO: !!! This needs to not go through objects.
 (defn all-forward-reachable-ids
   "Return a seq of all the ids that can be reached from this id
    via target or source links. It includes the id, itself."
@@ -429,15 +412,6 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
-(defn add-modified-ids-for-id-and-containers
-  "Add the id to the modified ids,
-   and add any id that recursively contains it."
-  [store id]
-  (if (:modified-ids store)
-    (update-in store [:modified-ids]
-               #(into % (all-ids-eventually-holding-id store id)))
-    store))
-
 (defn add-link-impl
   "Add a link to the store, and do all necessary indexing."
   [store item-id target source]
@@ -454,13 +428,13 @@
       (index-all store item-id)
       (add-modified-id item-id)))
 
+;;; Note: the calls here to id->source and targets->ids don't
+;;;       work if this code is moved into the record.
 (defn remove-link-impl [store id]
     (assert (not (nil? (id->source store id)))
             "Removed id not present.")
     (assert (nil? (target->ids store id))
             "Removed id is a target.")
-    (assert (nil? (get-in store [:source->ids id]))
-            "Removed id is the source of another.")
     (-> store
         (dissoc-in [:id->source id])
         (dissoc-in [:id->target id])
@@ -535,7 +509,7 @@
         (subsuming-elements-ids-and-estimates store elements)]
     (if (nil? content)
       [element-matches element-matches-precise]
-      (let [source-ids (all-ids-eventually-holding-source store content)]
+      (let [source-ids (source->ids store content)]
         [(concat [[(count source-ids) source-ids]]
                  element-matches)
          element-matches-precise]))))

@@ -144,11 +144,7 @@
       (reduce #(index-endpoint->label->label-ids %1 empty-store :source %2)
               store ids))))
 
-(deftest all-X-test
-  (is (= (set (all-ids-eventually-holding-source test-store 5))
-         #{(make-link-id 4)}))
-  (is (= (set (all-ids-eventually-holding-id test-store (make-link-id 4)))
-         #{(make-link-id 4)}))
+(deftest all-forward-reachable-ids-test
   (is (= (set (all-forward-reachable-ids test-store (make-link-id 1)))
           #{(make-link-id 0.5) (make-link-id 1)})))
 

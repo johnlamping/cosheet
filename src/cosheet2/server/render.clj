@@ -2,9 +2,8 @@
   (:require (cosheet2 [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid-link?]]
-                      [entity :refer [target content label->elements
-                                      label->element
-                                      description->entity updating-immutable]]
+                      [entity :refer [container content label->elements
+                                      label->element description->entity]]
                       [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
@@ -346,7 +345,7 @@
                                 (let [[exemplar subject-ref]
                                       (referent->exemplar-and-subject referent)]
                                   (or subject-ref
-                                      (when-let [target (target item)]
+                                      (when-let [target (container item)]
                                         (when (current-value
                                                (semantic-entity? target))
                                           (item-referent target))))))
@@ -424,7 +423,7 @@
              (if is-tab
                ;; Show the tabs, plus the topic of the selected tab
                (let [topic (first (label->elements immutable-item :tab-topic))
-                     target (target immutable-item)]
+                     target (container immutable-item)]
                  [:div {:class "tabbed"}
                   (make-component
                    {:relative-id (:item-id target)
@@ -518,7 +517,7 @@
                   (top-level-item-DOM-R item referent inherited)
                   ;; Show a selection of tabs.
                   (expr-let [topic (expr first (label->elements item :tab-topic))
-                             target (target item)]
+                             target (container item)]
                     [:div {:class "tabbed"}
                      (make-component {:key [:tabs]}
                                      [tabs-DOM-R target item inherited])

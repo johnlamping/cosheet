@@ -5,8 +5,8 @@
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [is-item-id? id->target id->source]]
-                      [entity :refer [target elements content label->elements
-                              description->entity in-different-store]]
+                      [entity :refer [elements content label->elements
+                                      description->entity]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]

@@ -22,7 +22,7 @@
 
   StoredEntity
 
-  (target [this]
+  (container [this]
     (when-let [target-id (id->target store item-id)]
       (description->entity target-id store)))
 
@@ -65,7 +65,7 @@
 
   StoredEntity
 
-  (target [this]
+  (container [this]
     (when-let [target-id (id->target store item-id)]
       (description->entity target-id store)))
 

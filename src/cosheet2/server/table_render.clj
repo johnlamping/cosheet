@@ -3,10 +3,9 @@
                                      add-elements-to-entity-list remove-first]]
                       [store :refer [id->target target-label->ids]]
                       [reporter :refer [universal-category]]
-                      [entity :refer [target content elements label->elements
+                      [entity :refer [content elements label->elements
                                       description->entity
-                                      description->updating-entity-R 
-                                      StoredEntity
+                                      description->updating-entity-R
                                       label? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]

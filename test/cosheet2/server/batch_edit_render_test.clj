@@ -6,7 +6,6 @@
              [reporter :refer [new-reporter set-value! reporter-value]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
-             [entity :refer [elements target]]
              [store :refer [new-element-store new-mutable-store store-reset!
                             id->target]]
              store-impl

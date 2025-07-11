@@ -8,8 +8,8 @@
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
                       [entity :refer [primitive? label? description->entity
-                                      content target elements label->elements
-                                      in-different-store]]
+                                      content elements label->elements
+                                      container]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
@@ -156,7 +156,7 @@
   "Return whether the entity is (or is part of) a selector."
   [entity]
   (or (some #(= (content %) :selector) (elements entity))
-      (if-let [subj (target entity)]
+      (if-let [subj (container entity)]
         (selector? subj))))
 
 (defn transform-pattern-toward-fixed-term
@@ -417,7 +417,7 @@
    ;; It has universal content
    (= 'anything (content entity))
    ;; It is a column header.
-   (some #(= (content %) :column-headers) (elements (target entity)))
+   (some #(= (content %) :column-headers) (elements (container entity)))
    ;; It has no elements, or only a :label element.
    (let [semantic (semantic-elements entity)]
      (or (empty? semantic)
@@ -434,7 +434,7 @@
   (if (and id
            (let [revised-entity (description->entity id new-store)]
              (or (column-header-problem revised-entity)
-                 (column-header-problem (target revised-entity)))))
+                 (column-header-problem (container revised-entity)))))
     old-store
     new-store))
 

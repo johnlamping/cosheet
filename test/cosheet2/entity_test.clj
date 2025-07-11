@@ -40,7 +40,7 @@
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (primitive? item0)))
-    (is (= (target (description->entity ida s)) item99))
+    (is (= (container (description->entity ida s)) item99))
     (is (= (label->elements item99 "foo") [(description->entity ida s)]))
     ;; Check that the :label is required.
     (is (= (label->elements (description->entity id99 s5) "foo") nil))
@@ -92,7 +92,7 @@
                       (3 ("foo" :label)))]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
-    (is (= (target (description->entity ida ms)) item99))
+    (is (= (container (description->entity ida ms)) item99))
     (is (not (current-value (primitive? item0))))
     (is (= (current-value (label->elements item99 "foo"))
            [(description->entity ida ms)]))

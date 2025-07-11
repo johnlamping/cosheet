@@ -20,7 +20,7 @@
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list label->element
-                    content elements label->elements label->content target]]
+                    content elements label->elements label->content]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
     query-impl

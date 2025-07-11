@@ -66,8 +66,8 @@
 (defprotocol StoredEntity
   "A tag for stored entities. They must have unique item-ids."
 
-  (target [this]
-    "Return the target of this stored entity, if any.")
+  (container [this]
+    "Return the container of this stored entity (its target), if any.")
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,

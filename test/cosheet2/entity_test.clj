@@ -66,8 +66,7 @@
       (is (thrown? java.lang.AssertionError
                    (label->content (description->entity id99 sz) "foo"))))
     (is (= (content (description->entity idc s)) 4))
-    (is (= (to-list item0) nil))
-    (is (= (current-version item0) item0))))
+    (is (= (to-list item0) nil))))
 
 (deftest mutable-storeditem-test
   (let [id0 (make-item-id "0")
@@ -160,10 +159,7 @@
                    [(canonicalize orig-99)
                     (canonicalize
                      (to-list (in-different-store item99
-                                                  (current-store ms))))]))))
-    ;; Finally, check current-version
-    (is (= (current-version item0)
-           (description->entity id0 (current-store ms))))))
+                                                  (current-store ms))))]))))))
 
 (deftest list-test
   (is (not (primitive? '(1 2))))

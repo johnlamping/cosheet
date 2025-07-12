@@ -52,9 +52,7 @@
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
 
-  (updating-immutable [this] this)
-
-  (current-version [this] this))
+  (updating-immutable [this] this))
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
@@ -100,10 +98,7 @@
 
   (updating-immutable [this]
     (expr-let [immutable-store (category-change [item-id] store)]
-        (in-different-store this immutable-store)))
-
-  (current-version [this]
-    (description->entity item-id (current-store store))))
+        (in-different-store this immutable-store))))
 
 ;;; Make a list work as an item. The format is (content element
 ;;; element...) We use ISeq, because, for example, while '(1 2) is a
@@ -132,9 +127,7 @@
     (some #(= (content %) :label)
           (elements this)))
 
-  (updating-immutable [this] this)
-
-  (current-version [this] this))
+  (updating-immutable [this] this))
 
 (extend-protocol Entity
   clojure.lang.Keyword
@@ -145,7 +138,6 @@
   (content [this] this)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
-  (current-version [this] this)
   
   clojure.lang.Symbol
   (mutable-entity? [this] false)
@@ -155,7 +147,6 @@
   (content [this] this)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
-  (current-version [this] this)
   
   java.lang.String
   (mutable-entity? [this] false)
@@ -165,7 +156,6 @@
   (content [this] this)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
-  (current-version [this] this)
   
   java.lang.Number
   (mutable-entity? [this] false)
@@ -175,7 +165,6 @@
   (content [this] this)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
-  (current-version [this] this)
   
   java.lang.Boolean
   (mutable-entity? [this] false)
@@ -185,7 +174,6 @@
   (content [this] this)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
-  (current-version [this] this)
   
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
@@ -203,9 +191,7 @@
   (elements [this] nil)
   (content [this] this)
   (marked-as-type? [this] false)
-  (updating-immutable [this] this)
-  (current-version [this] this)
-)
+  (updating-immutable [this] this))
 
 (extend-protocol Description
   cosheet2.store.ItemId

@@ -5,7 +5,7 @@
                                       description->entity
                                       content elements label->elements
                                       label->content
-                                      to-list current-version
+                                      to-list
                                       in-different-store]]
                       [entity :refer [label? minimal-label?]]
                       [query :as query

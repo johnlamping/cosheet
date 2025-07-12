@@ -2,7 +2,7 @@
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [is-item-id?]]
                       [entity :refer [label? description->entity
-                                      content has-keyword? primitive?]]
+                                      content label? primitive?]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
                                      map-with-first-last
@@ -59,7 +59,7 @@
     ;; element is the one that must be a label.
     (vector? template) (vec (concat (butlast template)
                                     [(ensure-label (last template))]))
-    (has-keyword? template :label) template
+    (label? template) template
     true (add-elements-to-entity-list template [:label])))
 
 (defn get-item-rendering-data
@@ -511,7 +511,7 @@
                          {:class (cond-> "content-text"
                                    editable (str " editable")
                                    anything (str " placeholder"))}))
-              (has-keyword? item :label)
+              (label? item)
               (into-attributes (:class "label"))
               anything
               (into-attributes (:class "placeholder")))
@@ -540,7 +540,7 @@
                             :item-id (:item-id item)
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
-           (has-keyword? item :label)
+           (label? item)
            (into-attributes {:class "label"})))]
       (if (empty? elements)
         content-dom
@@ -550,7 +550,7 @@
                             (or (:must-show-label specification) true)
                             :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
-                          (has-keyword? item :label)
+                          (label? item)
                           (str " label"))}
            content-dom elements-dom]))))
 

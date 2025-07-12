@@ -49,9 +49,11 @@
   (content [this]
     "Return the content of the entity.")
 
-  (has-keyword? [this keyword]
-    "Returns true if the entity has an element whose content is the
-    given keyword.")
+  (marked-as-type? [this]
+    "Return whether the entity is marked as being a type. (Has an element
+     whose content is :label)"
+    (some #(= (content %) :label)
+          (elements this)))
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
@@ -59,7 +61,7 @@
      value of the entity. This is good if you want to do a computation
      on the entity, and not have to track every sub-dependency.")
 
-  ;; TODO: Get rid of this. It is no longer used anywhere.
+  ;; TODO: !!! Get rid of this. It is no longer used anywhere.
   (current-version [this]
     "Return an immutable entity that is the current value of the entity."))
 
@@ -82,8 +84,7 @@
   is :label)."
   (or (let [content (content entity)]
         (and (keyword? content) (not= content :label)))
-      (some #(= (content %) :label)
-            (elements entity))))
+      (marked-as-type? entity)))
 
 (defn minimal-label?
   "Given a label, Return true if it is as small as it can be

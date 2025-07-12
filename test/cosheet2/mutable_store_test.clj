@@ -57,10 +57,8 @@
            (id->source store element)))
     (let [fred (first (target-label->ids store element "by"))
           label (first (target->ids store fred))]
-      (is (computation-value
-           (id->has-keyword? mutable-store label :label) cd))
-      (is (not (computation-value
-                (id->has-keyword? mutable-store label :foo) cd))))
+      (is (computation-value (id->marked-as-type? store label) cd))
+      (is (not (computation-value (id->marked-as-type? store fred) cd))))
     (is (= (computation-value (candidate-matching-ids mutable-store 77) cd)
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))

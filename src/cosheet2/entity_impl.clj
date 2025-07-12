@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :refer [target-label->ids
                                      target->ids
                                      id->source id->target
-                                     id->has-keyword?
+                                     id->marked-as-type?
                                      mutable-store?
                                      current-store
                                      Store]]
@@ -49,8 +49,8 @@
   (content [this]
     (description->entity (id->source store item-id) store))
 
-  (has-keyword? [this keyword]
-    (id->has-keyword? store item-id keyword))
+  (marked-as-type? [this]
+    (id->marked-as-type? store item-id))
 
   (updating-immutable [this] this)
 
@@ -95,8 +95,8 @@
     (expr-let [content (id->source store item-id)]
       (description->entity content store)))
 
-  (has-keyword? [this keyword]
-    (id->has-keyword? store item-id keyword))
+  (marked-as-type? [this]
+    (id->marked-as-type? store item-id))
 
   (updating-immutable [this]
     (expr-let [immutable-store (category-change [item-id] store)]
@@ -128,8 +128,9 @@
 
   (content [this] (first this))
 
-  (has-keyword? [this keyword]
-    (some #(= (content %) keyword) (elements this)))
+  (marked-as-type? [this]
+    (some #(= (content %) :label)
+          (elements this)))
 
   (updating-immutable [this] this)
 
@@ -142,52 +143,57 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
+  
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
+  
   java.lang.String
   (mutable-entity? [this] false)
   (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
+  
   java.lang.Number
   (mutable-entity? [this] false)
   (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
+  
   java.lang.Boolean
   (mutable-entity? [this] false)
   (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
+  
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
   (primitive? [this] true)
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
 
   nil ;; For convenience in null punning
@@ -196,7 +202,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (has-keyword? [this keyword] false)
+  (marked-as-type? [this] false)
   (updating-immutable [this] this)
   (current-version [this] this)
 )

@@ -44,6 +44,7 @@
      (make-link-id 9) "Bar"
      (make-link-id 10) :order}
     :temporary-ids  #{}
+    :marked-as-type #{}
     :next-id 1001
     :modified-ids nil
     :equivalent-undo-point false}))
@@ -90,20 +91,19 @@
                                     id))))
       (is (empty? (index-key unindexed))))))
 
-(deftest index-id->keywords-test
+(deftest index-marked-as-type-test
   (let [ids (keys (:id->source unindexed-test-store))
         elements-indexed (reduce #(index-endpoint->ids
                                    %1 empty-store :target %2)
                                  unindexed-test-store ids)
-        store (reduce #(index-id->keywords %1 empty-store %2)
+        store (reduce #(index-marked-as-type %1 empty-store %2)
                       elements-indexed ids)
         empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-id->keywords %1 store %2) empty-indexed ids)]
-    (is (check (:id->keywords store)
-               {(make-link-id 3) #{:label :baz}
-                (make-link-id 5) :label
-                (make-link-id 9) :order}))
-    (is (empty? (:id->keywords unindexed)))))
+        unindexed (reduce #(index-marked-as-type %1 store %2)
+                          empty-indexed ids)]
+    (is (check (:marked-as-type store)
+               #{(make-link-id 3) (make-link-id 5)}))
+    (is (empty? (:marked-as-type unindexed)))))
 
 (deftest index-endpoint->label->label-ids-test
   (doseq [endpoint [:target :source]]
@@ -111,11 +111,11 @@
           targets-indexed (reduce #(index-endpoint->ids
                                     %1 empty-store :target %2)
                                   unindexed-test-store ids)
-          keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
-                                   targets-indexed ids)
+          marks-indexed (reduce #(index-marked-as-type %1 empty-store %2)
+                                targets-indexed ids)
           store (reduce #(index-endpoint->label->label-ids
                           %1 empty-store endpoint %2)
-                        keywords-indexed ids)
+                        marks-indexed ids)
           empty-indexed (clear-store-leaving-indices store)
           unindexed (reduce #(index-endpoint->label->label-ids
                               %1 store endpoint %2)
@@ -134,15 +134,9 @@
       (is (empty? (index-key unindexed))))))
 
 (def test-store
-  (let [ids (keys (:id->source unindexed-test-store))]
-    (as-> unindexed-test-store store
-      (reduce #(index-endpoint->ids %1 empty-store :target %2) store ids)
-      (reduce #(index-endpoint->ids %1 empty-store :source %2) store ids)
-      (reduce #(index-id->keywords %1 empty-store %2) store ids)
-      (reduce #(index-endpoint->label->label-ids %1 empty-store :target %2)
-              store ids)
-      (reduce #(index-endpoint->label->label-ids %1 empty-store :source %2)
-              store ids))))
+  (reduce #(index-all %1 empty-store %2)
+          unindexed-test-store
+          (keys (:id->source unindexed-test-store))))
 
 (deftest id-valid-link?-test
   (is (id-valid-link? test-store (make-link-id 1)))
@@ -196,11 +190,11 @@
   (is (= (source-label->ids test-store (make-link-id 0.5) :order)
          nil)))
 
-(deftest id->has-keyword?-test
-  (is (id->has-keyword? test-store (make-link-id 3) :baz))
-  (is (id->has-keyword? test-store (make-link-id 3) :label))
-  (is (not (id->has-keyword? test-store (make-link-id 3) :bar)))
-  (is (not (id->has-keyword? test-store (make-link-id 2) :baz))))
+(deftest id->marked-as-type?-test
+  (is (id->marked-as-type? test-store (make-link-id 3)))
+  (is (id->marked-as-type? test-store (make-link-id 5)))
+  (is (not (id->marked-as-type? test-store (make-link-id 7))))
+  (is (not (id->marked-as-type? test-store (make-link-id 1))))) 
 
 (deftest add-link-test
   (let [[added-store id]
@@ -261,26 +255,23 @@
                  (get-in store
                          [index-key (canonical-primitive-form endpoint)])))))))
 
-(defn check-id->keywords
-  "Check that the derived index id->keywords is right."
+(defn check-marked-as-type
+  "Check that the derived set labels is right."
   [store]
-  ;; Everything in :id->keywords is true.
-  (doseq [[id keywords] (:id->keywords store)]
-    (doseq [keyword (pseudo-set-seq keywords)]
-      (is (keyword? keyword))
-      (is (some #(= (id->source store %) keyword)
-                (target->ids store id)))))
-  ;; Everything that should be in :id->keywords is.
-  (doseq [[id source] (:id->source store)]
-    (when-let [target (id->target store id)]
-      (when (keyword? source)
-            (is (some #{source}
-                      (pseudo-set-seq
-                       (get-in store [:id->keywords target]))))))))
+  (let [marked-as-type (:marked-as-type store)]
+    ;; Everything in :marked-as-type has one.
+    (doseq [id marked-as-type]
+      (is (some #(= (id->source store %) :label)
+                (target->ids store id))))
+    ;; Everything that should be in :marked-as-type is.
+    (doseq [[id source] (:id->source store)]
+      (when (some #(= (id->source store %) :label)
+                  (target->ids store id))
+        (contains? marked-as-type id)))))
 
 (defn check-endpoint->label->label-ids
   "Check that the derived index <endpoint>->label->label-ids is right.
-  Assumes that the endpoint->ids and the id->keywords indices are correct."
+  Assumes that the endpoint->ids and the marked-as-type indices are correct."
   [store endpoint]
   (let [primary-key (endpoint-value-key endpoint)
         reverse-primary-key (endpoint-index-key endpoint)
@@ -315,7 +306,7 @@
   [store]
   (check-endpoint->ids store :target)
   (check-endpoint->ids store :source)
-  (check-id->keywords store)
+  (check-marked-as-type store)
   (check-endpoint->label->label-ids store :target)
   (check-endpoint->label->label-ids store :source))
 
@@ -372,7 +363,7 @@
                       mutated-store (gen/shuffle (range (+ m 1) (+ n 1))))]
           (check-derived-indices added-store)
           (check-derived-indices removed-store)
-          (if (< iteration 20)
+          (when (< iteration 20)
             (recur (+ iteration 1)
                    (assoc removed-store :next-id (+ m 1))
                    m)))))))
@@ -433,20 +424,21 @@
     (is (= (candidate-matching-ids store nil) [nil false]))))
 
 (deftest store-to-data-to-store-test
-  (is (= test-store (data-to-store (new-element-store)
-                                   (store-to-data test-store))))
+  (is (check (into {} test-store)
+             (into {} (data-to-store (new-element-store)
+                                     (store-to-data test-store)))))
   ;; Now try it with some items not serialized
   (let [temporary-store (-> test-store
                             (declare-temporary-id (make-link-id 3))
                             (declare-temporary-id (make-link-id 8)))
         smaller-store (-> test-store
                           (remove-link (make-link-id 8))
-                          (remove-link (make-link-id 7))
-                          (remove-link (make-link-id 6))
+                          (remove-link (make-link-id 7)) ; Points to id 3
+                          (remove-link (make-link-id 6)) ; Points to id 3
                           (remove-link (make-link-id 3)))]
-    (is (= smaller-store
-           (data-to-store (new-element-store)
-                          (store-to-data temporary-store))))))
+    (is (check (into {} smaller-store)
+               (into {} (data-to-store (new-element-store)
+                                       (store-to-data temporary-store)))))))
 
 (deftest write-read-test
   (let [store (first

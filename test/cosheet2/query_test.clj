@@ -6,7 +6,7 @@
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list description->entity content
                                       elements label->elements mutable-entity?
-                                      has-keyword? primitive?]]
+                                      primitive?]]
                       entity-impl
                       [query :refer :all]
                       [query-impl :refer [closest-template]]

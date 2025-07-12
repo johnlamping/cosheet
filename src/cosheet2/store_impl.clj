@@ -50,6 +50,11 @@
     ;;; Nil source is not indexed.
     source->ids
 
+    ;;; A derived set of the ItemIds of links that are are marked as
+    ;;; being labels. This doesn't count ids that are labels by virtue
+    ;;; of having their source be a symbol.
+    marked-as-type
+
     ;;; A derived map from ItemId to a pseudo-set of the keywords that
     ;;; are the source of at least one of its elements.
     id->keywords
@@ -132,9 +137,9 @@
                          (canonical-primitive-form source)
                          (canonical-primitive-form label)])))))
 
-  (id->has-keyword? [this id keyword]
-    (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
 
+  (id->marked-as-type? [this id]
+    (contains? (:marked-as-type this) id))
 
   (candidate-matching-ids [this template]
     (let [[estimate ids precise]
@@ -316,26 +321,27 @@
   [store id]
   (or (let [source (id->source store id)]
         (and (keyword? source) (not= source :label)))
-      (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
+      (contains? (:marked-as-type store) id)))
 
-(defn index-id->keywords
-  "Reflect this link's source in the id->keywords index.
-   The target->ids index must be valid when this is called."
+(defn index-marked-as-type
+  "Reflect this link's effect on the labels."
   [store old-store id]
-  (let [source (id->source store id)
-        old-source (id->source old-store id)
-        target (or (id->target store id) (id->target old-store id))]
-    (if (or (= source old-source) (not target))
+  (let [marks-type (= (id->source store id) :label)
+        old-marks-type (= (id->source old-store id) :label)]
+    (if (= marks-type old-marks-type)
       store
-      (cond-> store
-        (and (keyword? old-source)
-             (not-any? #(= (id->source store %) old-source)
-                       (target->ids store target)))
-        (update-in-clean-up [:id->keywords target]
-                            #(pseudo-set-disj % old-source))
-        (keyword? source)
-        (update-in [:id->keywords target]
-                   #(pseudo-set-conj % source))))))
+      (if marks-type
+        (let [target (id->target store id)]
+          (if target
+            (update-in store [:marked-as-type]
+                       #(conj % target))
+            store))
+        ;; There might be another mark.
+        (if (some #(= (id->source store %) :label)
+                  (target->ids store (id->target old-store id)))
+          store
+          (update-in store [:marked-as-type]
+                     #(disj % (id->target old-store id))))))))
 
 (defn index-endpoint->label->label-ids-from-label
   "Reflect a label in endpoint->label->label-ids."
@@ -365,9 +371,9 @@
 
 (defn index-endpoint->label->label-ids
   "Reflect the effects of this link in the endpoint->label->label-ids index.
-  The target->ids index and the id->keywords index must be valid when
+  The target->ids index and the marked-as-type index must be valid when
   this is called. (This function uses id-is-label, which uses
-  id->keywords.)"
+  marked-as-type.)"
   [store old-store endpoint id]
   (as-> store store
       ;; Handle when id is a label.
@@ -394,8 +400,8 @@
   (-> store 
       (index-endpoint->ids old-store :target id)
       (index-endpoint->ids old-store :source id)
-      ;; This must be done before the next two, as they depend on id->keywords.
-      (index-id->keywords old-store id)
+      ;; This must be done before the next two, as they depend on labels.
+      (index-marked-as-type old-store id)
       (index-endpoint->label->label-ids old-store :target id)
       (index-endpoint->label->label-ids old-store :source id)))
 
@@ -517,7 +523,7 @@
 ;;; TODO: If a template element has a label, filter with
 ;;; target->label->label-ids if the label intersection list would be
 ;;; too large. Likewise, if the template is tagged :label, filter with
-;;; id->keywords.
+;;; marked-as-type
 (defn candidate-matching-ids-and-estimate
   "Return a triple consisting of:
      * an estimate of number of candidates,
@@ -550,7 +556,7 @@
                           :id->source {}
                           :target->ids {}
                           :source->ids {}
-                          :id->keywords {}
+                          :marked-as-type #{}
                           :target->label->label-ids {}
                           :source->label->label-ids {}
                           :temporary-ids #{}

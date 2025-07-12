@@ -379,9 +379,9 @@
     (cache-and-categorize
      [id] target-label->ids this id label))
 
-  (id->has-keyword? [this id keyword]
+  (id->marked-as-type? [this id]
     (cache-and-categorize
-     [id] id->has-keyword? this id keyword))
+        [id] id->marked-as-type? this id))
 
   (candidate-matching-ids [this template]
     (cache candidate-matching-ids this template))

@@ -45,7 +45,7 @@
      (make-link-id 10) :order}
     :temporary-ids  #{}
     :marked-as-type #{}
-    :next-id 1001
+    :next-number 1001
     :modified-ids nil
     :equivalent-undo-point false}))
 
@@ -194,12 +194,17 @@
   (is (id->marked-as-type? test-store (make-link-id 3)))
   (is (id->marked-as-type? test-store (make-link-id 5)))
   (is (not (id->marked-as-type? test-store (make-link-id 7))))
-  (is (not (id->marked-as-type? test-store (make-link-id 1))))) 
+  (is (not (id->marked-as-type? test-store (make-link-id 1)))))
+
+(deftest get-new-object-id-test
+  (let [[id store] (get-new-object-id test-store)]
+    (is (= (:id id) (- (:next-number test-store))))
+    (is (= (:next-number store) (+ 1 (:next-number test-store))))))
 
 (deftest add-link-test
   (let [[added-store id]
         (add-link test-store (make-link-id 1) "test")]
-    (is (= (:id id) (:next-id test-store)))
+    (is (= (:id id) (:next-number test-store)))
     (is (= (id->source added-store id) "test"))
     (is (= (id->target added-store id) (make-link-id 1))))
   ;; Test that adding nil source fails.
@@ -214,13 +219,13 @@
   (let [[added-store id]
         (add-link test-store (make-link-id 1) 22)]
     (is (= (assoc (remove-link added-store id)
-                  :next-id (:next-id test-store))
+                  :next-number (:next-number test-store))
            test-store))
     (let [removed-store
           (remove-link (track-modified-ids added-store) id)]
       (is (= (:modified-ids removed-store) #{id}))
       (is (= (-> removed-store
-                 (assoc :next-id (:next-id test-store))
+                 (assoc :next-number (:next-number test-store))
                  (assoc :modified-ids nil))
              test-store)))))
 
@@ -365,7 +370,7 @@
           (check-derived-indices removed-store)
           (when (< iteration 20)
             (recur (+ iteration 1)
-                   (assoc removed-store :next-id (+ m 1))
+                   (assoc removed-store :next-number (+ m 1))
                    m)))))))
 
 (deftest candidate-matching-ids-test
@@ -452,14 +457,6 @@
                        (.toByteArray outstr))]
       (let [s (read-store (new-element-store) instr)]
         (is (check (into {} (seq s)) (into {} (seq store))))))))
-
-(deftest get-unique-number-test
-  (let [s0 (new-element-store)
-        [id1 s1] (get-unique-number s0)
-        [id2 s2] (get-unique-number s1)]
-    (is (number? id1))
-    (is (number? id2))
-    (is (not (= id1 id2)))))
 
 (deftest valid-undo-point-test
   (is (not (equivalent-undo-point? test-store)))

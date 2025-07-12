@@ -35,6 +35,6 @@
                          ("Fred" ("by" :label))))))
     (is (= (to-list (description->entity e1 removed-store))
            '("foo" ("test" :label))))
-    (is (= (assoc removed-store :next-id (:next-id added-store))
+    (is (= (assoc removed-store :next-number (:next-number added-store))
            added-store))))
 

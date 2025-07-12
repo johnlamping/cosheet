@@ -77,8 +77,8 @@
     ;;;    source o- link1 <- link2 -o label
     source->label->label-ids
 
-    ;;; The next id to assign to an item to be stored here.
-    next-id
+    ;;; The next number to assign to a new link or object.
+    next-number
 
     ;;; A set of ids that have been updated since the last call to
     ;;; clear-modified-ids. This is only present if track-modified-ids
@@ -160,9 +160,9 @@
   ImmutableStore
 
   (add-link [this target source]
-    (let [item-id (->ItemId (:next-id this))]
+    (let [item-id (->ItemId (:next-number this))]
       [(-> this
-           (update-in [:next-id] inc)
+           (update-in [:next-number] inc)
            (add-link-from-triple item-id target source))
        item-id]))
 
@@ -190,8 +190,9 @@
         (index-all this id)
         (add-modified-id id)))
 
-  (get-unique-number [this]
-    [(:next-id this) (update-in this [:next-id] inc)])
+  (get-new-object-id [this]
+    [(->ItemId (- (:next-number this))) ; object ids are negative numbers.
+     (update-in this [:next-number] inc)])
 
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))
@@ -224,7 +225,7 @@
        Orderable [:ord (left ?) (right ?)]
        Vector [:vec * ?]"
     (let [temporary-ids (all-temporary-ids this)]
-      [(:next-id this)
+      [(:next-number this)
        (for [[id source]
              (seq (:id->source this))
              :when (not (temporary-ids id))]
@@ -246,7 +247,7 @@
 
   (data-to-store [this data]
     "Given a store's essential data, add it to a store."
-    (let [[next-id links] data]
+    (let [[next-number links] data]
       (let [[store deferred]
             (reduce (fn [[store deferred] [id target source]]
                       (let [id (->ItemId id)
@@ -260,7 +261,7 @@
                                       source)]
                         (add-or-defer-link
                          store deferred id target source)))
-                    [(assoc (new-element-store) :next-id next-id) {}]
+                    [(assoc (new-element-store) :next-number next-number) {}]
                     links)]
         (assert (empty? deferred) deferred)
         store)))
@@ -425,7 +426,7 @@
                (not (is-link-id? source)))
           [item-id target source])
   (when (number? (:id item-id))
-    (assert (< (:id item-id) (:next-id store)) [item-id target source])
+    (assert (< (:id item-id) (:next-number store)) [item-id target source])
     (when (number? (:id target))
       (assert (< (:id target) (:id item-id)) [item-id target source])))
   (-> (if (nil? target)
@@ -560,7 +561,7 @@
                           :target->label->label-ids {}
                           :source->label->label-ids {}
                           :temporary-ids #{}
-                          :next-id 1
+                          :next-number 1
                           :modified-ids nil
                           :equivalent-undo-point false}))
 

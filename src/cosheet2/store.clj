@@ -211,10 +211,9 @@
     "Change the source of the link with the given id to be the
      specified source.")
 
-  ;; TODO: replace this with get-unique-atom-id
-  (get-unique-number [this]
-    "Return a number and an updated store that will never return
-     that number again.")
+  (get-new-object-id [this]
+    "Return an object id and an updated store that will never return that
+     id again.")
 
   (track-modified-ids [this]
     "Start recording the ids of items that have been modified.")

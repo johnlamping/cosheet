@@ -99,7 +99,8 @@
   Store
 
   (id-valid-link? [this id]
-    (contains? (:id->source this) id))
+    (and (is-link-id? id)
+         (contains? (:id->source this) id)))
 
   (id-described-object? [this id]
     (and (is-object-id? id))
@@ -182,7 +183,20 @@
         (index-all this id)
         (add-modified-id id)))
 
+  (update-target [this id target]
+    (assert (not (nil? (store/id->source this id)))
+            ["Link id not present." id])
+    (assert (not (nil? target)))
+    (assert (not (is-link-id? target)))
+    (assert (not (is-link-id? (store/id->target this id))))
+    (-> this
+        (assoc-in [:id->target id] target)
+        (index-all this id)
+        (add-modified-id id)))
+
   (update-source [this id source]
+    (assert (not (nil? (store/id->source this id)))
+            ["Link id not present." id])
     (assert (not (nil? source)))
     (assert (not (is-link-id? source)))
     (-> this
@@ -314,38 +328,44 @@
         (update-in [index-key new-endpoint-value]
                    #(pseudo-set-conj % id))))))
 
+(defn index-marked-as-type
+  "Reflect a link in marked-as-type.
+  The id argument is the id that might do the marking.
+  Requires that target->ids be valid."
+  [store old-store id]
+  (let [marks-as-type (= (id->source store id) :label)
+        old-marks-as-type (= (id->source old-store id) :label)
+        target (id->target store id)
+        old-target (id->target old-store id)]
+    (if (and (= marks-as-type old-marks-as-type)
+             (= target old-target))
+      store
+      (cond-> store
+        (and old-marks-as-type
+             (not-any? #(= (id->source store %) :label)
+                       (target->ids store old-target)))
+        (update-in [:marked-as-type] #(disj % old-target))
+        ;; TODO: !!! Get rid of the possibility the target is nil,
+        ;;       once that is forbidden.
+        (and marks-as-type target)
+        (update-in [:marked-as-type] #(conj % target))))))
+
 ;; NOTE: This definition must be kept in synch with entity/label?
 (defn id-is-label?
   "Return whether the given link counts as a label (either has source
   that is a keyword and is not :label, or has an element whose source
-  is :label)."
+  is :label).
+  Requires that :marked-as-type is correct."
   [store id]
   (or (let [source (id->source store id)]
         (and (keyword? source) (not= source :label)))
       (contains? (:marked-as-type store) id)))
 
-(defn index-marked-as-type
-  "Reflect this link's effect on the labels."
-  [store old-store id]
-  (let [marks-type (= (id->source store id) :label)
-        old-marks-type (= (id->source old-store id) :label)]
-    (if (= marks-type old-marks-type)
-      store
-      (if marks-type
-        (let [target (id->target store id)]
-          (if target
-            (update-in store [:marked-as-type]
-                       #(conj % target))
-            store))
-        ;; There might be another mark.
-        (if (some #(= (id->source store %) :label)
-                  (target->ids store (id->target old-store id)))
-          store
-          (update-in store [:marked-as-type]
-                     #(disj % (id->target old-store id))))))))
-
 (defn index-endpoint->label->label-ids-from-label
-  "Reflect a label in endpoint->label->label-ids."
+  "Reflect a label in endpoint->label->label-ids.
+  The id argument is the link that might be a label for its target. Go
+  to the target of that link, and index by either its target or source
+  endpoint."
   [store old-store endpoint id]
   (let [fetcher (endpoint-fetcher endpoint)
         index-key (endpoint-label-index-key endpoint)
@@ -373,7 +393,7 @@
 (defn index-endpoint->label->label-ids
   "Reflect the effects of this link in the endpoint->label->label-ids index.
   The target->ids index and the marked-as-type index must be valid when
-  this is called. (This function uses id-is-label, which uses
+  this is called. (This function uses id-is-label?, which uses
   marked-as-type.)"
   [store old-store endpoint id]
   (as-> store store
@@ -383,7 +403,7 @@
       (index-endpoint->label->label-ids-from-label
        store old-store
        endpoint (or (id->target store id) (id->target old-store id)))
-      ;; Handle when id is a link that got a label, and its endpoint changed
+      ;; Handle when id is a link that got a label, and its endpoint changed.
       (let [fetcher (endpoint-fetcher endpoint)]
         (if (= (fetcher store id) (fetcher old-store id))
           store
@@ -420,7 +440,8 @@
   [store item-id target source]
   ;; TODO: !!! disallow nil once objects are supported.
   (assert (or (nil? target)
-              (is-item-id? target))
+              (is-object-id? target)
+              (id-valid-link? store target))
           [item-id target source])
   (assert (and (not (nil? source))
                (not (is-link-id? source)))
@@ -529,7 +550,7 @@
   "Return a triple consisting of:
      * an estimate of number of candidates,
      * a lazy seq of the candidate matching ids,
-     * a boolean that is true if an id that is in all the candidates
+     * a boolean that is true if an id that is in the candidates
        is always a match.
   But if the template provides no information, return nil."
   [store template]

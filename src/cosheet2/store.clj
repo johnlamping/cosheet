@@ -207,6 +207,10 @@
     "Remove the link with the given id from the store.
      It must not be the target of any other links.")
 
+  (update-target [this id source]
+    "Change the target of the link with the given id to be the
+     specified target. Neither the old nor new target may be a link.")
+
   (update-source [this id source]
     "Change the source of the link with the given id to be the
      specified source.")

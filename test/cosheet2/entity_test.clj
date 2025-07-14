@@ -77,8 +77,9 @@
         [s3 idc] (add-link s2 id99 4)
         [s4 idd] (add-link s3 idc "bar")
         [s5 ide] (add-link s4 id99 "baz")
-        [s7 idg] (add-link s5 ide "bletch")
-        [s _] (add-link s7 idb :label)
+        [s6 idg] (add-link s5 ide "bletch")
+        [s7 idh] (add-link s6 idb :label)
+        [s idj] (add-link s7 id0 "irrelevant")
         queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
         ms (new-mutable-store s)
@@ -116,15 +117,16 @@
       (is (check (canonicalize as-list)
                  (canonicalize list-99))))
     ;; Now make sure updating-immutable tracks right.
-    (let [record (atom [])
+    (let [record-of-updates (atom [])
           updating-immutable-result (expr-let [current-item (updating-immutable
                                                              item99)] 
                                       (is (not (mutable-entity? current-item)))
                                       (let [value (to-list current-item)]
-                                        (swap! record #(conj % value))
+                                        (swap! record-of-updates
+                                               #(conj % value))
                                         value))
           reporter-99 (description->updating-entity-R id99 ms)]
-      (is (= @record []))
+      (is (= @record-of-updates []))
       ;; See if it gets computed when demand is added.
       (propagate-calculator-data! updating-immutable-result cd)
       (propagate-calculator-data! reporter-99 cd)
@@ -138,11 +140,11 @@
         (is (check (canonicalize
                     (reporter-value updating-immutable-result))
                    (canonicalize orig-99)))
-        (is (check (map canonicalize @record)
+        (is (check (map canonicalize @record-of-updates)
                    [(canonicalize orig-99)]))
         ;; Make sure it is not recomputed when an irrelevant change is made.
-        (store-update! ms (fn [s] (update-source s id0 44)))
-        (is (check (map canonicalize @record)
+        (store-update! ms (fn [s] (update-source s idj 44)))
+        (is (check (map canonicalize @record-of-updates)
                    [(canonicalize orig-99)]))
         ;; Make sure it is recomputed when a deep, but relevant, change is made.
         (store-update! ms (fn [s] (update-source s idd "bletch")))
@@ -155,7 +157,7 @@
                     (to-list (reporter-value reporter-99)))
                    (canonicalize
                     (to-list (in-different-store item99 (current-store ms))))))
-        (is (check (map canonicalize @record)
+        (is (check (map canonicalize @record-of-updates)
                    [(canonicalize orig-99)
                     (canonicalize
                      (to-list (in-different-store item99

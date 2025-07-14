@@ -4,12 +4,18 @@
             (cosheet2
              [store :refer :all]
              [store-impl :refer :all]
+             [entity :refer [to-list description->entity]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
              [canonical :refer [canonical-primitive-form]]
              [orderable :as orderable]
              [test-utils :refer [check as-set]])
             ))
+
+(defn make-object-id [n]
+  (assert (number? n))
+  (assert (< n 0))
+  (->ItemId n))
 
 (defn make-link-id [n]
   (assert (number? n))
@@ -20,9 +26,7 @@
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->target
-    ;; We use 0.5 as an id because we were using 0, but can no longer
-    ;; have 0 ids for links. And we need an id less than 1.
-    {(make-link-id 1) (make-link-id 0.5)
+    {(make-link-id 1) (make-object-id -1)
      (make-link-id 2) (make-link-id 1)
      (make-link-id 3) (make-link-id 2)
      (make-link-id 5) (make-link-id 2)
@@ -32,8 +36,7 @@
      (make-link-id 9) (make-link-id 1)
      (make-link-id 10) (make-link-id 9)}
     :id->source
-    {(make-link-id 0.5) 0
-     (make-link-id 1) 44
+    {(make-link-id 1) 44
      (make-link-id 2) "Foo"
      (make-link-id 3) "Baz"
      (make-link-id 4) 5
@@ -153,13 +156,13 @@
   (is (= (id->source test-store (make-link-id 6)) :baz)))
 
 (deftest target->ids-test
-  (is (= (target->ids test-store (make-link-id 0.5)) [(make-link-id 1)]))
+  (is (= (target->ids test-store (make-object-id -1)) [(make-link-id 1)]))
   (is (= (set (target->ids test-store (make-link-id 1)))
          (set [(make-link-id 2) (make-link-id 9)])))
   (is (= (target->ids test-store (make-link-id 999)) nil)))
 
 (deftest source->ids-test
-  (is (= (source->ids test-store 0) [(make-link-id 0.5)]))
+  (is (= (source->ids test-store "Foo") [(make-link-id 2)]))
   (is (check (source->ids test-store :label)
              (as-set [(make-link-id 7) (make-link-id 8)])))
   (is (= (source->ids test-store 123) nil)))
@@ -229,19 +232,39 @@
                  (assoc :modified-ids nil))
              test-store)))))
 
-(deftest change-source-test
-  (let [[added-store _]
-        (add-link test-store (make-link-id 1) 22)
-        [different-store id]
+(deftest update-target-test
+  (let [[different-store id]
+        (add-link test-store (make-object-id -1) 22)
+        changed-store
+        (update-target (track-modified-ids different-store)
+                        id (make-object-id -2))]
+    (is (= (:modified-ids changed-store) #{id}))
+    (is (= (id->target changed-store id) (make-object-id -2)))
+    ;; Test that setting nil as a target fails.
+    (is (thrown? java.lang.AssertionError
+                 (update-target test-store id nil)))
+    ;; Test that setting a link as a target fails.
+    (is (thrown? java.lang.AssertionError
+                 (update-target test-store id (make-link-id 1))))
+    ;; Test that changing an existing target that is a link fails
+    (is (thrown? java.lang.AssertionError
+                 (update-target test-store
+                                (make-link-id 2) (make-object-id -2))))))
+
+(deftest update-source-test
+  (let [[different-store id]
         (add-link test-store (make-link-id 1) 22)
         changed-store
         (update-source (track-modified-ids different-store)
                         id "changed")]
     (is (= (:modified-ids changed-store) #{id}))
     (is (= (id->source changed-store id) "changed"))
-    ;; Test that adding nil source fails.
+    ;; Test that setting nil as a source fails.
     (is (thrown? java.lang.AssertionError
-                 (update-source test-store (make-link-id 1) nil)))))
+                 (update-source test-store id nil)))
+    ;; Test that setting a link as a source fails.
+    (is (thrown? java.lang.AssertionError
+                 (update-source test-store id (make-link-id 1))))))
 
 (defn check-endpoint->ids
   "Check that the derived index <endpoint>->ids is right"
@@ -259,7 +282,6 @@
                 (pseudo-set-seq
                  (get-in store
                          [index-key (canonical-primitive-form endpoint)])))))))
-
 (defn check-marked-as-type
   "Check that the derived set labels is right."
   [store]
@@ -328,18 +350,23 @@
   ;; in a random order, so this guarantees that we won't remove a
   ;; link while another link reverences it.
   (binding [gen/*rnd* (java.util.Random. 437)])
-  (let [earlier-num (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
+  (let [earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
         random-primitive (fn [] (case (gen/uniform 0 4)
                                   0 (str "N" (int (/ 100 (gen/uniform 1 100))))
-                                  1 (int (/ 100 (gen/uniform 1 100)))
+                                  1 (int (/ 200 (gen/uniform 1 100)))
                                   2 :label
-                                  3 :order))]
+                                  3 :order))
+        random-object (fn [] (make-object-id
+                              (- (+ 1 (int (/ 200 (gen/uniform 1 100)))))))
+        random-target (fn [i] (case (gen/uniform 0 2)
+                                0 (make-link-id (earlier-number i))
+                                1 (random-object)))]
     (loop [iteration 0
            store (first (add-link
-                         (first (add-link (new-element-store) nil 0))
-                         nil 1))
+                         (first (add-link
+                                 (new-element-store) (random-object) 0))
+                         (random-object) 1))
            items 2]
-      ;; TODO: !!! Test mutations of target, when that goes in.
       (let [;; Number of items to end up with after adding (has a long tail)
             n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
             ;; Number of items to keep after removing
@@ -350,17 +377,20 @@
                               (add-link
                                store
                                (when (not= 0 (gen/uniform 0 10))
-                                 (make-link-id (earlier-num i)))
+                                 (make-link-id (earlier-number i)))
                                (random-primitive))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
               mutated-store
               (reduce (fn [store i]
-                        (if (not= 0 (gen/uniform 0 4))
-                          store
-                          (update-source
-                           store (make-link-id i) (random-primitive))))
+                        (let [id (make-link-id i)]
+                          (cond-> store
+                            (= 0 (gen/uniform 0 4))
+                            (update-source id (random-primitive))
+                            (and (= 0 (gen/uniform 0 4))
+                                 (is-object-id? (id->target store id)))
+                            (update-target id (random-object)))))
                       added-store (range 1 (+ n 1)))
               removed-store
               (reduce (fn [store i]
@@ -383,14 +413,14 @@
   (is (check (candidate-matching-ids-and-estimate test-store '("Baz" :baz))
              [1 [(make-link-id 3)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
-             [1 [] true]))
+             [0 [] false]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "baz" "bar"))
              [1 [(make-link-id 2)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
              [2 [(make-link-id 2) (make-link-id 1)] false]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-link-id 0.5) (make-link-id 1)
+             [(as-set [(make-link-id 1)
                        (make-link-id 2) (make-link-id 3)
                        (make-link-id 4) (make-link-id 5)
                        (make-link-id 6) (make-link-id 7)
@@ -398,12 +428,12 @@
                        (make-link-id 10)])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
-             [(as-set  [(make-link-id 0.5) (make-link-id 1)
+             [(as-set  [(make-object-id -1) (make-link-id 1)
                         (make-link-id 2) (make-link-id 3)
                         (make-link-id 5) (make-link-id 9)])
               false]))
-  (is (check (candidate-matching-ids test-store '(0))
-             [[(make-link-id 0.5)] true]))
+  (is (check (candidate-matching-ids test-store '("Foo"))
+             [[(make-link-id 2)] true]))
   (is (check (candidate-matching-ids test-store 5)
              [[(make-link-id 4)] true]))
     (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
@@ -449,8 +479,8 @@
   (let [store (first
                ;; Add an Orderable to the store to check its serialization.
                (add-link test-store
-                                (make-link-id 0.5)
-                                (first (orderable/split orderable/initial))))
+                         (make-object-id -1)
+                         (first (orderable/split orderable/initial))))
         outstr (java.io.ByteArrayOutputStream.)]
     (write-store store outstr)
     (with-open [instr (java.io.ByteArrayInputStream.

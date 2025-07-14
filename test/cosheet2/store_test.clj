@@ -351,21 +351,24 @@
   ;; link while another link reverences it.
   (binding [gen/*rnd* (java.util.Random. 437)])
   (let [earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
-        random-primitive (fn [] (case (gen/uniform 0 4)
-                                  0 (str "N" (int (/ 100 (gen/uniform 1 100))))
-                                  1 (int (/ 200 (gen/uniform 1 100)))
-                                  2 :label
-                                  3 :order))
         random-object (fn [] (make-object-id
                               (- (+ 1 (int (/ 200 (gen/uniform 1 100)))))))
+        random-source (fn [] (case (gen/uniform 0 4)
+                               0 (if (= (gen/uniform 0 2) 0)
+                                   (str "N" (int (/ 200 (gen/uniform 1 100))))
+                                   (int (/ 200 (gen/uniform 1 100))))
+                               1 (random-object)
+                               2 :label
+                               3 :order))
         random-target (fn [i] (case (gen/uniform 0 2)
                                 0 (make-link-id (earlier-number i))
                                 1 (random-object)))]
     (loop [iteration 0
            store (first (add-link
                          (first (add-link
-                                 (new-element-store) (random-object) 0))
-                         (random-object) 1))
+                                 (new-element-store)
+                                 (random-object) (random-source)))
+                         (random-object) (random-source)))
            items 2]
       (let [;; Number of items to end up with after adding (has a long tail)
             n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
@@ -378,7 +381,7 @@
                                store
                                (when (not= 0 (gen/uniform 0 10))
                                  (make-link-id (earlier-number i)))
-                               (random-primitive))]
+                               (random-source))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
@@ -387,7 +390,7 @@
                         (let [id (make-link-id i)]
                           (cond-> store
                             (= 0 (gen/uniform 0 4))
-                            (update-source id (random-primitive))
+                            (update-source id (random-source))
                             (and (= 0 (gen/uniform 0 4))
                                  (is-object-id? (id->target store id)))
                             (update-target id (random-object)))))
@@ -398,7 +401,7 @@
                       mutated-store (gen/shuffle (range (+ m 1) (+ n 1))))]
           (check-derived-indices added-store)
           (check-derived-indices removed-store)
-          (when (< iteration 20)
+          (when (< iteration 100)
             (recur (+ iteration 1)
                    (assoc removed-store :next-number (+ m 1))
                    m)))))))

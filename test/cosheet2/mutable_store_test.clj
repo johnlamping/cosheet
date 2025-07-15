@@ -47,14 +47,24 @@
     (is (not (computation-value
               (id-valid-link? mutable-store (make-item-id "wrong"))
               cd)))
+    (is (= (computation-value (id->target mutable-store element) cd)
+           (id->target store element)))
+    (is (= (computation-value (id->source mutable-store element) cd)
+           (id->source store element)))
+    (is (= (computation-value (target->ids mutable-store element) cd)
+           (target->ids store element)))
+    (is (= (computation-value (source->ids mutable-store 77) cd)
+           (source->ids store 77)))
+    (is (= (computation-value (target-source->ids mutable-store element 77) cd)
+           (target-source->ids store element 77)))
     (is (= (computation-value
             (target-label->ids mutable-store element "by")
             cd)
            (target-label->ids store element "by")))
-    (is (= (computation-value (target->ids mutable-store element) cd)
-           (target->ids store element)))
-    (is (= (computation-value (id->source mutable-store element) cd)
-           (id->source store element)))
+    (is (= (computation-value
+            (source-label->ids mutable-store 77 "by")
+            cd)
+           (target-label->ids store 77 "by")))
     (let [fred (first (target-label->ids store element "by"))
           label (first (target->ids store fred))]
       (is (computation-value (id->marked-as-type? store label) cd))

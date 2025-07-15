@@ -162,18 +162,21 @@
   (id->source [this id]
     "Given the id of a link, return a description of its source.")
 
-  (target->ids [this id]
+  (target->ids [this target]
     "Returns a seq of all ids that have the given target.")
 
-  (source->ids [this id]
+  (source->ids [this source]
     "Returns a seq of all ids that have the given source.")
 
-  (target-label->ids [this id label]
+  (target-source->ids [this target source]
+    "Returns a seq of all the ids that have the given target and source")
+
+  (target-label->ids [this target label]
     "Returns a seq of the ids that have the given value as their target
     and that are themselves targeted by a link that counts as a label
     and that has the given label as its source.")
 
-  (source-label->ids [this id label]
+  (source-label->ids [this source label]
     "Returns a seq of the ids that have the given value as their source
     and that are themselves targeted by a link that counts as a label
     and that has the given label as its source.")

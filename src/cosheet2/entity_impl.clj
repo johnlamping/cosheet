@@ -1,6 +1,7 @@
 (ns cosheet2.entity-impl
   (:require (cosheet2 [store :refer [target-label->ids
                                      target->ids
+                                     target-source->ids
                                      id->source id->target
                                      id->marked-as-type?
                                      mutable-store?
@@ -38,16 +39,20 @@
 
   (primitive? [this] false)
 
-  (label->elements [this label]
-    (seq (for [element-id (target-label->ids store item-id label)]
-           (description->entity element-id store))))
+  (content [this]
+    (description->entity (id->source store item-id) store))
 
   (elements [this]
     (seq (for [element-id (target->ids store item-id)]
            (description->entity element-id store))))
 
-  (content [this]
-    (description->entity (id->source store item-id) store))
+  (content->elements [this content-value]
+    (seq (for [element-id (target-source->ids store item-id content-value)]
+           (description->entity element-id store))))
+
+  (label->elements [this label]
+    (seq (for [element-id (target-label->ids store item-id label)]
+           (description->entity element-id store))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
@@ -79,19 +84,24 @@
 
   (primitive? [this?] false)
 
-  (label->elements [this label]
-    (expr-let [element-ids (target-label->ids store item-id label)]
-      (seq (for [element-id element-ids]
-             (description->entity element-id store)))))
+  (content [this]
+    (expr-let [content (id->source store item-id)]
+      (description->entity content store)))
 
   (elements [this]
     (expr-let [element-ids (target->ids store item-id)]
       (seq (for [element-id element-ids]
              (description->entity element-id store)))))
 
-  (content [this]
-    (expr-let [content (id->source store item-id)]
-      (description->entity content store)))
+  (content->elements [this content-value]
+    (expr-let [element-ids (target-source->ids store item-id content-value)]
+      (seq (for [element-id element-ids]
+             (description->entity element-id store)))))
+
+  (label->elements [this label]
+    (expr-let [element-ids (target-label->ids store item-id label)]
+      (seq (for [element-id element-ids]
+             (description->entity element-id store)))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
@@ -111,17 +121,20 @@
 
   (primitive? [this] false)
 
-  
+  (content [this] (first this))
+
+  (elements [this] (seq (rest this)))
+   
+  (content->elements [this content-value]
+    (seq (filter #(equivalent-primitives? content-value (content %))
+                 (elements this))))
+
   (label->elements [this label]
     (seq (filter (fn [element]
                    (some #(and (equivalent-primitives? label (content %))
                                (label? %))
                          (elements element)))
                  (elements this))))
-
-  (elements [this] (seq (rest this)))
-
-  (content [this] (first this))
 
   (marked-as-type? [this]
     (some #(= (content %) :label)
@@ -133,63 +146,70 @@
   clojure.lang.Keyword
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
   
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
   
   java.lang.String
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
   
   java.lang.Number
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
   
   java.lang.Boolean
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
   
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this)
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
   (primitive? [this] true)
-  (label->elements [this label] nil)
-  (elements [this] nil)
   (content [this] this)
+  (elements [this] nil)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
   (marked-as-type? [this] false)
   (updating-immutable [this] this))
 

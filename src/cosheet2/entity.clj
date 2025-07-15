@@ -39,15 +39,18 @@
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
 
-  (label->elements [this label]
-    "Return a seq of items for all our elements with an elaboration with
-     the given atomic label.")
+  (content [this]
+    "Return the content of the entity.")
 
   (elements [this]
     "Return a seq of items for all our elements.")
 
-  (content [this]
-    "Return the content of the entity.")
+  (content->elements [this content-value]
+    "Return the elements with the given content")
+
+  (label->elements [this label]
+    "Return a seq of items for all our elements with an elaboration with
+     the given atomic label.")
 
   (marked-as-type? [this]
     "Return whether the entity is marked as being a type. (Has an element

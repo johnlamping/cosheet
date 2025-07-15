@@ -364,20 +364,32 @@
     (cache-and-categorize
      [id] id-described-object? this id))
 
-  (id->source [this id]
-    (cache-and-categorize
-     [id] id->source this id))
-
-  (target->ids [this id]
-    (cache-and-categorize
-     [id] target->ids this id))
-
   (id->target [this id]
     (id->target (reporter-value this) id))
 
-  (target-label->ids [this id label]
+  (id->source [this id]
     (cache-and-categorize
-     [id] target-label->ids this id label))
+        [id] id->source this id))
+
+  (target->ids [this target]
+    (cache-and-categorize
+        [target] target->ids this target))
+
+  (source->ids [this source]
+    (cache-and-categorize
+        [source] source->ids this source))
+
+  (target-source->ids [this target source]
+    (cache-and-categorize
+        [target source] target-source->ids this target source))
+
+  (target-label->ids [this target label]
+    (cache-and-categorize
+        [target] target-label->ids this target label))
+
+  (source-label->ids [this source label]
+    (cache-and-categorize
+        [source] source-label->ids this source label))
 
   (id->marked-as-type? [this id]
     (cache-and-categorize

@@ -8,7 +8,8 @@
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
                       [entity :refer [primitive? label? description->entity
-                                      content elements label->elements
+                                      content elements
+                                      content->elements label->elements
                                       container]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
@@ -155,7 +156,7 @@
 (defn selector?
   "Return whether the entity is (or is part of) a selector."
   [entity]
-  (or (some #(= (content %) :selector) (elements entity))
+  (or (seq (content->elements entity :selector))
       (if-let [subj (container entity)]
         (selector? subj))))
 

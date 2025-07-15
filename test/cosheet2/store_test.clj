@@ -167,6 +167,20 @@
              (as-set [(make-link-id 7) (make-link-id 8)])))
   (is (= (source->ids test-store 123) nil)))
 
+(deftest target-source->ids-test
+  ;; Both target and source -ids are sets
+  (is (= (target-source->ids test-store (make-link-id 3) :label)
+         [(make-link-id 7)]))
+  ;; Only target-ids is a set
+  (is (= (target-source->ids test-store (make-link-id 2) "baz")
+         [(make-link-id 3)]))
+  ;; Only source-ids is a set
+  (is (= (target-source->ids test-store (make-link-id 5) :label)
+         [(make-link-id 8)]))
+  ;; Neither target nor source -ids are sets
+  (is (= (target-source->ids test-store (make-link-id 9) :order)
+         [(make-link-id 10)])))
+
 (deftest target-label->ids-test
   (is (= (target-label->ids test-store (make-link-id 1) "Bar")
          [(make-link-id 2)]))

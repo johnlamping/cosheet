@@ -122,6 +122,23 @@
     (pseudo-set-seq (get-in this [:source->ids
                                   (canonical-primitive-form source)])))
 
+  (target-source->ids [this target source]
+    (let [target-ids (get-in this [:target->ids
+                                   (canonical-primitive-form target)])
+          source-ids (get-in this [:source->ids
+                                   (canonical-primitive-form source)])]
+      ;; Do the intersection in the most efficient way, and do it lazily.
+      (if (set? target-ids)
+        (if (set? source-ids)
+          (if (< (count source-ids) (count target-ids))
+            (filter target-ids source-ids)
+            (filter source-ids target-ids))
+          (filter target-ids (pseudo-set-seq source-ids)))
+        (if (set? source-ids)
+          (filter source-ids (pseudo-set-seq target-ids))
+          (filter #(pseudo-set-contains? source-ids %)
+                  (pseudo-set-seq target-ids))))))
+
   (target-label->ids [this target label]
     (seq
      (map #(get-in this [:id->target %])

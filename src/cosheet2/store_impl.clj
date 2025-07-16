@@ -348,7 +348,7 @@
 (defn index-marked-as-type
   "Reflect a link in marked-as-type.
   The id argument is the id that might do the marking.
-  Requires that target->ids be valid."
+  Requires that target->ids and source->ids be valid."
   [store old-store id]
   (let [marks-as-type (= (id->source store id) :label)
         old-marks-as-type (= (id->source old-store id) :label)
@@ -359,8 +359,7 @@
       store
       (cond-> store
         (and old-marks-as-type
-             (not-any? #(= (id->source store %) :label)
-                       (target->ids store old-target)))
+             (empty? (target-source->ids store old-target :label)))
         (update-in [:marked-as-type] #(disj % old-target))
         ;; TODO: !!! Get rid of the possibility the target is nil,
         ;;       once that is forbidden.

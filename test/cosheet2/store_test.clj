@@ -89,9 +89,9 @@
       (doseq [id (keys (value-key unindexed-test-store))]
         (let [endpoint-canonical (canonical-primitive-form
                                   (get-in store [value-key id]))]
-          (is (pseudo-set-contains? (get-in store [index-key
-                                                   endpoint-canonical])
-                                    id))))
+          (is (pseudo-set-contains?
+               (get-in store [index-key endpoint-canonical])
+               id))))
       (is (empty? (index-key unindexed))))))
 
 (deftest index-marked-as-type-test
@@ -292,23 +292,21 @@
                id))))
     ;; Everything that should be in :endpoint->ids is.
     (doseq [[id endpoint] (primary-key store)]
-      (is (some #{id}
-                (pseudo-set-seq
-                 (get-in store
-                         [index-key (canonical-primitive-form endpoint)])))))))
+      (is (pseudo-set-contains?
+           (get-in store [index-key (canonical-primitive-form endpoint)])
+           id)))))
+
 (defn check-marked-as-type
   "Check that the derived set labels is right."
   [store]
   (let [marked-as-type (:marked-as-type store)]
-    ;; Everything in :marked-as-type has one.
+    ;; Everything in :marked-as-type has a mark.
     (doseq [id marked-as-type]
-      (is (some #(= (id->source store %) :label)
-                (target->ids store id))))
+      (is (seq (target-source->ids store id :label))))
     ;; Everything that should be in :marked-as-type is.
     (doseq [[id source] (:id->source store)]
-      (when (some #(= (id->source store %) :label)
-                  (target->ids store id))
-        (contains? marked-as-type id)))))
+      (when (seq (target-source->ids store id :label))
+        (is (contains? marked-as-type id))))))
 
 (defn check-endpoint->label->label-ids
   "Check that the derived index <endpoint>->label->label-ids is right.
@@ -338,9 +336,9 @@
               label-target (id->target store label-id)]
           (when-let [endpoint-value (canonical-primitive-form
                                      (get-in store [primary-key label-target]))]
-            (is (some #{label-id}
-                      (pseudo-set-seq
-                       (get-in store [index-key endpoint-value label]))))))))))
+            (is (pseudo-set-contains?
+                 (get-in store [index-key endpoint-value label])
+                 label-id))))))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."

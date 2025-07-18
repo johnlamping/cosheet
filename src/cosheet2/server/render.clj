@@ -107,15 +107,16 @@
 ;;; such as the content and elements of the item to be rendered.
 
 ;;; The store is always kept in memory, along with which parts of the
-;;; store the rendering of each component depends on. But most dom
-;;; specifications are removed from memory once their dom has been
+;;; store the rendering of each component depends on. But dom
+;;; specifications may be removed from memory once their dom has been
 ;;; generated. If they are needed later, for example because the store
-;;; has changed for something they show, they are recreated, using the
+;;; has changed for something they show, they can be recreated, using the
 ;;; the dom specification of their parent. In general, this requires
 ;;; walking up the containment tree to the root dom specification,
 ;;; which is always kept, and then walking back down, creating dom
 ;;; specifications on the way. Fortunately the containment depth is
-;;; usually not very deep, so this is fast.
+;;; usually not very deep, so this is fast. This is not currently
+;;; being done, but there is a todo to do it.
 
 ;;; To ask to render a dom, the dom manager uses two functions, stored
 ;;; in the spec map under :get-rendering-data and :render-dom. The

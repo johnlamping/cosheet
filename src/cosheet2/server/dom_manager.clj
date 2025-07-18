@@ -27,9 +27,11 @@
 (def verbose false)
 
 ;;; TODO: Mark some components as not being worth their descendants
-;;; being saved. Once those are computed, they are thrown out. When
-;;; the dom is recomputed, all their descendents have to be recomputed
-;;; too.
+;;; being saved. Once those are computed and sent to the client, they
+;;; are thrown out. Whatever component is saved has to be marked as
+;;; dependent on anything the subcomponents were dependent
+;;; on. Whenever it needs to be recomputed, all their descendents have
+;;; to be recomputed too.
 
 ;;; We record what needs to be rendered, and what it depends on.
 ;;; Whenever a piece of dom changes, we check all the sub-components
@@ -110,9 +112,8 @@
 ;;;                its DOM.
 ;;;                Indicated by :dom being present.
 ;;;     suspended  We do not currently need the component's dom, but we
-;;;                do need to know about changes to it.
-;;;                TODO: !!! Is this case even used? If so, how do you tell
-;;;                          you are in it?
+;;;                might later, so we want to keep track of changes to it.
+;;;                This state is not currently used.
 ;;;      disabled  We will never need this component's dom again. It is
 ;;;                ready for garbage collection.
 ;;;                Indicated by :dom-specification being missing.
@@ -195,6 +196,30 @@
      :client-needs-dom (not elided)
      :dom-version (+ 1 (:highest-version @dom-manager))})))
 
+(defn reuse-or-make-component-atom
+  "Given the particulars for a component, plus an existing component atom,
+  return the existing atom if it matches the particulars, otherwise
+  make a new one and return it."
+  [specification dom-manager containing-component-atom will-be-elided
+   client-id old-component-atom]
+  (if (when old-component-atom
+        (let [{:keys [dom-specification elided containing-component]}
+              @old-component-atom]
+          ;; The containing component is responsible for managing demand
+          ;; for its contained components, so if we somehow get a
+          ;; different containing component, something went wrong.
+          (assert (= containing-component containing-component-atom))
+          (and (= dom-specification specification)
+               ;; If the elision has changed, then the id for the
+               ;; component that is passed to the client will change,
+               ;; so we can't use the old component, which would cause
+               ;; us to talk to the client using the old id.
+               (= elided will-be-elided))))
+    old-component-atom
+    (make-component-atom
+     specification dom-manager
+     containing-component-atom will-be-elided client-id)))
+
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their
   specifications."
@@ -213,25 +238,6 @@
     (assert (= (count answer) (count specs))
             (vec (subcomponent-specifications dom)))
     answer))
-
-(defn reuse-or-make-component-atom
-  [specification dom-manager containing-component-atom will-be-elided
-   client-id old-component-atom]
-  (if (when old-component-atom
-        (let [{:keys [dom-specification elided containing-component]}
-              @old-component-atom]
-          (and (= dom-specification specification)
-               ;; If the containing component or the elision has
-               ;; changed, then the id for the component that is
-               ;; passed to the client will change, so we can't use
-               ;; the old component, which would make us talk to the
-               ;; client using the old id.
-               (= containing-component containing-component-atom)
-               (= elided will-be-elided))))
-    old-component-atom
-    (make-component-atom
-     specification dom-manager
-     containing-component-atom will-be-elided client-id)))
 
 (def compute-dom-unless-newer)
 
@@ -287,7 +293,7 @@
 
 (defn activate-component
   "Register a component for change notifications,
-  and set an action to get its dom."
+  and set an action to compute its dom."
   [component-atom]
   (swap-and-act!
    component-atom
@@ -345,8 +351,8 @@
 
 (defn note-dom-ready-for-client
   "Mark that the client needs to hear about our dom. (If we are
-  elided, that means our containing component is the one that client
-  needs to hear about.)"
+  elided, that means it will be given out dom, but under the key of
+  our first non-elided containing component.)"
   [dom-manager component-atom]
   (let [non-elided (find-non-elided-containing-component component-atom)]
     ;; If we are elided, we have to bump the version of our non-elided
@@ -406,7 +412,8 @@
 
 (defn compute-dom-unless-newer
   "Compute the dom, unless its current version is greater than old-version.
-  (That would mean that the dom has been recomputed since we were asked to.)"
+  (That would mean that the dom has been recomputed since we were
+  asked to compute it.)"
   [component-atom old-dom-version]
   (let [{:keys [reporters dom-specification dom-version]} @component-atom
         renderer (dom-renderer dom-specification)]
@@ -543,7 +550,7 @@
 
 (defn update-action-data-for-component-past-elided
   "Update the action data to reflect the given component, plus all
-  components below it that got elided out from what the client got. If
+  components below it they got elided out from what the client got. If
   a subcomponent was elided out of what the client got, we still need
   to add its effect to the action data. But it is not reflected in the
   client's id, so we need to go past it to get to the next component

@@ -37,16 +37,17 @@
 
 ;;; As renderings are done, we update the client.
 
-;;; The basic data structure is a component data atom. It holds a map
-;;; of ComponentData, which contains information about one component
-;;; we are tracking. We use ComponentData, rather than a map, so we can
+;;; The basic data structure is a component data atom. It holds a
+;;; ComponentData, which contains information about one component we
+;;; are tracking. We use ComponentData, rather than a map, so we can
 ;;; simplify print-out.
 (defrecord ComponentData
     [;; These fields will never change once the component data is created
      dom-manager           ; Our dom manager.
      client-id             ; If non-nil, gives a keyword id to use for
                            ; communicating with the client about this
-                           ; component.
+                           ; component. It will usually only be filled
+                           ; in for root components.
      containing-component  ; The component that contains this one. Nil
                            ; if this component is a root. If this is nil,
                            ; then client-id must be present.
@@ -99,8 +100,8 @@
        (component-data? @c)))
 
 ;;; The component can be in several states:
-;;;      prepared  The component's data has been filled in, but
-;;;                it has not started computing.
+;;;      prepared  The unchanging part of the component's data has been
+;;;                filled in, but it has not started computing.
 ;;;                Indicated by :reporters not being present.
 ;;;      awaiting  We are currently missing the component's dom.
 ;;;                Indicated by :reporters being present,
@@ -110,6 +111,8 @@
 ;;;                Indicated by :dom being present.
 ;;;     suspended  We do not currently need the component's dom, but we
 ;;;                do need to know about changes to it.
+;;;                TODO: !!! Is this case even used? If so, how do you tell
+;;;                          you are in it?
 ;;;      disabled  We will never need this component's dom again. It is
 ;;;                ready for garbage collection.
 ;;;                Indicated by :dom-specification being missing.
@@ -120,8 +123,8 @@
 ;;; fields. By using a record, we can define our own print method to
 ;;; avoid dumping this out when printing every component.
 (defrecord DOMManagerData
-    [root-components    ; A map from client id of root components to their
-                        ; component atoms. Not all components with
+    [root-components    ; A map from the client id of each root components
+                        ; to its component atom. Not all components with
                         ; client ids need to be here, just the roots.
      highest-version    ; The highest version number of any dom we have sent
                         ; to the client. Any new component starts out with a
@@ -166,8 +169,9 @@
 
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
-  component must not be activated until it is recorded in its
-  container."
+  component must not be transitioned from the prepared to the awaiting
+  state until it is recorded in the id->subcomponent its containing
+  component."
   [specification dom-manager containing-component-atom elided client-id]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
@@ -211,14 +215,23 @@
     answer))
 
 (defn reuse-or-make-component-atom
-  [specification dom-manager containing-component-atom elided client-id
-   old-component-atom]
-  (if (and old-component-atom
-           (= (:dom-specification @old-component-atom) specification))
+  [specification dom-manager containing-component-atom will-be-elided
+   client-id old-component-atom]
+  (if (when old-component-atom
+        (let [{:keys [dom-specification elided containing-component]}
+              @old-component-atom]
+          (and (= dom-specification specification)
+               ;; If the containing component or the elision has
+               ;; changed, then the id for the component that is
+               ;; passed to the client will change, so we can't use
+               ;; the old component, which would make us talk to the
+               ;; client using the old id.
+               (= containing-component containing-component-atom)
+               (= elided will-be-elided))))
     old-component-atom
     (make-component-atom
      specification dom-manager
-     containing-component-atom elided client-id)))
+     containing-component-atom will-be-elided client-id)))
 
 (def compute-dom-unless-newer)
 
@@ -392,7 +405,8 @@
     component-data))
 
 (defn compute-dom-unless-newer
-  "Compute the dom, unless its current version is greater than old-version."
+  "Compute the dom, unless its current version is greater than old-version.
+  (That would mean that the dom has been recomputed since we were asked to.)"
   [component-atom old-dom-version]
   (let [{:keys [reporters dom-specification dom-version]} @component-atom
         renderer (dom-renderer dom-specification)]

@@ -81,16 +81,8 @@
 
 ;;; We use attributes, as supported by hiccup, to store information
 ;;; about components. A sub-component looks like hiccup with this
-;;; format which is recognized and processed by the dom manager:
-;;;   [:component {
-;;;                 :class  Optional subset of CSS classes the DOM will have
-;;;           :relative-id  The id relative to containing component
-;;;                         This is also the database id the dom describes,
-;;;                         unless overridden by :item-id
-;;;                    ...  Any attribute that a dom specification (see
-;;;                         below) can have.
-;;;                         
-;;;    }]
+;;; format, which is recognized and processed by the dom manager:
+;;;   [:component <dom-specification>]
 
 ;;; When the dom manager first mentions a component to the client, it
 ;;; will generally be as a subsidiary component of a dom it is
@@ -100,11 +92,11 @@
 ;;; the subsidiary components, and pass their doms as updates to the
 ;;; client once they are computed.
 
-;;; A component is associated with a dom specification for its dom: a
-;;; map holding the information that describes how to turn part of the
-;;; store into a dom, and how to interpret actions on that dom. It thus
-;;; holds the information for what is to be rendered, such as an
-;;; item id, and what style of rendering to use.
+;;; The <dom-specification> of a component is a map holding the
+;;; information that describes how to turn part of the store into a
+;;; dom, and how to interpret actions on that dom. It thus holds the
+;;; information for what is to be rendered, such as an item id, and
+;;; what style of rendering to use.
 
 ;;; To maximize reuse, the dom specification should not have any
 ;;; extraneous information, because any change to the specification
@@ -114,8 +106,8 @@
 ;;; generated, the store will provide the substance of what is shown,
 ;;; such as the content and elements of the item to be rendered.
 
-;;; The store is always kept in memory, as is which parts of the store
-;;; the rendering of each component depends on. But most dom
+;;; The store is always kept in memory, along with which parts of the
+;;; store the rendering of each component depends on. But most dom
 ;;; specifications are removed from memory once their dom has been
 ;;; generated. If they are needed later, for example because the store
 ;;; has changed for something they show, they are recreated, using the
@@ -123,7 +115,7 @@
 ;;; walking up the containment tree to the root dom specification,
 ;;; which is always kept, and then walking back down, creating dom
 ;;; specifications on the way. Fortunately the containment depth is
-;;; usually not very deep.
+;;; usually not very deep, so this is fast.
 
 ;;; To ask to render a dom, the dom manager uses two functions, stored
 ;;; in the spec map under :get-rendering-data and :render-dom. The
@@ -232,6 +224,8 @@
 ;;;                         However, what the component is about may be
 ;;;                         overridden by :item-id. In that case, :relative-id
 ;;;                         may be a keyword, or an ItemId, or a vec of those.
+;;;                 :class  Optional. A subset of the CSS classes the DOM
+;;;                         will have. The dom may have additional classes.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
@@ -248,7 +242,6 @@
 ;;;                               accept a sequence (for sequential
 ;;;                               sub-elements) with sub-sequenques
 ;;;                               (for parallelism).
-;;;                 :class  Optional subset of CSS classes the DOM will have.
 ;;;            :render-dom  Optional pseudo function that takes this
 ;;;                         specification and the values returned by
 ;;;                         :get-rendering-data, then produces the

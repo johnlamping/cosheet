@@ -79,6 +79,11 @@
      dom-version           ; A monotonically increasing version number
                            ; for the current dom. It goes up every time we
                            ; compute the dom, even if the dom doesn't change.
+                           ; It is sent by the client, which uses it to
+                           ; acknowledge which version they got.
+                           ; And it lets us ignore redundant pending requests
+                           ; to recompute the dom, because each request
+                           ; records the version at the time it was created.
      client-needs-dom      ; True if the client has not been sent the dom
                            ; that would currently be computed, or
                            ; has not acknowledged receiving it.

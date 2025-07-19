@@ -70,16 +70,16 @@
         manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
         c1-reused (reuse-or-make-component-atom s1 manager nil false :foo c1)
-        c2 (reuse-or-make-component-atom s2 manager c1 true nil c1)]
+        c2 (reuse-or-make-component-atom s2 manager nil true :foo c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 1))
     (is (= (:dom-version @c1) 1))
     (is (not (:elided c1)))
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
-    (is (= (:containing-component @c2) c1))
+    (is (= (:containing-component @c2) nil))
     (is (:elided @c2))
-    (is (= (:depth @c2) 2))
+    (is (= (:depth @c2) 1))
     (is (component-atom? c1))
     (is (component-atom? c2))))
 

@@ -27,18 +27,19 @@
             ; :reload
             ))
 
+(defn fixed-renderer [spec store dom] dom)
 (def id1 (make-item-id "foo"))
 (def id2 (make-item-id "bar"))
 (def s2 {:relative-id id2
-         :render-dom (fn [spec store] [:div 3])})
+         :render-dom [fixed-renderer [:div 3]]})
 (def s1 {:relative-id id1
          :client-id :root-id
-         :render-dom (fn [spec store] [:div 2 [:component s2]])})
+         :render-dom [fixed-renderer [:div 2 [:component s2]]]})
 (def s1- {:relative-id id2
           :client-id :wrapper
-          :render-dom (fn [spec store] [:component s1])})
+          :render-dom [fixed-renderer [:component s1]]})
 (def s2- {:relative-id id2
-          :render-dom (fn [spec store] [:component s2])})
+          :render-dom [fixed-renderer [:component s2]]})
 
 (deftest valid-relative-id?-test
   (is (valid-relative-id? (string->id "23")))
@@ -269,16 +270,16 @@
      manager
      :alt-client-id
      {:relative-id id1
-      :render-dom (fn [spec store]
-                    ;; This component has an elided subcomponent.
-                    [:component
-                     {:relative-id id2
-                      :render-dom (fn [spec store]
-                                    ;; Here, a non-elided subcomponent.
-                                    [:div [:component
-                                           {:relative-id id3
-                                            :render-dom (fn [spec store]
-                                                          [:div 3])}]])}])
+      :render-dom [fixed-renderer
+                   ;; This component has an elided subcomponent.
+                   [:component
+                       {:relative-id id2
+                        :render-dom [fixed-renderer
+                                     ;; Here, a non-elided subcomponent.
+                                     [:div [:component
+                                            {:relative-id id3
+                                             :render-dom [fixed-renderer
+                                                          [:div 3]]}]]]}]]
       :get-action-data [(fn [s c a i extra]
                           (is (= extra "test"))
                           {:subject-ids [id1 id1]})

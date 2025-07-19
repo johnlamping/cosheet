@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [reporter :refer [new-reporter reporter-data]]
+            (cosheet2 [reporter :refer [new-reporter reporter-data
+                                        universal-category]]
                       [expression :refer :all]
                       [application-calculator :refer [application-calculator]]
                       [cache-calculator :refer [cache-calculator]]
@@ -31,7 +32,9 @@
             :calculator category-change-calculator
             :value-source r
             :value invalid
-            :priority Double/MAX_VALUE})))
+            :priority Double/MAX_VALUE}))
+    (is (= (category-change nil r) r))
+    (is (= (category-change [universal-category] r) r)))
   
   ;; Try cases where the expression should evaluate to a constant.
   (is (= (expr + (expr inc 1) 3)

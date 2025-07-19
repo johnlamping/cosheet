@@ -1,6 +1,6 @@
 (ns cosheet2.expression
   (:require (cosheet2
-             [reporter :refer [new-reporter reporter?]]
+             [reporter :refer [new-reporter reporter? universal-category]]
              [application-calculator :refer [application-calculator]]
              [cache-calculator :refer [data-for-forwarding-reporter]]
              [category-change-calculator :refer [category-change-calculator]])))
@@ -68,10 +68,13 @@
   date as of the last such change."
   [categories reporter]
   (assert (reporter? reporter))
-  (new-reporter
-   :value-source reporter
-   :categories categories
-   :calculator category-change-calculator))
+  (if (or (nil? categories)
+          (= categories [universal-category]))
+    reporter ; The categories don't make a difference.
+    (new-reporter
+     :value-source reporter
+     :categories categories
+     :calculator category-change-calculator)))
 
 (defn- symbols
   "Return all the variables in a form."

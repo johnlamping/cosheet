@@ -1,5 +1,6 @@
 (ns cosheet2.test-utils
-  (:require [clojure.test :refer [assert-expr do-report]]))
+  (:require [clojure.set]
+            [clojure.test :refer [assert-expr do-report]]))
 
 (def differences)
 

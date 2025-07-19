@@ -17,7 +17,7 @@
    are reporters, then it just evaluates the expression."
   [application & {:keys [trace calculator]
                   :as args
-                  :or {calculator application-calculator value invalid}}]
+                  :or {calculator application-calculator}}]
   ;; Catch some errors that leave no stack trace.
   (assert ((some-fn ifn? reporter?) (first application)))
   (if (and (not (some reporter? application))

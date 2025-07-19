@@ -115,8 +115,8 @@
 ;;; operation for copying would fix this problem. But that still
 ;;; leaves a problem when the source of copied data can
 ;;; change. Suppose there are two alternative sources, S and T for the
-;;; value of an atom M. And suppose that Minitially wants the data
-;;; from sourse S. This sequence can happen:
+;;; value of an atom M. And suppose that M initially wants the data
+;;; from source S. This sequence can happen:
 ;;;    * The desired source changes from S to T.
 ;;;    * Thread A starts a swap! on M to copy the latest value M should have.
 ;;;    * The swap! notices that the current value of M comes from S.
@@ -127,7 +127,6 @@
 ;;;    * Thread A's swap! goes to finish, sees that the current value
 ;;;      is still the value from S, so it succeeds, setting the current value
 ;;;      to the stale one it's function got from T.
-
 
 ;;; Instead, we check, after doing a copy, that the information that
 ;;; was copied still matches the latest information, and redo the copy

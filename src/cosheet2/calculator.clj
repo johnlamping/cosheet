@@ -204,7 +204,7 @@
         (not (nil? value-source))
         (current-value value-source)
         application
-        ;; There is an application for the reporter, apply it
+        ;; There is an application for the reporter; apply it
         ;; directly.  If there is a thunk recorded for the
         ;; application, call it with the result of the
         ;; application. That will put the thunk on the stack while the

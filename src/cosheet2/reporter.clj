@@ -6,38 +6,62 @@
 
 (defprotocol Reporter
   "A protocol that indicates an object has an atom with fields expected
-  for a reporter
+  for a reporter.
  
-  A reporter is essentially an atom that provides monitoring of its
-  value, what parts of its value have changed, and of demand for its
-  value. The special value, ::invalid, indicates that the value is not
-  currently known.
+  A reporter holds a value and provides a connection between:
+     * Attendees, which are callbacks that will be informed when the
+       reporter's value changes.
+     * A calculator that that will be informed when the demand from
+       attendees changes, and that is charged with computing and updating
+       the reporter's value. (The calculator is optional; any code can
+       post changes. But there is usually a calculator.)
+  In other words, the attendees are called when the value changes,
+  while the calculator is called when the demand changes.
 
-  One or more callbacks can attend to the reporter. And each can
-  optionally specify which categories of change it wants to be
-  informed of.  When the reporter's value changes, the change can
-  optionally be associated with a description of what parts changed
-  since its last valid value, and a set of categories of those
-  parts. Whenever the value changes, all attendees are notified,
-  except that if the change got a description, was a change between
-  two valid values, and an attendee specified categories it was
-  interested in that don't match any of the change's categories, it
-  won't be notified.
-       
-  Each callback has a key, a priority, a function. The priority
-  indicates how important it is for the callback to have the latest
-  value for this reporter. If multiple reporters' values are out of
-  date, recomputation of the lower priority numbers will come first.
-  The priority of a reporter is the minimum of the priorities of its
-  attendees.
+  A special value, ::invalid, indicates that the reporter's value is
+  not currently known.
+
+  Changes to a reporter's value can be associated with categories -
+  which can be anything that the attendees and the calculator agree
+  on. For example, if a reporter's value is a map, the categories
+  could be keys of the map. And the categories of a change to the
+  value would be the keys whose values in the map changed.
+  
+  An attendee can optionally specify a set of categories of change
+  that it wants to be informed of. And when the reporter's value
+  changes, the change can optionally be associated with a set of what
+  categories of change happened. If an update specifies its categories
+  of change, then attendee that also specified a set of categories of
+  change will only be notified if the update included at least one of
+  the categories the expressed interest in. (Attendees that don't
+  specify categories of interest will be informed of all changes. And
+  updates that aren't associated with categories will be given to all
+  attendees.)
+
+  Am attendee also optionally specify a priority for how important
+  that it have the the latest value for this reporter (lower priority
+  numbers first). A reporter calculates its priority as the minimum of
+  the priorities of its attendees. When multiple reporters' values are
+  out of date, their calculators should priorities their
+  recomputations based on their reporters' priorities, so that the
+  recomputation of the earlier priority numbers will come first. The
+  reporter functions, theselves, aren't affected the priority. They
+  always complete before they return. They just calculate the priority
+  for the benefit of calculators.
+
+  Finally, each attendee has a key, which must be unique among
+  attendees to its reporter. An attendee's key is how methods
+  reference it when they want to remove it or modify its priority or
+  categories of interest. In addition, when an attendees callback
+  function is called, it is given the attendee's key.
 
   Once an attendee is added, it is guaranteed to eventually be called
   after any change in the value, (unless it has registered for
-  categories, and none of the changes match). When called, it gets
-  keyword arguments for the key, the reporter, the categories of the
-  changed parts of the value since the last valid value and a
-  description of the change. The latter two will be nil if they were
-  not specified when the change was made.
+  categories, and none of the changes match). When called, it is given
+  its key, the reporter, the categories of the changed parts of the
+  value since the last valid value and a description of the
+  change. The latter two will be nil if they were not specified when
+  the change was made.
 
   The callback will not necessarily be called once per change, and it
   may not find a valid value when it is called.  But it is guaranteed
@@ -47,17 +71,12 @@
   happenning when the value is at or past all of the changes
   described.
 
-  The callback's key identifies it so it can be unregistered
-  (We use a key, rather than just passing in a closure, because an
-  identical key can be generated later, to refer to the callback when
-  we want to remove it, while an identical closure can't.)
-
-  Typically, a reporter that holds derived information has a
-  calculator function, whose job it is to understand the information
-  the reporter's value depends on, and keep that value up to date, if
-  and only if there is demand for it. In other words, the attendees
-  are called when the value changes, while the calculator is called
-  when the demand changes.
+  A reporter typically has a calculator function, whose job it is to
+  understand the information the reporter's value depends on, and keep
+  that value up to date, if and only if there is demand for it. It
+  may register for callbacks from other reporters that its value
+  depends on. But it will typically only do recomputation when it has
+  demand.
 
   The calculator is only activated when :calculator-data is
   present. From then on, the calculator is informed whenever there is
@@ -127,8 +146,8 @@
   (:value data))
 
 (defn reporter-value
-  "Return the current value of the reporter. If it is not a reporter, treat
-   it as a constant reporter, and return the object."
+  "Return the current value of the reporter. If the argument is not a
+  reporter, treat it as a constant reporter, and return it."
   [r]
   (if (reporter? r)
     (data-value @(:data r))
@@ -140,6 +159,15 @@
 
 (defn valid? [r]
   (not= (reporter-value r) invalid))
+
+(defn reporter-value-when-valid
+  "Return the current value of the reporter, if the value is
+  valid. Otherwise return nil. If the argument is not a reporter,
+  treat it as a constant reporter, and return it."
+  [r]
+  (let [value (reporter-value r)]
+    (when (not= value invalid)
+      value)))
 
 (defn data-attended? [data]
   (not (empty? (:attendees data))))
@@ -170,7 +198,7 @@
                          (set (mapcat (partial get (:selections data))
                                       (conj categories universal-category))))]
      (doseq [key reporter-keys]    
-       (let [[priority classes callback] (get-in data [:attendees key])]
+       (let [[_ classes callback] (get-in data [:attendees key])]
          (callback :key key
                    :reporter r
                    :description description

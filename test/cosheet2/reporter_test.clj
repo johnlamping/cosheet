@@ -55,15 +55,19 @@
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))
         calculator (partial callback :c)
-        r (new-reporter :value 2
+        r (new-reporter :value invalid
                         :calculator calculator
                         :extra :e)]
     (is (reporter? r))
     (is (not (reporter? 2)))
     (is (not (attended? r)))
+    (is (= (reporter-value r) invalid))
+    (is (= (reporter-value-when-valid r) nil))
+    (set-value! r 2)
     (set-calculator-data! r :cd)
     (set-attendee-and-call! r :foo 1 (partial callback :f))
     (is (= (reporter-value r) 2))
+    (is (= (reporter-value-when-valid r) 2))
     (is (= (:extra (reporter-data r)) :e))
     (is (= (:priority (reporter-data r)) 1))
     (is (check @history
@@ -71,6 +75,7 @@
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-value! r 3)
     (is (= (reporter-value r) 3))
+    (is (= (reporter-value-when-valid r) 3))
     (is (check @history
                [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
@@ -146,6 +151,7 @@
                 [:c r :cd]]))
     (change-data! r (fn [d] [(assoc d :value 3) nil nil]))
     (is (= (reporter-value r) 3))
+    (is (= (reporter-value-when-valid r) 3))
     (is (check (multiset @history)
                (multiset
                 [[:c r :cd]
@@ -155,6 +161,7 @@
                  [:a :key :all :reporter r :description nil :categories nil]])))
     (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
     (is (= (reporter-value r) 4))
+    (is (= (reporter-value-when-valid r) 4))
     (is (check (multiset @history)
                (multiset
                 [[:c r :cd]
@@ -172,6 +179,7 @@
       (is (= rv :rv)))
     (is (= (:extra (reporter-data r)) "extra"))
     (is (= (reporter-value r) 8))
+    (is (= (reporter-value-when-valid r) 8))
     (is (check (multiset @history)
                (multiset
                 [[:c r :cd]

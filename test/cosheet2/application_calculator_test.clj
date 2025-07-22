@@ -160,10 +160,6 @@
            #(into % {:value-source nil
                      :value invalid}))
     (run-application-if-ready r cd)
-    ;; r won't get a value yet, because it doesn't have the value from r1.
-    (is (= (reporter-value r) invalid))
-    ;; Propagate the value
-    (compute cd)
     (is (= (reporter-value rc) 3))
     (is (= (:attendees (reporter-data r0)) nil))
     (is (= (:calculator-data (reporter-data r1)) cd))

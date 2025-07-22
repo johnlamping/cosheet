@@ -7,7 +7,7 @@
                       [calculator :refer [propagate-calculator-data!
                                           modify-and-act!
                                           update-value-and-dependent-depth
-                                          copy-value add-propagate-task
+                                          copy-value
                                           register-for-value-source]]
                       [task-queue :refer [add-task-with-priority]]
                       [utils :refer [with-latest-value
@@ -60,7 +60,6 @@
 ;;; Application reporters use these additional fields:
 ;;;         :application The application describing the computation that
 ;;;                      gives the value of this reporter
-
 ;;;  :subordinate-values A map from reporters this reporter needs to
 ;;;                      run its application to a pair of the last
 ;;;                      valid value it saw for them and their
@@ -99,9 +98,16 @@
 ;;;                      changes from that, we have to redo our
 ;;;                      requests.
 
-;;; The computation is multi-threaded, but can avoid using locks and
-;;; TSM because it only provides eventual consistency; it is just copying
-;;; information. But there is a danger:
+;;; The computation is multi-threaded. Its unit of computation is
+;;; running an application, and propagating its result to everywhere
+;;; it is used. That occurs in one thread. And it might enable the
+;;; running of more applications. All applications that are possible
+;;; ready to run are kept in a priority queue, which prioritizes the
+;;; applications to run next, and lets multiple threads work on them.
+
+;;; We can avoid using locks and TSM because we only provides eventual
+;;; consistency; it is just copying information. But there is a
+;;; danger:
 ;;;    * A data item is changed.
 ;;;    * Thread A is started to copy it to a place that depends on it.
 ;;;    * Thread A reads the data, but doesn't copy it yet.
@@ -169,9 +175,7 @@
 
 (defn copy-value-and-cleanup-callback
   [& {[_ reporter] :key from :reporter}]
-  (add-propagate-task reporter
-                      copy-value reporter from
-                      update-remove-unnecessary-old-value-source))
+  (copy-value reporter from update-remove-unnecessary-old-value-source))
 
 (defn register-copy-value
   [reporter from cd]
@@ -304,12 +308,7 @@
   [& {reporter :key from :reporter :as keys}]
   (let [data  (reporter-data reporter)
         cd (:calculator-data data)]
-    (add-task-with-priority
-     ;; Propagating has to be prioritized before computing, as an early
-     ;; priority computation may depend on a worse priority value, and needs
-     ;; to be informed if that value changes.
-     (:queue cd) (- (:priority data) 1e6)
-     copy-subordinate reporter from cd)))
+    (copy-subordinate reporter from cd)))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter

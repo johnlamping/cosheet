@@ -308,7 +308,8 @@
 ;;;         :select-store-ids  A seq of store ids, such that we would
 ;;;                            like to send a select request to the
 ;;;                            client as soon as we have sent it a dom
-;;;                            that shows one of them.
+;;;                            that shows one of them. This is a way to
+;;;                            make a newly created piece of dom be selected.
 ;;;              :if-selected  A seq of client ids, one of which must
 ;;;                            currently be selected by the client for
 ;;;                            select-store-ids to have an effect.

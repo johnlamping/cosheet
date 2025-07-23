@@ -352,9 +352,14 @@
     (when select (map-state-reset! client-state {:select-store-ids nil
                                                  :if-selected nil}))
     (when (not= answer {})
-      (let [stripped (update answer :doms
-                             #(map (fn [dom] (:id (dom-attributes dom)))
-                                   %))]
+      (let [stripped (update
+                      answer :doms
+                      #(into {}
+                             (map (fn [dom]
+                                    (let [attributes (dom-attributes dom)]
+                                      [(:id attributes)
+                                       (:version attributes)]))
+                                  %)))]
         (println (now-string) "response" stripped)))
     (response answer)))
 

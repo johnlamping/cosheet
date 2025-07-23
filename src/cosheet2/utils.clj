@@ -229,7 +229,8 @@
   "Atomically call the function on the atom's content.
    The function should return the new contet for the atom,
    which may also contain a temporary field, :further-actions with
-   a list of actions that should be performed after the swap."
+   a list of actions of the form [function argument ... argument],
+   which will be run immediately after the swap."
   [atom f]
   (let [actions (swap-control-return!
                  atom

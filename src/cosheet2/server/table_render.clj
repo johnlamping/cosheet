@@ -510,7 +510,7 @@
   ;; table spec.
   ;; We also pass it the mutable store, which it uses
   ;; to build the reporters that each of its subparts depend on.
-  ;; The way we give it the store is by making a map consisting of
+  ;; The way we give it the mutable store is by making a map consisting of
   ;; the store, so current-value will return the entire map, not the
   ;; current value of the store.
   [[mutable-store [(:table-id spec)]]

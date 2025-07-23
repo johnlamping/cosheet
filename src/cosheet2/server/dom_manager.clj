@@ -2,10 +2,15 @@
   (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
+                                        set-attendee-and-call!
                                         reporter?
-                                        reporter-value valid?
+                                        reporter-value 
+                                        reporter-value-when-valid valid?
                                         universal-category]]
-                      [calculator :refer [propagate-calculator-data!]]
+                      [expression :refer [new-application category-change]]
+                      [calculator :refer [propagate-calculator-data!
+                                          current-value ; TODO: !!! remove
+                                          ]]
                       [store :refer [is-item-id? id->string string->id
                                      mutable-store?]]
                       [utils :refer [swap-control-return!
@@ -15,8 +20,8 @@
                                      update-new-further-action
                                      update-new-further-actions
                                      dissoc-in
-                                     call-pseudo-closure]]
-                      [debug :refer [simplify-for-print]]
+                                     call-pseudo-closure
+                                     pseudo-closure-application]]
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
@@ -173,6 +178,49 @@
 (defn valid-relative-id? [id]
   (every? valid-id-subpart? (if (sequential? id) id [id])))
 
+(def do-update-dom)
+
+(defn make-dom-calculating-reporter
+  "Return a reporter that calculates the component's dom."
+  [dom-specification mutable-store]
+  (let [data-getter (rendering-data-getter dom-specification)
+        renderer (dom-renderer dom-specification)
+        pairs (call-pseudo-closure data-getter dom-specification mutable-store)
+        data-reporters (map (fn [[reporter categories]]
+                              (if (reporter? reporter)
+                                (category-change categories reporter)
+                                reporter))
+                            pairs)
+        application (apply
+                     pseudo-closure-application
+                     renderer dom-specification data-reporters)]
+    (new-application application)))
+
+(defn dom-calculator-callback
+  "This is the callback for the dom calculating reporter"
+  [& {:keys [key reporter]}]
+  (let [component-atom key]
+    (with-latest-value [dom (reporter-value-when-valid reporter)]
+      (do-update-dom component-atom dom))))
+
+(defn register-dom-R
+  [component-atom dom-R]
+  (let [calculator-data (:calculator-data @(:dom-manager @component-atom))]
+    (if (reporter? dom-R)
+      (do
+        (propagate-calculator-data! dom-R calculator-data)
+        (set-attendee-and-call!
+         dom-R component-atom (:depth @component-atom) dom-calculator-callback))
+      (add-task-with-priority (:queue calculator-data)
+                              (:depth calculator-data)
+                              do-update-dom component-atom dom-R))))
+
+(defn unregister-dom-R
+  [component-atom]
+  (let [{:keys [dom-R]} @component-atom]
+    (when (reporter? dom-R)
+      (remove-attendee! dom-R component-atom))))
+
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
   component must not be transitioned from the prepared to the awaiting
@@ -188,18 +236,24 @@
               (and (:relative-id specification) containing-component-atom)))
   (when-let [relative-id (:relative-id specification)]
     (assert (valid-relative-id? relative-id) relative-id))
-  (atom
-   (map->ComponentData
-    {:dom-manager dom-manager
-     :dom-specification specification
-     :client-id client-id
-     :containing-component containing-component-atom
-     :elided elided
-     :depth (if containing-component-atom
-              (+ 1 (:depth @containing-component-atom))
-              1)
-     :client-needs-dom (not elided)
-     :dom-version (+ 1 (:highest-version @dom-manager))})))
+  (let [{:keys [mutable-store highest-version]} @dom-manager
+        depth (if containing-component-atom
+                (+ 1 (:depth @containing-component-atom))
+                1)
+        dom-R (make-dom-calculating-reporter specification mutable-store)
+        component (atom
+                   (map->ComponentData
+                    {:dom-manager dom-manager
+                     :dom-specification specification
+                     :client-id client-id
+                     :containing-component containing-component-atom
+                     :elided elided
+                     :depth depth
+                     :client-needs-dom (not elided)
+                     :dom-version (+ 1 highest-version)
+                     :dom-R dom-R}))]
+    (register-dom-R component dom-R)
+    component))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
@@ -244,20 +298,26 @@
             (vec (subcomponent-specifications dom)))
     answer))
 
+;;; TODO: !!! This should no longer be needed.
 (def compute-dom-unless-newer)
 
+;;; TODO: !!! This should no longer be needed.
 (defn schedule-compute-dom-unless-newer
   [component-atom]
   (let [{:keys [dom-manager dom-version depth]} @component-atom
         queue (:queue (:calculator-data @dom-manager))]
-    (add-task-with-priority
-     queue depth
-     compute-dom-unless-newer component-atom dom-version)))
+    (comment
+      (add-task-with-priority
+       queue depth
+       compute-dom-unless-newer component-atom dom-version))))
 
+;;; TODO: !!! This should no longer be needed.
 (defn reporter-changed-callback
   [& {:keys [key]}]
-  (schedule-compute-dom-unless-newer key))
+  (comment
+    (schedule-compute-dom-unless-newer key)))
 
+;;; TODO: !!! This should no longer be needed.
 (defn update-register-for-reporters
   "Find out what reporters the component's renderer needs,
   and register for them."
@@ -282,6 +342,7 @@
                                   r (:calculator-data @dom-manager)]))))
                      pairs)))))))
 
+;;; TODO: !!! This should no longer be needed.
 (defn update-unregister-for-reporters
   "Remove the registrations from the component data's reporters"
   [component-data component-atom]
@@ -296,20 +357,29 @@
                 (filter reporter? reporters))))
       component-data)))
 
+;;; TODO: !!! This should no longer be needed.
 (defn activate-component
   "Register a component for change notifications,
   and set an action to compute its dom."
   [component-atom]
-  (swap-and-act!
-   component-atom
-   (fn [component-data]
-     (let [result
-           (-> component-data
-               (update-register-for-reporters component-atom)
-               (update-new-further-action
-                schedule-compute-dom-unless-newer component-atom))]
-       (assert (instance? ComponentData result))
-       result))))
+  ;; Check that it has never been disabled.
+  (assert (:dom-specification @component-atom))
+  (comment
+    (swap-and-act!
+     component-atom
+     (fn [component-data]
+       (let [result
+             (-> component-data
+                 (update-register-for-reporters component-atom)
+                 (update-new-further-action
+                  schedule-compute-dom-unless-newer component-atom))]
+         (assert (instance? ComponentData result))
+         result)))))
+
+(defn remove-from-client-ready-dom
+  [component-atom]
+  (swap! (:dom-manager @component-atom)
+         (fn [data] (dissoc-in data [:client-ready-dom component-atom]))))
 
 (defn disable-component
   "Deactivate the component and all its descendant components."
@@ -325,8 +395,12 @@
                            :client-needs-dom nil)
                     (update-unregister-for-reporters component-atom)
                     (update-new-further-actions
-                     (map (fn [comp] [disable-component comp])
-                          (vals (:id->subcomponent %)))))]
+                     (map (fn [ca] [disable-component ca])
+                          (vals (:id->subcomponent %))))
+                    (update-new-further-action
+                     remove-from-client-ready-dom component-atom)
+                    (update-new-further-action
+                     unregister-dom-R component-atom))]
       (assert (instance? ComponentData result))
       result)))
 
@@ -349,15 +423,16 @@
   containment hierarchy to the first non-elided ones. Note that we
   take component-data, not the atom."
   [component-data]
-  (let [{:keys [dom id->subcomponent]} component-data]
-    (if (= (first dom) :component)
-      (find-non-elided-id->subcomponent @(first (vals id->subcomponent)))
-      id->subcomponent)))
+  (let [{:keys [dom-R id->subcomponent]} component-data]
+    (when-let [dom (reporter-value-when-valid dom-R)]
+      (if (= (first dom) :component)
+        (find-non-elided-id->subcomponent @(first (vals id->subcomponent)))
+        id->subcomponent))))
 
 (defn note-dom-ready-for-client
-  "Mark that the client needs to hear about our dom. (If we are
-  elided, that means it will be given out dom, but under the key of
-  our first non-elided containing component.)"
+  "Record in the dom manager that the client needs to hear about our
+  dom. (If we are elided, that means it will be given our dom, but
+  under the key of our first non-elided containing component.)"
   [dom-manager component-atom]
   (let [non-elided (find-non-elided-containing-component component-atom)]
     ;; If we are elided, we have to bump the version of our non-elided
@@ -415,24 +490,33 @@
                     dropped-subcomponent-ids))))))
     component-data))
 
+(defn do-update-dom
+  [component-atom dom]
+  (swap-and-act!
+   component-atom
+   #(let [result (update-dom % component-atom dom)]
+      (assert (instance? ComponentData result))
+      result)))
+
+;;; TODO: !!! This should be unnecessary
 (defn compute-dom-unless-newer
   "Compute the dom, unless its current version is greater than old-version.
   (That would mean that the dom has been recomputed since we were
   asked to compute it.)"
   [component-atom old-dom-version]
-  (let [{:keys [reporters dom-specification dom-version]} @component-atom
+  (let [component-data @component-atom
+        {:keys [reporters dom-specification dom-version dom-R]} component-data
         renderer (dom-renderer dom-specification)]
     (when (and dom-specification (<= dom-version old-dom-version))
       (with-latest-value [reporter-values (map reporter-value reporters)]
         (when (every? valid? reporter-values)
-          (let [dom (apply
-                     call-pseudo-closure
-                     renderer dom-specification reporter-values)]
-            (swap-and-act!
-             component-atom
-             #(let [result (update-dom % component-atom dom)]
-                (assert (instance? ComponentData result))
-                result))))))))
+          (let [dom (current-value dom-R)]
+            (comment
+              (swap-and-act!
+               component-atom
+               #(let [result (update-dom % component-atom dom)]
+                  (assert (instance? ComponentData result))
+                  result)))))))))
 
 (defn mark-component-tree-as-needed
   "Mark the component and all its descendants as needing to be sent to
@@ -447,8 +531,6 @@
                                [(:depth component-data)
                                 (:dom component-data)
                                 (:id->subcomponent component-data)]]))]
-    (when (not dom)
-      (schedule-compute-dom-unless-newer component-atom))
     (concat (when dom [[component-atom depth]])
             (mapcat mark-component-tree-as-needed
                     (vals id->subcomponent)))))
@@ -492,7 +574,8 @@
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
         (is-item-id? id) (id->string id)
-        true (assert false (str "unknown relative id subpart:" id))))
+        true (assert false (str "unknown relative id subpart:"
+                                [(type id) id]))))
 
 (defn client-id-subpart->id-subpart
   "Turn a subpart of a client id into a :relative-id"
@@ -519,6 +602,8 @@
   "Given a sequence of relative ids, return a string representation
   that can be passed to the client."
   [ids]
+  (when (some nil? ids)
+    (println "!!!! Got a nil relative-id" ids))
   (concatenate-client-id-parts (map relative-id->client-id-part ids)))
 
 (defn client-id->relative-ids
@@ -527,20 +612,30 @@
   (vec (map client-id-part->relative-id (split-client-id-parts client-id)))) 
 
 (defn component->id-sequence
+  "Return the sequence of ids to navigate to the component.
+  If the component, or one of its containing components has been
+  deactivated, return nil."
   [component-atom]
   (let [data @component-atom]
     (if-let [client-id (:client-id data)]
       [client-id]
-      (let [containing-sequence (component->id-sequence
-                                 (:containing-component data))]
-        (if (:elided data)
-          containing-sequence
-          (conj containing-sequence
-                (:relative-id (:dom-specification data))))))))
+      ;; If there is no dom-spec, this component has been deactivated.
+      (when-let [dom-spec (:dom-specification data)]
+        ;; If the containing sequence returns nil, one of the
+        ;; containing components has been deactivated.
+        (when-let [containing-sequence (component->id-sequence
+                                      (:containing-component data))]
+          (if (:elided data)
+            containing-sequence
+            (conj containing-sequence (:relative-id dom-spec))))))))
 
 (defn component->client-id
+  "Return the client id for the component.
+  If the component, or one of its containing components has been
+  deactivated, return nil."
   [component-atom]
-  (relative-ids->client-id (component->id-sequence component-atom)))
+  (when-let [id-sequence (component->id-sequence component-atom)]
+    (relative-ids->client-id id-sequence)))
 
 (defn client-id->component
   "Returns the component for the given client id."
@@ -549,13 +644,15 @@
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
               (when component
-                ((find-non-elided-id->subcomponent @component) id)))
+                (if-let [id->subcomponent
+                         (find-non-elided-id->subcomponent @component)]
+                  (id->subcomponent id))))
             root
             (rest id-sequence))))
 
 (defn update-action-data-for-component-past-elided
   "Update the action data to reflect the given component, plus all
-  components below it they got elided out from what the client got. If
+  components below it that got elided out from what the client got. If
   a subcomponent was elided out of what the client got, we still need
   to add its effect to the action data. But it is not reflected in the
   client's id, so we need to go past it to get to the next component
@@ -564,7 +661,8 @@
   (loop [action-data (update-action-data-for-component
                       component containing-action-data action immutable-store)]
     (when action-data
-      (let [{:keys [dom id->subcomponent]} @(:component action-data)]
+      (let [{:keys [dom-R id->subcomponent]} @(:component action-data)
+            dom (reporter-value-when-valid dom-R)]
         (if (= (first dom) :component)
           (recur (update-action-data-for-component
                   (first (vals id->subcomponent))
@@ -581,11 +679,13 @@
     (reduce (fn [action-data id]
               (when action-data
                 (let [component-data @(:component action-data)
-                      {:keys [dom id->subcomponent]} component-data]
-                  (when-let
-                      [subcomponent (id->subcomponent id)]
+                      {:keys [dom-R id->subcomponent]} component-data
+                      dom (reporter-value-when-valid dom-R)]
+                  (when dom
+                    (when-let
+                        [subcomponent (id->subcomponent id)]
                       (update-action-data-for-component-past-elided
-                       subcomponent action-data action immutable-store)))))
+                       subcomponent action-data action immutable-store))))))
             (update-action-data-for-component-past-elided
              root {} action immutable-store)
             (rest id-sequence))))
@@ -619,7 +719,10 @@
   elided components."
   [component-atom monitored-ids]
   (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
+    ;; We check for item-id first, because relative-id can be :content,
+    ;; or other markers that don't indicate an item.
     (when-let [target (or item-id relative-id)]
+      (assert (not= target :content))
       (if (= target :content)
         (component-is-monitored?
          (:containing-component @component-atom) monitored-ids)
@@ -632,7 +735,8 @@
      the version of the containing dom,
      whether some dom in the path displays a monitored id."
   [component-atom monitored-ids]
-  (let [{:keys [dom dom-version id->subcomponent]} @component-atom
+  (let [{:keys [dom-R dom-version id->subcomponent]} @component-atom
+        dom (reporter-value-when-valid dom-R)
         monitored (component-is-monitored? component-atom monitored-ids)]
     (when dom
       (if (= (first dom) :component)
@@ -651,17 +755,21 @@
   return whether it presents one of the monitored ids."
   [component-atom monitored-ids]
   (let [[dom dom-version monitored] (find-displayed-dom
-                                     component-atom monitored-ids)]
-    (when dom
-      (let [client-id (component->client-id component-atom)
-            class (:class (second dom))
+                                     component-atom monitored-ids)
+        client-id (when dom
+                    (component->client-id component-atom))]
+    (when (and dom (not client-id))
+      (println "!!!!!!!!!!!!!!! attempt to transmit deactivated component")
+      (println dom))
+    (when (and dom client-id)
+      (let [class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
                                                :version dom-version}
                                         class (assoc :class class)))]
         [(into [(first added)
-                 (second added)]
-                (map (partial adjust-subdom-for-client client-id)
-                     (rest (rest added))))
+                (second added)]
+               (map (partial adjust-subdom-for-client client-id)
+                    (rest (rest added))))
          monitored]))))
 
 (defn get-response-doms
@@ -683,6 +791,10 @@
            monitored-client-id]]
          (let [[component & remaining-components] components
                [dom monitored] (prepare-dom-for-client component monitored-ids)]
+           ;; TODO: !!! If we didn't get a prepared dom, add a task to
+           ;; remove this item from the client-read-dom inside a
+           ;; with-current-value that checks that it is still
+           ;; impossible to get a client id.
            (recur (if dom (conj response dom) response)
                   (longer-string
                    monitored-client-id

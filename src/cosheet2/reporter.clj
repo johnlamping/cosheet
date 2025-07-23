@@ -158,6 +158,8 @@
   ::invalid)
 
 (defn valid? [r]
+  "Return whether a reporter's value is valid. If given a plain value,
+  this returns whether that value is valid."
   (not= (reporter-value r) invalid))
 
 (defn reporter-value-when-valid

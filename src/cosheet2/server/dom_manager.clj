@@ -138,9 +138,9 @@
 ;;; fields. By using a record, we can define our own print method to
 ;;; avoid dumping this out when printing every component.
 (defrecord DOMManagerData
-    [root-components    ; A map from the client id of each root components
+    [root-components    ; A map from the client id of each root component
                         ; to its component atom. Not all components with
-                        ; client ids need to be here, just the roots.
+                        ; fixed client ids need to be here, just the roots.
      highest-version    ; The highest version number of any dom we have sent
                         ; to the client. Any new component starts out with a
                         ; version number one higher, because we might have
@@ -148,9 +148,16 @@
                         ; while the client kept ahold of it. This way, our
                         ; next version will be larger that whatever the
                         ; client has.
-     client-ready-dom   ; A priority map of client-id for which we have
-                        ; dom that the client needs to know about,
-                        ; prioritized by their depth.
+   components-to-send   ; A priority queue of components that have dom that
+                        ; the client needs to know about, prioritized by
+                        ; depth (lower earlier).
+                        ; We record component atoms, rather than ids,
+                        ; because it is possible to temporarily have
+                        ; several component atoms with the same id,
+                        ; all for the same component, until obsolete
+                        ; ones get cleaned up. This way, removing an
+                        ; obsolete component atom from the queue will
+                        ; never take out a live one.
      calculator-data    ; The calculator data we use. (Currently, we only use
                         ; its queue.)
      mutable-store      ; The mutable store that holds the data the doms
@@ -183,7 +190,7 @@
   (every? valid-id-subpart? (if (sequential? id) id [id])))
 
 (def handle-dom-change)
-(def remove-from-client-ready-dom)
+(def remove-from-components-to-send)
 
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
@@ -276,7 +283,7 @@
                        (update-new-further-action
                         deactivate-dom-R component-atom (:dom-R %))
                        (update-new-further-action
-                        remove-from-client-ready-dom
+                        remove-from-components-to-send
                         (:dom-manager %) component-atom))]
         (assert (instance? ComponentData result))
         result))))
@@ -354,16 +361,16 @@
             (vec (subcomponent-specifications dom)))
     answer))
 
-(defn remove-from-client-ready-dom
+(defn remove-from-components-to-send
   [dom-manager component-atom]
   (swap! dom-manager
-         (fn [data] (dissoc-in data [:client-ready-dom component-atom]))))
+         (fn [data] (dissoc-in data [:components-to-send component-atom]))))
 
-(defn add-to-client-ready-dom
+(defn add-to-components-to-send
   [dom-manager component-atom]
   (swap! dom-manager
          (fn [manager-data]
-           (update manager-data :client-ready-dom
+           (update manager-data :components-to-send
                    #(assoc % component-atom (:depth @component-atom)))))
   ;; Since we copied data from one atom to another, we would normally
   ;; have to operate inside a with-latest-value, checking that the
@@ -373,7 +380,7 @@
   ;; back, it is sufficient to check once that it hasn't gone
   ;; inactive.
   (when (not= (component-data-state @component-atom) :active)
-    (remove-from-client-ready-dom dom-manager component-atom)))
+    (remove-from-components-to-send dom-manager component-atom)))
 
 (defn find-non-elided-containing-component
   "If the component is elided, go up the containment hierarchy to the
@@ -406,7 +413,7 @@
     ;; container, as that is the version sent to the client.
     (when (not= non-elided component-atom)
       (swap! non-elided #(update % :dom-version inc)))
-    (add-to-client-ready-dom dom-manager non-elided)))
+    (add-to-components-to-send dom-manager non-elided)))
 
 (defn update-dom
   [component-data component-atom dom]
@@ -465,7 +472,7 @@
     (map->DOMManagerData
      {:root-components {}
       :highest-version 0
-      :client-ready-dom (priority-map)
+      :components-to-send (priority-map)
       :calculator-data calculator-data
       :mutable-store mutable-store
       :further-actions nil})))
@@ -724,7 +731,7 @@
      (loop [response []
             monitored-client-id nil
             highest-version (:highest-version manager-data)
-            components (map first (:client-ready-dom manager-data))]
+            components (map first (:components-to-send manager-data))]
        (if (or (>= (count response) num) (empty? components))
          [(assoc manager-data :highest-version highest-version)
           [response
@@ -770,16 +777,16 @@
 
 (defn reflect-client-needs-doms
   "The :client-needs-dom of the specified component atoms may have
-  changed. Make the :client-ready-dom in the dom manager correctly
+  changed. Make the :components-to-send in the dom manager correctly
   reflect them."
   [dom-manager component-atoms]
   (with-latest-value
       ;; We read the information we need from all the components
       ;; before updating the dom-manager. This has the advantage that
-      ;; we need to do only one swap! for all the changes, but the
-      ;; disadvantage that we have to start over if any of that
-      ;; information for any of components changed while we were
-      ;; working.
+      ;; we need to do only one swap! on the manager for all the
+      ;; changes. But it has the disadvantage that we have to start
+      ;; over if any of that information for any of components changed
+      ;; while we were working.
       [states (map (fn [component-atom]
                      [component-atom
                       (select-keys @component-atom [:client-needs-dom :depth])])
@@ -787,18 +794,18 @@
     (swap!
      dom-manager
      (fn [manager-data]
-       (let [client-ready-dom
+       (let [components-to-send
              (reduce
-              (fn [client-ready-dom
+              (fn [components-to-send
                    [component-atom {:keys [client-needs-dom depth]}]]
                 (if client-needs-dom
-                  (assoc client-ready-dom component-atom depth)
-                  (dissoc client-ready-dom component-atom)))
-              (:client-ready-dom manager-data)
+                  (assoc components-to-send component-atom depth)
+                  (dissoc components-to-send component-atom)))
+              (:components-to-send manager-data)
               states)]
-         (assoc manager-data :client-ready-dom client-ready-dom))))))
+         (assoc manager-data :components-to-send components-to-send))))))
 
-;;; TODO: !!! Rename :client-ready-dom and :client-needs-dom
+;;; TODO: !!! Rename :components-to-send and :client-needs-dom
 ;;;       to something less confusing.
 (defn process-acknowledgements
   "Modify the clients and the dom-manager to reflect the acknowledgements."
@@ -840,10 +847,10 @@
                                            deactivate-component component))
               (assoc manager-data
                      :root-components {}
-                     :client-ready-dom (priority-map))
+                     :components-to-send (priority-map))
               (vals (:root-components manager-data))))))
 
-;;; TODO: Make a function to copy the :client-ready-dom value to the
+;;; TODO: Make a function to copy the :components-to-send value to the
 ;;; dom manager.
 (defn mark-component-tree-as-needed
   "Mark the component and all its descendants as needing to be sent to
@@ -869,7 +876,7 @@
         component-and-depths (mapcat mark-component-tree-as-needed
                                      (vals (:root-components manager-data)))]
     (swap! dom-manager
-           (fn [data] (update data :client-ready-dom
+           (fn [data] (update data :components-to-send
                               #(reduce
                                 (fn [priority-map [component depth]]
                                   (if (:elided @component)

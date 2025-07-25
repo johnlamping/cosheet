@@ -84,7 +84,7 @@
     (is (component-atom? c1))
     (is (component-atom? c2))))
 
-(deftest activate-disable-component-test
+(deftest activate-deactivate-component-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
@@ -120,7 +120,7 @@
                 :depth 1
                 :dom [:div 3]
                 :further-actions nil}))
-    (disable-component c2)
+    (deactivate-component c2)
     (is (= @c2
            (map->ComponentData
             {:id->subcomponent {}
@@ -139,7 +139,7 @@
       (is (component-data? updated))
       (is (check updated
                  {:reporters nil
-                  :further-actions [[note-dom-ready-for-client manager c1]
+                  :further-actions [[process-dom-ready-for-client manager c1]
                                     [activate-component (any)]]
                   :id->subcomponent {id2 (any)}
                   :client-id :foo

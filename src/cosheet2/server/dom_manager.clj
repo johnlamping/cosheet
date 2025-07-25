@@ -72,6 +72,11 @@
      dom-specification     ; The dom spec for this component.
 
      ;; These fields can change
+     dom-R                 ; A reporter that calculates this component's dom.
+                           ; This field is filled in when the
+                           ; component is first activated, and is
+                           ; cleared when it is deactivated. Those are
+                           ; the only two times it changes.
      reporters             ; The reporters that provide the values needed to
                            ; compute the dom. They are the ones returned by
                            ; :rendering-data. Some might be constants,
@@ -81,6 +86,7 @@
                            ; the dom is computed, and can change if the dom
                            ; changes.
      dom                   ; The rendered dom for this client.
+                           ; TODO: Remove the dom field.
      dom-version           ; A monotonically increasing version number
                            ; for the current dom. It goes up every time we
                            ; compute the dom, even if the dom doesn't change.
@@ -111,23 +117,28 @@
   (and (= (type c) clojure.lang.Atom)
        (component-data? @c)))
 
-;;; The component can be in several states:
-;;;      prepared  The unchanging part of the component's data has been
-;;;                filled in, but it has not started computing.
-;;;                Indicated by :reporters not being present.
-;;;      awaiting  We are currently missing the component's dom.
-;;;                Indicated by :reporters being present,
-;;;                and :dom not being present.
-;;;      complete  We have all information for the component, including
-;;;                its DOM.
-;;;                Indicated by :dom being present.
-;;;     suspended  We do not currently need the component's dom, but we
-;;;                might later, so we want to keep track of changes to it.
-;;;                This state is not currently used.
-;;;      disabled  We will never need this component's dom again. It is
-;;;                ready for garbage collection.
-;;;                Indicated by :dom-specification being missing.
-
+(defn component-data-state
+  "This function takes a component's component-data and returns which
+  one of these three stages of its life cycle it is in.
+   :created    The unchanging part of the component's data has been
+               filled in, but the reporter that calculates its dom
+               hasn't been made yet.
+      :active  A reporter is running to update the component's dom
+               whenever something it depends on changes.
+    :inactive  This component's dom is no longer needed by the client.
+               Either the client no longer needs a dom with this
+               reporter's client id, or an different component
+               atom is now in charge of calculating that dom. This
+               component's reporter is no longer running, or is
+               about to be shut down. It will never be active again.
+  Each component goes through these three states, in this order; it
+  never moves back to a previous stage."
+  [component-data]
+  (if (nil? (:dom-specification component-data))
+    :inactive
+    (if (nil? (:dom-R component-data))
+      :created
+      :active)))
 
 ;;; The information for interfacing between the client and the
 ;;; components is stored in an atom, containing a record with these
@@ -179,6 +190,7 @@
   (every? valid-id-subpart? (if (sequential? id) id [id])))
 
 (def do-update-dom)
+(def remove-from-client-ready-dom)
 
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
@@ -203,29 +215,87 @@
     (with-latest-value [dom (reporter-value-when-valid reporter)]
       (do-update-dom component-atom dom))))
 
-(defn register-dom-R
-  [component-atom dom-R]
-  (let [calculator-data (:calculator-data @(:dom-manager @component-atom))]
-    (if (reporter? dom-R)
-      (do
-        (propagate-calculator-data! dom-R calculator-data)
-        (set-attendee-and-call!
-         dom-R component-atom (:depth @component-atom) dom-calculator-callback))
-      (add-task-with-priority (:queue calculator-data)
-                              (:depth calculator-data)
-                              do-update-dom component-atom dom-R))))
-
-(defn unregister-dom-R
+(defn activate-dom-R
+  "Give the atom's dom-R its calculator-data, and set up a callback for
+  when its value changes.
+  This can't be done at the time the reporter is created, as that
+  happens during the component atom's activation, inside a
+  swap-control-return!. The swap-control-return!'s function might run
+  several times, creating a new reporter each time, and we only want
+  to activate the one that actually ended up getting stored in the
+  atom."
   [component-atom]
-  (let [{:keys [dom-R]} @component-atom]
-    (when (reporter? dom-R)
-      (remove-attendee! dom-R component-atom))))
+  (let [{:keys [dom-R dom-manager]} @component-atom
+        calculator-data (:calculator-data @dom-manager)]
+    (when dom-R
+      (if (reporter? dom-R)
+        (do
+          (propagate-calculator-data! dom-R calculator-data)
+          (set-attendee-and-call!
+           dom-R component-atom (:depth @component-atom)
+           dom-calculator-callback))
+        ;; Our dom-R is a constant. We need to handle its value just this once.
+        (do-update-dom component-atom dom-R)))))
+
+(defn deactivate-dom-R
+  "Remove our callback to the atom's dom-R. That should be its only
+  attendee, so it should stop updating at that point."
+  [component-atom dom-R]
+  (when (reporter? dom-R)
+    (remove-attendee! dom-R component-atom)))
+
+(defn activate-component
+  "Make a reporter to calculate the component's DOM, and activate it.
+  This can't be done at the time the component-atom is created, as
+  that typically happens during a dom update for this component's
+  containing component, inside a swap-control-return!. The
+  swap-control-return!'s function might run several times, creating a
+  new component-atom each time, and we only want to activate the one
+  that actually ended up getting used by the containing component."
+  [component-atom]
+  (swap-and-act!
+   component-atom
+   (fn [component-data]
+     (let [{:keys [dom-specification dom-manager]} component-data]
+       (if (= (component-data-state component-data) :created)
+         (let [dom-R (make-dom-calculating-reporter
+                      dom-specification (:mutable-store @dom-manager))]
+           (-> component-data
+               (assoc :dom-R dom-R)
+               (update-new-further-action activate-dom-R component-atom)))
+         ;; The atom has already been activated. Don't do anything.
+         component-data)))))
+
+(defn deactivate-component
+  "Deactivate the component and all its descendant components."
+  [component-atom]
+  (swap-and-act!
+   component-atom
+   #(if (= (component-data-state %) :inactive)
+      % ; This component has already been deactivated.
+      (let [result (-> %
+                       ;; Rather than dissoc, we assoc with nil, so we
+                       ;; don't turn the record into a map.
+                       (assoc :dom-specification nil
+                              :dom nil
+                              :dom-R nil
+                              :client-needs-dom nil)
+                       (update-new-further-actions
+                        (map (fn [ca] [deactivate-component ca])
+                             (vals (:id->subcomponent %))))
+                       (update-new-further-action
+                        deactivate-dom-R component-atom (:dom-R %))
+                       (update-new-further-action
+                        remove-from-client-ready-dom
+                        (:dom-manager %) component-atom))]
+        (assert (instance? ComponentData result))
+        result))))
 
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
-  component must not be transitioned from the prepared to the awaiting
-  state until it is recorded in the id->subcomponent its containing
-  component."
+  component must not be transitioned from the :created to the :active
+  state until it is recorded in the id->subcomponent of its containing
+  component. That is handled by activate-component."
   [specification dom-manager containing-component-atom elided client-id]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
@@ -239,21 +309,17 @@
   (let [{:keys [mutable-store highest-version]} @dom-manager
         depth (if containing-component-atom
                 (+ 1 (:depth @containing-component-atom))
-                1)
-        dom-R (make-dom-calculating-reporter specification mutable-store)
-        component (atom
-                   (map->ComponentData
-                    {:dom-manager dom-manager
-                     :dom-specification specification
-                     :client-id client-id
-                     :containing-component containing-component-atom
-                     :elided elided
-                     :depth depth
-                     :client-needs-dom (not elided)
-                     :dom-version (+ 1 highest-version)
-                     :dom-R dom-R}))]
-    (register-dom-R component dom-R)
-    component))
+                1)]
+    (atom
+     (map->ComponentData
+      {:dom-manager dom-manager
+       :dom-specification specification
+       :client-id client-id
+       :containing-component containing-component-atom
+       :elided elided
+       :depth depth
+       :client-needs-dom (not elided)
+       :dom-version (+ 1 highest-version)}))))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
@@ -357,56 +423,26 @@
                 (filter reporter? reporters))))
       component-data)))
 
-;;; TODO: !!! This should no longer be needed.
-(defn activate-component
-  "Register a component for change notifications,
-  and set an action to compute its dom."
-  [component-atom]
-  ;; Check that it has never been disabled.
-  (assert (:dom-specification @component-atom))
-  (comment
-    (swap-and-act!
-     component-atom
-     (fn [component-data]
-       (let [result
-             (-> component-data
-                 (update-register-for-reporters component-atom)
-                 (update-new-further-action
-                  schedule-compute-dom-unless-newer component-atom))]
-         (assert (instance? ComponentData result))
-         result)))))
-
 (defn remove-from-client-ready-dom
-  [component-atom]
-  (swap! (:dom-manager @component-atom)
+  [dom-manager component-atom]
+  (swap! dom-manager
          (fn [data] (dissoc-in data [:client-ready-dom component-atom]))))
 
-(defn disable-component
-  "Deactivate the component and all its descendant components."
-  [component-atom]
-  (swap-and-act!
-   component-atom
-   #(let [result (-> %
-                    ;; We assoc with nil, rather than dissoc, so we don't turn
-                    ;; the record into a map.
-                    (assoc :dom-specification nil
-                           :dom nil
-                           :dom-version nil
-                           :client-needs-dom nil)
-                    (update-unregister-for-reporters component-atom)
-                    (update-new-further-actions
-                     (map (fn [ca] [disable-component ca])
-                          (vals (:id->subcomponent %))))
-                    (update-new-further-action
-                     remove-from-client-ready-dom component-atom)
-                    (update-new-further-action
-                     unregister-dom-R component-atom))]
-      (assert (instance? ComponentData result))
-      result)))
-
-(defn disabled-component-data?
-  [component-data]
-  (nil? (:dom-specification component-data)))
+(defn add-to-client-ready-dom
+  [dom-manager component-atom]
+  (swap! dom-manager
+         (fn [manager-data]
+           (update manager-data :client-ready-dom
+                   #(assoc % component-atom (:depth @component-atom)))))
+  ;; Since we copied data from one atom to another, we would normally
+  ;; have to operate inside a with-latest-value, checking that the
+  ;; component atom was still activate, to make sure we aren't
+  ;; stepping on some thread with more recent data. But since a
+  ;; component can only transition from active to inactive, and never
+  ;; back, it is sufficient to check once that it hasn't gone
+  ;; inactive.
+  (when (not= (component-data-state @component-atom) :active)
+    (remove-from-client-ready-dom dom-manager component-atom)))
 
 (defn find-non-elided-containing-component
   "If the component is elided, go up the containment hierarchy to the
@@ -429,25 +465,22 @@
         (find-non-elided-id->subcomponent @(first (vals id->subcomponent)))
         id->subcomponent))))
 
-(defn note-dom-ready-for-client
+(defn process-dom-ready-for-client
   "Record in the dom manager that the client needs to hear about our
-  dom. (If we are elided, that means it will be given our dom, but
-  under the key of our first non-elided containing component.)"
+  dom. If we are elided, that means it will be given our dom, but
+  under the key of our first non-elided containing component."
   [dom-manager component-atom]
   (let [non-elided (find-non-elided-containing-component component-atom)]
     ;; If we are elided, we have to bump the version of our non-elided
     ;; container, as that is the version sent to the client.
     (when (not= non-elided component-atom)
       (swap! non-elided #(update % :dom-version inc)))
-    (swap! dom-manager
-           (fn [manager-data]
-             (update manager-data :client-ready-dom
-                     #(assoc % non-elided (:depth @non-elided)))))))
+    (add-to-client-ready-dom dom-manager non-elided)))
 
 (defn update-dom
   [component-data component-atom dom]
   (if (and (valid? dom)
-           (not (disabled-component-data? component-data)))
+           (= (component-data-state component-data) :active))
     (do
       (assert (:dom-version component-data) (into {} component-data))
       (if (= dom (:dom component-data))
@@ -480,13 +513,13 @@
                      :client-needs-dom (not (:elided component-data)))
               (update :dom-version inc)
               (update-new-further-action
-               note-dom-ready-for-client
+               process-dom-ready-for-client
                (:dom-manager component-data) component-atom)
               (update-new-further-actions
                (map (fn [id] [activate-component (id->subcomponent id)])
                     new-subcomponent-ids))
               (update-new-further-actions
-               (map (fn [id] [disable-component (old-id->subcomponent id)])
+               (map (fn [id] [deactivate-component (old-id->subcomponent id)])
                     dropped-subcomponent-ids))))))
     component-data))
 
@@ -644,7 +677,7 @@
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
               (when component
-                (if-let [id->subcomponent
+                (when-let [id->subcomponent
                          (find-non-elided-id->subcomponent @component)]
                   (id->subcomponent id))))
             root
@@ -759,8 +792,22 @@
         client-id (when dom
                     (component->client-id component-atom))]
     (when (and dom (not client-id))
-      (println "!!!!!!!!!!!!!!! attempt to transmit deactivated component")
-      (println dom))
+      (println "!!!!!!!!!!!!!!! ATTEMPT TO TRANSMIT DANGLING COMPONENT")
+      (println "elided" (:elided @component-atom))
+      (println "client-needs-dom" (:client-needs-dom @component-atom))
+      (println dom)
+      (loop [container (:containing-component @component-atom)]
+        (when container
+          (println "Contained in")
+          (println "  elided" (:elided @container))
+          (println "  client-needs-dom" (:client-needs-dom @container))
+          (when-let [spec (:dom-specification @container)]
+            (when-let [item-id (:item-id spec)]
+              (println "  item-id" item-id))
+            (when-let [relative-id (:relative-id spec)]
+              (println "  relative-id" relative-id))
+            (recur (:containing-component @container)))))
+      (println "dom-specification" (:dom-specification @component-atom)))
     (when (and dom client-id)
       (let [class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
@@ -847,7 +894,7 @@
                     (assoc-in [:root-components client-id] component)
                     (update :highest-version inc))
           old-component
-          (update-new-further-action disable-component old-component))))
+          (update-new-further-action deactivate-component old-component))))
     (activate-component component)))
 
 (defn remove-all-doms
@@ -859,7 +906,7 @@
     (fn [manager-data]
       (reduce (fn [manager-data component]
                 (update-new-further-action manager-data
-                                           disable-component component))
+                                           deactivate-component component))
               (assoc manager-data
                      :root-components {}
                      :client-ready-dom (priority-map))

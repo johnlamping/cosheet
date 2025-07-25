@@ -8,9 +8,7 @@
                                         reporter-value-when-valid valid?
                                         universal-category]]
                       [expression :refer [new-application category-change]]
-                      [calculator :refer [propagate-calculator-data!
-                                          current-value ; TODO: !!! remove
-                                          ]]
+                      [calculator :refer [propagate-calculator-data!]]
                       [store :refer [is-item-id? id->string string->id
                                      mutable-store?]]
                       [utils :refer [swap-control-return!
@@ -85,16 +83,11 @@
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
                            ; changes.
-     dom                   ; The rendered dom for this client.
-                           ; TODO: Remove the dom field.
      dom-version           ; A monotonically increasing version number
-                           ; for the current dom. It goes up every time we
-                           ; compute the dom, even if the dom doesn't change.
-                           ; It is sent by the client, which uses it to
-                           ; acknowledge which version they got.
-                           ; And it lets us ignore redundant pending requests
-                           ; to recompute the dom, because each request
-                           ; records the version at the time it was created.
+                           ; for the current dom. It goes up every
+                           ; time the dom changes.  It is sent by the
+                           ; client, which uses it to acknowledge
+                           ; which version they got.
      client-needs-dom      ; True if the client has not been sent the dom
                            ; that would currently be computed, or
                            ; has not acknowledged receiving it.
@@ -189,7 +182,7 @@
 (defn valid-relative-id? [id]
   (every? valid-id-subpart? (if (sequential? id) id [id])))
 
-(def do-update-dom)
+(def handle-dom-change)
 (def remove-from-client-ready-dom)
 
 (defn make-dom-calculating-reporter
@@ -210,10 +203,8 @@
 
 (defn dom-calculator-callback
   "This is the callback for the reporter that calculates the dom."
-  [& {:keys [key reporter]}]
-  (let [component-atom key]
-    (with-latest-value [dom (reporter-value-when-valid reporter)]
-      (do-update-dom component-atom dom))))
+  [& {:keys [key]}]
+  (handle-dom-change key))
 
 (defn activate-dom-R
   "Give the atom's dom-R its calculator-data, and set up a callback for
@@ -235,7 +226,7 @@
            dom-R component-atom (:depth @component-atom)
            dom-calculator-callback))
         ;; Our dom-R is a constant. We need to handle its value just this once.
-        (do-update-dom component-atom dom-R)))))
+        (handle-dom-change component-atom)))))
 
 (defn deactivate-dom-R
   "Remove our callback to the atom's dom-R. That should be its only
@@ -277,7 +268,6 @@
                        ;; Rather than dissoc, we assoc with nil, so we
                        ;; don't turn the record into a map.
                        (assoc :dom-specification nil
-                              :dom nil
                               :dom-R nil
                               :client-needs-dom nil)
                        (update-new-further-actions
@@ -420,74 +410,51 @@
 
 (defn update-dom
   [component-data component-atom dom]
-  (if (and (valid? dom)
-           (= (component-data-state component-data) :active))
-    (do
-      (assert (:dom-version component-data) (into {} component-data))
-      (if (= dom (:dom component-data))
-        ;; The dom hasn't changed. Bump the version to note that we have done
-        ;; a recomputation.
-        (update component-data :dom-version inc)
-        (let [elide-subcomponent (= (first dom) :component)
-              subcomponent-specs (get-id->subcomponent-specifications dom)
-              ids (keys subcomponent-specs)
-              old-id->subcomponent (or (:id->subcomponent component-data) {})
-              id->subcomponent (zipmap
-                                ids
-                                (map (fn [id] (reuse-or-make-component-atom
-                                               (subcomponent-specs id)
-                                               (:dom-manager component-data)
-                                               component-atom
-                                               elide-subcomponent
-                                               nil
-                                               (old-id->subcomponent id)))
-                                     ids))
-              dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                                      (old-id->subcomponent %))
-                                               (keys old-id->subcomponent))
-              new-subcomponent-ids (filter #(not= (id->subcomponent %)
+  (if (not= (component-data-state component-data) :active)
+    component-data
+    (let [elide-subcomponent (= (first dom) :component)
+          old-id->subcomponent (or (:id->subcomponent component-data) {})
+          subcomponent-specs (get-id->subcomponent-specifications dom)
+          subcomponent-ids (keys subcomponent-specs)
+          subcomponents (map (fn [id] (reuse-or-make-component-atom
+                                       (subcomponent-specs id)
+                                       (:dom-manager component-data)
+                                       component-atom
+                                       elide-subcomponent
+                                       nil
+                                       (old-id->subcomponent id)))
+                             subcomponent-ids)
+          id->subcomponent (zipmap subcomponent-ids subcomponents)
+          dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
                                                   (old-id->subcomponent %))
-                                           (keys id->subcomponent))]
-          (-> component-data
-              (assoc :dom dom
-                     :id->subcomponent id->subcomponent
-                     :client-needs-dom (not (:elided component-data)))
-              (update :dom-version inc)
-              (update-new-further-action
-               process-dom-ready-for-client
-               (:dom-manager component-data) component-atom)
-              (update-new-further-actions
-               (map (fn [id] [activate-component (id->subcomponent id)])
-                    new-subcomponent-ids))
-              (update-new-further-actions
-               (map (fn [id] [deactivate-component (old-id->subcomponent id)])
-                    dropped-subcomponent-ids))))))
-    component-data))
+                                           (keys old-id->subcomponent))
+          new-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                              (old-id->subcomponent %))
+                                       subcomponent-ids)]
+      (-> component-data
+          (assoc :id->subcomponent id->subcomponent
+                 :client-needs-dom (not (:elided component-data)))
+          (update :dom-version inc)
+          (update-new-further-action
+           process-dom-ready-for-client
+           (:dom-manager component-data) component-atom)
+          (update-new-further-actions
+           (map (fn [id] [activate-component (id->subcomponent id)])
+                new-subcomponent-ids))
+          (update-new-further-actions
+           (map (fn [id] [deactivate-component (old-id->subcomponent id)])
+                dropped-subcomponent-ids))))))
 
-(defn do-update-dom
-  [component-atom dom]
-  (swap-and-act!
-   component-atom
-   #(let [result (update-dom % component-atom dom)]
-      (assert (instance? ComponentData result))
-      result)))
-
-(defn mark-component-tree-as-needed
-  "Mark the component and all its descendants as needing to be sent to
-  the client. Return a list of pairs of all those components with ready
-  dom and their depth."
+(defn handle-dom-change
   [component-atom]
-  (let [[depth dom id->subcomponent]
-        (swap-control-return!
-         component-atom
-         (fn [component-data] [(assoc component-data :client-needs-dom
-                                      (not (:elided component-data)))
-                               [(:depth component-data)
-                                (:dom component-data)
-                                (:id->subcomponent component-data)]]))]
-    (concat (when dom [[component-atom depth]])
-            (mapcat mark-component-tree-as-needed
-                    (vals id->subcomponent)))))
+  (with-latest-value [dom (reporter-value-when-valid (:dom-R @component-atom))]
+    (swap-and-act!
+     component-atom
+     #(let [result (update-dom % component-atom dom)]
+        ;; Detect problems where an update to the component-data, like
+        ;; a dissoc, turned it into a map.
+        (assert (instance? ComponentData result))
+        result))))
 
 (defn new-dom-manager
   "Return a new dom-manager object for doms over the store."
@@ -683,13 +650,18 @@
         (some #{target} monitored-ids)))))
 
 (defn find-displayed-dom
-  "Find the displayed dom corresponding to the given dom. (The first
-  non-component after chasing elided doms downward.) Return:
-     the displayed dom, with all classes along the path added,
-     the version of the containing dom,
-     whether some dom in the path displays a monitored id."
+  "Find the displayed dom corresponding to the given component. (The
+  first non-component after chasing elided doms downward.) Return: the
+  displayed dom, with all classes along the path added, the version of
+  the containing dom, whether some dom in the path displays a
+  monitored id."
   [component-atom monitored-ids]
   (let [{:keys [dom-R dom-version id->subcomponent]} @component-atom
+        ;; We get whatever the latest reporter value is. It will
+        ;; always be at least as recent as the one corresponding to
+        ;; the current dom-version number, and that is good
+        ;; enough. Worst case, we will send the same dom more than
+        ;; once, until the version number catches up with it.
         dom (reporter-value-when-valid dom-R)
         monitored (component-is-monitored? component-atom monitored-ids)]
     (when dom
@@ -832,6 +804,25 @@
                      :root-components {}
                      :client-ready-dom (priority-map))
               (vals (:root-components manager-data))))))
+
+;;; TODO: Make a function to copy the :client-ready-dom value to the
+;;; dom manager.
+(defn mark-component-tree-as-needed
+  "Mark the component and all its descendants as needing to be sent to
+  the client. Return a list of pairs of all those components with ready
+  dom and their depth."
+  [component-atom]
+  (let [[depth dom subcomponents]
+        (swap-control-return!
+         component-atom
+         (fn [component-data]
+           [(assoc component-data :client-needs-dom
+                   (not (:elided component-data)))
+            [(:depth component-data)
+             (reporter-value-when-valid (:dom-R component-data))
+             (vals (:id->subcomponent component-data))]]))]
+    (concat (when dom [[component-atom depth]])
+            (mapcat mark-component-tree-as-needed subcomponents))))
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."

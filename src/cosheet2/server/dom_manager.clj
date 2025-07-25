@@ -209,7 +209,7 @@
     (new-application application)))
 
 (defn dom-calculator-callback
-  "This is the callback for the dom calculating reporter"
+  "This is the callback for the reporter that calculates the dom."
   [& {:keys [key reporter]}]
   (let [component-atom key]
     (with-latest-value [dom (reporter-value-when-valid reporter)]
@@ -364,65 +364,6 @@
             (vec (subcomponent-specifications dom)))
     answer))
 
-;;; TODO: !!! This should no longer be needed.
-(def compute-dom-unless-newer)
-
-;;; TODO: !!! This should no longer be needed.
-(defn schedule-compute-dom-unless-newer
-  [component-atom]
-  (let [{:keys [dom-manager dom-version depth]} @component-atom
-        queue (:queue (:calculator-data @dom-manager))]
-    (comment
-      (add-task-with-priority
-       queue depth
-       compute-dom-unless-newer component-atom dom-version))))
-
-;;; TODO: !!! This should no longer be needed.
-(defn reporter-changed-callback
-  [& {:keys [key]}]
-  (comment
-    (schedule-compute-dom-unless-newer key)))
-
-;;; TODO: !!! This should no longer be needed.
-(defn update-register-for-reporters
-  "Find out what reporters the component's renderer needs,
-  and register for them."
-  [component-data component-atom]
-  (let [{:keys [reporters dom-specification dom-manager]} component-data
-        mutable-store (:mutable-store @dom-manager)]
-    (if (or reporters (not dom-specification))
-      component-data
-      (let [getter (rendering-data-getter dom-specification)
-            pairs (call-pseudo-closure getter dom-specification mutable-store)]
-        (-> component-data
-            (assoc :reporters (map first pairs))
-            (update-new-further-actions
-             (mapcat (fn [[r categories]]
-                       (when (reporter? r)
-                         (cond-> [[set-attendee!
-                                   r component-atom (:depth component-data)
-                                   categories
-                                   reporter-changed-callback]]
-                           (not= r mutable-store)
-                           (conj [propagate-calculator-data!
-                                  r (:calculator-data @dom-manager)]))))
-                     pairs)))))))
-
-;;; TODO: !!! This should no longer be needed.
-(defn update-unregister-for-reporters
-  "Remove the registrations from the component data's reporters"
-  [component-data component-atom]
-  (let [reporters (:reporters component-data)]
-    (if reporters
-      (-> component-data
-          ;; We assoc with nil, rather than dissoc, so we don't turn
-          ;; the record into a map.
-          (assoc :reporters nil)
-          (update-new-further-actions
-           (map (fn [r] [remove-attendee! r component-atom])
-                (filter reporter? reporters))))
-      component-data)))
-
 (defn remove-from-client-ready-dom
   [dom-manager component-atom]
   (swap! dom-manager
@@ -530,26 +471,6 @@
    #(let [result (update-dom % component-atom dom)]
       (assert (instance? ComponentData result))
       result)))
-
-;;; TODO: !!! This should be unnecessary
-(defn compute-dom-unless-newer
-  "Compute the dom, unless its current version is greater than old-version.
-  (That would mean that the dom has been recomputed since we were
-  asked to compute it.)"
-  [component-atom old-dom-version]
-  (let [component-data @component-atom
-        {:keys [reporters dom-specification dom-version dom-R]} component-data
-        renderer (dom-renderer dom-specification)]
-    (when (and dom-specification (<= dom-version old-dom-version))
-      (with-latest-value [reporter-values (map reporter-value reporters)]
-        (when (every? valid? reporter-values)
-          (let [dom (current-value dom-R)]
-            (comment
-              (swap-and-act!
-               component-atom
-               #(let [result (update-dom % component-atom dom)]
-                  (assert (instance? ComponentData result))
-                  result)))))))))
 
 (defn mark-component-tree-as-needed
   "Mark the component and all its descendants as needing to be sent to

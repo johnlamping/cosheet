@@ -324,24 +324,26 @@
   [component-atom]
   (swap-and-act!
    component-atom
-   #(if (= (component-data-state %) :inactive)
-      % ; This component has already been deactivated.
-      (let [result (-> %
-                       ;; Rather than dissoc, we assoc with nil, so we
-                       ;; don't turn the record into a map.
-                       (assoc :dom-specification nil
-                              :dom-R nil
-                              :client-needs-dom nil)
-                       (update-new-further-actions
-                        (map (fn [ca] [deactivate-component ca])
-                             (vals (:id->subcomponent %))))
-                       (update-new-further-action
-                        deactivate-dom-R component-atom (:dom-R %))
-                       (update-new-further-action
-                        remove-from-components-to-send
-                        (:dom-manager %) component-atom))]
-        (assert (instance? ComponentData result))
-        result))))
+   (fn [component-data]
+     (if (= (component-data-state component-data) :inactive)
+       component-data ; This component has already been deactivated.
+       (let [{:keys [id->subcomponent dom-R dom-manager]} component-data
+             result (-> component-data
+                        ;; Rather than dissoc, we assoc with nil, so we
+                        ;; don't turn the record into a map.
+                        (assoc :dom-specification nil
+                               :dom-R nil
+                               :client-needs-dom nil)
+                        (update-new-further-actions
+                         (map (fn [ca] [deactivate-component ca])
+                              (vals id->subcomponent)))
+                        (update-new-further-action
+                         deactivate-dom-R component-atom dom-R)
+                        (update-new-further-action
+                         remove-from-components-to-send
+                         dom-manager component-atom))]
+         (assert (instance? ComponentData result))
+         result)))))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their

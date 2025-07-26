@@ -192,6 +192,58 @@
 (def handle-dom-change)
 (def remove-from-components-to-send)
 
+(defn make-component-atom
+  "Given a component specification, create a component data atom. The
+  component must not be transitioned from the :created to the :active
+  state until it is recorded in the id->subcomponent of its containing
+  component. That is handled by activate-component."
+  [specification dom-manager containing-component-atom elided client-id]
+  (assert (map? specification))
+  (assert (instance? DOMManagerData @dom-manager))
+  (when containing-component-atom
+    (assert (instance? ComponentData @containing-component-atom)))
+  (when client-id (assert (keyword? client-id)))
+  (assert (or client-id
+              (and (:relative-id specification) containing-component-atom)))
+  (when-let [relative-id (:relative-id specification)]
+    (assert (valid-relative-id? relative-id) relative-id))
+  (let [depth (if containing-component-atom
+                (+ 1 (:depth @containing-component-atom))
+                1)]
+    (atom
+     (map->ComponentData
+      {:dom-manager dom-manager
+       :dom-specification specification
+       :client-id client-id
+       :containing-component containing-component-atom
+       :elided elided
+       :depth depth
+       :client-needs-dom (not elided)}))))
+
+(defn reuse-or-make-component-atom
+  "Given the particulars for a component, plus an existing component atom,
+  return the existing atom if it matches the particulars, otherwise
+  make a new one and return it."
+  [specification dom-manager containing-component-atom will-be-elided
+   client-id old-component-atom]
+  (if (when old-component-atom
+        (let [{:keys [dom-specification elided containing-component]}
+              @old-component-atom]
+          ;; The containing component is responsible for managing demand
+          ;; for its contained components, so if we somehow get a
+          ;; different containing component, something went wrong.
+          (assert (= containing-component containing-component-atom))
+          (and (= dom-specification specification)
+               ;; If the elision has changed, then the id for the
+               ;; component that is passed to the client will change,
+               ;; so we can't use the old component, which would cause
+               ;; us to talk to the client using the old id.
+               (= elided will-be-elided))))
+    old-component-atom
+    (make-component-atom
+     specification dom-manager
+     containing-component-atom will-be-elided client-id)))
+
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
   [dom-specification mutable-store]
@@ -244,6 +296,7 @@
 
 (defn activate-component
   "Make a reporter to calculate the component's DOM, and activate it.
+  Also set up the current dom version.
   This can't be done at the time the component-atom is created, as
   that typically happens during a dom update for this component's
   containing component, inside a swap-control-return!. The
@@ -256,10 +309,12 @@
    (fn [component-data]
      (let [{:keys [dom-specification dom-manager]} component-data]
        (if (= (component-data-state component-data) :created)
-         (let [dom-R (make-dom-calculating-reporter
-                      dom-specification (:mutable-store @dom-manager))]
+         (let [{:keys [mutable-store highest-version]} @dom-manager
+               dom-R (make-dom-calculating-reporter
+                      dom-specification mutable-store)]
            (-> component-data
                (assoc :dom-R dom-R)
+               (assoc :dom-version (+ 1 highest-version))
                (update-new-further-action activate-dom-R component-atom)))
          ;; The atom has already been activated. Don't do anything.
          component-data)))))
@@ -287,60 +342,6 @@
                         (:dom-manager %) component-atom))]
         (assert (instance? ComponentData result))
         result))))
-
-(defn make-component-atom
-  "Given a component specification, create a component data atom. The
-  component must not be transitioned from the :created to the :active
-  state until it is recorded in the id->subcomponent of its containing
-  component. That is handled by activate-component."
-  [specification dom-manager containing-component-atom elided client-id]
-  (assert (map? specification))
-  (assert (instance? DOMManagerData @dom-manager))
-  (when containing-component-atom
-    (assert (instance? ComponentData @containing-component-atom)))
-  (when client-id (assert (keyword? client-id)))
-  (assert (or client-id
-              (and (:relative-id specification) containing-component-atom)))
-  (when-let [relative-id (:relative-id specification)]
-    (assert (valid-relative-id? relative-id) relative-id))
-  (let [{:keys [mutable-store highest-version]} @dom-manager
-        depth (if containing-component-atom
-                (+ 1 (:depth @containing-component-atom))
-                1)]
-    (atom
-     (map->ComponentData
-      {:dom-manager dom-manager
-       :dom-specification specification
-       :client-id client-id
-       :containing-component containing-component-atom
-       :elided elided
-       :depth depth
-       :client-needs-dom (not elided)
-       :dom-version (+ 1 highest-version)}))))
-
-(defn reuse-or-make-component-atom
-  "Given the particulars for a component, plus an existing component atom,
-  return the existing atom if it matches the particulars, otherwise
-  make a new one and return it."
-  [specification dom-manager containing-component-atom will-be-elided
-   client-id old-component-atom]
-  (if (when old-component-atom
-        (let [{:keys [dom-specification elided containing-component]}
-              @old-component-atom]
-          ;; The containing component is responsible for managing demand
-          ;; for its contained components, so if we somehow get a
-          ;; different containing component, something went wrong.
-          (assert (= containing-component containing-component-atom))
-          (and (= dom-specification specification)
-               ;; If the elision has changed, then the id for the
-               ;; component that is passed to the client will change,
-               ;; so we can't use the old component, which would cause
-               ;; us to talk to the client using the old id.
-               (= elided will-be-elided))))
-    old-component-atom
-    (make-component-atom
-     specification dom-manager
-     containing-component-atom will-be-elided client-id)))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their

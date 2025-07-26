@@ -113,7 +113,7 @@
 (defn component-data-state
   "This function takes a component's component-data and returns which
   one of these three stages of its life cycle it is in.
-   :created    The unchanging part of the component's data has been
+     :created  The unchanging part of the component's data has been
                filled in, but the reporter that calculates its dom
                hasn't been made yet.
       :active  A reporter is running to update the component's dom
@@ -458,7 +458,7 @@
     (swap-and-act!
      component-atom
      #(let [result (update-dom % component-atom dom)]
-        ;; Detect problems where an update to the component-data, like
+        ;; Check for problems where an update to the component-data, like
         ;; a dissoc, turned it into a map.
         (assert (instance? ComponentData result))
         result))))
@@ -663,13 +663,15 @@
   the containing dom, whether some dom in the path displays a
   monitored id."
   [component-atom monitored-ids]
-  (let [{:keys [dom-R dom-version id->subcomponent]} @component-atom
+  (let [{:keys [dom-R dom-version id->subcomponent] :as component-data}
+        @component-atom 
         ;; We get whatever the latest reporter value is. It will
         ;; always be at least as recent as the one corresponding to
         ;; the current dom-version number, and that is good
         ;; enough. Worst case, we will send the same dom more than
         ;; once, until the version number catches up with it.
-        dom (reporter-value-when-valid dom-R)
+        dom (when (= (component-data-state component-data) :active)
+              (reporter-value-when-valid dom-R))
         monitored (component-is-monitored? component-atom monitored-ids)]
     (when dom
       (if (= (first dom) :component)

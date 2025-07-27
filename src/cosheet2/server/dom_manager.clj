@@ -83,6 +83,15 @@
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
                            ; changes.
+    obsolete-subcomponents ; A seq of component atoms for subcomponents
+                           ; that this component used to have, that
+                           ; need to be deactivated before any new
+                           ; subcomponents can be activated. The issue
+                           ; is that they might have the same client
+                           ; id as a current subcomponent, and they
+                           ; might send their dom to the client with a
+                           ; higher version numbere than the current
+                           ; subcomponent.
      dom-version           ; A monotonically increasing version number
                            ; for the current dom. It goes up every
                            ; time the dom changes.  It is sent by the
@@ -342,6 +351,7 @@
                         (update-new-further-action
                          remove-from-components-to-send
                          dom-manager component-atom))]
+         ;; Check for errors where we made it not be a ComponentData.
          (assert (instance? ComponentData result))
          result)))))
 
@@ -366,24 +376,28 @@
 
 (defn remove-from-components-to-send
   [dom-manager component-atom]
+  ;; There is no need to check the component's current state, as this
+  ;; function is only called after a component is made inactive, and a
+  ;; component can never leave that state.
   (swap! dom-manager
          (fn [data] (dissoc-in data [:components-to-send component-atom]))))
 
 (defn add-to-components-to-send
   [dom-manager component-atom]
-  (swap! dom-manager
-         (fn [manager-data]
-           (update manager-data :components-to-send
-                   #(assoc % component-atom (:depth @component-atom)))))
-  ;; Since we copied data from one atom to another, we would normally
-  ;; have to operate inside a with-latest-value, checking that the
-  ;; component atom was still activate, to make sure we aren't
-  ;; stepping on some thread with more recent data. But since a
-  ;; component can only transition from active to inactive, and never
-  ;; back, it is sufficient to check once that it hasn't gone
-  ;; inactive.
-  (when (not= (component-data-state @component-atom) :active)
-    (remove-from-components-to-send dom-manager component-atom)))
+  (when (= (component-data-state @component-atom) :active)
+    (swap! dom-manager
+           (fn [manager-data]
+             (update manager-data :components-to-send
+                     #(assoc % component-atom (:depth @component-atom)))))
+    ;; Since we copied data from one atom to another, we would
+    ;; normally have to operate inside a with-latest-value, checking
+    ;; that the component atom was still activate, to make sure we
+    ;; didn't stepping on some thread with more recent data. But since
+    ;; a component can only transition from active to inactive, and
+    ;; never back, it is sufficient to check once that it hasn't gone
+    ;; inactive.
+    (when (not= (component-data-state @component-atom) :active)
+      (remove-from-components-to-send dom-manager component-atom))))
 
 (defn find-non-elided-containing-component
   "If the component is elided, go up the containment hierarchy to the
@@ -418,53 +432,114 @@
       (swap! non-elided #(update % :dom-version inc)))
     (add-to-components-to-send dom-manager non-elided)))
 
+(defn deactivate-then-activate
+  "Deactivate the all the sub components marked as obsolete, then make
+  sure the dom manager's highest version is at least as big as their
+  dom-versions, then activate the specified components.
+  See the explanation in update-dom for why we need to deactivate the
+  obsolete components first."
+  [component-atom components-to-activate]
+  (when-let [obsolete (:obsolete-subcomponents @component-atom)]
+    ;; First, deactivate the subcomponents so they won't send any more
+    ;; messages to the client.
+    (doseq [subcomponent obsolete]
+      (deactivate-component subcomponent))
+    ;; Now we can get the final dom versions for each of them and make
+    ;; sure the dom-manager's highest version dom is at least that
+    ;; high.
+    (let [max-version (apply max (map (fn [component]
+                                        (:dom-version @component))
+                                      obsolete))
+          dom-manager (:dom-manager @(first obsolete))]
+      (swap! dom-manager
+             (fn [manager-data]
+               (update manager-data :highest-version
+                       #(max % max-version)))))
+    ;; Next, removes these subcomponents from the list of obsolete
+    ;; ones. (The set of obsolete ones might have changed from when we
+    ;; started running.)
+    (swap! component-atom
+           (fn [component-data]
+             (update component-data :obsolete-components
+                     #(apply dissoc % (seq obsolete))))))
+  ;; Now, we can safely active the waiting components, and we
+  ;; are guaranteed that they will have higher numbers than what
+  ;; they replaced. (It is possible that they have gone obsolete by
+  ;; the time we get to here, but either they will have already been
+  ;; deactivated, and activation will do nothing, or there is a
+  ;; waiting task that will deactivate them.)
+  (doseq [subcomponent components-to-activate]
+    (activate-component subcomponent)))
+
 (defn update-dom
+  "Update the component data to reflect having the given dom,
+  and start up computations to handle consequences of that."
   [component-data component-atom dom]
   (if (not= (component-data-state component-data) :active)
     component-data
-    (let [elide-subcomponent (= (first dom) :component)
+    (let [{:keys [obsolete-subcomponents dom-manager]} component-data
+          elide-subcomponent (= (first dom) :component)
           old-id->subcomponent (or (:id->subcomponent component-data) {})
           subcomponent-specs (get-id->subcomponent-specifications dom)
           subcomponent-ids (keys subcomponent-specs)
           subcomponents (map (fn [id] (reuse-or-make-component-atom
                                        (subcomponent-specs id)
-                                       (:dom-manager component-data)
+                                       dom-manager
                                        component-atom
                                        elide-subcomponent
                                        nil
                                        (old-id->subcomponent id)))
                              subcomponent-ids)
           id->subcomponent (zipmap subcomponent-ids subcomponents)
-          dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                                  (old-id->subcomponent %))
-                                           (keys old-id->subcomponent))
-          new-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                              (old-id->subcomponent %))
-                                       subcomponent-ids)]
-      (-> component-data
-          (assoc :id->subcomponent id->subcomponent
-                 :client-needs-dom (not (:elided component-data)))
-          (update :dom-version inc)
+          new-subcomponents (map id->subcomponent
+                                 (filter #(not= (id->subcomponent %)
+                                                (old-id->subcomponent %))
+                                         subcomponent-ids))
+          dropped-subcomponents (map old-id->subcomponent
+                                     (filter #(not= (id->subcomponent %)
+                                                    (old-id->subcomponent %))
+                                             (keys old-id->subcomponent)))
+          obsolete (seq (clojure.set/union (set obsolete-subcomponents)
+                                           (set dropped-subcomponents)))]
+      (let [component-data
+            (-> component-data
+                (assoc :id->subcomponent id->subcomponent
+                       :obsolete-subcomponents obsolete
+                       :client-needs-dom (not (:elided component-data)))
+                (update :dom-version inc)
+                (update-new-further-action
+                 process-dom-ready-for-client dom-manager component-atom))]
+        (if obsolete
+          ;; When a component gets a new dom, we can't activate its new
+          ;; sub-components until we have deactivated all its no longer
+          ;; needed sub-components. Otherwise, we could have more than
+          ;; one sub-component active with the same client id, and the
+          ;; obsolete one may end up getting sent to the client with a
+          ;; later dom-version than the current one has, precluding the
+          ;; client from accepting the current one's dom.
+          ;; So we set up a task to first deactivate the old ones, then
+          ;; activate the new ones.
           (update-new-further-action
-           process-dom-ready-for-client
-           (:dom-manager component-data) component-atom)
-          (update-new-further-actions
-           (map (fn [id] [activate-component (id->subcomponent id)])
-                new-subcomponent-ids))
-          (update-new-further-actions
-           (map (fn [id] [deactivate-component (old-id->subcomponent id)])
-                dropped-subcomponent-ids))))))
+           component-data
+           deactivate-then-activate component-atom new-subcomponents)
+          ;; There are no obsolete components, we can go ahead and
+          ;; activate the new ones.
+          (update-new-further-action
+           component-data
+           #(doseq [component-atom new-subcomponents]
+              (activate-component component-atom))))))))
 
 (defn handle-dom-change
   [component-atom]
   (with-latest-value [dom (reporter-value-when-valid (:dom-R @component-atom))]
-    (swap-and-act!
-     component-atom
-     #(let [result (update-dom % component-atom dom)]
-        ;; Check for problems where an update to the component-data, like
-        ;; a dissoc, turned it into a map.
-        (assert (instance? ComponentData result))
-        result))))
+    (when dom
+      (swap-and-act!
+       component-atom
+       #(let [result (update-dom % component-atom dom)]
+          ;; Check for problems where an update to the component-data, like
+          ;; a dissoc, turned it into a map.
+          (assert (instance? ComponentData result))
+          result)))))
 
 (defn new-dom-manager
   "Return a new dom-manager object for doms over the store."

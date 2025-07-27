@@ -64,6 +64,8 @@
   (let [id (make-item-id "a")]
     (is (= (-> id id->string string->id) id)))
   (let [id (->ItemId 3)]
+    (is (= (-> id id->string string->id) id)))
+  (let [id (->ItemId -3)]
     (is (= (-> id id->string string->id) id))))
 
 (deftest stored-item-description-name-test

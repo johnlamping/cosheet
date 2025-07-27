@@ -123,12 +123,19 @@
   [id]
   (assert (instance? ItemId id))
   (let [id (:id id)]
-    (if (integer? id) (str id) (str "I" id))))
+    (if (integer? id)
+      (if (< id 0)
+        (str "M" (str (- id)))
+        (str id))
+      (str "I" id))))
 
 (defn string->id
   "Given the string representation of an id, return the id."
   [rep]
-  (->ItemId (if (= (first rep) \I) (subs rep 1) (parse-string-as-number rep))))
+  (->ItemId (case (first rep)
+              \I (subs rep 1)
+              \M (- (parse-string-as-number (subs rep 1)))
+              (parse-string-as-number rep))))
 
 (defn item-id-name [this]
   "A printable name for the item id, indicating it is an id."

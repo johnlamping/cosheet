@@ -194,6 +194,14 @@
   ;; Avoid huge print-outs.
   (.write w "<DOMManagerData>"))
 
+;;; We build up client ids from a sequence of :relative-id values,
+;;; which are either a keyword, an item id, or a sequence of those
+;;; things. Since client ids must be strings, we turn all the pieces
+;;; in the sequence of relative ids into strings (prefixing the names
+;;; of keywords with "K"), concatenate the subparts of any
+;;; sub-sequences with ".", then concatenate the overall sequence with
+;;; "_".  For example, the sequence [:a [<id 2> :b]] becomes "Ka_2.Kb"
+
 (defn valid-id-subpart?
   [id]
   (if (keyword? id)
@@ -208,6 +216,60 @@
 
 (defn valid-relative-id? [id]
   (every? valid-id-subpart? (if (sequential? id) id [id])))
+
+(defn concatenate-client-id-parts [client-id-parts]
+  (clojure.string/join "_" client-id-parts))
+
+(defn split-client-id-parts [client-id]
+  (clojure.string/split client-id #"_"))
+
+(defn concatenate-client-id-subparts [client-id-subparts]
+  (clojure.string/join "." client-id-subparts))
+
+(defn split-client-id-subparts [client-id-part]
+  (clojure.string/split client-id-part #"\."))
+
+(defn  id-subpart->client-id-subpart
+  "Turn a subpart of a :relative-id to its client form."
+  [id]
+  (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
+        (is-item-id? id) (id->string id)
+        true (assert false (str "unknown relative id subpart:"
+                                [(type id) id]))))
+
+(defn client-id-subpart->id-subpart
+  "Turn a subpart of a client id into a :relative-id"
+  [client-id-subpart]
+  (if (and (string? client-id-subpart)
+           (re-matches #"[I0-9]" (subs client-id-subpart 0 1)))
+    (string->id client-id-subpart)
+    (keyword client-id-subpart)))
+
+(defn relative-id->client-id-part
+  "Turn a :relative-id to its client form."
+  [id]
+  (concatenate-client-id-subparts
+   (map id-subpart->client-id-subpart (if (sequential? id) id [id]))))
+
+(defn client-id-part->relative-id
+  "Turn a part of a client id into a :relative-id"
+  [client-id-part]
+  (let [subparts (map client-id-subpart->id-subpart
+                      (split-client-id-subparts client-id-part))]
+    (if (= (count subparts) 1) (first subparts) (vec subparts))))
+
+(defn relative-ids->client-id
+  "Given a sequence of relative ids, return a string representation
+  that can be passed to the client."
+  [ids]
+  (when (some nil? ids)
+    (println "!!!! Got a nil relative-id" ids))
+  (concatenate-client-id-parts (map relative-id->client-id-part ids)))
+
+(defn client-id->relative-ids
+  "Given a string representation of a client id, return the relative ids."
+  [client-id]
+  (vec (map client-id-part->relative-id (split-client-id-parts client-id)))) 
 
 (def handle-dom-change)
 (def remove-from-components-to-send)
@@ -562,68 +624,6 @@
       :mutable-store mutable-store
       :further-actions nil})))
 
-;;; We build up client ids from a sequence of :relative-id values,
-;;; which are either a keyword, an item id, or a sequence of those
-;;; things. Since client ids must be strings, we turn all the pieces
-;;; in the sequence of relative ids into strings (prefixing the names
-;;; of keywords with "K"), concatenate the subparts of any
-;;; sub-sequences with ".", then concatenate the overall sequence with
-;;; "_".  For example, the sequence [:a [<id 2> :b]] becomes "Ka_2.Kb"
-
-(defn concatenate-client-id-parts [client-id-parts]
-  (clojure.string/join "_" client-id-parts))
-
-(defn split-client-id-parts [client-id]
-  (clojure.string/split client-id #"_"))
-
-(defn concatenate-client-id-subparts [client-id-subparts]
-  (clojure.string/join "." client-id-subparts))
-
-(defn split-client-id-subparts [client-id-part]
-  (clojure.string/split client-id-part #"\."))
-
-(defn  id-subpart->client-id-subpart
-  "Turn a subpart of a :relative-id to its client form."
-  [id]
-  (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
-        (is-item-id? id) (id->string id)
-        true (assert false (str "unknown relative id subpart:"
-                                [(type id) id]))))
-
-(defn client-id-subpart->id-subpart
-  "Turn a subpart of a client id into a :relative-id"
-  [client-id-subpart]
-  (if (and (string? client-id-subpart)
-           (re-matches #"[I0-9]" (subs client-id-subpart 0 1)))
-    (string->id client-id-subpart)
-    (keyword client-id-subpart)))
-
-(defn relative-id->client-id-part
-  "Turn a :relative-id to its client form."
-  [id]
-  (concatenate-client-id-subparts
-   (map id-subpart->client-id-subpart (if (sequential? id) id [id]))))
-
-(defn client-id-part->relative-id
-  "Turn a part of a client id into a :relative-id"
-  [client-id-part]
-  (let [subparts (map client-id-subpart->id-subpart
-                      (split-client-id-subparts client-id-part))]
-    (if (= (count subparts) 1) (first subparts) (vec subparts))))
-
-(defn relative-ids->client-id
-  "Given a sequence of relative ids, return a string representation
-  that can be passed to the client."
-  [ids]
-  (when (some nil? ids)
-    (println "!!!! Got a nil relative-id" ids))
-  (concatenate-client-id-parts (map relative-id->client-id-part ids)))
-
-(defn client-id->relative-ids
-  "Given a string representation of a client id, return the relative ids."
-  [client-id]
-  (vec (map client-id-part->relative-id (split-client-id-parts client-id)))) 
-
 (defn component->id-sequence
   "Return the sequence of ids to navigate to the component.
   If the component, or one of its containing components has been
@@ -889,8 +889,6 @@
               states)]
          (assoc manager-data :components-to-send components-to-send))))))
 
-;;; TODO: !!! Rename :components-to-send and :client-needs-dom
-;;;       to something less confusing.
 (defn process-acknowledgements
   "Modify the clients and the dom-manager to reflect the acknowledgements."
   [dom-manager acknowledgements]

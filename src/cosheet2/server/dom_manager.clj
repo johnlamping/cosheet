@@ -54,10 +54,11 @@
 (defrecord ComponentData
     [;; These fields will never change once the component data is created
      dom-manager           ; Our dom manager.
-     client-id             ; If non-nil, gives a keyword id to use for
-                           ; communicating with the client about this
-                           ; component. It will usually only be filled
-                           ; in for root components.
+     client-id             ; The id this component will have in the client.
+                           ; It is the concatenation of the relative ids
+                           ; of all the components on the path from the root
+                           ; to here (with a little processing to avoid
+                           ; ambiguity and HTML issues).
      containing-component  ; The component that contains this one. Nil
                            ; if this component is a root. If this is nil,
                            ; then client-id must be present.
@@ -229,7 +230,7 @@
 (defn split-client-id-subparts [client-id-part]
   (clojure.string/split client-id-part #"\."))
 
-(defn  id-subpart->client-id-subpart
+(defn id-subpart->client-id-subpart
   "Turn a subpart of a :relative-id to its client form."
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
@@ -258,56 +259,53 @@
                       (split-client-id-subparts client-id-part))]
     (if (= (count subparts) 1) (first subparts) (vec subparts))))
 
-(defn relative-ids->client-id
-  "Given a sequence of relative ids, return a string representation
-  that can be passed to the client."
-  [ids]
-  (when (some nil? ids)
-    (println "!!!! Got a nil relative-id" ids))
-  (concatenate-client-id-parts (map relative-id->client-id-part ids)))
+(defn subcomponent-client-id
+  "Given the client-id of a component, and the relative-id of one of its
+  subcomponent, return the client-id of the subcomponent."
+  [containing-client-id relative-id]
+  (concatenate-client-id-parts [containing-client-id
+                                (relative-id->client-id-part relative-id)]))
 
 (defn client-id->relative-ids
   "Given a string representation of a client id, return the relative ids."
   [client-id]
-  (vec (map client-id-part->relative-id (split-client-id-parts client-id)))) 
+  (vec (map client-id-part->relative-id (split-client-id-parts client-id))))
 
-(def handle-dom-change)
-(def remove-from-components-to-send)
+(defn relative-ids->client-id
+  "Given a sequence of relative ids, return a string representation that
+  can be passed to the client. This is not used in dom-manager, but
+  actions uses it."
+  [ids] (assert (not (some nil? ids)) ids)
+  (concatenate-client-id-parts (map relative-id->client-id-part ids)))
 
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
   component must not be transitioned from the :created to the :active
   state until it is recorded in the id->subcomponent of its containing
   component. That is handled by activate-component."
-  [specification dom-manager containing-component-atom elided client-id]
+  [specification dom-manager containing-component-atom client-id elided]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
   (when containing-component-atom
     (assert (instance? ComponentData @containing-component-atom)))
-  (when client-id (assert (keyword? client-id)))
-  (assert (or client-id
-              (and (:relative-id specification) containing-component-atom)))
-  (when-let [relative-id (:relative-id specification)]
-    (assert (valid-relative-id? relative-id) relative-id))
-  (let [depth (if containing-component-atom
-                (+ 1 (:depth @containing-component-atom))
-                1)]
-    (atom
-     (map->ComponentData
-      {:dom-manager dom-manager
-       :dom-specification specification
-       :client-id client-id
-       :containing-component containing-component-atom
-       :elided elided
-       :depth depth
-       :client-needs-dom (not elided)}))))
+  (atom
+   (map->ComponentData
+    {:dom-manager dom-manager
+     :dom-specification specification
+     :client-id client-id
+     :containing-component containing-component-atom
+     :elided elided
+     :depth (if containing-component-atom
+              (+ 1 (:depth @containing-component-atom))
+              1)
+     :client-needs-dom (not elided)})))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
   return the existing atom if it matches the particulars, otherwise
   make a new one and return it."
-  [specification dom-manager containing-component-atom will-be-elided
-   client-id old-component-atom]
+  [specification dom-manager containing-component-atom client-id
+   will-be-elided old-component-atom]
   (if (when old-component-atom
         (let [{:keys [dom-specification elided containing-component]}
               @old-component-atom]
@@ -324,7 +322,7 @@
     old-component-atom
     (make-component-atom
      specification dom-manager
-     containing-component-atom will-be-elided client-id)))
+     containing-component-atom client-id will-be-elided)))
 
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
@@ -341,6 +339,8 @@
                      pseudo-closure-application
                      renderer dom-specification data-reporters)]
     (new-application application)))
+
+(def handle-dom-change)
 
 (defn dom-calculator-callback
   "This is the callback for the reporter that calculates the dom."
@@ -400,6 +400,8 @@
                (update-new-further-action activate-dom-R component-atom)))
          ;; The atom has already been activated. Don't do anything.
          component-data)))))
+
+(def remove-from-components-to-send)
 
 (defn deactivate-component
   "Deactivate the component and all its descendant components."
@@ -552,18 +554,21 @@
   [component-data component-atom dom]
   (if (not= (component-data-state component-data) :active)
     component-data
-    (let [{:keys [obsolete-components dom-manager]} component-data
+    (let [{:keys [obsolete-components dom-manager client-id]} component-data
           elide-subcomponent (= (first dom) :component)
           old-id->subcomponent (or (:id->subcomponent component-data) {})
           subcomponent-specs (get-id->subcomponent-specifications dom)
           subcomponent-ids (keys subcomponent-specs)
-          subcomponents (map (fn [id] (reuse-or-make-component-atom
-                                       (subcomponent-specs id)
-                                       dom-manager
-                                       component-atom
-                                       elide-subcomponent
-                                       nil
-                                       (old-id->subcomponent id)))
+          subcomponents (map (fn [id]
+                               (let [spec (subcomponent-specs id)
+                                     {:keys [relative-id]} spec]
+                                 (reuse-or-make-component-atom
+                                  spec
+                                  dom-manager
+                                  component-atom
+                                  (subcomponent-client-id client-id relative-id)
+                                  elide-subcomponent
+                                  (old-id->subcomponent id))))
                              subcomponent-ids)
           id->subcomponent (zipmap subcomponent-ids subcomponents)
           new-subcomponents (map id->subcomponent
@@ -623,32 +628,6 @@
       :calculator-data calculator-data
       :mutable-store mutable-store
       :further-actions nil})))
-
-(defn component->id-sequence
-  "Return the sequence of ids to navigate to the component.
-  If the component, or one of its containing components has been
-  deactivated, return nil."
-  [component-atom]
-  (let [data @component-atom]
-    (if-let [client-id (:client-id data)]
-      [client-id]
-      ;; If there is no dom-spec, this component has been deactivated.
-      (when-let [dom-spec (:dom-specification data)]
-        ;; If the containing sequence returns nil, one of the
-        ;; containing components has been deactivated.
-        (when-let [containing-sequence (component->id-sequence
-                                      (:containing-component data))]
-          (if (:elided data)
-            containing-sequence
-            (conj containing-sequence (:relative-id dom-spec))))))))
-
-(defn component->client-id
-  "Return the client id for the component.
-  If the component, or one of its containing components has been
-  deactivated, return nil."
-  [component-atom]
-  (when-let [id-sequence (component->id-sequence component-atom)]
-    (relative-ids->client-id id-sequence)))
 
 (defn client-id->component
   "Returns the component for the given client id."
@@ -711,6 +690,7 @@
   (if (vector? dom)
     (if (= (first dom) :component)
       (let [{:keys [relative-id client-id class]} (second dom)]
+        ;; TODO: !!! This needs to call subcomponent-client-id.
         [:component (cond-> {:id (if client-id
                                    (relative-id->client-id-part client-id)
                                    (concatenate-client-id-parts
@@ -773,26 +753,8 @@
   [component-atom monitored-ids]
   (let [[dom dom-version monitored] (find-displayed-dom
                                      component-atom monitored-ids)
-        client-id (when dom
-                    (component->client-id component-atom))]
-    (when (and dom (not client-id))
-      (println "!!!!!!!!!!!!!!! ATTEMPT TO TRANSMIT DANGLING COMPONENT")
-      (println "elided" (:elided @component-atom))
-      (println "client-needs-dom" (:client-needs-dom @component-atom))
-      (println dom)
-      (loop [container (:containing-component @component-atom)]
-        (when container
-          (println "Contained in")
-          (println "  elided" (:elided @container))
-          (println "  client-needs-dom" (:client-needs-dom @container))
-          (when-let [spec (:dom-specification @container)]
-            (when-let [item-id (:item-id spec)]
-              (println "  item-id" item-id))
-            (when-let [relative-id (:relative-id spec)]
-              (println "  relative-id" relative-id))
-            (recur (:containing-component @container)))))
-      (println "dom-specification" (:dom-specification @component-atom)))
-    (when (and dom client-id)
+        client-id (:client-id @component-atom)]
+    (when dom
       (let [class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
                                                :version dom-version}
@@ -829,7 +791,7 @@
            (recur (if dom (conj response dom) response)
                   (longer-string
                    monitored-client-id
-                   (when monitored (component->client-id component)))
+                   (when monitored (:client-id @component)))
                   (max highest-version
                        (if dom (:version (dom-attributes dom)) 0))
                   remaining-components)))))))
@@ -901,17 +863,19 @@
     (reflect-client-needs-doms dom-manager affected-clients)))
 
 (defn add-root-dom
-  "Add dom with the given client id and specification to the dom-manager.
+  "Add dom with the given specification to the dom-manager.
   This is how the manager is bootstrapped with top level doms."
-  [dom-manager client-id specification]
-  (assert (keyword? client-id))
-  (let [component (make-component-atom
-                   specification dom-manager nil false client-id)]
+  [dom-manager specification]
+  (let [top-id (:relative-id specification)
+        component (make-component-atom
+                   specification dom-manager nil
+                   (id-subpart->client-id-subpart top-id) false)]
+    (assert (keyword? top-id))
     (swap-and-act!
      dom-manager
      (fn [manager-data]
        (let [{:keys [obsolete-components]}  manager-data
-             old-component (get-in manager-data [:root-components client-id])
+             old-component (get-in manager-data [:root-components top-id])
              obsolete (seq (into (set obsolete-components)
                                  (when old-component [old-component])))
              follow-on (if obsolete
@@ -919,7 +883,7 @@
                           dom-manager dom-manager [component]]
                          [activate-component component])]
          (-> manager-data
-             (assoc-in [:root-components client-id] component)
+             (assoc-in [:root-components top-id] component)
              (assoc :obsolete-components obsolete)
              (update :highest-version inc)
              (update-new-further-actions [follow-on])))))))

@@ -27,7 +27,7 @@
     [orderable :refer [initial split]])
    (cosheet2.server
     [session-state :refer [queue-to-log]]
-    [dom-manager :refer [client-id->action-data component->client-id
+    [dom-manager :refer [client-id->action-data
                          client-id->relative-ids
                          relative-ids->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes

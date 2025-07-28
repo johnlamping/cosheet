@@ -474,6 +474,7 @@
   [store session-temporary-id client-state]
   (let [id-R (top-level-id-R store client-state)]
     (assoc basic-dom-specification
+           :relative-id :root
            :reporter (top-level-DOM-R
                       store session-temporary-id client-state id-R)
            :id-R id-R ; used by top-level-get-action-data

@@ -345,7 +345,7 @@
         manager (new-dom-manager store calculator-data)]
     (assert (:reporter spec))
     (propagate-calculator-data! (:reporter spec) calculator-data)
-    (add-root-dom manager :root spec)
+    (add-root-dom manager spec)
     (println (new java.util.Date) "created manager")
     manager))
 

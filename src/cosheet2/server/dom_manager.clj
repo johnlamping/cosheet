@@ -689,14 +689,9 @@
   [container-client-id dom]
   (if (vector? dom)
     (if (= (first dom) :component)
-      (let [{:keys [relative-id client-id class]} (second dom)]
-        ;; TODO: !!! This needs to call subcomponent-client-id.
-        [:component (cond-> {:id (if client-id
-                                   (relative-id->client-id-part client-id)
-                                   (concatenate-client-id-parts
-                                    [container-client-id
-                                     (relative-id->client-id-part
-                                      relative-id)]))}
+      (let [{:keys [relative-id class]} (second dom)]
+        [:component (cond-> {:id (subcomponent-client-id
+                                  container-client-id relative-id)}
                       class (assoc :class class))])
       (vec (map (partial adjust-subdom-for-client container-client-id)
                 dom)))
@@ -720,18 +715,20 @@
 
 (defn find-displayed-dom
   "Find the displayed dom corresponding to the given component. (The
-  first non-component after chasing elided doms downward.) Return: the
-  displayed dom, with all classes along the path added, the version of
-  the containing dom, whether some dom in the path displays a
-  monitored id."
+  first non-component after chasing elided doms downward.) Return:
+     the displayed dom, with all classes along the path added,
+     the version of the containing dom,
+     whether some dom in the path displays a monitored id."
   [component-atom monitored-ids]
   (let [{:keys [dom-R dom-version id->subcomponent] :as component-data}
         @component-atom 
-        ;; We get whatever the latest reporter value is. It will
-        ;; always be at least as recent as the one corresponding to
-        ;; the current dom-version number, and that is good
-        ;; enough. Worst case, we will send the same dom more than
-        ;; once, until the version number catches up with it.
+        ;; We get whatever the latest reporter value is. It is possible
+        ;; That our reporter is temporarily invalid, in which case
+        ;; we will have no dom for now.
+        ;; The repoter may have gotten ahead of the current
+        ;; dom-version number, but that is OK. Worst case, we will
+        ;; send the same dom more than once, until the version number
+        ;; catches up with it.
         dom (when (= (component-data-state component-data) :active)
               (reporter-value-when-valid dom-R))
         monitored (component-is-monitored? component-atom monitored-ids)]
@@ -752,10 +749,10 @@
   return whether it presents one of the monitored ids."
   [component-atom monitored-ids]
   (let [[dom dom-version monitored] (find-displayed-dom
-                                     component-atom monitored-ids)
-        client-id (:client-id @component-atom)]
+                                     component-atom monitored-ids)]
     (when dom
-      (let [class (:class (second dom))
+      (let [client-id (:client-id @component-atom)
+            class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
                                                :version dom-version}
                                         class (assoc :class class)))]
@@ -780,21 +777,17 @@
             components (map first (:components-to-send manager-data))]
        (if (or (>= (count response) num) (empty? components))
          [(assoc manager-data :highest-version highest-version)
-          [response
-           monitored-client-id]]
+          [response monitored-client-id]]
          (let [[component & remaining-components] components
                [dom monitored] (prepare-dom-for-client component monitored-ids)]
-           ;; TODO: !!! If we didn't get a prepared dom, add a task to
-           ;; remove this item from the client-read-dom inside a
-           ;; with-current-value that checks that it is still
-           ;; impossible to get a client id.
-           (recur (if dom (conj response dom) response)
-                  (longer-string
-                   monitored-client-id
-                   (when monitored (:client-id @component)))
-                  (max highest-version
-                       (if dom (:version (dom-attributes dom)) 0))
-                  remaining-components)))))))
+           (recur
+            ;; The dom might be temporarily invalid.
+            (if dom (conj response dom) response)
+            (longer-string monitored-client-id
+                           (when monitored (:client-id @component)))
+            (max highest-version
+                 (if dom (:version (dom-attributes dom)) 0))
+            remaining-components)))))))
 
 (defn reflect-acknowledgements-in-components
   "Go through the acknowledgements and remove :client-needs-dom from

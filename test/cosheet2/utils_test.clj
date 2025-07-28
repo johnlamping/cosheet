@@ -146,6 +146,22 @@
     (is (= (:test @r) 11))
     (is (= @a 6))))
 
+(deftest swap-and-act-control-return!-test
+  (let [r (atom {:test 10})
+        a (atom 1)
+        result (swap-and-act-control-return!
+                r (fn [data]
+                    [(-> data
+                         (update-in [:test] inc)
+                         (update-new-further-action swap! a inc)
+                         (update-new-further-actions
+                          [[swap! a #(* % 3)]]))
+                     :foo]))]
+    
+    (is (= result :foo))
+    (is (= (:test @r) 11))
+    (is (= @a 6))))
+
 (deftest call-with-latest-value-test
   (let [cell (atom 1)]
     (call-with-latest-value

@@ -227,10 +227,10 @@
 
 (defn swap-and-act!
   "Atomically call the function on the atom's content.
-   The function should return the new contet for the atom,
-   which may also contain a temporary field, :further-actions with
-   a list of actions of the form [function argument ... argument],
-   which will be run immediately after the swap."
+   The function should return the new content for the atom, which may
+  contain a temporary field, :further-actions with a list of actions
+  of the form [function argument ... argument], which will be run
+  immediately after the swap."
   [atom f]
   (let [actions (swap-control-return!
                  atom
@@ -246,6 +246,31 @@
                                  nil]))))]
     (doseq [action actions]
       (apply (first action) (rest action)))))
+
+(defn swap-and-act-control-return!
+  "Atomically call the function on the atom's content.
+  The function should return the new content for the atom, and a
+  return value. The new content may contain a temporary
+  field, :further-actions with a list of actions of the form [function
+  argument ... argument], which will be run immediately after the
+  swap."
+  [atom f]
+  (let [[actions return-value]
+        (swap-control-return!
+         atom
+         (fn [data] (let [[new-data return-value] (f data)
+                          actions (:further-actions new-data)]
+                      (if actions
+                        ;; We assoc with nil, rather than
+                        ;; dissoc, so we won't turn a record
+                        ;; into a map.
+                        [(assoc new-data :further-actions nil)
+                         [actions return-value]]
+                        [new-data
+                         [nil return-value]]))))]
+    (doseq [action actions]
+      (apply (first action) (rest action)))
+    return-value))
 
 (defn call-with-latest-value
   "Call the function with the current value of the thunk,

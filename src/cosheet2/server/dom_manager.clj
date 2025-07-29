@@ -393,23 +393,28 @@
 (def remove-from-components-to-send)
 
 (defn deactivate-component
-  "Deactivate the component and all its descendant components."
+  "Deactivate the component and all its descendant components, and
+  remove all its links to descendant components, so they can be GCed."
   [component-atom]
   (swap-and-act!
    component-atom
    (fn [component-data]
      (if (= (component-data-state component-data) :inactive)
        component-data ; This component has already been deactivated.
-       (let [{:keys [id->subcomponent dom-R dom-manager]} component-data
+       (let [{:keys [id->subcomponent obsolete-components dom-R dom-manager]}
+             component-data
              result (-> component-data
                         ;; Rather than dissoc, we assoc with nil, so we
                         ;; don't turn the record into a map.
                         (assoc :dom-specification nil
+                               :id->subcomponent nil
+                               :obsolete-components nil
                                :dom-R nil
                                :client-needs-dom nil)
                         (update-new-further-actions
                          (map (fn [ca] [deactivate-component ca])
-                              (vals id->subcomponent)))
+                              (concat (vals id->subcomponent)
+                                      obsolete-components)))
                         (update-new-further-action
                          deactivate-dom-R component-atom dom-R)
                         (update-new-further-action

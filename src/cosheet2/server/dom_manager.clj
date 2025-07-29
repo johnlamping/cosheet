@@ -59,8 +59,6 @@
                            ; of all the components on the path from the root
                            ; to here (with a little processing to avoid
                            ; ambiguity and HTML issues).
-     containing-component  ; The component that contains this one. Nil
-                           ; if this component is a root. If this is nil,
                            ; then client-id must be present.
      elided-from           ; If the dom of one component consists of
                            ; nothing but another component, then the
@@ -286,17 +284,14 @@
   component must not be transitioned from the :created to the :active
   state until it is recorded in the id->subcomponent of its containing
   component. That is handled by activate-component."
-  [specification dom-manager containing-component-atom client-id depth elided-from]
+  [specification dom-manager client-id depth elided-from]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
-  (when containing-component-atom
-    (assert (instance? ComponentData @containing-component-atom)))
   (atom
    (map->ComponentData
     {:dom-manager dom-manager
      :dom-specification specification
      :client-id client-id
-     :containing-component containing-component-atom
      :elided-from elided-from
      :depth depth
      :client-needs-dom (not elided-from)})))
@@ -305,15 +300,10 @@
   "Given the particulars for a component, plus an existing component atom,
   return the existing atom if it matches the particulars, otherwise
   make a new one and return it."
-  [specification dom-manager containing-component-atom client-id depth
-   new-elided-from old-component-atom]
+  [specification dom-manager client-id depth new-elided-from old-component-atom]
   (if (when old-component-atom
-        (let [{:keys [dom-specification elided-from containing-component]}
+        (let [{:keys [dom-specification elided-from]}
               @old-component-atom]
-          ;; The containing component is responsible for managing
-          ;; demand for its contained components, so if we somehow get
-          ;; a different containing component, something went wrong.
-          (assert (= containing-component containing-component-atom))
           (and (= dom-specification specification)
                ;; We don't currently update the elision in the
                ;; component atom, so if the elision has changed, we
@@ -321,8 +311,7 @@
                (= elided-from new-elided-from))))
     old-component-atom
     (make-component-atom
-     specification dom-manager
-     containing-component-atom client-id depth new-elided-from)))
+     specification dom-manager client-id depth new-elided-from)))
 
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
@@ -558,7 +547,6 @@
                                  (reuse-or-make-component-atom
                                   spec
                                   dom-manager
-                                  component-atom
                                   (subcomponent-client-id client-id relative-id)
                                   (inc depth)
                                   subcomponent-elided-from
@@ -860,7 +848,7 @@
   [dom-manager specification]
   (let [top-id (:relative-id specification)
         component (make-component-atom
-                   specification dom-manager nil
+                   specification dom-manager
                    (id-subpart->client-id-subpart top-id) 1 false)]
     (assert (keyword? top-id))
     (swap-and-act!

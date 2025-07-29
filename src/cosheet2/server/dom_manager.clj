@@ -62,11 +62,18 @@
      containing-component  ; The component that contains this one. Nil
                            ; if this component is a root. If this is nil,
                            ; then client-id must be present.
-     elided                ; If true, our containing component's dom consists
-                           ; of only the component that defines us. In that
-                           ; case, the client will never be told about us.
-                           ; Rather, the containing dom will report our dom
-                           ; as its dom.
+     elided-from           ; If the dom of one component consists of
+                           ; nothing but another component, then the
+                           ; inner component is elided away, as far as
+                           ; the client sees.  The elided component's
+                           ; dom is what gets sent to the client, but
+                           ; under the id of the containing dom. (That
+                           ; dom's container refers to it by that id.)
+                           ; If elided-from present, our component is
+                           ; elided, and elided-from is the nearest
+                           ; non-elided containing component. Our dom
+                           ; will be sent to the client as the dom of
+                           ; that component.
      depth                 ; The depth of this component in the component
                            ; hierarchy, used to make sure that parents are
                            ; sent to the client before their children.
@@ -81,10 +88,6 @@
                            ; component is first activated, and is
                            ; cleared when it is deactivated. Those are
                            ; the only two times it changes.
-     reporters             ; The reporters that provide the values needed to
-                           ; compute the dom. They are the ones returned by
-                           ; :rendering-data. Some might be constants,
-                           ; rather than reporters.     
      id->subcomponent      ; A map from :relative-id to the component data
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
@@ -102,9 +105,9 @@
                            ; time the dom changes.  It is sent by the
                            ; client, which uses it to acknowledge
                            ; which version they got.
-     client-needs-dom      ; True if the client has not been sent the dom
-                           ; that would currently be computed, or
-                           ; has not acknowledged receiving it.
+     client-needs-dom      ; True if the client has not been sent the
+                           ; latest dom for our client-id, or has not
+                           ; acknowledged receiving it.
      further-actions       ; A list of [function arg arg ...] calls that
                            ; need to be performed. The function will be
                            ; called with the atom, and the additional
@@ -283,7 +286,7 @@
   component must not be transitioned from the :created to the :active
   state until it is recorded in the id->subcomponent of its containing
   component. That is handled by activate-component."
-  [specification dom-manager containing-component-atom client-id elided]
+  [specification dom-manager containing-component-atom client-id depth elided-from]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
   (when containing-component-atom
@@ -294,35 +297,32 @@
      :dom-specification specification
      :client-id client-id
      :containing-component containing-component-atom
-     :elided elided
-     :depth (if containing-component-atom
-              (+ 1 (:depth @containing-component-atom))
-              1)
-     :client-needs-dom (not elided)})))
+     :elided-from elided-from
+     :depth depth
+     :client-needs-dom (not elided-from)})))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
   return the existing atom if it matches the particulars, otherwise
   make a new one and return it."
-  [specification dom-manager containing-component-atom client-id
-   will-be-elided old-component-atom]
+  [specification dom-manager containing-component-atom client-id depth
+   new-elided-from old-component-atom]
   (if (when old-component-atom
-        (let [{:keys [dom-specification elided containing-component]}
+        (let [{:keys [dom-specification elided-from containing-component]}
               @old-component-atom]
-          ;; The containing component is responsible for managing demand
-          ;; for its contained components, so if we somehow get a
-          ;; different containing component, something went wrong.
+          ;; The containing component is responsible for managing
+          ;; demand for its contained components, so if we somehow get
+          ;; a different containing component, something went wrong.
           (assert (= containing-component containing-component-atom))
           (and (= dom-specification specification)
-               ;; If the elision has changed, then the id for the
-               ;; component that is passed to the client will change,
-               ;; so we can't use the old component, which would cause
-               ;; us to talk to the client using the old id.
-               (= elided will-be-elided))))
+               ;; We don't currently update the elision in the
+               ;; component atom, so if the elision has changed, we
+               ;; need a new one.
+               (= elided-from new-elided-from))))
     old-component-atom
     (make-component-atom
      specification dom-manager
-     containing-component-atom client-id will-be-elided)))
+     containing-component-atom client-id depth new-elided-from)))
 
 (defn make-dom-calculating-reporter
   "Return a reporter that calculates the component's dom."
@@ -364,7 +364,7 @@
         (do
           (propagate-calculator-data! dom-R calculator-data)
           (set-attendee-and-call!
-           dom-R component-atom (:depth @component-atom)
+           dom-R component-atom (* 10 (:depth @component-atom))
            dom-calculator-callback))
         ;; Our dom-R is a constant. We need to handle its value just this once.
         (handle-dom-change component-atom)))))
@@ -515,16 +515,6 @@
     (when (not= (component-data-state @component-atom) :active)
       (remove-from-components-to-send dom-manager component-atom))))
 
-(defn find-non-elided-containing-component
-  "If the component is elided, go up the containment hierarchy to the
-  first non-elided one."
-  [component-atom]
-  (let [component-data @component-atom]
-    (if (:elided component-data)
-      (find-non-elided-containing-component
-       (:containing-component component-data))
-      component-atom)))
-
 (defn find-non-elided-id->subcomponent
   "If the component has only an elided subcomponent, go down the
   containment hierarchy to the first non-elided ones. Note that we
@@ -539,9 +529,9 @@
 (defn process-dom-ready-for-client
   "Record in the dom manager that the client needs to hear about our
   dom. If we are elided, that means it will be given our dom, but
-  under the key of our first non-elided containing component."
+  under the key of our elided-from containing component."
   [dom-manager component-atom]
-  (let [non-elided (find-non-elided-containing-component component-atom)]
+  (let [non-elided (or (:elided-from @component-atom) component-atom)]
     ;; If we are elided, we have to bump the version of our non-elided
     ;; container, as that is the version sent to the client.
     (when (not= non-elided component-atom)
@@ -554,8 +544,11 @@
   [component-data component-atom dom]
   (if (not= (component-data-state component-data) :active)
     component-data
-    (let [{:keys [obsolete-components dom-manager client-id]} component-data
-          elide-subcomponent (= (first dom) :component)
+    (let [{:keys [obsolete-components dom-manager client-id depth]}
+          component-data
+          subcomponent-elided-from (when (= (first dom) :component)
+                                     (or (:elided-from component-data)
+                                         component-atom))
           old-id->subcomponent (or (:id->subcomponent component-data) {})
           subcomponent-specs (get-id->subcomponent-specifications dom)
           subcomponent-ids (keys subcomponent-specs)
@@ -567,7 +560,8 @@
                                   dom-manager
                                   component-atom
                                   (subcomponent-client-id client-id relative-id)
-                                  elide-subcomponent
+                                  (inc depth)
+                                  subcomponent-elided-from
                                   (old-id->subcomponent id))))
                              subcomponent-ids)
           id->subcomponent (zipmap subcomponent-ids subcomponents)
@@ -594,10 +588,15 @@
                        dom-manager component-atom new-subcomponents]
                       [#(doseq [component-atom new-subcomponents]
                           (activate-component component-atom))])]
+      ;; Check that each subcomponent has a different id. Otherwise, two
+      ;; components will share an id, which will mess up communications
+      ;; with the client.
+      (assert (= (count subcomponent-ids) (count (set subcomponent-ids)))
+              subcomponent-ids)
       (-> component-data
           (assoc :id->subcomponent id->subcomponent
                  :obsolete-components obsolete
-                 :client-needs-dom (not (:elided component-data)))
+                 :client-needs-dom (not (:elided-from component-data)))
           (update :dom-version inc)
           (update-new-further-action
            process-dom-ready-for-client dom-manager component-atom)
@@ -862,7 +861,7 @@
   (let [top-id (:relative-id specification)
         component (make-component-atom
                    specification dom-manager nil
-                   (id-subpart->client-id-subpart top-id) false)]
+                   (id-subpart->client-id-subpart top-id) 1 false)]
     (assert (keyword? top-id))
     (swap-and-act!
      dom-manager
@@ -908,12 +907,12 @@
          component-atom
          (fn [component-data]
            [(assoc component-data :client-needs-dom
-                   (not (:elided component-data)))
+                   (not (:elided-from component-data)))
             [(:depth component-data)
              (reporter-value-when-valid (:dom-R component-data))
              (vals (:id->subcomponent component-data))]]))]
-    (concat (when dom [[component-atom depth]])
-            (mapcat mark-component-tree-as-needed subcomponents))))
+    (doall (concat (when dom [[component-atom depth]])
+                   (mapcat mark-component-tree-as-needed subcomponents)))))
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."
@@ -925,7 +924,7 @@
            (fn [data] (update data :components-to-send
                               #(reduce
                                 (fn [priority-map [component depth]]
-                                  (if (:elided @component)
+                                  (if (:elided-from @component)
                                     priority-map
                                     (assoc priority-map component depth)))
                                 %

@@ -14,7 +14,8 @@
              [order-utils :refer [semantic-entity?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
-             [render-utils :refer [make-component]]
+             [render-utils :refer [make-component
+                                   mutable-store-get-rendering-data]]
              [item-render :refer [get-item-rendering-data render-item-DOM]]
              [table-render :refer [render-table-DOM get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
@@ -448,22 +449,10 @@
   [v ^java.io.Writer w]
   (.write w "top-level-AD"))
 
-(defn reporter-specification-get-rendering-data
-  "Return the rendering data for a component whose dom is what a
-  reporter returns"
-  [spec store]
-  (println "getting top level DOM rendering data")
-  [[(:reporter spec) [universal-category]]])
-
-(defmethod print-method
-  cosheet2.server.render$reporter_specification_get_rendering_data
-  [v ^java.io.Writer w]
-  (.write w "rep-RD"))
-
 (defn reporter-specification-render-dom
   "Make the component's dom be what a reporter returns."
-  [spec reporter-value]
-  reporter-value)
+  [spec ms]
+  (:reporter spec))
 
 (defmethod print-method
   cosheet2.server.render$reporter_specification_render_dom
@@ -479,7 +468,7 @@
                       store session-temporary-id client-state id-R)
            :id-R id-R ; used by top-level-get-action-data
            :get-action-data top-level-get-action-data
-           :get-rendering-data reporter-specification-get-rendering-data
+           :get-rendering-data mutable-store-get-rendering-data
            :render-dom reporter-specification-render-dom)))
 
 (comment ;; Copy stuff out of here as we support more kinds of top levels.

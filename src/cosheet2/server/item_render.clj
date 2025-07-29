@@ -2,6 +2,7 @@
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [is-item-id?]]
                       [entity :refer [label? description->entity
+                                      description->updating-entity-R
                                       content label? primitive?]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
@@ -27,6 +28,7 @@
              [order-utils :refer [ordered-entities semantic-entity?]]
              [render-utils
               :refer [make-component
+                      mutable-store-get-rendering-data
                       item-stack-DOM nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -83,7 +85,7 @@
   [v ^java.io.Writer w]
   (.write w "virt-RD"))
 
-(defn render-virtual-DOM [spec]
+(defn render-virtual-DOM [spec ms]
   [:div (into-attributes (select-keys spec [:class])
                          {:class "editable virtual"})])
 
@@ -124,7 +126,7 @@
   (make-component
    (-> specification 
        (assoc :render-dom render-virtual-DOM
-              :get-rendering-data get-virtual-DOM-rendering-data)
+              :get-rendering-data mutable-store-get-rendering-data)
        (dissoc :get-do-batch-edit-action-data)
        (update :get-action-data
                #(compose-action-data-getter % get-virtual-action-data)))))
@@ -521,8 +523,9 @@
   "Render a dom spec for only the content of an item."
   [{:keys [relative-id item-id class]} store]
   (assert (= relative-id :content))
-  (item-content-DOM (description->entity item-id store)
-                    (if class {:class class} {})))
+  (println "RENDERING CONTENT ONLY")
+  (expr-let [item (description->updating-entity-R item-id store)]
+    (item-content-DOM item (if class {:class class} {}))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_content_only_DOM
@@ -538,6 +541,7 @@
                                   [:template :class :width])
                      (assoc :relative-id :content
                             :item-id (:item-id item)
+                            :get-rendering-data mutable-store-get-rendering-data
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
            (label? item)
@@ -580,15 +584,17 @@
   (assert (:width specification)
           [specification
            (semantic-to-list (description->entity relative-id store))])
-  (let [entity (description->entity (specification-item-id specification) store)
-        elements (remove (set (map #(description->entity % store)
-                                   excluded-element-ids))
-                         (semantic-elements entity))
-        [labels non-labels] (separate-by label? elements)]
-    (cond-> (item-content-labels-and-non-label-elements-DOM
-             entity labels non-labels (dissoc specification :class))
-      (:class specification)
-      (add-attributes {:class (:class specification)}))))
+  (expr-let [entity (description->updating-entity-R
+                     (specification-item-id specification) store)]
+    (let [elements (remove
+                    (set (map #(description->entity % (:store entity))
+                              excluded-element-ids))
+                    (semantic-elements entity))
+          [labels non-labels] (separate-by label? elements)]
+      (cond-> (item-content-labels-and-non-label-elements-DOM
+               entity labels non-labels (dissoc specification :class))
+        (:class specification)
+        (add-attributes {:class (:class specification)})))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM
@@ -616,7 +622,9 @@
                            (make-component
                             (cond-> (assoc specification
                                            :relative-id (:item-id leaf)
-                                           :width 0.75)
+                                           :width 0.75
+                                           :get-rendering-data mutable-store-get-rendering-data
+                                           :render-dom render-item-DOM)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
         descendant-ids (map #(-> % :item :item-id)

@@ -1,9 +1,11 @@
 (ns cosheet2.server.render-utils
   (:require (cosheet2 [entity :refer [container elements label?]]
+                      [store :refer [is-item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
                                      add-elements-to-entity-list
                                      separate-by]]
+                      [expression :refer [category-change]]
                       [debug :refer [simplify-for-print]]
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
@@ -21,9 +23,29 @@
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
+(defn mutable-store-get-rendering-data
+  "This is a temporary rendering data we use as we migrate to getting
+  rid of rendering data, and all renderers will get just the store."
+  [spec store]
+  store)
+
+(defmethod print-method
+  cosheet2.server.render_utils$mutable_store_get_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "store-RD"))
+
 (defn specification-item-id
   [specification]
   (or (:item-id specification) (:relative-id specification)))
+
+(defn restrict-store-to-specification-id
+  "Given a dom specification and a mutable store, return a category
+  change reporter over the mutable store, that restricts its interest
+  to the category of the specification-item-id"
+  [specification mutable-store]
+   (let [id (specification-item-id specification)]
+     (assert (is-item-id? id) id)
+     (category-change [id] mutable-store)))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it
@@ -121,7 +143,12 @@
    the relative-id."
   [item specification]
   (make-component (assoc specification
-                         :relative-id (:item-id item))))
+                         :relative-id (:item-id item)
+                         :get-rendering-data mutable-store-get-rendering-data
+                         ;; TODO: !!! Add this. That will require moving
+                         ;; this to item-dom
+                         ; :render-dom render-item-DOM
+                         )))
 
 (defn item-minus-excluded-component
   "Make a component dom to display the given item, minus the excluded

@@ -34,11 +34,11 @@
                                   unspecified-column-header-template
                                   exemplar-to-fixed-term]]
              [render-utils :refer [make-component
+                                   mutable-store-get-rendering-data
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
-                                  get-virtual-DOM-rendering-data
                                   virtual-entity-and-label-DOM
                                   label-stack-DOM
                                   item-content-and-non-label-elements-DOM
@@ -288,7 +288,7 @@
            :relative-id :virtual
            :template ""
            :render-dom render-virtual-DOM
-           :get-rendering-data get-virtual-DOM-rendering-data
+           :get-rendering-data mutable-store-get-rendering-data
            :get-action-data get-virtual-column-cell-action-data))
    {:class "table-cell virtual-column has-border"}))
 
@@ -396,7 +396,7 @@
     :column-ids [column-id]
     :class "table-cell"
     :render-dom render-virtual-DOM
-    :get-rendering-data get-virtual-DOM-rendering-data
+    :get-rendering-data mutable-store-get-rendering-data
     :template (fixed-term-to-template query)
     :get-action-data get-virtual-action-data
     :width width}))

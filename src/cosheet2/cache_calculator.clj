@@ -21,9 +21,9 @@
 ;;; This avoids redoing shared computations that might be expensive.
 
 ;;; A cache keeps track of all the application reporters that are
-;;; referenced by forwarding reporters.  When a forwarding reporter is
-;;; created, and no reporter for its application is already in the
-;;; cache, one is made and put in the cache.
+;;; referenced by forwarding reporters with demand.  When a forwarding
+;;; reporter gets demand, and no reporter for its application is
+;;; already in the cache, one is made and put in the cache.
 
 ;;; The :value-source of a forwarding reporter can change over time,
 ;;; because its application reporter needs to be removed from the

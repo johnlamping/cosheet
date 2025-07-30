@@ -489,7 +489,7 @@
   (let [specs (subcomponent-specifications dom)
         answer (zipmap (map :relative-id specs) specs)]
     (assert (= (count answer) (count specs))
-            (vec (subcomponent-specifications dom)))
+            [dom (vec specs)])
     answer))
 
 (defn remove-from-components-to-send

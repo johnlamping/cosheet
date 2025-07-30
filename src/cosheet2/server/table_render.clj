@@ -154,36 +154,32 @@
   [v ^java.io.Writer w]
   (.write w "table-cell-item-do-batch-AD"))
 
-(defn get-table-condition-rendering-data
-  [{:keys [relative-id]} mutable-store]
-  [[mutable-store [relative-id]]])
-
 (defn render-table-condition-DOM
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header"
   [{:keys [relative-id] :as spec} store]
-  (let [row-condition (description->entity relative-id store)
-        condition-elements (semantic-elements row-condition)
-        spec-down {:template 'anything
-                   :width 0.75}
-        last-item (last (ordered-entities (remove label? condition-elements)))
-        virtual-dom
-        (add-attributes
-         (virtual-entity-and-label-DOM
-          (cond-> (assoc spec-down
-                         :relative-id :virtual)
-            ;; If we have any headers already, put the new one after
-            ;; the last of them.
-            last-item
-            (assoc :item-id (:item-id last-item)
-                   :get-action-data get-item-or-exemplar-action-data
-                   :sibling true))
-          :vertical)
-         {:class "virtual-column"})
-        dom (labels-and-elements-DOM
-             condition-elements virtual-dom
-             true true :horizontal spec-down)]
-    (add-attributes dom {:class "query-condition"})))
+  (expr-let [row-condition (description->updating-entity-R relative-id store)]
+    (let [condition-elements (semantic-elements row-condition)
+          spec-down {:template 'anything
+                     :width 0.75}
+          last-item (last (ordered-entities (remove label? condition-elements)))
+          virtual-dom
+          (add-attributes
+           (virtual-entity-and-label-DOM
+            (cond-> (assoc spec-down
+                           :relative-id :virtual)
+              ;; If we have any headers already, put the new one after
+              ;; the last of them.
+              last-item
+              (assoc :item-id (:item-id last-item)
+                     :get-action-data get-item-or-exemplar-action-data
+                     :sibling true))
+            :vertical)
+           {:class "virtual-column"})
+          dom (labels-and-elements-DOM
+               condition-elements virtual-dom
+               true true :horizontal spec-down)]
+      (add-attributes dom {:class "query-condition"}))))
 
 (defn is-label-template?
   "Return true if the template describes a label."
@@ -266,19 +262,16 @@
           :vertical-wrapped)
          {:class  "column-header virtual-column"})))))
 
-(defn get-table-header-rendering-data
-  [{:keys [hierarchy-R] :as spec} mutable-store]
-  [[hierarchy-R [universal-category]]])
-
 (defn render-table-header-DOM
   "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-  [_ hierarchy]
-  (let [doms (map table-header-top-level-subtree-DOM hierarchy)
-        virtual-header (table-virtual-column-header-DOM hierarchy)]
-    (into [:div {:class "column-header-sequence table-header"}]
-          (concat doms [virtual-header]))))
+  [{:keys [hierarchy-R] :as spec} _]
+  (expr-let [hierarchy hierarchy-R]
+    (let [doms (map table-header-top-level-subtree-DOM hierarchy)
+          virtual-header (table-virtual-column-header-DOM hierarchy)]
+      (into [:div {:class "column-header-sequence table-header"}]
+            (concat doms [virtual-header])))))
 
 (defn table-virtual-column-cell-DOM-component
   [specification]
@@ -292,37 +285,28 @@
            :get-action-data get-virtual-column-cell-action-data))
    {:class "table-cell virtual-column has-border"}))
 
-(defn get-table-cell-rendering-data
-  [specification mutable-store]
-  [[mutable-store [(:row-id specification)]]])
-
-(defmethod print-method
-  cosheet2.server.table_render$get_table_cell_rendering_data
-  [v ^java.io.Writer w]
-  (.write w "cell-RD"))
-
 ;;; TODO: This isn't generating the right batch edit action data for
 ;;; labels of its items.
 (defn render-table-cell-DOM
   [{:keys [row-id query disqualifications] :as specification} store]
-  (let [row-entity (description->entity row-id store)
-        matches (matching-elements query row-entity)
-        entities (if (seq disqualifications)
-                   (filter (fn [element] (not (some #(extended-by? % element)
-                                                    disqualifications)))
-                           matches)
-                   matches)
-        spec (-> specification
-                 transform-specification-for-elements
-                 (assoc :template (fixed-term-to-template query)))
-        non-virtual-spec (assoc spec :get-do-batch-edit-action-data
-                                get-table-cell-item-do-batch-edit-action-data)]
-    (if (empty? entities)
-      ;; TODO: Get our left neighbor as an arg, and pass it
-      ;; in the sibling for the virtual dom.
-      (virtual-DOM-component (assoc spec :relative-id :virtual))
-      (non-label-entities-DOM
-       entities (:template spec) false :vertical non-virtual-spec))))
+  (expr-let [row-entity (description->updating-entity-R row-id store)]
+    (let [matches (matching-elements query row-entity)
+          entities (if (seq disqualifications)
+                     (filter (fn [element] (not (some #(extended-by? % element)
+                                                      disqualifications)))
+                             matches)
+                     matches)
+          spec (-> specification
+                   transform-specification-for-elements
+                   (assoc :template (fixed-term-to-template query)))
+          non-virtual-spec (assoc spec :get-do-batch-edit-action-data
+                                  get-table-cell-item-do-batch-edit-action-data)]
+      (if (empty? entities)
+        ;; TODO: Get our left neighbor as an arg, and pass it
+        ;; in the sibling for the virtual dom.
+        (virtual-DOM-component (assoc spec :relative-id :virtual))
+        (non-label-entities-DOM
+         entities (:template spec) false :vertical non-virtual-spec)))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_cell_DOM
@@ -346,7 +330,7 @@
                 :column-ids [column-id]
                 :class "table-cell"
                 :render-dom render-table-cell-DOM
-                :get-rendering-data get-table-cell-rendering-data
+                :get-rendering-data mutable-store-get-rendering-data
                 :get-action-data get-pass-through-action-data
                 :get-do-batch-edit-action-data
                 get-table-cell-do-batch-edit-action-data)
@@ -355,21 +339,17 @@
                              :disqualifications
                              :width]))))))
 
-(defn get-table-row-rendering-data
-  [{:keys [relative-id column-descriptions-R]} mutable-store]
-  [[mutable-store [relative-id]]
-   [column-descriptions-R [universal-category]]])
-
 (defn render-table-row-DOM
   "Generate dom for a table row.
   The specification must have column-descriptions-R"
-  [{:keys [relative-id] :as specification} store column-descriptions]
-  (let [spec (-> specification
-                 (dissoc :column-descriptions-R)
-                 (assoc :class "table-cell has-border"))]
-    (let [cells (map #(table-cell-DOM-component % spec)
-                     column-descriptions)]
-      (into [:div {}] cells))))
+  [{:keys [row-id column-descriptions-R] :as specification} store]
+  (expr-let [column-descriptions column-descriptions-R]
+    (let [spec (-> specification
+                   (dissoc :column-descriptions-R)
+                   (assoc :class "table-cell has-border"))]
+      (let [cells (map #(table-cell-DOM-component % spec)
+                       column-descriptions)]
+        (into [:div {}] cells)))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_row_DOM
@@ -387,7 +367,7 @@
           :class "table-row"
           :render-dom render-table-row-DOM
           :get-action-data [get-id-action-data row-id]
-          :get-rendering-data get-table-row-rendering-data)))
+          :get-rendering-data mutable-store-get-rendering-data)))
 
 (defn table-virtual-row-cell-DOM-component
   [{:keys [column-id query width] :as column-description}]
@@ -401,17 +381,14 @@
     :get-action-data get-virtual-action-data
     :width width}))
 
-(defn get-table-virtual-row-rendering-data
-  [{:keys [column-descriptions-R]} mutable-store]
-  [[column-descriptions-R [universal-category]]])
-
 (defn render-table-virtual-row-DOM
   "Generate dom for a table's virtual row."
-  [{:keys [template]} column-descriptions]
-  (let [cells (map table-virtual-row-cell-DOM-component
-                   ;; Don't make a cell for the virtual column.
-                   (butlast column-descriptions))]
-    (into [:div {:class "table-row"}] cells)))
+  [{:keys [template column-descriptions-R]} store]
+  (expr-let [column-descriptions column-descriptions-R]
+    (let [cells (map table-virtual-row-cell-DOM-component
+                     ;; Don't make a cell for the virtual column.
+                     (butlast column-descriptions))]
+      (into [:div {:class "table-row"}] cells))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_virtual_row_DOM
@@ -426,33 +403,30 @@
       :class "table-row"
       :column-descriptions-R column-descriptions-R
       :render-dom render-table-virtual-row-DOM
-      :get-rendering-data get-table-virtual-row-rendering-data
+      :get-rendering-data mutable-store-get-rendering-data
       :sibling true
       :template row-template
       :get-action-data [composed-get-action-data
                         [get-id-action-data adjacent-id] ; our sibling
                         get-virtual-action-data]}))
 
-(defn get-table-rows-rendering-data
-  [{:keys [row-template-R row-ids-R]} mutable-store]
-  [[row-template-R [universal-category]]
-   [row-ids-R [universal-category]]])
-
 (defn render-table-rows-DOM
   "The specification must have
    column-descriptions-R row-template-R and row-ids-R."
-  [specification row-template row-ids]
+  [{:keys [row-template-R row-ids-R] :as specification} store]
   ;; We pass on column-descriptions-R.
-  (let [row-spec (dissoc specification
-                         :row-template-R :row-ids-R :id-with-no-subject
-                         :get-action-data)]
-    (into [:div {:class "table-rows"}]
-          (concat (map #(table-row-component % row-template row-spec)
-                       row-ids)
-                  [(table-virtual-row-DOM-component
-                    row-template
-                    (or (last row-ids) (:id-with-no-subject specification))
-                    (:column-descriptions-R specification))]))))
+  (expr-let [row-template row-template-R
+             row-ids row-ids-R]
+    (let [row-spec (dissoc specification
+                           :row-template-R :row-ids-R :id-with-no-subject
+                           :get-action-data)]
+      (into [:div {:class "table-rows"}]
+            (concat (map #(table-row-component % row-template row-spec)
+                         row-ids)
+                    [(table-virtual-row-DOM-component
+                      row-template
+                      (or (last row-ids) (:id-with-no-subject specification))
+                      (:column-descriptions-R specification))])))))
 
 (defn table-hierarchy-R
   "Return a reporter whose value is the hierarchy of the table header."
@@ -554,14 +528,14 @@
                            {:relative-id row-condition-id
                             :render-dom render-table-condition-DOM
                             :get-rendering-data
-                            get-table-condition-rendering-data
+                            mutable-store-get-rendering-data
                             :get-do-batch-edit-action-data
                             get-table-condition-do-batch-edit-action-data })
             header-dom (make-component
                         {:relative-id column-headers-id
                          :hierarchy-R hierarchy-R
                          :render-dom render-table-header-DOM
-                         :get-rendering-data get-table-header-rendering-data})
+                         :get-rendering-data mutable-store-get-rendering-data})
             body-dom (make-component
                       {:relative-id :body
                        ;; This is used as a sibling of our initial row.
@@ -570,7 +544,7 @@
                        :row-template-R row-template-R
                        :row-ids-R row-ids-R
                        :render-dom render-table-rows-DOM
-                       :get-rendering-data get-table-rows-rendering-data
+                       :get-rendering-data mutable-store-get-rendering-data
                        :get-action-data get-pass-through-action-data})]
         [:div {:class "table"}
          condition-dom

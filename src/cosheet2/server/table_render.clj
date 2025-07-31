@@ -495,59 +495,61 @@
   describing a table."
   ;; The format of the element that describes a table is given in
   ;; model-utils.
-  [{:keys [table-id]} immutable-store {:keys [mutable-store]}]
+  [{:keys [table-id]} store]
   (println "Generating DOM for table" (simplify-for-print table-id))
   ;; First check to see if we have the table information filled in yet.
-  (let [row-condition-id (first (target-label->ids
-                                 immutable-store table-id :row-condition))
-        column-headers-id (first (target-label->ids
-                                  immutable-store table-id :column-headers))]
-    ;; Render the table only if the table information has been filled in.
-    (if (not (and row-condition-id column-headers-id))
-      [:div {}]
-      (let [table-R (description->updating-entity-R table-id mutable-store)
-            row-template-R (expr table-row-template table-R)
-            column-headers-R (expr label->element table-R :column-headers)
-            hierarchy-R (table-hierarchy-R column-headers-R)
-            row-ids-R (table-row-ids-R row-template-R mutable-store)
-            virtual-column-description {:column-id :virtualColumn}
-            ;; TODO: Add an "other" column if a table requests it.
-            column-descriptions-R
-            (expr-let [hierarchy hierarchy-R]
-              (concat
-               (mapcat #(table-hierarchy-node-column-descriptions nil %)
-                       hierarchy)
-               [virtual-column-description]))
-            id-with-no-subject (loop [id table-id]
-                                 (let [target (id->target
-                                                immutable-store id)]
-                                   (if target
-                                     (recur target)
-                                     id)))
-            condition-dom (make-component
-                           {:relative-id row-condition-id
-                            :render-dom render-table-condition-DOM
-                            :get-rendering-data
-                            mutable-store-get-rendering-data
-                            :get-do-batch-edit-action-data
-                            get-table-condition-do-batch-edit-action-data })
-            header-dom (make-component
-                        {:relative-id column-headers-id
-                         :hierarchy-R hierarchy-R
-                         :render-dom render-table-header-DOM
-                         :get-rendering-data mutable-store-get-rendering-data})
-            body-dom (make-component
-                      {:relative-id :body
-                       ;; This is used as a sibling of our initial row.
-                       :id-with-no-subject id-with-no-subject
-                       :column-descriptions-R column-descriptions-R
-                       :row-template-R row-template-R
-                       :row-ids-R row-ids-R
-                       :render-dom render-table-rows-DOM
-                       :get-rendering-data mutable-store-get-rendering-data
-                       :get-action-data get-pass-through-action-data})]
-        [:div {:class "table"}
-         condition-dom
-         [:div {:class "table-main"}
-          header-dom
-          body-dom]]))))
+  (let [table-R (description->updating-entity-R table-id store)]
+    (expr-let [table-entity table-R]
+      (let [row-condition  (label->element table-entity :row-condition)
+            column-headers (label->element table-entity :column-headers )]
+        ;; Render the table only if the table information has been filled in.
+        (if (not (and row-condition column-headers))
+          [:div {}]
+          (let [row-template-R (expr table-row-template table-R)
+                column-headers-R (expr label->element table-R :column-headers)
+                hierarchy-R (table-hierarchy-R column-headers-R)
+                row-ids-R (table-row-ids-R row-template-R store)
+                virtual-column-description {:column-id :virtualColumn}
+                ;; TODO: Add an "other" column if a table requests it.
+                column-descriptions-R
+                (expr-let [hierarchy hierarchy-R]
+                  (concat
+                   (mapcat #(table-hierarchy-node-column-descriptions nil %)
+                           hierarchy)
+                   [virtual-column-description]))
+                ;; TODO: !!! id-with-no-subject could return an
+                ;;           id that later gets used. We need to find
+                ;;           an unused id at the point we need it.
+                id-with-no-subject (loop [id table-id]
+                                     (let [target (id->target
+                                                   (:store table-entity) id)]
+                                       (if target
+                                         (recur target)
+                                         id)))
+                condition-dom (make-component
+                               {:relative-id (:item-id row-condition)
+                                :render-dom render-table-condition-DOM
+                                :get-rendering-data
+                                mutable-store-get-rendering-data
+                                :get-do-batch-edit-action-data
+                                get-table-condition-do-batch-edit-action-data })
+                header-dom (make-component
+                            {:relative-id (:item-id column-headers)
+                             :hierarchy-R hierarchy-R
+                             :render-dom render-table-header-DOM
+                             :get-rendering-data mutable-store-get-rendering-data})
+                body-dom (make-component
+                          {:relative-id :body
+                           ;; This is used as a sibling of our initial row.
+                           :id-with-no-subject id-with-no-subject
+                           :column-descriptions-R column-descriptions-R
+                           :row-template-R row-template-R
+                           :row-ids-R row-ids-R
+                           :render-dom render-table-rows-DOM
+                           :get-rendering-data mutable-store-get-rendering-data
+                           :get-action-data get-pass-through-action-data})]
+            [:div {:class "table"}
+             condition-dom
+             [:div {:class "table-main"}
+              header-dom
+              body-dom]]))))))

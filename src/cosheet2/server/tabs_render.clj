@@ -1,5 +1,6 @@
 (ns cosheet2.server.tabs-render
   (:require (cosheet2 [entity :refer [description->entity
+                                      description->updating-entity-R
                                       label->elements content elements]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
@@ -16,7 +17,8 @@
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
                                   new-tab-table-element]]
-             [render-utils :refer [hierarchy-node-DOM make-component]]
+             [render-utils :refer [hierarchy-node-DOM make-component
+                                   mutable-store-get-rendering-data]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
@@ -36,14 +38,14 @@
   (.write w "tab-RD"))
 
 (defn render-tab-elements-DOM
-  [specification immutable-store]
+  [{:keys [example-element-ids] :as specification} store]
   "Generate the dom for a node of the tabs hierarchy, but not any of
   its children. The component must already have get-action-data
   that targets each of the tab items, and :tab-id if there
   is only one tab item."
-  (let [{:keys [example-element-ids]} specification
-        example-elements (map #(description->entity % immutable-store)
-                              example-element-ids)]
+  (expr-let [example-elements (expr-seq
+                                map #(description->updating-entity-R % store)
+                                example-element-ids)]
     (if (seq example-element-ids)
       (let [dom (labels-and-elements-DOM
                  example-elements nil false false :vertical
@@ -77,7 +79,7 @@
           :template template
           :width (* 0.75 (count tab-ids))
           :render-dom render-tab-elements-DOM
-          :get-rendering-data get-tab-elements-rendering-data
+          :get-rendering-data mutable-store-get-rendering-data
           :example-element-ids example-element-ids}
        (= (count tab-ids) 1)
        (assoc :tab-id (first tab-ids))
@@ -127,26 +129,26 @@
 (defn render-tabs-DOM
   "Return a reporter giving the DOM for the elements of the given
   item as tabs."
-  [specification immutable-store]
-  (let [{:keys [relative-id chosen-tab-id]} specification
-        tabs-entity (description->entity relative-id immutable-store)
-        ;; The template starts out with an empty name
-        tabs-spec {:template `("" :tab "" ~new-tab-table-element)
-                   :nesting-depth 0
-                   :chosen-tab-id chosen-tab-id}
-        tabs (ordered-entities (label->elements tabs-entity :tab))
-        hierarchy (hierarchy-by-selected-elements
-                   tabs
-                   (fn [item] (not (some #(= (content %) :tab-topic)
-                                         (elements item)))))
-        hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-        tab-doms (map (fn [node]
-                        (hierarchy-node-DOM
-                         node tabs-node-DOM tabs-child-info tabs-spec))
-                      hierarchy)
-        virtual-tab-dom (virtual-tab-DOM
-                         (assoc tabs-spec
-                                :last-tab-id (:item-id (last tabs))))]
+  [{:keys [relative-id chosen-tab-id] :as specification} store]
+  (expr-let [tabs-entity (description->updating-entity-R
+                          relative-id store)]
+    (let [;; The template starts out with an empty name
+          tabs-spec {:template `("" :tab "" ~new-tab-table-element)
+                     :nesting-depth 0
+                     :chosen-tab-id chosen-tab-id}
+          tabs (ordered-entities (label->elements tabs-entity :tab))
+          hierarchy (hierarchy-by-selected-elements
+                     tabs
+                     (fn [item] (not (some #(= (content %) :tab-topic)
+                                           (elements item)))))
+          hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
+          tab-doms (map (fn [node]
+                          (hierarchy-node-DOM
+                           node tabs-node-DOM tabs-child-info tabs-spec))
+                        hierarchy)
+          virtual-tab-dom (virtual-tab-DOM
+                           (assoc tabs-spec
+                                  :last-tab-id (:item-id (last tabs))))]
       [:div {:class "tabs-wrapper"}
        [:div#batch-edit.tool
         [:img {:src "../icons/edit.gif"}]
@@ -161,4 +163,4 @@
              ;; virtual tab won't be referred to the virtual tab, which
              ;; would otherwise be the closest element.
              ;; TODO: Put virtual tab here
-             (concat [[:div] virtual-tab-dom] (reverse tab-doms)))]))
+             (concat [[:div] virtual-tab-dom] (reverse tab-doms)))])))

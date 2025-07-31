@@ -424,12 +424,13 @@
                    {:relative-id (:item-id target)
                     :chosen-tab-id id
                     :render-dom render-tabs-DOM
+                    :get-rendering-data mutable-store-get-rendering-data
                     :get-action-data [get-id-action-data (:item-id target)]})
                   (make-component
                    {:relative-id (:item-id topic)
                     :table-id (:item-id topic)
                     :render-dom render-table-DOM
-                    :get-rendering-data get-table-rendering-data})])
+                    :get-rendering-data mutable-store-get-rendering-data})])
                ;; No tab is selected. Show just the item.
                (make-component
                 (assoc basic-dom-specification        

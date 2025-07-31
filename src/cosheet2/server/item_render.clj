@@ -28,7 +28,6 @@
              [order-utils :refer [ordered-entities semantic-entity?]]
              [render-utils
               :refer [make-component
-                      mutable-store-get-rendering-data
                       item-stack-DOM nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -125,8 +124,7 @@
   (assert (:template specification) specification)
   (make-component
    (-> specification 
-       (assoc :render-dom render-virtual-DOM
-              :get-rendering-data mutable-store-get-rendering-data)
+       (assoc :render-dom render-virtual-DOM)
        (dissoc :get-do-batch-edit-action-data)
        (update :get-action-data
                #(compose-action-data-getter % get-virtual-action-data)))))
@@ -541,7 +539,6 @@
                                   [:template :class :width])
                      (assoc :relative-id :content
                             :item-id (:item-id item)
-                            :get-rendering-data mutable-store-get-rendering-data
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
            (label? item)
@@ -623,7 +620,6 @@
                             (cond-> (assoc specification
                                            :relative-id (:item-id leaf)
                                            :width 0.75
-                                           :get-rendering-data mutable-store-get-rendering-data
                                            :render-dom render-item-DOM)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))

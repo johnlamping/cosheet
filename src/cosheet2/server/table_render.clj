@@ -34,7 +34,6 @@
                                   unspecified-column-header-template
                                   exemplar-to-fixed-term]]
              [render-utils :refer [make-component
-                                   mutable-store-get-rendering-data
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
@@ -281,7 +280,6 @@
            :relative-id :virtual
            :template ""
            :render-dom render-virtual-DOM
-           :get-rendering-data mutable-store-get-rendering-data
            :get-action-data get-virtual-column-cell-action-data))
    {:class "table-cell virtual-column has-border"}))
 
@@ -330,7 +328,6 @@
                 :column-ids [column-id]
                 :class "table-cell"
                 :render-dom render-table-cell-DOM
-                :get-rendering-data mutable-store-get-rendering-data
                 :get-action-data get-pass-through-action-data
                 :get-do-batch-edit-action-data
                 get-table-cell-do-batch-edit-action-data)
@@ -366,8 +363,7 @@
                          ; in the row.
           :class "table-row"
           :render-dom render-table-row-DOM
-          :get-action-data [get-id-action-data row-id]
-          :get-rendering-data mutable-store-get-rendering-data)))
+          :get-action-data [get-id-action-data row-id])))
 
 (defn table-virtual-row-cell-DOM-component
   [{:keys [column-id query width] :as column-description}]
@@ -376,7 +372,6 @@
     :column-ids [column-id]
     :class "table-cell"
     :render-dom render-virtual-DOM
-    :get-rendering-data mutable-store-get-rendering-data
     :template (fixed-term-to-template query)
     :get-action-data get-virtual-action-data
     :width width}))
@@ -403,7 +398,6 @@
       :class "table-row"
       :column-descriptions-R column-descriptions-R
       :render-dom render-table-virtual-row-DOM
-      :get-rendering-data mutable-store-get-rendering-data
       :sibling true
       :template row-template
       :get-action-data [composed-get-action-data
@@ -529,15 +523,12 @@
                 condition-dom (make-component
                                {:relative-id (:item-id row-condition)
                                 :render-dom render-table-condition-DOM
-                                :get-rendering-data
-                                mutable-store-get-rendering-data
                                 :get-do-batch-edit-action-data
                                 get-table-condition-do-batch-edit-action-data })
                 header-dom (make-component
                             {:relative-id (:item-id column-headers)
                              :hierarchy-R hierarchy-R
-                             :render-dom render-table-header-DOM
-                             :get-rendering-data mutable-store-get-rendering-data})
+                             :render-dom render-table-header-DOM})
                 body-dom (make-component
                           {:relative-id :body
                            ;; This is used as a sibling of our initial row.
@@ -546,7 +537,6 @@
                            :row-template-R row-template-R
                            :row-ids-R row-ids-R
                            :render-dom render-table-rows-DOM
-                           :get-rendering-data mutable-store-get-rendering-data
                            :get-action-data get-pass-through-action-data})]
             [:div {:class "table"}
              condition-dom

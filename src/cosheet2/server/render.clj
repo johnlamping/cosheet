@@ -14,8 +14,7 @@
              [order-utils :refer [semantic-entity?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
-             [render-utils :refer [make-component
-                                   mutable-store-get-rendering-data]]
+             [render-utils :refer [make-component]]
              [item-render :refer [get-item-rendering-data render-item-DOM]]
              [table-render :refer [render-table-DOM get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
@@ -249,12 +248,6 @@
 ;;;                         :get-rendering-data, then produces the
 ;;;                         dom.
 ;;;                         Defaults to item-render/render-item-DOM
-;;;    :get-rendering-data  Optional pseudo function that takes this map and
-;;;                         the mutable store and returns a seq of
-;;;                         pairs of a reporter whose value is needed
-;;;                         by :render-dom and the categories of that
-;;;                         reporter that the rendering depends on.
-;;;                         Defaults to item-render/get-item-rendering-data
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
@@ -305,11 +298,6 @@
   [dom-specification]
   (or (:render-dom dom-specification)
       render-item-DOM))
-
-(defn rendering-data-getter
-  [dom-specification]
-  (or (:get-rendering-data dom-specification)
-      get-item-rendering-data))
 
 ;;; NOTE: action-data-getter is defined in action_data.clj, because it
 ;;; both needs a function defined there and is used there. So putting
@@ -397,7 +385,6 @@
                      :query-id (:item-id query-item)
                      :stack-id (:item-id stack-item)
                      :render-dom render-batch-edit-DOM
-                     :get-rendering-data get-batch-edit-rendering-data
                      :get-action-data get-empty-action-data})))
 
 ;;; TODO: Add a unit test for this.
@@ -424,13 +411,11 @@
                    {:relative-id (:item-id target)
                     :chosen-tab-id id
                     :render-dom render-tabs-DOM
-                    :get-rendering-data mutable-store-get-rendering-data
                     :get-action-data [get-id-action-data (:item-id target)]})
                   (make-component
                    {:relative-id (:item-id topic)
                     :table-id (:item-id topic)
-                    :render-dom render-table-DOM
-                    :get-rendering-data mutable-store-get-rendering-data})])
+                    :render-dom render-table-DOM})])
                ;; No tab is selected. Show just the item.
                (make-component
                 (assoc basic-dom-specification        
@@ -469,7 +454,6 @@
                       store session-temporary-id client-state id-R)
            :id-R id-R ; used by top-level-get-action-data
            :get-action-data top-level-get-action-data
-           :get-rendering-data mutable-store-get-rendering-data
            :render-dom reporter-specification-render-dom)))
 
 (comment ;; Copy stuff out of here as we support more kinds of top levels.

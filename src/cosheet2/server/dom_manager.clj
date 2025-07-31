@@ -23,8 +23,7 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [render-utils :refer [mutable-store-get-rendering-data]]
-             [render :refer [dom-renderer rendering-data-getter]]
+             [render :refer [dom-renderer]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   update-action-data-for-component]])))
 
@@ -314,29 +313,6 @@
     (make-component-atom
      specification dom-manager client-id depth new-elided-from)))
 
-(defn make-dom-calculating-reporter
-  "Return a reporter that calculates the component's dom."
-  ;; TODO: !!! This currently runs the new way if the data getter is
-  ;; mutable-store-get-rendering-data. Once everything has been
-  ;; converted to that style, get rid of the backward compatible case.
-  [dom-specification mutable-store]
-  (let [data-getter (rendering-data-getter dom-specification)
-        renderer (dom-renderer dom-specification)]
-    (if (= data-getter mutable-store-get-rendering-data)
-      (do (println "RUNNING NEW RENDERING STYLE")
-          (call-pseudo-closure renderer dom-specification mutable-store))
-      (let [pairs (call-pseudo-closure
-                   data-getter dom-specification mutable-store)
-            data-reporters (map (fn [[reporter categories]]
-                                  (if (reporter? reporter)
-                                    (category-change categories reporter)
-                                    reporter))
-                                pairs)
-            application (apply
-                         pseudo-closure-application
-                         renderer dom-specification data-reporters)]
-        (new-application application)))))
-
 (def handle-dom-change)
 
 (defn dom-calculator-callback
@@ -389,7 +365,7 @@
      (let [{:keys [dom-specification dom-manager]} component-data]
        (if (= (component-data-state component-data) :created)
          (let [{:keys [mutable-store highest-version]} @dom-manager
-               dom-R (make-dom-calculating-reporter
+               dom-R ((dom-renderer dom-specification)
                       dom-specification mutable-store)]
            (-> component-data
                (assoc :dom-R dom-R)

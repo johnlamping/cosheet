@@ -23,17 +23,6 @@
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
-(defn mutable-store-get-rendering-data
-  "This is a temporary rendering data we use as we migrate to getting
-  rid of rendering data, and all renderers will get just the store."
-  [spec store]
-  store)
-
-(defmethod print-method
-  cosheet2.server.render_utils$mutable_store_get_rendering_data
-  [v ^java.io.Writer w]
-  (.write w "store-RD"))
-
 (defn specification-item-id
   [specification]
   (or (:item-id specification) (:relative-id specification)))
@@ -144,7 +133,6 @@
   [item specification]
   (make-component (assoc specification
                          :relative-id (:item-id item)
-                         :get-rendering-data mutable-store-get-rendering-data
                          ;; TODO: !!! Add this. That will require moving
                          ;; this to item-dom
                          ; :render-dom render-item-DOM

@@ -17,8 +17,7 @@
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
                                   new-tab-table-element]]
-             [render-utils :refer [hierarchy-node-DOM make-component
-                                   mutable-store-get-rendering-data]]
+             [render-utils :refer [hierarchy-node-DOM make-component]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
@@ -79,7 +78,6 @@
           :template template
           :width (* 0.75 (count tab-ids))
           :render-dom render-tab-elements-DOM
-          :get-rendering-data mutable-store-get-rendering-data
           :example-element-ids example-element-ids}
        (= (count tab-ids) 1)
        (assoc :tab-id (first tab-ids))

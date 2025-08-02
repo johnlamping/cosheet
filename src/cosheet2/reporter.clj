@@ -217,7 +217,7 @@
 (defn change-data-control-return!
   "This is the most general function for updating a reporter. But it
   must not change the demand information.  
-  Call the function with the current data map  of the reporter.  It must
+  Call the function with the current data map of the reporter.  It must
   return a new data map, a description of its change since the last
   valid value, the categories of the change, and the return value it
   wants.  Set the data of the reporter to the new map, and inform any

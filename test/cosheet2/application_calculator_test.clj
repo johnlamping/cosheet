@@ -7,6 +7,7 @@
                       [reporter :refer [invalid new-reporter
                                         reporter-data reporter-value
                                         reporter-atom set-value! set-attendee!
+                                        set-calculator-data-if-needed!
                                         remove-attendee! inform-attendees
                                         universal-category]]
                       [calculator :refer [new-calculator-data current-value
@@ -25,7 +26,7 @@
         r2 (new-reporter :value-source r1
                          :value-source-priority-delta 1
                          :calculator-data cd)
-        r3 (new-reporter :old-value-source r1
+        r3 (new-reporter :former-application-value r1
                          :value-source-priority-delta 1
                          :calculator-data cd)]
     (register-copy-value r2 r1 cd)
@@ -40,13 +41,13 @@
     (set-value! r1 :x)
     (compute cd)
     (is (= (reporter-value r2) :w))
-    (register-demand-old-value r3 r1 cd)
+    (register-demand-former-application-value r3 r1 cd)
     (compute cd)
     ;; r3 had r1 as its old source, so the copy value should throw away
     ;; the result.
     (is (= (reporter-value r3) invalid))
     (is (check
-         ((:attendees (reporter-data r1)) [:demand-old-value r3])
+         ((:attendees (reporter-data r1)) [:demand-former-application-value r3])
          [Double/MAX_VALUE [universal-category] null-callback]))))
 
 (deftest copy-subordinate-test
@@ -99,7 +100,8 @@
     (is (= (reporter-value r2) invalid))
     (is (= (reporter-value r3) invalid))
     (is (= (:value-source (reporter-data r2)) nil))
-    (is (= (:old-value-source (reporter-data r2)) r0)) ;; Last known source.
+    (is (= (:former-application-value
+            (reporter-data r2)) r0)) ;; Last known source.
     (is (= (current-tasks (:queue cd)) ()))
     ;; Now set the value back to the original value, and check the consequences.
     ;; We don't need to compute, because it is just value copying.
@@ -206,6 +208,62 @@
     (is (not (contains? (reporter-data r) :needed-values)))
     (is (not (contains? (reporter-data r) :subordinate-values)))
     (is (empty? (:attendees (reporter-data r0))))))
+
+(deftest reuse-test
+  ;; Make sure that intermediate computations are not getting done if
+  ;; their input goes invalid but then goes valid to the same value.
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        history (atom [])
+        record (fn [arg] (swap! history #(conj % arg)))
+        r-base (new-reporter :name :r-base
+                             :value invalid)
+        ;; A computation on the base value.
+        r-calc (new-reporter :name :r-calc
+                             :application [(fn [val] (record :r-calc)
+                                             (first val))
+                                           r-base]
+                             :calculator application-calculator
+                             :calculator-data cd)
+        ;; A computation on the intermediate value.
+        r-final (new-reporter :name :r-final
+                              :application [(fn [val] (record :r-final)
+                                              val)
+                                            r-calc]
+                              :calculator application-calculator
+                              :calculator-data cd)]
+    (set-calculator-data-if-needed! r-final cd)
+    (set-attendee! r-final :notification 0
+                   (fn [& {:keys [reporter]}]
+                     (record (reporter-value reporter))))
+    ;; We should have no history yet.
+    (compute cd)
+    (is (= @history []))
+    ;; Do a computation.
+    (set-value! r-base '[1 2])
+    (compute cd)
+    (is (= @history [:r-calc :r-final 1]))
+    ;; Now, set the base value to be invalid. There should be no more
+    ;; calculation, but the invalid should propagate.
+    (set-value! r-base invalid)
+    (compute cd)
+    (is (= @history [:r-calc :r-final 1
+                     :cosheet2.reporter/invalid]))
+    ;; Now, set the base balue back to its original value. Since it
+    ;; matches what was already computed, the value should be back,
+    ;; but there should be no more calculation.
+    (set-value! r-base '[1 2])
+    (compute cd)
+    (is (= @history [:r-calc :r-final 1
+                     :cosheet2.reporter/invalid 1]))
+    ;; Now, change the base value, but in a way that doesn't change
+    ;; the intermediate value. Only the intermediate computation
+    ;; should run.
+    (set-value! r-base '[1 3])
+    (compute cd)
+    (is (= @history
+           [:r-calc :r-final 1
+            :cosheet2.reporter/invalid 1
+            :cosheet2.reporter/invalid :r-calc 1]))))
 
 (deftest nil-value-test
   ;; There had been a bug with nil values throwing off propagation.

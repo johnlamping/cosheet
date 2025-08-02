@@ -98,6 +98,11 @@
     (-> data
         (assoc :value value
                :dependent-depth dependent-depth)
+        ;; We inform the attendees even if only the dependent-depth
+        ;; changed, because application reporters want to hear about
+        ;; that. The cost is small because it is rare that
+        ;; dependent-depth would change without the value changing
+        ;; too.
         (update-new-further-action inform-attendees reporter))))
 
 (defn copy-value
@@ -114,11 +119,11 @@
      (fn [data]
        (let [cd (:calculator-data data)]
          (if (= (:value-source data) from)
-           (let [our-depth (when (valid? value)
-                             (+ value-dependent-depth
-                                (:value-source-priority-delta data)))]
+           (let [our-dependent-depth (when (valid? value)
+                                       (+ (:value-source-priority-delta data)
+                                          value-dependent-depth))]
              (cond-> (update-value-and-dependent-depth
-                      data reporter value our-depth)
+                      data reporter value our-dependent-depth)
                data-finalizer
                (data-finalizer reporter cd)))
            data))))))

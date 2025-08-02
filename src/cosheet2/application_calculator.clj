@@ -67,32 +67,41 @@
 ;;;                      the value later goes invalid. The map is not
 ;;;                      present if nothing is attending to this
 ;;;                      reporter.
-;;;       :needed-values A set of reporters whose values this reporter
-;;;                      needs to run its application and that it
-;;;                      doesn't have a valid value for. Not present
-;;;                      if nothing is attending to the reporter.
-;;;    :old-value-source The previous :value-source, if we know it and
-;;;                      we haven't yet gotten a value from the
-;;;                      current value source. We maintain demand for
-;;;                      it to keep it alive. This serves two
-;;;                      purposes. First, if we don't yet have a
-;;;                      current value source, and some of our
-;;;                      arguments have gone invalid, but not changed
-;;;                      values, then this will become the value
-;;;                      source again, if our arguments retake their
-;;;                      last valid values. Second, even if we get a
-;;;                      new value source, but its value is still
-;;;                      being computed, our old value source can stay
+;;;       :needed-values This is only valid if anything is attending to
+;;;                      the reporter. In that case, it is a (possibly
+;;;                      empty) set of reporters whose values this
+;;;                      reporter needs to run its application and
+;;;                      that it doesn't have a valid value for.
+;;;  :former-application-value
+;;;                      The previous result of our application, if we
+;;;                      know it, and we don't currently have a valid
+;;;                      value, and we've kept demand since it was
+;;;                      calculated. (If our application returned a
+;;;                      reporter, this will be that reporter, rather
+;;;                      than our former value, which came from that
+;;;                      reporter.) This will hold invalid if we don't
+;;;                      know what it is. :former-application-value
+;;;                      serves two purposes.
+;;;                      First, if some of our arguments have gone
+;;;                      invalid, but not changed values, then if our
+;;;                      arguments retake their last valid values, we
+;;;                      will reuse this, instead of calling our
+;;;                      application again.
+;;;                      Second, if this is a reporter, and hence our
+;;;                      old value-source, we maintain demand for it
+;;;                      it to keep it alive. Even if we get a
+;;;                      different value source, while its value being
+;;;                      computed, our old value source can stay
 ;;;                      cached and available for reuse by upcoming
 ;;;                      computations of the current value
 ;;;                      source. Sometimes, for example, our new value
 ;;;                      source returns our old value source as its
 ;;;                      value.
-;;; :arguments-unchanged Present, and equal to true, if we have an
-;;;                      old-value-source and all of the arguments we
-;;;                      depend on that are currently valid have the
-;;;                      same values as when we computed the
-;;;                      old-value-source.
+;;; :arguments-unchanged Present, and equal to true, if we have a
+;;;                      :former-application-value and all of the
+;;;                      arguments we depend on that are currently
+;;;                      valid have the same values as when we
+;;;                      computed the former-application-value.
 ;;;  :requested-priority The priority that we have used to determine
 ;;;                      our requests' priorities. If our :priority
 ;;;                      changes from that, we have to redo our
@@ -155,7 +164,7 @@
 ;;;     this reporter.
 
 (def run-application-if-ready)
-(def update-old-value-source)
+(def update-former-application-value)
 
 (defn subordinate-depth
   "Return the max of the priorities of our subordinates relative to ours."
@@ -165,19 +174,21 @@
       0
       (+ 1 (apply max depths)))))
 
-(defn update-remove-unnecessary-old-value-source
+(defn update-remove-unnecessary-former-application-value
   [data reporter cd]
   (cond-> data
     (valid? (:value data))
-    ;; We have finished computing a value, so the old source
+    ;; We have finished computing a value, so the old application
     ;; is not holding onto anything useful.
-    (update-old-value-source reporter nil cd)))
+    (update-former-application-value reporter invalid cd)))
 
 (defn copy-value-and-cleanup-callback
+  "Copy the value from our value source."
   [& {[_ reporter] :key from :reporter}]
-  (copy-value reporter from update-remove-unnecessary-old-value-source))
+  (copy-value reporter from update-remove-unnecessary-former-application-value))
 
 (defn register-copy-value
+  "Register to copy the value from our value source."
   [reporter from cd]
   (register-for-value-source reporter from copy-value-and-cleanup-callback cd))
 
@@ -187,22 +198,22 @@
   [& _]
   nil)
 
-(defn register-demand-old-value
-  "Register the need to demand (or not demand) the value from the second
-   reporter as our old value source."
-  [reporter from cd]
-  (with-latest-value
-    [has-source
-     (= (:old-value-source (reporter-data reporter)) from)]
-    ;; It is possible, with caching, for the same reporter to be
-    ;; both our value source and one of our subordinates. We
-    ;; need to have a different key for the two cases, or the
-    ;; reporter will only record one of them.
-    (let [key (list :demand-old-value reporter)]
-      (if has-source
-        (set-attendee! from key Double/MAX_VALUE null-callback)
-        (remove-attendee! from key)))
-   ))
+(defn register-demand-former-application-value
+  "Register whether or not our former-application-value creates demand
+  for the former-value argument, which must be a reporter."
+  [reporter former-value cd]
+  (assert (reporter? former-value))
+  ;; It is possible, with caching, for the same reporter to be
+  ;; both our value source and one of our subordinates. We
+  ;; need to have a different key for the two cases, or that
+  ;; reporter will only record one of them.
+  (let [key (list :demand-former-application-value reporter)]
+    (with-latest-value
+        [maches-former-application-value
+         (= (:former-application-value (reporter-data reporter)) former-value)]
+        (if maches-former-application-value
+          (set-attendee! former-value key Double/MAX_VALUE null-callback)
+          (remove-attendee! former-value key)))))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -224,27 +235,30 @@
        ;; subsidiary reporters common to both will always have demand.
        (filter identity [source original-source])))))
 
-(defn update-old-value-source
-  "Given the data from a reporter, and the reporter, set the old-value-source
-   to the given source, and request the appropriate registrations."
-  [data reporter source cd & {:keys [old]}]
-  ;; We must only set to non-nil if there are attendees for our value,
-  ;; otherwise, we will create demand when we have none ourselves.
-  (assert (or (nil? source) (data-attended? data)))
-  (let [original-source (:old-value-source data)]
-    (if (= source original-source)
+(defn update-former-application-value
+  "Given the data from a reporter, and the reporter, set the
+  former-application-value to the given value, and if the value is a
+  reporter, request the appropriate registrations."
+  [data reporter value cd]
+  ;; We must only set to a valid value if there are attendees for our
+  ;; value, otherwise, we will create demand when we have none
+  ;; ourselves.
+  (assert (or (= value invalid) (data-attended? data)))
+  (let [recorded-former-value (:former-application-value data)]
+    (if (= value recorded-former-value)
       data
       (let [data (-> data
-                     (assoc-if-non-empty :old-value-source source)
-                     (dissoc :arguments-unchanged))]
+                     (assoc :former-application-value value)
+                     (assoc :arguments-unchanged (not= value invalid)))]
         (reduce
          (fn [data src]
-           (update-new-further-action data register-demand-old-value
+           (update-new-further-action data
+                                      register-demand-former-application-value
                                       reporter src cd))
          data
          ;; Add the new source before removing any old one, so that any
          ;; subsidiary reporters common to both will always have demand.
-         (filter identity [source original-source]))))))
+         (filter reporter? [value recorded-former-value]))))))
 
 (defn copy-subordinate
   [reporter from cd]
@@ -262,23 +276,21 @@
                    (= value invalid)
                    same-value))
            data
-           ;; A value that we care about changed.
-           ;; We are invalid until the recomputation runs,
-           ;; which may not be for a while.
-           (let [current-source (:value-source data)
+           ;; A value that we care about changed.  We are invalid
+           ;; until the recomputation runs, which may not be for a
+           ;; while.
+           (let [last-application-value (or (:value-source data)
+                                            (:value data))
                  newer-data (cond-> (update-value-and-dependent-depth
-                                     data reporter invalid
-                                     (if current-source
-                                       (:value-source-priority-delta data)
-                                       0))
-                              current-source
-                              ;; We must do the copy from source to
-                              ;; old-source before clearing source,
-                              ;; so the old source always has attendees.
+                                     data reporter invalid nil)
+                              (not= last-application-value invalid)
+                              ;; We must do the copy to
+                              ;; former-application-value before
+                              ;; clearing value-source, so the former value
+                              ;; always has attendees.
                               (#(-> %
-                                    (update-old-value-source
-                                     reporter current-source cd)
-                                    (assoc :arguments-unchanged true)
+                                    (update-former-application-value
+                                     reporter last-application-value cd)
                                     (update-value-source reporter nil cd))))]
              (if (valid? value)
                (let [new-data
@@ -292,10 +304,15 @@
                    (if (:arguments-unchanged new-data)
                      ;; We have re-confirmed all old values for
                      ;; the old source. Make it current again.
-                     (-> new-data
-                         (update-value-source
-                          reporter (:old-value-source new-data) cd)
-                         (update-old-value-source reporter nil cd))
+                     (let [{:keys [former-application-value]} new-data]
+                       (-> (if (reporter? former-application-value)
+                             (update-value-source
+                              new-data reporter former-application-value cd)
+                             (update-value-and-dependent-depth
+                              new-data reporter former-application-value
+                              (subordinate-depth data)))
+                           (update-former-application-value
+                            reporter invalid cd)))
                      ;; Some value changed. Schedule recomputation.
                      (update-new-further-action
                       new-data 
@@ -377,7 +394,7 @@
                (update-value-and-dependent-depth
                 reporter value subordinate-depth)
                (update-value-source reporter nil cd)
-               (update-old-value-source reporter nil cd))))))))
+               (update-former-application-value reporter invalid cd))))))))
 
 (defn do-application-calculate
   "The calculation work for an application reporter."
@@ -404,21 +421,21 @@
                (:value-source new-data)
                (update-new-further-action
                 register-copy-value reporter (:value-source new-data) cd))
-             (let [new-data (update-value-and-dependent-depth
-                             new-data reporter invalid 0)]
-               (if (data-attended? new-data)
-                 (-> new-data
-                     (assoc :needed-values subordinates)
-                     (assoc :subordinate-values {})
-                     (update-new-further-action
-                      add-task-with-priority (:queue cd)
-                      (:priority data)
-                      run-application-if-ready reporter cd))
-                 (-> new-data
-                     (dissoc :needed-values)
-                     (dissoc :subordinate-values)
-                     (update-value-source reporter nil cd)
-                     (update-old-value-source reporter nil cd)))))))))))
+             (if (data-attended? new-data)
+               (-> new-data
+                   (assoc :needed-values subordinates)
+                   (assoc :subordinate-values {})
+                   (update-new-further-action
+                    add-task-with-priority (:queue cd)
+                    (:priority data)
+                    run-application-if-ready reporter cd))
+               (-> new-data
+                   (dissoc :needed-values)
+                   (dissoc :subordinate-values)
+                   (assoc :value invalid)
+                   (assoc :dependent-depth nil)
+                   (update-former-application-value reporter invalid cd)
+                   (update-value-source reporter nil cd))))))))))
 
 (defn application-calculator
   [reporter cd]

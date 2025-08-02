@@ -521,7 +521,6 @@
   "Render a dom spec for only the content of an item."
   [{:keys [relative-id item-id class]} store]
   (assert (= relative-id :content))
-  (println "RENDERING CONTENT ONLY")
   (expr-let [item (description->updating-entity-R item-id store)]
     (item-content-DOM item (if class {:class class} {}))))
 

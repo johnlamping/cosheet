@@ -1,7 +1,8 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
-                      [store :refer [id->target target-label->ids]]
+                      [store :refer [id->target target-label->ids
+                                     current-store]]
                       [reporter :refer [universal-category]]
                       [entity :refer [content elements label->elements
                                       description->entity
@@ -355,7 +356,7 @@
 
 (defn table-row-component
   ;; The specification must include column-descriptions-R
-  [row-id row-template specification]
+  [row-id specification]
   (make-component
    (assoc specification
           :relative-id row-id
@@ -393,29 +394,29 @@
 (defn table-virtual-row-DOM-component
   "Generate the component for a table's virtual row."
   [row-template adjacent-id column-descriptions-R]
-    (make-component
-     {:relative-id :virtual-row
-      :class "table-row"
-      :column-descriptions-R column-descriptions-R
-      :render-dom render-table-virtual-row-DOM
-      :sibling true
-      :template row-template
-      :get-action-data [composed-get-action-data
-                        [get-id-action-data adjacent-id] ; our sibling
-                        get-virtual-action-data]}))
+  (make-component
+   {:relative-id :virtual-row
+    :class "table-row"
+    :column-descriptions-R column-descriptions-R
+    :render-dom render-table-virtual-row-DOM
+    :sibling true
+    :template row-template
+    :get-action-data [composed-get-action-data
+                      [get-id-action-data adjacent-id] ; our sibling
+                      get-virtual-action-data]}))
 
 (defn render-table-rows-DOM
   "The specification must have
    column-descriptions-R row-template-R and row-ids-R."
   [{:keys [row-template-R row-ids-R] :as specification} store]
-  ;; We pass on column-descriptions-R.
+  ;; We pass on column-descriptions-R in the spec.
   (expr-let [row-template row-template-R
              row-ids row-ids-R]
     (let [row-spec (dissoc specification
                            :row-template-R :row-ids-R :id-with-no-subject
                            :get-action-data)]
       (into [:div {:class "table-rows"}]
-            (concat (map #(table-row-component % row-template row-spec)
+            (concat (map #(table-row-component % row-spec)
                          row-ids)
                     [(table-virtual-row-DOM-component
                       row-template
@@ -493,53 +494,60 @@
   (println "Generating DOM for table" (simplify-for-print table-id))
   ;; First check to see if we have the table information filled in yet.
   (let [table-R (description->updating-entity-R table-id store)]
-    (expr-let [table-entity table-R]
-      (let [row-condition  (label->element table-entity :row-condition)
-            column-headers (label->element table-entity :column-headers )]
-        ;; Render the table only if the table information has been filled in.
-        (if (not (and row-condition column-headers))
-          [:div {}]
-          (let [row-template-R (expr table-row-template table-R)
-                column-headers-R (expr label->element table-R :column-headers)
-                hierarchy-R (table-hierarchy-R column-headers-R)
-                row-ids-R (table-row-ids-R row-template-R store)
-                virtual-column-description {:column-id :virtualColumn}
-                ;; TODO: Add an "other" column if a table requests it.
-                column-descriptions-R
-                (expr-let [hierarchy hierarchy-R]
-                  (concat
-                   (mapcat #(table-hierarchy-node-column-descriptions nil %)
-                           hierarchy)
-                   [virtual-column-description]))
-                ;; TODO: !!! id-with-no-subject could return an
-                ;;           id that later gets used. We need to find
-                ;;           an unused id at the point we need it.
-                id-with-no-subject (loop [id table-id]
-                                     (let [target (id->target
-                                                   (:store table-entity) id)]
+    ;; We get just the ids first. Even though table-R will get updates
+    ;; whenever what's in the row condition changes, we don't want to
+    ;; redisplay the entire table when that happens; we only want to
+    ;; transmit any new rows. By looking for just the ids, which won't
+    ;; change once the table is first filled out, we won't trigger
+    ;; recomputation of this whole function.
+    (expr-let [[row-condition-id column-headers-id]
+               (expr-let [table-entity table-R]
+                 [(:item-id (label->element table-entity :row-condition))
+                  (:item-id (label->element table-entity :column-headers))])]
+      ;; Render the table only if the table information has been filled in.
+      (if (not (and row-condition-id column-headers-id))
+        [:div {}]
+        (let [row-template-R (expr table-row-template table-R)
+              column-headers-R (expr label->element table-R :column-headers)
+              hierarchy-R (table-hierarchy-R column-headers-R)
+              row-ids-R (table-row-ids-R row-template-R store)
+              virtual-column-description {:column-id :virtualColumn}
+              ;; TODO: Add an "other" column if a table requests it.
+              column-descriptions-R
+              (expr-let [hierarchy hierarchy-R]
+                (concat
+                 (mapcat #(table-hierarchy-node-column-descriptions nil %)
+                         hierarchy)
+                 [virtual-column-description]))
+              ;; TODO: !!! id-with-no-subject could return an
+              ;;           id that later gets used. We need to find
+              ;;           an unused id at the point we need it.
+              id-with-no-subject (let [store (current-store store)]
+                                   (loop [id table-id]
+                                     (let [target (id->target store id)]
                                        (if target
                                          (recur target)
-                                         id)))
-                condition-dom (make-component
-                               {:relative-id (:item-id row-condition)
-                                :render-dom render-table-condition-DOM
-                                :get-do-batch-edit-action-data
-                                get-table-condition-do-batch-edit-action-data })
-                header-dom (make-component
-                            {:relative-id (:item-id column-headers)
-                             :hierarchy-R hierarchy-R
-                             :render-dom render-table-header-DOM})
-                body-dom (make-component
-                          {:relative-id :body
-                           ;; This is used as a sibling of our initial row.
-                           :id-with-no-subject id-with-no-subject
-                           :column-descriptions-R column-descriptions-R
-                           :row-template-R row-template-R
-                           :row-ids-R row-ids-R
-                           :render-dom render-table-rows-DOM
-                           :get-action-data get-pass-through-action-data})]
-            [:div {:class "table"}
-             condition-dom
-             [:div {:class "table-main"}
-              header-dom
-              body-dom]]))))))
+                                         id))))
+              condition-dom (make-component
+                             {:relative-id row-condition-id
+                              :render-dom render-table-condition-DOM
+                              :get-do-batch-edit-action-data
+                              get-table-condition-do-batch-edit-action-data })
+              header-dom (make-component
+                          {:relative-id column-headers-id
+                           :hierarchy-R hierarchy-R
+                           :render-dom render-table-header-DOM})
+              body-dom (make-component
+                        {:relative-id :body
+                         ;; This is used as a sibling of our initial row.
+                         :id-with-no-subject id-with-no-subject
+                         :column-descriptions-R column-descriptions-R
+                         :row-template-R row-template-R
+                         :row-ids-R row-ids-R
+                         :render-dom render-table-rows-DOM
+                         :get-action-data get-pass-through-action-data})]
+          [:div {:class "table"}
+           condition-dom
+           [:div {:class "table-main"}
+            header-dom
+            body-dom]])))))

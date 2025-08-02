@@ -19,8 +19,7 @@
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
                                   specialize-generic
-                                  create-possible-selector-elements
-                                  table-row-template]]
+                                  create-possible-selector-elements]]
              [order-utils :refer [ordered-entities]])))
 
 ;;; This file contains the basic action data getters, plus utilities for them.

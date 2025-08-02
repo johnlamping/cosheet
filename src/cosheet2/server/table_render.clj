@@ -358,6 +358,7 @@
   ;; The specification must include column-descriptions-R
   [row-id specification]
   (make-component
+   ;; The incoming specification must have :column-descriptions-R.
    (assoc specification
           :relative-id row-id
           :row-id row-id ; Action data passes this down to everything
@@ -379,7 +380,7 @@
 
 (defn render-table-virtual-row-DOM
   "Generate dom for a table's virtual row."
-  [{:keys [template column-descriptions-R]} store]
+  [{:keys [column-descriptions-R]} store]
   (expr-let [column-descriptions column-descriptions-R]
     (let [cells (map table-virtual-row-cell-DOM-component
                      ;; Don't make a cell for the virtual column.
@@ -391,37 +392,43 @@
   [v ^java.io.Writer w]
   (.write w "virt-row-DOM"))
 
-(defn table-virtual-row-DOM-component
+(defn table-virtual-row-DOM-component-R
   "Generate the component for a table's virtual row."
-  [row-template adjacent-id column-descriptions-R]
-  (make-component
-   {:relative-id :virtual-row
-    :class "table-row"
-    :column-descriptions-R column-descriptions-R
-    :render-dom render-table-virtual-row-DOM
-    :sibling true
-    :template row-template
-    :get-action-data [composed-get-action-data
-                      [get-id-action-data adjacent-id] ; our sibling
-                      get-virtual-action-data]}))
+  [row-template-R column-descriptions-R adjacent-id]
+  (expr-let [row-template row-template-R]
+    (make-component
+     {:relative-id :virtual-row
+      :class "table-row"
+      :column-descriptions-R column-descriptions-R
+      :render-dom render-table-virtual-row-DOM
+      :sibling true
+      ;; We need the value of the row-template, even though
+      ;; render-table-virtual-row-DOM doesn't use it, because the
+      ;; action data needs it to be in the spec.
+      :template row-template
+      :get-action-data [composed-get-action-data
+                        [get-id-action-data adjacent-id] ; our sibling
+                        get-virtual-action-data]})))
 
 (defn render-table-rows-DOM
-  "The specification must have
-   column-descriptions-R row-template-R and row-ids-R."
-  [{:keys [row-template-R row-ids-R] :as specification} store]
-  ;; We pass on column-descriptions-R in the spec.
-  (expr-let [row-template row-template-R
-             row-ids row-ids-R]
+  [{:keys [row-ids-R row-template-R column-descriptions-R] :as specification}
+   store]
+  ;; We get the current values of the information that is needed for
+  ;; all rows.
+  (expr-let [row-ids row-ids-R]
     (let [row-spec (dissoc specification
-                           :row-template-R :row-ids-R :id-with-no-subject
-                           :get-action-data)]
-      (into [:div {:class "table-rows"}]
-            (concat (map #(table-row-component % row-spec)
-                         row-ids)
-                    [(table-virtual-row-DOM-component
-                      row-template
-                      (or (last row-ids) (:id-with-no-subject specification))
-                      (:column-descriptions-R specification))])))))
+                           :row-ids-R :row-template-R
+                           :get-action-data :id-with-no-subject)
+          non-virtual-rows (map #(table-row-component % row-spec)
+                                row-ids)]
+      (expr-let [virtual-row (table-virtual-row-DOM-component-R
+                              row-template-R
+                              column-descriptions-R
+                              (or (last row-ids)
+                                  (:id-with-no-subject specification)))]
+        (into [:div {:class "table-rows"}]
+            (concat non-virtual-rows
+                    [virtual-row]))))))
 
 (defn table-hierarchy-R
   "Return a reporter whose value is the hierarchy of the table header."
@@ -507,8 +514,33 @@
       ;; Render the table only if the table information has been filled in.
       (if (not (and row-condition-id column-headers-id))
         [:div {}]
+        ;; Suppose the table's row condition changes. We want to reuse
+        ;; all the rows that still pass the new condition; we don't
+        ;; want to send them to the client all over again. Similarly,
+        ;; suppose the table adds a new column. All the rows have to
+        ;; change, but we want to reuse all their existing cells, only
+        ;; sending the client the cells for the new column.
+        ;;
+        ;; To support this reuse, we first make reporters for all the
+        ;; information that controls the table layout. That way, all
+        ;; uses of them can be shared. But then we don't access their
+        ;; values until inside the rendering of components that
+        ;; directly need them to produce their DOM. In particular,
+        ;; higher level components that don't need the values to
+        ;; produce their DOM just pass the reporters on in the
+        ;; specifications of their subcomponents, without accessing
+        ;; their values.
+        ;;
+        ;; This way, changes to the values don't invalidate the high
+        ;; level components. And even for components whose DOM does
+        ;; depend on the values, the dom manager will reuse any of the
+        ;; component atoms of any subcomponents that don't change.
         (let [row-template-R (expr table-row-template table-R)
-              column-headers-R (expr label->element table-R :column-headers)
+              ;; Making column-headers-R this way makes its
+              ;; computation not depend on changes elsewhere in the
+              ;; table entity.
+              column-headers-R (description->updating-entity-R
+                                column-headers-id store)
               hierarchy-R (table-hierarchy-R column-headers-R)
               row-ids-R (table-row-ids-R row-template-R store)
               virtual-column-description {:column-id :virtualColumn}

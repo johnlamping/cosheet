@@ -8,8 +8,8 @@
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
                       [entity :refer [primitive? label? description->entity
-                                      content elements
-                                      content->elements label->elements
+                                      content elements content->elements
+                                      label->elements label->element
                                       container]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
@@ -343,17 +343,29 @@
   [table-id immutable-store]
   (first (target-label->ids immutable-store table-id :column-headers)))
 
+(defn table-column-headers-element
+  [table-item]
+  (label->element table-item :column-headers))
+
 (defn table-row-condition-id
   [table-id immutable-store]
   (first (target-label->ids immutable-store table-id :row-condition)))
 
+(defn table-row-condition-element
+  [table-item]
+  (label->element table-item :row-condition))
+
+(defn table-row-condition->row-template
+  [row-condition]
+  (let [condition-elements (semantic-elements row-condition)
+        elements-as-lists (map semantic-to-list condition-elements)]
+    (concat '(anything) elements-as-lists [:top-level])))
+
 (defn table-row-template
   "Return the row condition as a template."
   [table-item]
-  (let [row-condition (first (label->elements table-item :row-condition))
-        condition-elements (semantic-elements row-condition)
-        elements-as-lists (map semantic-to-list condition-elements)]
-    (concat '(anything) elements-as-lists [:top-level])))
+  (table-row-condition->row-template
+   (table-row-condition-element table-item)))
 
 (defn tab-table-element
   "Return the element that gives the information for a table in a new tab

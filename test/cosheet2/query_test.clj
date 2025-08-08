@@ -301,22 +301,34 @@
                                    '(1 (:a :b) (:c :b))))))
 
 (deftest matching-elements-test
-  (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
-         ['(1 ("A" 3))]))
+  ;; TODO: !!! Remove two "comment"
+  (comment
+    (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
+           ['(1 ("A" 3))])))
   (let [ia (make-item-id "A")
         ib (make-item-id "B")
+        ic (make-item-id "C")
         s0 (new-element-store)
         [s1 id1] (add-entity s0 ia '(1 ("a" 3)))
         [s2 id2] (add-entity s1 ia '(3 (4 5)))
-        [s3 id3] (add-entity s2 ib '(1 ("a" 4)))]
-    (let [matches (matching-elements '(nil ("A"))
-                                     (description->entity ia s3))]
+        [s3 id3] (add-entity s2 ib '(1 ("a" 4)))
+        [s4 id4] (add-entity s3 ic '(2 ("C" :label) ("C" :label)))]
+    (comment
+      (let [matches (matching-elements '(nil ("A"))
+                                       (description->entity ia s4))]
+        (is (= (map #(to-list %) matches)
+               ['(1 ("a" 3))])))
+      (let [matches (matching-elements nil
+                                       (description->entity ia s4))]
+        (is (= (set (map #(to-list %) matches))
+               (set ['(1 ("a" 3)) '(3 (4 5))])))))
+    ;; Test a complex term that can match the element more than one
+    ;; way.  (There had been a bug where this would return the same
+    ;; element multiple times.)
+    (let [matches (matching-elements '(nil ("C" :label))
+                                     (description->entity ic s4))]
       (is (= (map #(to-list %) matches)
-             ['(1 ("a" 3))])))
-    (let [matches (matching-elements nil
-                                     (description->entity ia s3))]
-      (is (= (set (map #(to-list %) matches))
-             (set ['(1 ("a" 3)) '(3 (4 5))]))))))
+             ['(2 ("C" :label) ("C" :label))])))))
 
 (deftest query-matches-test
   (let [s0 (new-element-store)

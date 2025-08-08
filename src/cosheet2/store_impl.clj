@@ -141,20 +141,21 @@
 
   (target-label->ids [this target label]
     (seq
-     (map #(get-in this [:id->target %])
-          (pseudo-set-seq
-           (get-in this [:target->label->label-ids
-                         (canonical-primitive-form target)
-                         (canonical-primitive-form label)])))))
+     (distinct ; In case one id has more than one matching label.
+      (map #(get-in this [:id->target %])
+           (pseudo-set-seq
+            (get-in this [:target->label->label-ids
+                          (canonical-primitive-form target)
+                          (canonical-primitive-form label)]))))))
 
   (source-label->ids [this source label]
     (seq
-     (map #(get-in this [:id->target %])
-          (pseudo-set-seq
-           (get-in this [:source->label->label-ids
-                         (canonical-primitive-form source)
-                         (canonical-primitive-form label)])))))
-
+     (distinct ; In case one id has more than one matching label.
+      (map #(get-in this [:id->target %])
+           (pseudo-set-seq
+            (get-in this [:source->label->label-ids
+                          (canonical-primitive-form source)
+                          (canonical-primitive-form label)]))))))
 
   (id->marked-as-type? [this id]
     (contains? (:marked-as-type this) id))

@@ -23,6 +23,13 @@
   (->ItemId n))
 
 ;;; TODO: once the store accepts objects, put some of them in here.
+;;; This store holds two top level items:
+;;; <id:4>5
+;;; (object-1
+;;;    <id:1>(44 <id:2>("Foo" <id:3>("Baz" :baz :label)
+;;;                           <id:5>("bar" :label)
+;;;                           <id:11>("bar" :label)
+;;;              <id:9>("Bar" :order)))
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->target
@@ -34,7 +41,9 @@
      (make-link-id 7) (make-link-id 3)
      (make-link-id 8) (make-link-id 5)
      (make-link-id 9) (make-link-id 1)
-     (make-link-id 10) (make-link-id 9)}
+     (make-link-id 10) (make-link-id 9)
+     (make-link-id 11) (make-link-id 2)
+     (make-link-id 12) (make-link-id 11)}
     :id->source
     {(make-link-id 1) 44
      (make-link-id 2) "Foo"
@@ -45,7 +54,9 @@
      (make-link-id 7) :label
      (make-link-id 8) :label
      (make-link-id 9) "Bar"
-     (make-link-id 10) :order}
+     (make-link-id 10) :order
+     (make-link-id 11) "bar"
+     (make-link-id 12) :label}
     :temporary-ids  #{}
     :marked-as-type #{}
     :next-number 1001
@@ -107,7 +118,7 @@
         unindexed (reduce #(index-marked-as-type %1 store %2)
                           empty-indexed ids)]
     (is (check (:marked-as-type store)
-               #{(make-link-id 3) (make-link-id 5)}))
+               #{(make-link-id 3) (make-link-id 5) (make-link-id 11)}))
     (is (empty? (:marked-as-type unindexed)))))
 
 (deftest index-endpoint->label->label-ids-test
@@ -129,12 +140,14 @@
       (is (check (index-key store)
                  (case endpoint
                    :target {(make-link-id 1) {"baz" (make-link-id 3)
-                                              "bar" (make-link-id 5)
+                                              "bar" #{(make-link-id 5)
+                                                      (make-link-id 11)}
                                               :order (make-link-id 10)}
                             (make-link-id 2) {:baz (make-link-id 6)}}
                    :source {"bar" {:order (make-link-id 10)}
                             "foo" {"baz" (make-link-id 3)
-                                   "bar" (make-link-id 5)}
+                                   "bar" #{(make-link-id 5)
+                                           (make-link-id 11)}}
                             "baz" {:baz (make-link-id 6)}})))
       (is (empty? (index-key unindexed))))))
 
@@ -166,7 +179,7 @@
 (deftest source->ids-test
   (is (= (source->ids test-store "Foo") [(make-link-id 2)]))
   (is (check (source->ids test-store :label)
-             (as-set [(make-link-id 7) (make-link-id 8)])))
+             (as-set [(make-link-id 7) (make-link-id 8) (make-link-id 12)])))
   (is (= (source->ids test-store 123) nil)))
 
 (deftest target-source->ids-test
@@ -434,7 +447,7 @@
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "baz" "bar"))
              [1 [(make-link-id 2)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
-             [2 [(make-link-id 2) (make-link-id 1)] false]))
+             [3 [(make-link-id 2) (make-link-id 1)] false]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
              [(as-set [(make-link-id 1)
@@ -442,12 +455,14 @@
                        (make-link-id 4) (make-link-id 5)
                        (make-link-id 6) (make-link-id 7)
                        (make-link-id 8) (make-link-id 9)
-                       (make-link-id 10)])
+                       (make-link-id 10) (make-link-id 11)
+                       (make-link-id 12)])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
              [(as-set  [(make-object-id -1) (make-link-id 1)
                         (make-link-id 2) (make-link-id 3)
-                        (make-link-id 5) (make-link-id 9)])
+                        (make-link-id 5) (make-link-id 9)
+                        (make-link-id 11)])
               false]))
   (is (check (candidate-matching-ids test-store '("Foo"))
              [[(make-link-id 2)] true]))

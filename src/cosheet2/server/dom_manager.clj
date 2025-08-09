@@ -103,9 +103,6 @@
                            ; time the dom changes.  It is sent by the
                            ; client, which uses it to acknowledge
                            ; which version they got.
-     client-needs-dom      ; True if the client has not been sent the
-                           ; latest dom for our client-id, or has not
-                           ; acknowledged receiving it.
      further-actions       ; A list of [function arg arg ...] calls that
                            ; need to be performed. The function will be
                            ; called with the atom, and the additional
@@ -116,7 +113,7 @@
 
 (defmethod print-method ComponentData [s ^java.io.Writer w]
   ;; Avoid huge print-outs.
-  (.write w (str "<ComponentData>" (:dom-specification s))))
+  (.write w (str "<ComponentData>" (:client-id s))))
 
 (defn component-data? [c]
   (= (type c) ComponentData))
@@ -262,7 +259,7 @@
 
 (defn subcomponent-client-id
   "Given the client-id of a component, and the relative-id of one of its
-  subcomponent, return the client-id of the subcomponent."
+  subcomponents, return the client-id of the subcomponent."
   [containing-client-id relative-id]
   (concatenate-client-id-parts [containing-client-id
                                 (relative-id->client-id-part relative-id)]))
@@ -293,25 +290,27 @@
      :dom-specification specification
      :client-id client-id
      :elided-from elided-from
-     :depth depth
-     :client-needs-dom (not elided-from)})))
+     :depth depth})))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
   return the existing atom if it matches the particulars, otherwise
   make a new one and return it."
-  [specification dom-manager client-id depth new-elided-from old-component-atom]
+  [specification dom-manager new-client-id new-depth new-elided-from
+   old-component-atom]
   (if (when old-component-atom
-        (let [{:keys [dom-specification elided-from]}
+        (let [{:keys [dom-specification elided-from depth client-id]}
               @old-component-atom]
           (and (= dom-specification specification)
+               (= depth new-depth)
+               (= client-id new-client-id)
                ;; We don't currently update the elision in the
                ;; component atom, so if the elision has changed, we
                ;; need a new one.
                (= elided-from new-elided-from))))
     old-component-atom
     (make-component-atom
-     specification dom-manager client-id depth new-elided-from)))
+     specification dom-manager new-client-id new-depth new-elided-from)))
 
 (def handle-dom-change)
 
@@ -393,8 +392,7 @@
                         (assoc :dom-specification nil
                                :id->subcomponent nil
                                :obsolete-components nil
-                               :dom-R nil
-                               :client-needs-dom nil)
+                               :dom-R nil)
                         (update-new-further-actions
                          (map (fn [ca] [deactivate-component ca])
                               (concat (vals id->subcomponent)
@@ -481,8 +479,8 @@
   (when (= (component-data-state @component-atom) :active)
     (swap! dom-manager
            (fn [manager-data]
-             (update manager-data :components-to-send
-                     #(assoc % component-atom (:depth @component-atom)))))
+             (assoc-in manager-data [:components-to-send component-atom]
+                       (:depth @component-atom))))
     ;; Since we copied data from one atom to another, we would
     ;; normally have to operate inside a with-latest-value, checking
     ;; that the component atom was still activate, to make sure we
@@ -493,28 +491,42 @@
     (when (not= (component-data-state @component-atom) :active)
       (remove-from-components-to-send dom-manager component-atom))))
 
-(defn find-non-elided-id->subcomponent
-  "If the component has only an elided subcomponent, go down the
-  containment hierarchy to the first non-elided ones. Note that we
-  take component-data, not the atom."
-  [component-data]
-  (let [{:keys [dom-R id->subcomponent]} component-data]
-    (when-let [dom (reporter-value-when-valid dom-R)]
-      (if (= (first dom) :component)
-        (find-non-elided-id->subcomponent @(first (vals id->subcomponent)))
-        id->subcomponent))))
+(defn equalize-dom-versions-upward
+  "Make the dom-versions of the two component atoms be equal and be at
+  least as big as either was, and at least as big as min-version."
+  [component-atom-1 component-atom-2 min-version]
+  ;; Since we potentially require changes to two atoms, we can't
+  ;; guarantee it in one swap!. Instead, we keep adjusting and looping
+  ;; until we see that our requirement has been satisfied.
+  (loop []
+    (let [version-1 (:dom-version @component-atom-1)
+          version-2 (:dom-version @component-atom-2)]
+      (when (or (not= version-1 version-2)
+                (< version-1 min-version))
+        (swap! (if (< version-1 version-2) component-atom-1 component-atom-2)
+               (fn [data]
+                 ;; The version might have changed; check it again.
+                 (update data :dom-version
+                         #(max % version-1 version-2 min-version))))
+        (recur)))))
 
 (defn process-dom-ready-for-client
   "Record in the dom manager that the client needs to hear about our
   dom. If we are elided, that means it will be given our dom, but
   under the key of our elided-from containing component."
   [dom-manager component-atom]
-  (let [non-elided (or (:elided-from @component-atom) component-atom)]
-    ;; If we are elided, we have to bump the version of our non-elided
-    ;; container, as that is the version sent to the client.
-    (when (not= non-elided component-atom)
-      (swap! non-elided #(update % :dom-version inc)))
-    (add-to-components-to-send dom-manager non-elided)))
+  (let [elided-from (:elided-from @component-atom)]
+    (when elided-from
+      ;; We have to make sure that the dom version of both ourselves
+      ;; and the atom we are elided from are the same and are at least
+      ;; as big as what we had and bigger than what elided-from had.
+      ;; (We need this so that the client will accept our new dom
+      ;; version as an update, and so we will recognize its
+      ;; acknowledgement as acknowledging our dom.)
+      (equalize-dom-versions-upward component-atom elided-from
+                                    (+ 1 (:dom-version @elided-from))))
+    (add-to-components-to-send dom-manager
+                               (or elided-from component-atom))))
 
 (defn update-dom
   "Update the component data to reflect having the given dom,
@@ -560,11 +572,12 @@
           ;; precluding the client from accepting the current one's
           ;; dom.  So in that case, we set up a task to first
           ;; deactivate the old ones, then activate the new ones.
-          follow-on (if obsolete
-                      [deactivate-then-activate
-                       dom-manager component-atom new-subcomponents]
-                      [#(doseq [component-atom new-subcomponents]
-                          (activate-component component-atom))])]
+          follow-ons (if obsolete
+                       [[deactivate-then-activate
+                         dom-manager component-atom new-subcomponents]]
+                       (map (fn [component]
+                              [activate-component component])
+                            new-subcomponents))]
       ;; Check that each subcomponent has a different id. Otherwise, two
       ;; components will share an id, which will mess up communications
       ;; with the client.
@@ -572,12 +585,11 @@
               subcomponent-ids)
       (-> component-data
           (assoc :id->subcomponent id->subcomponent
-                 :obsolete-components obsolete
-                 :client-needs-dom (not (:elided-from component-data)))
+                 :obsolete-components obsolete)
           (update :dom-version inc)
           (update-new-further-action
            process-dom-ready-for-client dom-manager component-atom)
-          (update-new-further-actions [follow-on])))))
+          (update-new-further-actions follow-ons)))))
 
 (defn handle-dom-change
   [component-atom]
@@ -612,35 +624,49 @@
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
               (when component
-                (when-let [id->subcomponent
-                         (find-non-elided-id->subcomponent @component)]
-                  (id->subcomponent id))))
+                (let [result ((:id->subcomponent @component) id)]
+                  (when (not result)
+                    (println "!!!!!! Can't find component for" id
+                             "in" client-id))
+                  result)))
             root
             (rest id-sequence))))
 
-(defn update-action-data-for-component-past-elided
-  "Update the action data to reflect the given component, plus all
-  components below it that got elided out from what the client got. If
-  a subcomponent was elided out of what the client got, we still need
-  to add its effect to the action data. But it is not reflected in the
-  client's id, so we need to go past it to get to the next component
-  that is reflected in the client's id."
-  [component containing-action-data action immutable-store]
-  (loop [action-data (update-action-data-for-component
-                      component containing-action-data action immutable-store)]
-    (when action-data
-      (let [{:keys [dom-R id->subcomponent]} @(:component action-data)
-            dom (reporter-value-when-valid dom-R)]
-        (if (= (first dom) :component)
-          (recur (update-action-data-for-component
-                  (first (vals id->subcomponent))
-                  action-data action immutable-store))
+;;; TODO: !!! Remove
+(defn component-providing-dom
+  "Return the component that provides the dom value for the given
+  component. In other words, return the component that elides to the
+  given one."
+  [component-atom]
+  (loop [component component-atom]
+    (when component
+      (let [{:keys [id->subcomponent]} @component]
+        (if (= (count id->subcomponent) 1)
+          (let [subcomponent (first (vals id->subcomponent))]
+            (if (:elided-from @subcomponent)
+              (recur subcomponent)
+              component))
+          component)))))
+
+(defn action-data-to-providing-dom
+  "Given the action data for the component atom, get it for the
+  component that provides its dom."
+  [component-atom action-data action immutable-store]
+  (loop [component component-atom
+         action-data action-data]
+    (when component
+      (let [{:keys [id->subcomponent]} @component]
+        (if (= (count id->subcomponent) 1)
+          (let [subcomponent (first (vals id->subcomponent))]
+            (if (:elided-from @subcomponent)
+              (recur subcomponent
+                     (update-action-data-for-component
+                      subcomponent action-data action immutable-store))
+              action-data))
           action-data)))))
 
-(defn client-id->action-data
-  "Returns the action data map for the component that generated the
-  final dom for the given client id. Adds the component to the action
-  data map."
+(defn action-data-up-to-client-id
+  "Returns the action data map for the component with the specified id."
   [manager-data client-id action immutable-store]
   (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
@@ -650,28 +676,22 @@
                       {:keys [dom-R id->subcomponent]} component-data
                       dom (reporter-value-when-valid dom-R)]
                   (when dom
-                    (when-let
-                        [subcomponent (id->subcomponent id)]
-                      (update-action-data-for-component-past-elided
+                    (when-let [subcomponent (id->subcomponent id)]
+                      (update-action-data-for-component
                        subcomponent action-data action immutable-store))))))
-            (update-action-data-for-component-past-elided
+            (update-action-data-for-component
              root {} action immutable-store)
             (rest id-sequence))))
 
-(defn adjust-subdom-for-client
-  "Given a piece of dom and the client id for its container,
-   adjust the dom to the form the client needs, turning subcomponents
-   into [:component {:id ... :class ...}]."
-  [container-client-id dom]
-  (if (vector? dom)
-    (if (= (first dom) :component)
-      (let [{:keys [relative-id class]} (second dom)]
-        [:component (cond-> {:id (subcomponent-client-id
-                                  container-client-id relative-id)}
-                      class (assoc :class class))])
-      (vec (map (partial adjust-subdom-for-client container-client-id)
-                dom)))
-    dom))
+(defn client-id->action-data
+  "Returns the action data map for the component that generated the
+  final dom for the given client id."
+  [manager-data client-id action immutable-store]
+  (let [up-to-client-id (action-data-up-to-client-id
+                         manager-data client-id action immutable-store)]
+    (when up-to-client-id
+      (action-data-to-providing-dom
+       (:component up-to-client-id) up-to-client-id action immutable-store))))
 
 (defn longer-string
   [s1 s2]
@@ -689,14 +709,46 @@
       (assert (not= target :content))
       (some #{target} monitored-ids))))
 
+(defn adjust-subdom-for-client
+  "Given a piece of dom and the client id for its component,
+   adjust the dom to the form the client needs, turning subcomponents
+   into [:component {:id ... class ...}]."
+  [component-client-id dom]
+  (if (vector? dom)
+    (if (= (first dom) :component)
+      ;; TODO: !!! Copy width too?
+      (let [{:keys [relative-id class]} (second dom)]
+        [:component (cond-> {:id (subcomponent-client-id
+                                  component-client-id relative-id)}
+                      class (assoc :class class))])
+      (vec (map (partial adjust-subdom-for-client component-client-id)
+                dom)))
+    dom))
+
+(defn adjust-dom-for-client
+  "Given a component's dom, adjust it to the form the client needs,
+  turning subcomponents into [:component {:id ...}]. Don't set the
+  overall dom's :id, or :version, though. They depend on whether this
+  component gets elided."
+  [component-atom dom]
+   (when dom
+     (let [{:keys [client-id dom-version]} @component-atom]
+        (into [(first dom)
+               (second dom)]
+              (map (partial adjust-subdom-for-client client-id)
+                   (rest (rest dom)))))))
+
 (defn find-displayed-dom
   "Find the displayed dom corresponding to the given component. (The
-  first non-component after chasing elided doms downward.) Return:
-     the displayed dom, with all classes along the path added,
-     the version of the containing dom,
-     whether some dom in the path displays a monitored id."
+  last of the contained chain of elided doms.) Return the displayed
+  dom, with all classes along the path added and with the :id of all
+  its subcomponents set to their client ids. Don't set the overall
+  dom's :id, or :version though. They depend on whether this component
+  gets elided. Also return whether some dom in the path displays a
+  monitored id."
   [component-atom monitored-ids]
-  (let [{:keys [dom-R dom-version id->subcomponent] :as component-data}
+  (let [{:keys [dom-R id->subcomponent]
+         :as component-data}
         @component-atom 
         ;; We get whatever the latest reporter value is. It is possible
         ;; That our reporter is temporarily invalid, in which case
@@ -716,26 +768,21 @@
                                              monitored-ids)]
           (assert (= (count id->subcomponent) 1))
           [(add-attributes inner-dom class-attribute)
-           dom-version
            (or monitored inner-monitored)])
-        [dom dom-version monitored]))))
+        [(adjust-dom-for-client component-atom dom)
+         monitored]))))
 
 (defn prepare-dom-for-client
   "Given a component-atom, prepare its dom to send to the client. Also
   return whether it presents one of the monitored ids."
   [component-atom monitored-ids]
-  (let [[dom dom-version monitored] (find-displayed-dom
-                                     component-atom monitored-ids)]
+  (let [[dom monitored] (find-displayed-dom
+                         component-atom monitored-ids)]
     (when dom
-      (let [client-id (:client-id @component-atom)
-            class (:class (second dom))
-            added (add-attributes dom (cond-> {:id client-id
-                                               :version dom-version}
-                                        class (assoc :class class)))]
-        [(into [(first added)
-                (second added)]
-               (map (partial adjust-subdom-for-client client-id)
-                    (rest (rest added))))
+      (let [{:keys [client-id dom-version]} @component-atom
+            added (add-attributes dom {:id client-id
+                                       :version dom-version})]
+        [added
          monitored]))))
 
 (defn get-response-doms
@@ -765,11 +812,50 @@
                  (if dom (:version (dom-attributes dom)) 0))
             remaining-components)))))))
 
+(defn reflect-acknowledgements-in-components-to-send
+  [dom-manager acknowledgements]
+  (with-latest-value
+    ;; We read the information we need from all the components before
+    ;; updating the dom-manager. This has the advantage that we need
+    ;; to do only one swap! on the manager for all the changes. But it
+    ;; has the disadvantage that we have to start over if any of that
+    ;; information for any of the components changed while we were
+    ;; working.
+    [states (let [manager-data @dom-manager]
+              (map (fn [[client-id version]]
+                     (let [component-atom (client-id->component
+                                           manager-data client-id)]
+                       (when (not= (:client-id @component-atom) client-id)
+                         (println "!!!!!!!!!! Got mismatch"
+                                  (:client-id @component-atom)
+                                  "for" client-id))
+                       [component-atom
+                        (assoc (select-keys @component-atom
+                                            [:elided-from :dom-version])
+                               :ack-version version)]))
+                   acknowledgements))]
+    (swap!
+     dom-manager
+     (fn [manager-data]
+       (let [components-to-send
+             (reduce
+              (fn [components-to-send
+                   [component-atom
+                    {:keys [elided-from dom-version ack-version]}]]
+                (cond-> components-to-send
+                  (or elided-from (>= ack-version dom-version))
+                  (dissoc component-atom)))
+              (:components-to-send manager-data)
+              states)]
+         (assoc manager-data :components-to-send components-to-send))))))
+
+;;; TODO: !!! Get rid of the next two
 (defn reflect-acknowledgements-in-components
   "Go through the acknowledgements and remove :client-needs-dom from
-  each component for which the client has acknowledged its current
-  dom-version. Return a seq of the components that went
-  from :client-needs-dom being true to being false."
+  each component for which the client has acknowledged a version at
+  least as recent as its current dom-version. Return a seq of the
+  components that went from :client-needs-dom being true to being
+  false."
   [manager-data acknowledgements]
   (doall ; Force evaluation
    (mapcat
@@ -777,17 +863,18 @@
       ;; Clear :client-needs-dom if the version matches, and it was
       ;; already set. Return a seq of the component if
       ;; :client-needs-dom was cleared.
-      (when-let [component-atom
-                 (client-id->component manager-data client-id)]
-        (swap-control-return!
-         component-atom
-         (fn [component-data]
-           (if (and (= version (:dom-version component-data))
-                    (:client-needs-dom component-data))
-             [(assoc component-data :client-needs-dom nil)
-              [component-atom]]
-             [component-data
-              nil])))))
+      (let [component-atom (client-id->component manager-data client-id)
+            providing-atom (component-providing-dom component-atom)]
+        (if providing-atom
+          (swap-control-return!
+           providing-atom
+           (fn [component-data]
+             (if (and (>= version (:dom-version component-data))
+                      (:client-needs-dom component-data))
+               [(assoc component-data :client-needs-dom nil)
+                [component-atom]]
+               [component-data
+                nil]))))))
     acknowledgements)))
 
 (defn reflect-client-needs-doms
@@ -804,7 +891,8 @@
       ;; while we were working.
       [states (map (fn [component-atom]
                      [component-atom
-                      (select-keys @component-atom [:client-needs-dom :depth])])
+                      (select-keys @component-atom
+                                   [:depth :elided-from])])
                    component-atoms)]
     (swap!
      dom-manager
@@ -812,9 +900,9 @@
        (let [components-to-send
              (reduce
               (fn [components-to-send
-                   [component-atom {:keys [client-needs-dom depth]}]]
+                   [component-atom {:keys [client-needs-dom depth elided-from]}]]
                 (if client-needs-dom
-                  (assoc components-to-send component-atom depth)
+                  (assoc components-to-send (or elided-from component-atom) depth)
                   (dissoc components-to-send component-atom)))
               (:components-to-send manager-data)
               states)]
@@ -823,13 +911,16 @@
 (defn process-acknowledgements
   "Modify the clients and the dom-manager to reflect the acknowledgements."
   [dom-manager acknowledgements]
-  ;; To avoid races, we first update each possibly affected client
-  ;; independently. Then we update the dom manager to reflect the
-  ;; latest information from the clients that the acknowledgements
-  ;; might have changed.
-  (let [affected-clients
-        (reflect-acknowledgements-in-components @dom-manager acknowledgements)]
-    (reflect-client-needs-doms dom-manager affected-clients)))
+  (reflect-acknowledgements-in-components-to-send dom-manager acknowledgements)
+  ;; TODO: !!! Get rid of this.
+  (comment
+    ;; To avoid races, we first update each possibly affected client
+    ;; independently. Then we update the dom manager to reflect the
+    ;; latest information from the clients that the acknowledgements
+    ;; might have changed.
+    (let [affected-clients
+          (reflect-acknowledgements-in-components @dom-manager )]
+      (reflect-client-needs-doms dom-manager affected-clients))))
 
 (defn add-root-dom
   "Add dom with the given specification to the dom-manager.
@@ -839,7 +930,7 @@
         component (make-component-atom
                    specification dom-manager
                    (id-subpart->client-id-subpart top-id) 1 false)]
-    (assert (keyword? top-id))
+    (assert (keyword? top-id) (str top-id))
     (swap-and-act!
      dom-manager
      (fn [manager-data]
@@ -891,18 +982,24 @@
     (doall (concat (when dom [[component-atom depth]])
                    (mapcat mark-component-tree-as-needed subcomponents)))))
 
+(defn add-components-to-send
+  "Given a dom manager and a seq of pairs of [component, priority], add
+  all the components to its components-to-send"
+  [dom-manager components-and-depths]
+  (swap! dom-manager
+         (fn [data] (update data :components-to-send
+                            #(reduce
+                              (fn [priority-map [component depth]]
+                                (if (:elided-from @component)
+                                  priority-map
+                                  (assoc priority-map component depth)))
+                              %
+                              components-and-depths)))))
+
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."
   [dom-manager]
   (let [manager-data @dom-manager
-        component-and-depths (mapcat mark-component-tree-as-needed
-                                     (vals (:root-components manager-data)))]
-    (swap! dom-manager
-           (fn [data] (update data :components-to-send
-                              #(reduce
-                                (fn [priority-map [component depth]]
-                                  (if (:elided-from @component)
-                                    priority-map
-                                    (assoc priority-map component depth)))
-                                %
-                                component-and-depths))))))
+        components-and-depths (mapcat mark-component-tree-as-needed
+                                      (vals (:root-components manager-data)))]
+    (add-components-to-send dom-manager components-and-depths)))

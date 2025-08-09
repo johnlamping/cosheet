@@ -561,9 +561,12 @@
         (let [inner-spec (-> specification
                              (dissoc :class)
                              (update :template
-                              #(add-elements-to-entity-list
-                                % (map semantic-to-list
-                                       (semantic-label-elements entity)))))
+                                     #(add-elements-to-entity-list
+                                       ;; This might come from a column header.
+                                       (content %)
+                                       ;; We have exactly the required labels.
+                                       (map semantic-to-list
+                                            (semantic-label-elements entity)))))
               inner-dom (item-content-and-non-label-elements-DOM
                          entity non-labels inner-spec)]
           (labels-wrapper-DOM

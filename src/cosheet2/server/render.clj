@@ -427,7 +427,7 @@
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"
   [specification containing-action-data action immutable-store]
-  {:target-ids [(reporter-value (:id-R specification))]})
+  {:subject-ids [(reporter-value (:id-R specification))]})
 
 (defmethod print-method
   cosheet2.server.render$top_level_get_action_data

@@ -243,10 +243,9 @@
 ;;;                               accept a sequence (for sequential
 ;;;                               sub-elements) with sub-sequenques
 ;;;                               (for parallelism).
-;;;            :render-dom  Optional pseudo function that takes this
-;;;                         specification and the values returned by
-;;;                         :get-rendering-data, then produces the
-;;;                         dom.
+;;;            :render-dom  Optional function that takes this
+;;;                         specification and the mutable store and returns
+;;;                         a reporter whose value is the dom.
 ;;;                         Defaults to item-render/render-item-DOM
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current

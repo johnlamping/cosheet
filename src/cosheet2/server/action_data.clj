@@ -479,9 +479,4 @@
                                    (action-data-getter spec))]
                       (run-action-data-getter
                        getter spec partial-action-data action immutable-store))]
-    ;; TODO: !!! These assertions are only here to make sure that
-    ;;       some old fields have been removed. Get rid of them
-    ;;       once it is clear that they aren't firing.
-    (assert (not (:column  action-data)))
-    (assert (not (:column-headers-id  action-data)))
     (assoc  action-data :component component)))

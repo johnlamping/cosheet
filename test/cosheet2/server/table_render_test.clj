@@ -10,11 +10,14 @@
              [entity :as entity  :refer [description->entity
                                          label->elements elements to-list]]
              [expression :refer [expr expr-let expr-seq]]
+             [calculator :refer [new-calculator-data computation-value]]
+             [task-queue :refer [new-priority-task-queue]]
              [debug :refer [simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [item-render :refer [render-virtual-DOM
+             [item-render :refer [render-item-DOM
+                                  render-virtual-DOM
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [composed-get-action-data
@@ -56,9 +59,6 @@
 (defn virt-DOM [] render-virtual-DOM)
 (defn cell-DOM [] render-table-cell-DOM)
 
-(defn cell-RD [] get-table-cell-rendering-data)
-(defn virt-RD [] get-virtual-DOM-rendering-data)
-
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
 (defn parallel-AD [] parallel-items-get-action-data)
@@ -75,10 +75,13 @@
   parallel-items-get-do-batch-edit-action-data)
 
 (defn run-renderer
-  "run the renderer on the output of the data getter, thus testing
-  that they work together correctly."
-  [renderer spec data-getter store]
-  (apply renderer spec (map first (data-getter spec store))))
+  "Run the renderer, then run the resulting dom-R, to get the final
+  dom."
+  [renderer spec mutable-store]
+  (let [queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)
+        dom-R (renderer spec mutable-store)]
+    (computation-value dom-R cd)))
 
 (deftest get-virtual-column-cell-action-data-test
   (let [[s1 table-id] (add-entity (new-element-store) nil
@@ -207,11 +210,10 @@
                                :width 0.75
                                :row-condition-id row-condition-id}])
         joe-row-component (table-row-component
-                           joe-id '("" :top-level ("age" :label))
+                           joe-id
                            {:column-descriptions-R column-descriptions})
         joe-row (run-renderer
-                 render-table-row-DOM (second joe-row-component)
-                 get-table-row-rendering-data store)]
+                 render-table-row-DOM (second joe-row-component) store)]
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
@@ -262,8 +264,7 @@
     ;; Check the top level condition
     (is (check
          (run-renderer
-          render-table-condition-DOM {:relative-id row-condition-id}
-          get-table-condition-rendering-data store)
+          render-table-condition-DOM {:relative-id row-condition-id} store)
          [:div {:class "horizontal-labels-element query-condition"}
           ;; A virtual label for the condition
           [:component {:template '(anything :label)
@@ -272,7 +273,6 @@
                        :width 0.75
                        :class "label"
                        :render-dom render-virtual-DOM
-                       :get-rendering-data get-virtual-DOM-rendering-data
                        :get-action-data (virt-AD)}]
            ;; The condition element.
            [:div {:class "horizontal-stack"}
@@ -299,8 +299,7 @@
                                             (item-AD)
                                             (virt-AD)]
                           :class "label"
-                          :render-dom render-virtual-DOM
-                          :get-rendering-data get-virtual-DOM-rendering-data}]
+                          :render-dom render-virtual-DOM}]
              [:div  {:class "indent-wrapper"}
               [:component {:template 'anything
                            :sibling true
@@ -308,7 +307,6 @@
                            :relative-id :virtual
                            :item-id rc1-id
                            :render-dom render-virtual-DOM
-                           :get-rendering-data get-virtual-DOM-rendering-data
                            :get-action-data [composed-get-action-data
                                             (item-AD)
                                              (virt-AD)]}]]]]]))
@@ -316,14 +314,14 @@
     ;; Check the header
     (is (check
          (run-renderer
-          render-table-header-DOM {:hierarchy-R hierarchy}
-          get-table-header-rendering-data store)
+          render-table-header-DOM {:hierarchy-R hierarchy} store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)  
                        :column-ids [c1-id]
                        :width 0.75
                        :template :singular
+                       :render-dom render-item-DOM
                        :relative-id c1-id
                        :class "column-header leaf"}]
           ;; Three columns.
@@ -356,8 +354,7 @@
                                  (virt-AD)]
                :relative-id [c2-id :nested]
                :class "label merge-with-parent"
-               :render-dom (virt-DOM)
-               :get-rendering-data (virt-RD)}]
+               :render-dom (virt-DOM)}]
              [:div {:class "indent-wrapper label"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -366,6 +363,7 @@
                 :width 0.75
                 :template :singular
                 :relative-id c2-id
+                :render-dom render-item-DOM
                 :excluded-element-ids [c2-name-id]}]]]
             ;; A column with an additional label
             [:component
@@ -374,6 +372,7 @@
               :width 0.75
               :template :singular
               :relative-id c3-id
+              :render-dom render-item-DOM
               :excluded-element-ids [c3-name-id]
               :class "column-header leaf"}]
             ;; A column with only a virtual label
@@ -390,8 +389,7 @@
                                  (virt-AD)]
                :relative-id [c4-id :nested]
                :class "label merge-with-parent"
-               :render-dom (virt-DOM)
-               :get-rendering-data (virt-RD)}]
+               :render-dom (virt-DOM)}]
              [:div {:class "indent-wrapper label"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -399,6 +397,7 @@
                 :competing-ids [c3-id]
                 :width 0.75
                 :template :singular
+                :render-dom render-item-DOM
                 :relative-id c4-id
                 :excluded-element-ids [(any)]}]]]]]
           ;; One column with two labels
@@ -406,6 +405,7 @@
                        :column-ids [c5-id]
                        :width 0.75
                        :template :singular
+                       :render-dom render-item-DOM
                        :relative-id c5-id
                        :class "column-header leaf"}]
           ;; One column with no labels
@@ -420,14 +420,14 @@
                                           (virt-AD)]
                         :class "label"
                         :relative-id [c6-id :nested]
-                        :render-dom (virt-DOM)
-                        :get-rendering-data (virt-RD)}]
+                        :render-dom (virt-DOM)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :column-ids [c6-id]
                          :width 0.75
                          :template :singular
-                         :relative-id c6-id}]]]
+                         :relative-id c6-id
+                         :render-dom render-item-DOM}]]]
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
@@ -440,14 +440,14 @@
                                           (virt-AD)]
                         :class "label"
                         :relative-id [c7-id :nested]
-                        :render-dom (virt-DOM)
-                        :get-rendering-data (virt-RD)}]
+                        :render-dom (virt-DOM)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :column-ids [c7-id]
                          :width 0.75
                          :template :singular
-                         :relative-id c7-id}]]]
+                         :relative-id c7-id
+                         :render-dom render-item-DOM}]]]
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
@@ -457,8 +457,7 @@
                         :item-id c7-id
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "label"
-                        :render-dom (virt-DOM)
-                        :get-rendering-data (virt-RD)}]
+                        :render-dom (virt-DOM)}]
            [:div {:class "indent-wrapper"}
             [:component {:relative-id :virtual-column
                          :template 'anything
@@ -466,8 +465,7 @@
                          :sibling true
                          :item-id c7-id
                          :get-action-data [(comp-AD) (item-AD) (virt-AD)]
-                         :render-dom (virt-DOM)
-                         :get-rendering-data (virt-RD)}]]]]))
+                         :render-dom (virt-DOM)}]]]]))
 
     ;; Check the column descriptions
     (is (check
@@ -512,7 +510,6 @@
                       :class "table-row"
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
-                      :get-rendering-data get-table-row-rendering-data
                       :get-action-data [(id-AD) joe-id]}]))
 
     ;; Check rendering the list of rows.
@@ -522,20 +519,18 @@
                         :column-descriptions-R column-descriptions
                         :row-template-R 'foo
                         :row-ids-R [joe-id]}
-                       get-table-rows-rendering-data store)
+                       store)
          [:div {:class "table-rows"}
           [:component {:relative-id joe-id
                        :class "table-row"
                        :row-id joe-id
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
-                       :get-rendering-data get-table-row-rendering-data
                        :get-action-data [(id-AD) joe-id]}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
                        :column-descriptions-R (any)
                        :render-dom render-table-virtual-row-DOM
-                       :get-rendering-data get-table-virtual-row-rendering-data
                        :template 'foo
                        :sibling true
                        :get-action-data [(comp-AD)
@@ -557,7 +552,6 @@
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           [:component {:column-ids [c2-id]
@@ -580,7 +574,6 @@
                                                       :cosheet2.query/sub-query))
                                                     (nil :order))))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           [:component {:column-ids [c3-id]
@@ -595,7 +588,6 @@
                                              (:label :cosheet2.query/sub-query))
                                             (nil :order)))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           (any) (any) (any) (any)
@@ -604,7 +596,6 @@
                        :row-id joe-id
                        :template ""
                        :render-dom (virt-DOM)
-                       :get-rendering-data (virt-RD)
                        :get-action-data
                        get-virtual-column-cell-action-data
                        :class "table-cell has-border virtual-column"}]]))
@@ -612,19 +603,16 @@
     ;; Check a rendering cells in a row
     (is (check
          (run-renderer
-          render-table-cell-DOM (second (nth joe-row 2))
-          get-table-cell-rendering-data store)
+          render-table-cell-DOM (second (nth joe-row 2)) store)
          [:component
           {:width 0.75
            :relative-id :virtual
            :template '("" ("single" :label))
            :render-dom (virt-DOM)
-           :get-rendering-data (virt-RD)
            :get-action-data (virt-AD)}]))
     (is (check
          (run-renderer
-          render-table-cell-DOM (second (nth joe-row 3))
-          get-table-cell-rendering-data store)
+          render-table-cell-DOM (second (nth joe-row 3)) store)
          [:div
           {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element virtual-wrapper"
@@ -638,7 +626,6 @@
                                [(parallel-AD) (item-AD)]
                                (virt-AD)]
              :render-dom (virt-DOM)
-             :get-rendering-data (virt-RD)
              :class "label"}]
            [:component
             {:relative-id joe-joe-id
@@ -677,14 +664,15 @@
 
     ;; Check rendering the virtual row
     (is (check
-         (render-table-virtual-row-DOM {:template '(:row :top-level)}
-                                       column-descriptions)
+         (run-renderer
+          render-table-virtual-row-DOM
+          {:column-descriptions-R column-descriptions}
+          store)
          [:div {:class "table-row"}
           [:component {:relative-id c1-id
                        :column-ids [c1-id]
                        :class "table-cell"
                        :render-dom (virt-DOM)
-                       :get-rendering-data (virt-RD)
                        :template '("" ("single" :label))
                        :get-action-data (virt-AD)
                        :width 0.75}]
@@ -693,13 +681,12 @@
     ;; Check rendering the overall table, given the necessary ids.
     (is (check
           (run-renderer
-           render-table-DOM {:relative-id table-id
-                             :table-id table-id}
-           get-table-rendering-data store)
+           render-table-DOM
+           {:relative-id table-id :table-id table-id}
+           store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
                         :render-dom render-table-condition-DOM
-                        :get-rendering-data get-table-condition-rendering-data
                         :get-do-batch-edit-action-data
                         get-table-condition-do-batch-edit-action-data}]
            [:div {:class "table-main"}
@@ -711,22 +698,20 @@
                 :properties {["single" {:label 1}] 1}
                 :cumulative-properties {["single" {:label 1}] 1}}
                (any) (any) (any) (any)]
-              :render-dom render-table-header-DOM
-              :get-rendering-data get-table-header-rendering-data}]
+              :render-dom render-table-header-DOM}]
             [:component
              {:relative-id :body
-              :id-with-no-subject table-id
+              :alternate-row-sibling column-headers-id
               :column-descriptions-R (any)
               :row-template-R '(anything (anything ("age" :label)) :top-level)
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM
-              :get-rendering-data get-table-rows-rendering-data
               :get-action-data (pass-AD)}]]]))
 
     ;; Check getting the subsidiary ids.
     (is (check
          (run-renderer
-          render-table-DOM {:relative-id joe-id
-                            :table-id joe-id}
-          get-table-rendering-data store)
+          render-table-DOM
+          {:relative-id joe-id :table-id joe-id}
+          store)
          [:div {}]))))

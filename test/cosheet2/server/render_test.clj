@@ -27,11 +27,8 @@
   (let [queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
         renderer (dom-renderer spec)
-        data-getter (rendering-data-getter spec)
-        data-reporters (map first (call-pseudo-closure
-                                   data-getter spec mutable-store))
-        data (map #(computation-value % cd) data-reporters)]
-    (apply call-pseudo-closure renderer spec data)))
+        dom-R (renderer spec mutable-store)]
+    (computation-value dom-R cd)))
 
 (defn render-component
   [component mutable-store]
@@ -59,5 +56,4 @@
 			 :get-action-data [get-id-action-data (any)]}]
 	   [:component {:relative-id (any)
                         :table-id (any)
-                        :get-rendering-data get-table-rendering-data
 			:render-dom render-table-DOM}]]]))))

@@ -10,6 +10,8 @@
              [store :refer [new-element-store]]
              store-impl
              mutable-store-impl
+             [calculator :refer [new-calculator-data computation-value]]
+             [task-queue :refer [new-priority-task-queue]]
              [store-utils :refer [add-entity]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
@@ -49,8 +51,6 @@
 
 (defn virt-DOM [] render-virtual-DOM)
 
-(defn virt-RD [] get-virtual-DOM-rendering-data)
-
 (defn comp-AD [] composed-get-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn pass-AD [] get-pass-through-action-data)
@@ -61,6 +61,15 @@
 (defn parallel-do-batch-AD []
   parallel-items-get-do-batch-edit-action-data)
 
+(defn run-renderer
+  "Run the renderer on the output of the data getter, then run the
+  resulting dom-R, to get the final dom."
+  [renderer spec mutable-store]
+  (let [queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)
+        dom-R (renderer spec mutable-store)]
+    (computation-value dom-R cd)))
+
 (deftest virtual-DOM-test
   (is (check (virtual-DOM-component {:template "foo"
                                      :relative-id :bar
@@ -69,7 +78,6 @@
                           :position :before
                           :relative-id :bar
                           :render-dom (virt-DOM)
-                          :get-rendering-data (virt-RD)
                           :get-action-data (virt-AD)}])))
 
 
@@ -105,7 +113,8 @@
                                               {:width 0.75})
          [:component {:relative-id joe-id
                       :width 0.75
-                      :excluded-element-ids [joe-test-id]}]))
+                      :excluded-element-ids [joe-test-id]
+                      :render-dom render-item-DOM}]))
     ;; A node with leaves, no properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node))
@@ -120,10 +129,10 @@
                                          (virt-AD)]
                        :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
-                       :render-dom (virt-DOM)
-                       :get-rendering-data (virt-RD)}]
+                       :render-dom (virt-DOM)}]
           [:div {:class "indent-wrapper label"}
            [:component {:relative-id jane-id
+                        :render-dom render-item-DOM
                         :width 0.75
                         :excluded-element-ids [jane-test-id]}]]]))))
 
@@ -249,7 +258,6 @@
                        :relative-id :virtual-label
                        :class "label"
                        :render-dom (virt-DOM)
-                       :get-rendering-data (virt-RD)
                        :position :after
                        :get-action-data (virt-AD)}]
           [:div {:class "indent-wrapper"}
@@ -263,7 +271,6 @@
                                            [(parallel-AD) (item-AD)]
                                            (virt-AD)]
                          :render-dom (virt-DOM)
-                         :get-rendering-data (virt-RD)
                          :class "label"}]
             [:component {:template 'anything
                          :width 0.8
@@ -292,21 +299,20 @@
                 :position :before
                 :get-action-data (virt-AD)
                 :class "label"
-                :render-dom (virt-DOM)
-                :get-rendering-data (virt-RD)}]
+                :render-dom (virt-DOM)}]
               [:component {:template "foo"
                            :relative-id :bar
                            :position :before
                            :render-dom (virt-DOM)
-                           :get-rendering-data (virt-RD)
                            :get-action-data (virt-AD)}]])))
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
      (let [[store fred-id] (add-entity (new-element-store) nil "Fred")
-           dom (render-item-DOM (assoc basic-dom-specification
-                                       :relative-id fred-id)
-                                store)]
+           dom (run-renderer
+                render-item-DOM
+                (assoc basic-dom-specification :relative-id fred-id)
+                store)]
        (is (check dom
                   [:div {:class "content-text editable item"} "Fred"])))
      ;; Test a cell with a couple of labels, one excluded.
@@ -319,10 +325,12 @@
            id2 (:item-id (first (matching-elements 2 fred)))
            id-tag2 (:item-id (first (matching-elements
                                      :label (description->entity id2 store))))
-           dom (render-item-DOM (assoc basic-dom-specification
-                                       :relative-id fred-id
-                                       :excluded-element-ids [id1])
-                                store)]
+           dom (run-renderer
+                render-item-DOM
+                (assoc basic-dom-specification
+                       :relative-id fred-id
+                       :excluded-element-ids [id1])
+                store)]
        (is (check dom
                   [:div {:class "wrapped-element label item"}
                    [:component {:template '(anything :label)
@@ -340,10 +348,12 @@
      ;; Test must-show-label.
      (let [[store fred-id] (add-entity (new-element-store) nil
                                        "Fred")
-           dom (render-item-DOM (assoc basic-dom-specification
-                                       :relative-id fred-id
-                                       :must-show-label true)
-                                store)]
+           dom (run-renderer
+                render-item-DOM
+                (assoc basic-dom-specification
+                       :relative-id fred-id
+                       :must-show-label true)
+                store)]
        (is (check
             dom
             [:div
@@ -354,7 +364,6 @@
                                              :position :after
                           :relative-id :virtual-label
                           :class "label"
-                          :get-rendering-data (virt-RD)
                           :render-dom (virt-DOM)
                           :get-action-data (virt-AD)
                           :width 1.5}]
@@ -393,7 +402,6 @@
                    {:width 0.9
                     :template '(anything :label)
                     :relative-id [id1 :virtual-label]
-                    :get-rendering-data (virt-RD)
                     :render-dom (virt-DOM)
                     :parallel-ids [id1]
                     :get-action-data [(comp-AD)
@@ -409,7 +417,6 @@
                    {:width 0.9
                     :template '(anything :label)
                     :relative-id [id2 :virtual-label]
-                    :get-rendering-data (virt-RD)
                     :render-dom (virt-DOM)
                     :parallel-ids [id2]
                     :get-action-data [(comp-AD)
@@ -586,7 +593,6 @@
                                                 [(parallel-AD) (item-AD)]
                                                 (virt-AD)]
                               :relative-id [id3 :virtual-label]
-                              :get-rendering-data (virt-RD)
                               :render-dom (virt-DOM)
                               :class "label"}]
                  [:component {:width 0.9
@@ -622,7 +628,6 @@
             :position :after
             :class "label"
             :render-dom (virt-DOM)
-            :get-rendering-data (virt-RD)
             :get-action-data (virt-AD)}]
           [:div {:class "with-elements"}
            [:component {:template ""
@@ -641,7 +646,6 @@
                            :get-action-data [(comp-AD)
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
-                           :get-rendering-data (virt-RD)
                            :render-dom (virt-DOM)
                            :class "label"}]]
              [:component {:width 1.03125
@@ -656,7 +660,6 @@
                            :get-action-data [(comp-AD)
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
-                           :get-rendering-data (virt-RD)
                            :render-dom (virt-DOM)
                            :class "label"}]]
              [:component {:width 1.03125
@@ -798,7 +801,6 @@
                          :relative-id :virtual
                          :position :after
                          :sibling true
-                         :get-rendering-data (virt-RD)
                          :render-dom (virt-DOM)
                          :get-action-data (virt-AD)}]]
            [:div {:class "horizontal-labels-element label wide"}
@@ -838,7 +840,6 @@
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
                           :parallel-ids [id3]
-                          :get-rendering-data (virt-RD)
                           :render-dom (virt-DOM)
                           :get-action-data [(comp-AD)
                                             [(parallel-AD) (item-AD)]
@@ -849,7 +850,7 @@
                          :relative-id id3}]]]]))))
 
 (deftest render-virtual-DOM-test
-  (is (check (render-virtual-DOM {:class "foo"})
+  (is (check (render-virtual-DOM {:class "foo"} new-element-store)
              [:div {:class "foo editable virtual"}])))
 
 (comment

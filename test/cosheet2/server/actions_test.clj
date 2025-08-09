@@ -28,6 +28,7 @@
                                   relative-ids->client-id
                                   client-id->relative-ids]]
              [actions :refer :all]
+             [action-data :refer [get-id-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
@@ -409,9 +410,9 @@
         cd (new-calculator-data queue)
         manager (new-dom-manager ms cd)
         ss (assoc session-state :store ms :dom-manager manager)]
-    (add-root-dom manager :Larry {:get-rendering-data (fn [& _] {})
-                                  :render-dom (fn [& _] [:div])
-                                  :get-action-data (fn [& _] {})})
+    (add-root-dom manager {:relative-id :Larry
+                           :render-dom (fn [& _] [:div])
+                           :get-action-data [get-id-action-data :Larry]})
     (let [for-client (do-selected ms ss "Larry")]
       (is (= (get-selected (current-store ms) temporary-id)
              "Larry"))
@@ -535,16 +536,23 @@
                        :client-state (new-map-state {:last-action nil})}]
     (add-root-dom
      manager
-     :root
-     {:relative-id joe-id
+     {:relative-id :root
+      :get-action-data [get-id-action-data :root]
       :render-dom (fn [spec store]
-                    [:div "joe" [:component
-                                 {:relative-id (:item-id joe-age)
-                                  :render-dom (fn [spec store]
-                                                [:div 45])}]])})
+                    [:div [:component
+                           {:relative-id (:item-id joe)
+                            :render-dom (fn [spec store]
+                                          [:div
+                                           [:component
+                                            {:relative-id (:item-id joe-age)
+                                             :render-dom (fn [spec store]
+                                                           [:div 45])}]])
+                            :get-action-data [get-id-action-data (:item-id joe)]
+                            }]])})
     (let [for-client (do-actions
                       mutable-store session-state
-                      [[:set-content "root" :from "joe" :to "Joseph"]])
+                      [[:set-content (str "root_" (:id (:item-id joe)))
+                        :from "Joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
       (is (= (id->source new-store joe-id) "Joseph"))
       (is (= for-client {:select-store-ids [joe-id]}))

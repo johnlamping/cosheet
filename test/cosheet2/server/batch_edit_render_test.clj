@@ -19,7 +19,8 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [item-render :refer [render-virtual-DOM
+             [item-render :refer [render-item-DOM
+                                  render-virtual-DOM
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [get-pass-through-action-data
@@ -247,13 +248,13 @@
                        :stack-id stk1
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
+                       :render-dom render-item-DOM
                        :class "batch-stack label leaf"
                        :width 0.75}]
           [:div {:class "vertical-labels-element label"}
            [:component {:relative-id :stack-virtual-label
                         :query-id q1
                         :stack-id stk1 :class "label"
-                        :get-rendering-data (virt-RD)
                         :render-dom (virt-DOM)
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 
@@ -264,7 +265,6 @@
            [:component {:relative-id :stack-virtual
                         :query-id q1
                         :stack-id stk1
-                        :get-rendering-data (virt-RD)
                         :render-dom (virt-DOM)
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 

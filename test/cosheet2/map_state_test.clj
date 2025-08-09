@@ -35,35 +35,31 @@
     (is (= (reporter-value ra) 1))
     (is (not (valid? rb)))
     (is (check @history
-               [[:ra invalid]
-                [:ra 1]]))
+               [[:ra 1]]))
     (set-attendee! rb :rb 10 callback)
     (set-attendee! rc :rc 100 callback)
     (compute cd)
     (is (check @history
-               [[:ra invalid]
-                [:ra 1]
-                [:rb invalid]
+               [[:ra 1]
                 [:rb 2]
-                [:rc invalid]
                 [:rc nil]]))
     (set-value! r1 2)
     (compute cd)
     (is (= (reporter-value ra) 2))
     (is (check @history
-               [(any) (any) (any) (any) (any) (any)
+               [(any) (any) (any)
                 [:ra 2]]))
     (map-state-change-value! ms :b (fn [x] (+ x 9)))
     (compute cd)
     (is (check @history
-               [(any) (any) (any) (any) (any) (any)
+               [(any) (any) (any)
                 [:ra 2]
                 [:rb invalid]
                 [:rb 11]]))
     (map-state-reset! ms {:a 3 :c 5})
     (is (= (map-state-get-current ms :c) 5))
     (compute cd)
-    (is (check (nthrest @history 9)
+    (is (check (nthrest @history 6)
                (as-set [[:ra invalid]
                         [:rc invalid]
                         [:ra 3]
@@ -72,6 +68,6 @@
             ms :c (fn [x] [[x "hi"] "there"]))
            "there"))
     (compute cd)
-    (is (check (nthrest @history 13)
+    (is (check (nthrest @history 10)
                [[:rc invalid]
                 [:rc [5 "hi"]]]))))

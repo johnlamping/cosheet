@@ -127,7 +127,7 @@
       ;; two elements: the element, its content, and its label.
       (is (= (count (:attendees (reporter-data ms))) 9))
       (let [root-component (client-id->component @dom-manager "root")]
-        (is (check (:dom @root-component)
+        (is (check (reporter-value (:dom-R @root-component))
                    [:div {}
                     [:component {:width 0.75,
                                  :template ""

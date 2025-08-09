@@ -110,7 +110,6 @@
              :sibling true
              :use-bigger true
              :render-dom (virt-DOM)
-             :get-rendering-data (virt-RD)
              :get-action-data
              [(comp-AD)
               (item-AD)
@@ -127,7 +126,6 @@
                                   :column-headers :selector
                                   (anything (??? :label)))))
              :render-dom (tab-DOM)
-             :get-rendering-data (tab-RD)
              :example-element-ids (as-set [(:item-id t3-baz)
                                            (:item-id t3-bletch)])
              :tab-id (:item-id t3)
@@ -145,7 +143,6 @@
                                    :column-headers :selector
                                    (anything (??? :label)))))
               :render-dom (tab-DOM)
-              :get-rendering-data (tab-RD)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
               :get-action-data [(parallel-AD) (item-AD)]
@@ -166,7 +163,6 @@
                                     (anything (??? :label))))
                            "foo")
                :render-dom (tab-DOM)
-               :get-rendering-data (tab-RD)
                :example-element-ids [(:item-id t2-bar)]
                :parallel-ids [(:item-id t2)]
                :get-action-data [(parallel-AD) (item-AD)]
@@ -179,7 +175,6 @@
                :width 0.75
                :template (any)
                :render-dom (tab-DOM)
-               :get-rendering-data (tab-RD)
                :example-element-ids []
                :parallel-ids [(:item-id t1)]
                :get-action-data [(parallel-AD) (item-AD)]
@@ -195,13 +190,12 @@
                   [:component {:relative-id (:item-id t3-bletch)
                                :width 0.75}]])))
     (is (check
-         (render-virtual-DOM (second virt-tab-dom))
+         (render-virtual-DOM (second virt-tab-dom) store)
          [:div {:class "tab virtualTab editable virtual"}]))
     (is (check
          (render-tab-elements-DOM (second tab1-dom) store)
          [:component {:relative-id :virtual
                       :class "empty-child"
                       :render-dom (virt-DOM)
-                      :get-rendering-data (virt-RD)
                       :template 'anything
                       :get-action-data (virt-AD)}]))))

@@ -408,7 +408,7 @@
                                        (into client-args)
                                        (assoc :session-state session-state
                                               :client-id client-id))
-                         _ (println "handler arguments: "
+                         _ (println "HANDLER ARGUMENTS: "
                                     (simplify-for-print
                                      (dissoc arguments :session-state)))
                          store-with-virtuals (or (:store action-data) store) 

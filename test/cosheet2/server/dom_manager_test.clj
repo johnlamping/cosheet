@@ -104,7 +104,6 @@
                     :obsolete-components nil
                     :elided-from nil
                     :dom-manager manager
-                    :client-needs-dom true
                     :dom-specification s1
                     :dom-version 2
                     :depth 1
@@ -122,7 +121,6 @@
                       :obsolete-components nil
                       :elided-from c2-
                       :dom-manager manager
-                      :client-needs-dom false
                       :dom-specification s2
                       :dom-version nil
                       :depth 4
@@ -149,7 +147,6 @@
                {:client-id "c2"
                 :id->subcomponent {}
                 :dom-manager manager
-                :client-needs-dom true
                 :dom-specification s2
                 :dom-R (any)
                 :dom-version 2
@@ -176,7 +173,6 @@
                  {:client-id "c2"
                   :id->subcomponent nil
                   :dom-manager manager
-                  :client-needs-dom nil
                   :dom-specification nil
                   :dom-R nil
                   :dom-version 2
@@ -248,7 +244,7 @@
         [s2 id2] (add-entity s1 id1 "bar")
         [s id3] (add-entity s2 id2 "end")
         client1 "root"
-        client3 (str client1 "_" (:id id3))
+        client3 (str client1 "_" (:id id2) "_" (:id id3))
         ms (new-mutable-store s)
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]

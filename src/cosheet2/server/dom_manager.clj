@@ -66,15 +66,16 @@
                            ; the client sees.  The elided component's
                            ; dom is what gets sent to the client, but
                            ; under the id of the containing dom. (That
-                           ; dom's container refers to it by that id.)
+                           ; dom's container refers to it by that id,
+                           ; so that's the id that has to be senf.)
                            ; If elided-from present, our component is
                            ; elided, and elided-from is the nearest
                            ; non-elided containing component. Our dom
                            ; will be sent to the client as the dom of
                            ; that component.
      depth                 ; The depth of this component in the component
-                           ; hierarchy, used to make sure that parents are
-                           ; sent to the client before their children.
+                           ; hierarchy, used to make parents get sent
+                           ; to the client before their children.
 
      ;; This field normally doesn't change, but if the component has
      ;; been permanently disabled, this field is cleared
@@ -132,7 +133,7 @@
                whenever something it depends on changes.
     :inactive  This component's dom is no longer needed by the client.
                Either the client no longer needs a dom with this
-               reporter's client id, or an different component
+               reporter's client id, or a different component
                atom is now in charge of calculating that dom. This
                component's reporter is no longer running, or is
                about to be shut down. It will never be active again.
@@ -167,9 +168,19 @@
                         ; while the client kept ahold of it. This way, our
                         ; next version will be larger that whatever the
                         ; client has.
-   components-to-send   ; A priority queue of components that have dom that
-                        ; the client needs to know about, prioritized by
-                        ; depth (lower earlier).
+   components-to-send   ; A priority queue of components that may have a dom
+                        ; version that the client hasn't acknowledged
+                        ; yet.  The components are prioritized by
+                        ; depth (lower earlier), and they are sent to
+                        ; the client in that order, so it will get
+                        ; higher level doms before it is sent their
+                        ; sub-doms.
+                        ; The dom of each client here will be sent
+                        ; under that client's id, so only non-elided
+                        ; components show up here. When an elided
+                        ; component gets a dom update, it adds its
+                        ; elided-from component here, after
+                        ; incrementing that component's dom version.
                         ; We record component atoms, rather than ids,
                         ; because it is possible to temporarily have
                         ; several component atoms with the same id,
@@ -491,42 +502,25 @@
     (when (not= (component-data-state @component-atom) :active)
       (remove-from-components-to-send dom-manager component-atom))))
 
-(defn equalize-dom-versions-upward
-  "Make the dom-versions of the two component atoms be equal and be at
-  least as big as either was, and at least as big as min-version."
-  [component-atom-1 component-atom-2 min-version]
-  ;; Since we potentially require changes to two atoms, we can't
-  ;; guarantee it in one swap!. Instead, we keep adjusting and looping
-  ;; until we see that our requirement has been satisfied.
-  (loop []
-    (let [version-1 (:dom-version @component-atom-1)
-          version-2 (:dom-version @component-atom-2)]
-      (when (or (not= version-1 version-2)
-                (< version-1 min-version))
-        (swap! (if (< version-1 version-2) component-atom-1 component-atom-2)
-               (fn [data]
-                 ;; The version might have changed; check it again.
-                 (update data :dom-version
-                         #(max % version-1 version-2 min-version))))
-        (recur)))))
-
 (defn process-dom-ready-for-client
   "Record in the dom manager that the client needs to hear about our
   dom. If we are elided, that means it will be given our dom, but
   under the key of our elided-from containing component."
   [dom-manager component-atom]
   (let [elided-from (:elided-from @component-atom)]
-    (when elided-from
-      ;; We have to make sure that the dom version of both ourselves
-      ;; and the atom we are elided from are the same and are at least
-      ;; as big as what we had and bigger than what elided-from had.
-      ;; (We need this so that the client will accept our new dom
-      ;; version as an update, and so we will recognize its
-      ;; acknowledgement as acknowledging our dom.)
-      (equalize-dom-versions-upward component-atom elided-from
-                                    (+ 1 (:dom-version @elided-from))))
-    (add-to-components-to-send dom-manager
-                               (or elided-from component-atom))))
+    (if elided-from
+      ;; Since the component we are elided-from sends our dom to the
+      ;; client, that compoment's dom, as seen by the client, has
+      ;; logically changed. So we need to increment that component's
+      ;; dom version, and then add the component to the ones to send
+      ;; to the client. We don't add ourselves to be sent to the
+      ;; client, since our elided-from component will send our dom.
+      (do (swap! elided-from #(update % :dom-version inc))
+          (add-to-components-to-send dom-manager elided-from))
+      ;; Our dom version was already incremented when we heard about
+      ;; the new dom. We just have to add ourselves to the dom
+      ;; manager's outgoing queue.
+      (add-to-components-to-send dom-manager component-atom))))
 
 (defn update-dom
   "Update the component data to reflect having the given dom,
@@ -700,11 +694,11 @@
   [component-client-id dom]
   (if (vector? dom)
     (if (= (first dom) :component)
-      ;; TODO: !!! Copy width too?
-      (let [{:keys [relative-id class]} (second dom)]
+      (let [{:keys [relative-id class width]} (second dom)]
         [:component (cond-> {:id (subcomponent-client-id
                                   component-client-id relative-id)}
-                      class (assoc :class class))])
+                      class (assoc :class class)
+                      width (assoc :width width))])
       (vec (map (partial adjust-subdom-for-client component-client-id)
                 dom)))
     dom))

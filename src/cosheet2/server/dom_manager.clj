@@ -632,22 +632,6 @@
             root
             (rest id-sequence))))
 
-;;; TODO: !!! Remove
-(defn component-providing-dom
-  "Return the component that provides the dom value for the given
-  component. In other words, return the component that elides to the
-  given one."
-  [component-atom]
-  (loop [component component-atom]
-    (when component
-      (let [{:keys [id->subcomponent]} @component]
-        (if (= (count id->subcomponent) 1)
-          (let [subcomponent (first (vals id->subcomponent))]
-            (if (:elided-from @subcomponent)
-              (recur subcomponent)
-              component))
-          component)))))
-
 (defn action-data-to-providing-dom
   "Given the action data for the component atom, get it for the
   component that provides its dom."
@@ -812,7 +796,8 @@
                  (if dom (:version (dom-attributes dom)) 0))
             remaining-components)))))))
 
-(defn reflect-acknowledgements-in-components-to-send
+(defn process-acknowledgements
+  "Modify the the dom-manager to reflect the acknowledgements."
   [dom-manager acknowledgements]
   (with-latest-value
     ;; We read the information we need from all the components before
@@ -848,79 +833,6 @@
               (:components-to-send manager-data)
               states)]
          (assoc manager-data :components-to-send components-to-send))))))
-
-;;; TODO: !!! Get rid of the next two
-(defn reflect-acknowledgements-in-components
-  "Go through the acknowledgements and remove :client-needs-dom from
-  each component for which the client has acknowledged a version at
-  least as recent as its current dom-version. Return a seq of the
-  components that went from :client-needs-dom being true to being
-  false."
-  [manager-data acknowledgements]
-  (doall ; Force evaluation
-   (mapcat
-    (fn [[client-id version]]
-      ;; Clear :client-needs-dom if the version matches, and it was
-      ;; already set. Return a seq of the component if
-      ;; :client-needs-dom was cleared.
-      (let [component-atom (client-id->component manager-data client-id)
-            providing-atom (component-providing-dom component-atom)]
-        (if providing-atom
-          (swap-control-return!
-           providing-atom
-           (fn [component-data]
-             (if (and (>= version (:dom-version component-data))
-                      (:client-needs-dom component-data))
-               [(assoc component-data :client-needs-dom nil)
-                [component-atom]]
-               [component-data
-                nil]))))))
-    acknowledgements)))
-
-(defn reflect-client-needs-doms
-  "The :client-needs-dom of the specified component atoms may have
-  changed. Make the :components-to-send in the dom manager correctly
-  reflect them."
-  [dom-manager component-atoms]
-  (with-latest-value
-      ;; We read the information we need from all the components
-      ;; before updating the dom-manager. This has the advantage that
-      ;; we need to do only one swap! on the manager for all the
-      ;; changes. But it has the disadvantage that we have to start
-      ;; over if any of that information for any of components changed
-      ;; while we were working.
-      [states (map (fn [component-atom]
-                     [component-atom
-                      (select-keys @component-atom
-                                   [:depth :elided-from])])
-                   component-atoms)]
-    (swap!
-     dom-manager
-     (fn [manager-data]
-       (let [components-to-send
-             (reduce
-              (fn [components-to-send
-                   [component-atom {:keys [client-needs-dom depth elided-from]}]]
-                (if client-needs-dom
-                  (assoc components-to-send (or elided-from component-atom) depth)
-                  (dissoc components-to-send component-atom)))
-              (:components-to-send manager-data)
-              states)]
-         (assoc manager-data :components-to-send components-to-send))))))
-
-(defn process-acknowledgements
-  "Modify the clients and the dom-manager to reflect the acknowledgements."
-  [dom-manager acknowledgements]
-  (reflect-acknowledgements-in-components-to-send dom-manager acknowledgements)
-  ;; TODO: !!! Get rid of this.
-  (comment
-    ;; To avoid races, we first update each possibly affected client
-    ;; independently. Then we update the dom manager to reflect the
-    ;; latest information from the clients that the acknowledgements
-    ;; might have changed.
-    (let [affected-clients
-          (reflect-acknowledgements-in-components @dom-manager )]
-      (reflect-client-needs-doms dom-manager affected-clients))))
 
 (defn add-root-dom
   "Add dom with the given specification to the dom-manager.

@@ -621,7 +621,7 @@
                 (let [result ((:id->subcomponent @component) id)]
                   (when (not result)
                     (println "!!!!!! Can't find component for" id
-                             "in" client-id))
+                             "in" (:client-id @component)))
                   result)))
             root
             (rest id-sequence))))
@@ -801,18 +801,24 @@
     ;; information for any of the components changed while we were
     ;; working.
     [states (let [manager-data @dom-manager]
-              (map (fn [[client-id version]]
-                     (let [component-atom (client-id->component
-                                           manager-data client-id)]
+              (mapcat
+               (fn [[client-id version]]
+                 (let [component-atom (client-id->component
+                                       manager-data client-id)]
+                   (if component-atom
+                     (do
                        (when (not= (:client-id @component-atom) client-id)
                          (println "!!!!!!!!!! Got mismatch"
                                   (:client-id @component-atom)
                                   "for" client-id))
-                       [component-atom
-                        (assoc (select-keys @component-atom
-                                            [:elided-from :dom-version])
-                               :ack-version version)]))
-                   acknowledgements))]
+                       [[component-atom
+                         (assoc (select-keys @component-atom
+                                             [:elided-from :dom-version])
+                                :ack-version version)]])
+                     (do (println "!!!!!!!!!!!! No component found for"
+                                  client-id)
+                         nil))))
+               acknowledgements))]
     (swap!
      dom-manager
      (fn [manager-data]

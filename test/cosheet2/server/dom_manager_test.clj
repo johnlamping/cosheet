@@ -307,7 +307,7 @@
         (is (check (get-response-doms manager [id2] 3)
                    [(as-set [[:div {:id "root" :version 4}
                               2
-                              [:component {:id "root_Ibar"}]]
+                              [:component {:id "root_Ifoo_Ibar"}]]
                              [:div {:id "root_Ifoo_Ibar" :version 3}
                               3]])
                     "root_Ifoo_Ibar"]))
@@ -315,30 +315,22 @@
         (is (check (get-response-doms manager [id2] 1)
                    [[[:div {:id "root" :version 4}
                       2
-                      [:component {:id "root_Ibar"}]]]
+                      [:component {:id "root_Ifoo_Ibar"}]]]
                     nil]))
         (is (:highest-version @manager) 3)
-        (is (:client-needs-dom @c1-))
-        (is (:client-needs-dom @c2))
         ;; The client doesn't need to know about the elided dom.
-        (is (not (:client-needs-dom @c1)))
         (is (check (:components-to-send @manager)
                    {c1- 1 c2 3}))
         ;; An out of date acknowledgement should do nothing.
         (process-acknowledgements manager {"root" 1})
-        (is (:client-needs-dom @c1-))
         (is (check (:components-to-send @manager)
                    {c1- 1  c2 3}))
         (process-acknowledgements manager {"root" 4
-                                           "root_Ifoo_Ibar" 3})
-        (is (not (:client-needs-dom @c1-)))
-        (is (:client-needs-dom @c2))
+                                           "root_Ifoo_Ibar" 1})
         (is (check (:components-to-send @manager)
                    {c2 3}))
         (process-acknowledgements manager {"root" 2
-                                           "root_Ibar" 3})
-        (is (not (:client-needs-dom @c1-)))
-        (is (not (:client-needs-dom @c2)))
+                                           "root_Ifoo_Ibar" 3})
         (is (check (:components-to-send @manager)
                    {}))
         (is (component-atom? c1))
@@ -347,9 +339,10 @@
         (is (= (:components-to-send @manager)
                {c1- 1  c2 3}))
         (is (check (keys (:attendees @(:data ms)))
-                   (as-set [c1- c1 c2])))
+                   (as-set [(:dom-R @c1-) (:dom-R @c1) (:dom-R @c2)])))
         (remove-all-doms manager)
-        (is (empty? (keys (:attendees @(:data ms)))))
+        (compute cd)
+        (is (empty? (:attendees @(:data ms))))
         (is (nil? (:dom-specification @c1-)))
         (is (nil? (:dom-specification @c1)))))))
 

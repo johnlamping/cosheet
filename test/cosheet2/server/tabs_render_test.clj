@@ -12,10 +12,12 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [item-render :refer [render-virtual-DOM
+             [item-render :refer [render-item-DOM
+                                  render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [model-utils :refer [semantic-to-list]]
-             [action-data :refer [get-item-or-exemplar-action-data
+             [action-data :refer [default-get-action-data
+                                  get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
                                   get-virtual-action-data
                                   composed-get-action-data
@@ -32,6 +34,7 @@
 (defn tab-RD [] get-tab-elements-rendering-data)
 
 (defn item-AD [] get-item-or-exemplar-action-data)
+(defn default-AD [] default-get-action-data)
 (defn parallel-AD [] parallel-items-get-action-data)
 (defn item-do-batch-AD [] get-item-do-batch-edit-action-data)
 (defn parallel-do-batch-AD [] parallel-items-get-do-batch-edit-action-data)
@@ -110,10 +113,7 @@
              :sibling true
              :use-bigger true
              :render-dom (virt-DOM)
-             :get-action-data
-             [(comp-AD)
-              (item-AD)
-              (virt-AD)]}]
+             :get-action-data [(comp-AD) (item-AD) (virt-AD)]}]
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
@@ -126,6 +126,7 @@
                                   :column-headers :selector
                                   (anything (??? :label)))))
              :render-dom (tab-DOM)
+             :get-action-data (item-AD)
              :example-element-ids (as-set [(:item-id t3-baz)
                                            (:item-id t3-bletch)])
              :tab-id (:item-id t3)
@@ -186,8 +187,12 @@
          (render-tab-elements-DOM (second tab3-dom) store)
          (as-set [:div {:class "vertical-stack"}
                   [:component {:relative-id (:item-id t3-baz)
+                               :render-dom render-item-DOM
+                               :get-action-data (default-AD)
                                :width 0.75}]
                   [:component {:relative-id (:item-id t3-bletch)
+                               :render-dom render-item-DOM
+                               :get-action-data (default-AD)
                                :width 0.75}]])))
     (is (check
          (render-virtual-DOM (second virt-tab-dom) store)

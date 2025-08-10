@@ -21,7 +21,8 @@
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
-             [action-data :refer [get-item-or-exemplar-action-data
+             [action-data :refer [default-get-action-data
+                                  get-item-or-exemplar-action-data
                                   get-virtual-action-data
                                   compose-action-data-getter]])))
 
@@ -78,6 +79,7 @@
           :template template
           :width (* 0.75 (count tab-ids))
           :render-dom render-tab-elements-DOM
+          :get-action-data get-item-or-exemplar-action-data
           :example-element-ids example-element-ids}
        (= (count tab-ids) 1)
        (assoc :tab-id (first tab-ids))

@@ -47,7 +47,8 @@
                                   labels-and-elements-DOM
                                   non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
-             [action-data :refer [get-id-action-data
+             [action-data :refer [default-get-action-data
+                                  get-id-action-data
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
@@ -562,12 +563,14 @@
             condition-dom (make-component
                            {:relative-id row-condition-id
                             :render-dom render-table-condition-DOM
+                            :get-action-data default-get-action-data
                             :get-do-batch-edit-action-data
                             get-table-condition-do-batch-edit-action-data })
             header-dom (make-component
                         {:relative-id column-headers-id
                          :hierarchy-R hierarchy-R
-                         :render-dom render-table-header-DOM})
+                         :render-dom render-table-header-DOM
+                         :get-action-data default-get-action-data})
             body-dom (make-component
                       {:relative-id :body
                        ;; If there are no rows, this is used as the

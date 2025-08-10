@@ -15,12 +15,13 @@
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
-             [item-render :refer [get-item-rendering-data render-item-DOM]]
+             [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
                                         get-batch-edit-rendering-data]]
-             [action-data :refer [get-id-action-data
+             [action-data :refer [default-get-action-data
+                                  get-id-action-data
                                   get-empty-action-data]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
@@ -295,6 +296,7 @@
 
 (defn dom-renderer
   [dom-specification]
+  (assert (:render-dom dom-specification) dom-specification)
   (or (:render-dom dom-specification)
       render-item-DOM))
 
@@ -414,11 +416,14 @@
                   (make-component
                    {:relative-id (:item-id topic)
                     :table-id (:item-id topic)
-                    :render-dom render-table-DOM})])
+                    :render-dom render-table-DOM
+                    :get-action-data default-get-action-data})])
                ;; No tab is selected. Show just the item.
                (make-component
                 (assoc basic-dom-specification        
                        :relative-id (:item-id immutable-item)
+                       :render-dom render-item-DOM
+                       :get-action-data default-get-action-data
                        :must-show-label true
                        :width 0.75
                        :get-action-data [get-id-action-data

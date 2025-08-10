@@ -21,9 +21,9 @@
             (cosheet2.server
              [item-render :refer [render-item-DOM
                                   render-virtual-DOM
-                                  get-virtual-DOM-rendering-data
-                                  get-item-rendering-data]]
-             [action-data :refer [get-pass-through-action-data
+                                  get-virtual-DOM-rendering-data]]
+             [action-data :refer [default-get-action-data
+                                  get-pass-through-action-data
                                   get-virtual-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data
@@ -57,6 +57,7 @@
 (defn virt-DOM [] render-virtual-DOM)
 (defn virt-RD [] get-virtual-DOM-rendering-data)
 
+(defn default-AD [] default-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
@@ -146,6 +147,8 @@
          dom
          [:div {:class "horizontal-stack query-condition"}
           [:component {:relative-id q2-2
+                       :render-dom render-item-DOM
+                       :get-action-data (default-AD)
                        :template 'anything
                        :query-id q2
                        :immutable true
@@ -157,6 +160,8 @@
              :query-id q2
              :stack-id stk1
              :parallel-ids [q2-c1]
+             :render-dom render-item-DOM
+             :get-action-data (default-AD)
              :class "label"
              :excluded-element-ids [(any)]
              :relative-id q2-c1-l
@@ -167,6 +172,8 @@
                          :template '(anything ("c1" :label))
                          :query-id q2
                          :stack-id stk1
+                         :render-dom render-item-DOM
+                         :get-action-data (default-AD)
                          :immutable true
                          :excluded-element-ids [q2-c1-l]
                          :width 0.75}]]]]))))
@@ -194,6 +201,8 @@
                      {:relative-id (:item-id q2-element)
                       :excluding-ids nil
                       :query-id q1
+                      :render-dom render-item-DOM
+                      :get-action-data (default-AD)
                       :stack-id stk1}
                      {} nil s)
         subject-ids (:subject-ids action-data)]
@@ -210,6 +219,8 @@
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
                       :excluding-ids [(:item-id q2-2)]
+                      :render-dom render-item-DOM
+                      :get-action-data (default-AD)
                       :query-id q1
                       :stack-id stk1}
                      {} nil s)
@@ -224,6 +235,8 @@
         q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q3-element)
+                      :render-dom render-item-DOM
+                      :get-action-data (default-AD)
                       :excluding-ids nil
                       :query-id q3
                       :stack-id stk1}

@@ -24,7 +24,8 @@
             (cosheet2.server
              [dom-manager :refer :all]
              [item-render :refer [render-item-DOM]]
-             [order-utils :refer [update-add-entity-with-order-and-temporary]])
+             [order-utils :refer [update-add-entity-with-order-and-temporary]]
+             [action-data :refer [default-get-action-data]])
             ; :reload
             ))
 
@@ -255,10 +256,12 @@
                    ;; This component has an elided subcomponent.
                    [:component
                     {:relative-id id2
+                     :get-action-data default-get-action-data
                      :render-dom (make-fixed-dom-renderer
                                   ;; Here, a non-elided subcomponent.
                                   [:div [:component
                                          {:relative-id id3
+                                          :get-action-data default-get-action-data
                                           :render-dom (make-fixed-dom-renderer
                                                        [:div 3])}]])}])
       :get-action-data [(fn [s c a i extra]

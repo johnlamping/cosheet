@@ -28,7 +28,8 @@
              [order-utils :refer [ordered-entities semantic-entity?]]
              [render-utils
               :refer [make-component
-                      item-stack-DOM nest-if-multiple-DOM
+                                        ;item-stack-DOM nest-if-multiple-DOM
+                      nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
                       transform-specification-for-elements
@@ -63,18 +64,49 @@
     (label? template) template
     true (add-elements-to-entity-list template [:label])))
 
-(defn get-item-rendering-data
-  "Return the rendering data for a dom that presents an item.
-   This is the default for :get-rendering-data."
-  [specification mutable-store]
-  (let [id (specification-item-id specification)]
-    (assert (is-item-id? id) id)
-    [[mutable-store [id]]]))
+(def render-item-DOM)
 
-(defmethod print-method
-  cosheet2.server.item_render$get_item_rendering_data
-  [v ^java.io.Writer w]
-  (.write w "item-RD"))
+(defn item-component
+  "Make a component dom to display the given item. The item's id becomes
+  the relative-id, and the render-dom and get-action-data are filled in.
+  If the specification has :get-action-data-override, it is used in place
+  of the normal :get-action-data."
+  [item specification]
+  (assert (not (:relative-id specification))
+          (:relative-id specification))
+  (assert (not (:render-dom specification))
+          (:render-dom specification))
+  (assert (not (:get-action-data specification))
+          (:get-action-data specification))
+  (make-component (-> specification
+                      (dissoc :get-action-data-override)
+                      (assoc :relative-id (:item-id item)
+                             :render-dom render-item-DOM
+                             :get-action-data (or (:get-action-data-override
+                                                   specification)
+                                                  default-get-action-data)))))
+
+(defn item-minus-excluded-component
+  "Make a component dom to display the given item, minus the excluded
+  elements."
+  [item excluded-elements specification]
+  (assert (empty? (:excluded-element-ids specification))
+          [excluded-elements specification])
+  (if (empty? excluded-elements)
+    (item-component item specification)
+    (item-component
+     item
+     (assoc specification
+            :excluded-element-ids (vec (map :item-id excluded-elements))))))
+
+(defn item-stack-DOM
+  "Given a list of items and a matching list of elements to exclude,
+  generate components for each item, and put them in a DOM.
+  If there is more than one item, make the stack in the given orientation."
+  [items excludeds orientation specification]
+  (let [components (map #(item-minus-excluded-component %1 %2 specification)
+                        items excludeds)]
+    (nest-if-multiple-DOM components orientation)))
 
 (defn get-virtual-DOM-rendering-data [spec store]
   [])
@@ -134,7 +166,7 @@
   overall component for its element. The specification should be for
   elements of the item."
   [specification]
-  (assert (:template specification))
+  (assert (:template specification) specification)
   (virtual-DOM-component
    (-> specification
        (assoc :relative-id (or (:relative-id specification) :virtual-label)
@@ -282,8 +314,7 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            leaves)]
-        (item-stack-DOM
-         items excludeds :vertical leaf-spec)))))
+        (item-stack-DOM items excludeds :vertical leaf-spec)))))
 
 (defn labeled-items-whole-hierarchy-node-DOM
   "Return the dom for everything at and under a labeled items hierarchy node.
@@ -440,8 +471,7 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-label))
-        (item-stack-DOM ordered-entities excludeds
-                        orientation specification)
+        (item-stack-DOM ordered-entities excludeds orientation specification)
         (let [item-maps (item-maps-by-elements ordered-entities labels)
               augmented (map (fn [item-map excluded]
                                (assoc item-map :exclude-elements excluded))
@@ -467,7 +497,8 @@
   The specifications should be appropriate for each of the elements."
   [elements virtual-dom must-show-label elements-must-show-labels
    orientation specification]
-  (assert (nil? (:relative-id specification)))
+  (assert (not (:relative-id specification))
+          (:relative-id specification))
   (let [[labels non-labels] (separate-by label? elements)
         elements-dom
         (when (or non-labels virtual-dom)
@@ -503,7 +534,7 @@
   ;; deal with the distinction between elements of an item and
   ;; elements on its content.
   (let [contents (content item)]
-    (assert (primitive? contents))
+    (assert (primitive? contents) contents)
     (let [anything (= 'anything contents)
           editable (not (:immutable specification))]
       [:div (cond-> (-> (select-keys specification [:class])
@@ -520,7 +551,7 @@
 (defn render-content-only-DOM
   "Render a dom spec for only the content of an item."
   [{:keys [relative-id item-id class]} store]
-  (assert (= relative-id :content))
+  (assert (= relative-id :content) relative-id)
   (expr-let [item (description->updating-entity-R item-id store)]
     (item-content-DOM item (if class {:class class} {}))))
 
@@ -618,11 +649,9 @@
                                 (set labels)
                                 (set (hierarchy-node-example-elements node)))
                                ancestor-ids (map :item-id ancestor-props)]
-                           (make-component
-                            (cond-> (assoc specification
-                                           :relative-id (:item-id leaf)
-                                           :width 0.75
-                                           :render-dom render-item-DOM)
+                           (item-component
+                            leaf
+                            (cond-> (assoc specification :width 0.75)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
         descendant-ids (map #(-> % :item :item-id)

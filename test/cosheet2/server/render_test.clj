@@ -15,7 +15,8 @@
              [render :refer :all]
              [tabs-render :refer [render-tabs-DOM]]
              [table-render :refer [render-table-DOM get-table-rendering-data]]
-             [action-data :refer [get-id-action-data]]
+             [action-data :refer [default-get-action-data
+                                  get-id-action-data]]
              [model-utils :refer [starting-store]]
              [session-state :refer [update-add-session-temporary-element
                                     create-client-state]])
@@ -56,4 +57,5 @@
 			 :get-action-data [get-id-action-data (any)]}]
 	   [:component {:relative-id (any)
                         :table-id (any)
-			:render-dom render-table-DOM}]]]))))
+			:render-dom render-table-DOM
+                        :get-action-data default-get-action-data}]]]))))

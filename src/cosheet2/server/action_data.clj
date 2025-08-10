@@ -255,8 +255,8 @@
 
 (defn action-data-getter
   [dom-specification]
-  (or (:get-action-data dom-specification)
-      default-get-action-data))
+  (assert (:get-action-data dom-specification))
+  (:get-action-data dom-specification))
 
 (defmethod print-method
   cosheet2.server.action_data$default_get_action_data

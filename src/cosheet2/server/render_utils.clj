@@ -124,32 +124,10 @@
 (defn make-component
   "Make a component dom with the given specification"
   [{:as specification}]
-  (assert (:relative-id specification) specification)
+  (assert (:relative-id specification) ["NO relative- id" specification])
+  (assert (:render-dom specification) ["NO render-dom" specification])
+  (assert (:get-action-data specification) ["NO get-action-data" specification])
   [:component specification])
-
-(defn item-component
-  "Make a component dom to display the given item. The item's id becomes
-   the relative-id."
-  [item specification]
-  (make-component (assoc specification
-                         :relative-id (:item-id item)
-                         ;; TODO: !!! Add this. That will require moving
-                         ;; this to item-dom
-                         ; :render-dom render-item-DOM
-                         )))
-
-(defn item-minus-excluded-component
-  "Make a component dom to display the given item, minus the excluded
-  elements."
-  [item excluded-elements specification]
-  (assert (empty? (:excluded-element-ids specification))
-          [excluded-elements specification])
-  (if (empty? excluded-elements)
-    (item-component item specification)
-    (item-component
-     item
-     (assoc specification
-            :excluded-element-ids (vec (map :item-id excluded-elements))))))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
@@ -165,15 +143,6 @@
            (assert (not= (first doms) :div))
            (into [:div {:class orientation-class}]
                  doms))))
-
-(defn item-stack-DOM
-  "Given a list of items and a matching list of elements to exclude,
-  generate components for each item, and put them in a DOM.
-  If there is more than one item, make the stack in the given orientation."
-  [items excludeds orientation specification]
-  (let [components (map #(item-minus-excluded-component %1 %2 specification)
-                        items excludeds)]
-    (nest-if-multiple-DOM components orientation)))
 
 (defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

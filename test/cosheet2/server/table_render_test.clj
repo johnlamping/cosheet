@@ -18,9 +18,9 @@
             (cosheet2.server
              [item-render :refer [render-item-DOM
                                   render-virtual-DOM
-                                  get-virtual-DOM-rendering-data
-                                  get-item-rendering-data]]
-             [action-data :refer [composed-get-action-data
+                                  get-virtual-DOM-rendering-data]]
+             [action-data :refer [default-get-action-data
+                                  composed-get-action-data
                                   parallel-items-get-action-data
                                   get-pass-through-action-data
                                   get-id-action-data
@@ -59,6 +59,7 @@
 (defn virt-DOM [] render-virtual-DOM)
 (defn cell-DOM [] render-table-cell-DOM)
 
+(defn default-AD [] default-get-action-data)
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
 (defn parallel-AD [] parallel-items-get-action-data)
@@ -282,12 +283,16 @@
                           :parallel-ids [rc1-id]
                           :class "label"
                           :excluded-element-ids [(any)]
-                          :relative-id (any)}]
+                          :relative-id (any)
+                          :render-dom render-item-DOM
+                          :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
               [:component {:template '(anything ("age" :label))
                            :width 0.75
                            :excluded-element-ids [(any)]
-                           :relative-id rc1-id}]]]
+                           :relative-id rc1-id
+                           :render-dom render-item-DOM
+                           :get-action-data (default-AD)}]]]
             ;; A virtual element for more condition.
             [:div {:class "wrapped-element label virtual-column"}
              [:component {:relative-id :virtual-label
@@ -322,6 +327,7 @@
                        :width 0.75
                        :template :singular
                        :render-dom render-item-DOM
+                       :get-action-data (default-AD)
                        :relative-id c1-id
                        :class "column-header leaf"}]
           ;; Three columns.
@@ -337,6 +343,8 @@
                           (table-head-do-batch-AD)]
                          (item-do-batch-AD)]
                         :relative-id c2-name-id
+                        :render-dom render-item-DOM
+                        :get-action-data (default-AD)
                         :class "label with-children"
                         :excluded-element-ids [(any)]}]
            [:div {:class "column-header-sequence"}
@@ -364,6 +372,7 @@
                 :template :singular
                 :relative-id c2-id
                 :render-dom render-item-DOM
+                :get-action-data (default-AD)
                 :excluded-element-ids [c2-name-id]}]]]
             ;; A column with an additional label
             [:component
@@ -373,6 +382,7 @@
               :template :singular
               :relative-id c3-id
               :render-dom render-item-DOM
+              :get-action-data (default-AD)
               :excluded-element-ids [c3-name-id]
               :class "column-header leaf"}]
             ;; A column with only a virtual label
@@ -398,6 +408,7 @@
                 :width 0.75
                 :template :singular
                 :render-dom render-item-DOM
+                :get-action-data (default-AD)
                 :relative-id c4-id
                 :excluded-element-ids [(any)]}]]]]]
           ;; One column with two labels
@@ -406,6 +417,7 @@
                        :width 0.75
                        :template :singular
                        :render-dom render-item-DOM
+                       :get-action-data (default-AD)
                        :relative-id c5-id
                        :class "column-header leaf"}]
           ;; One column with no labels
@@ -427,7 +439,8 @@
                          :width 0.75
                          :template :singular
                          :relative-id c6-id
-                         :render-dom render-item-DOM}]]]
+                         :render-dom render-item-DOM
+                         :get-action-data (default-AD)}]]]
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
@@ -447,7 +460,8 @@
                          :width 0.75
                          :template :singular
                          :relative-id c7-id
-                         :render-dom render-item-DOM}]]]
+                         :render-dom render-item-DOM
+                         :get-action-data (default-AD)}]]]
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
@@ -629,6 +643,8 @@
              :class "label"}]
            [:component
             {:relative-id joe-joe-id
+             :render-dom render-item-DOM
+             :get-action-data (default-AD)
              :template '("" ("name" :label))
              :width 0.75
              :excluded-element-ids
@@ -640,6 +656,8 @@
            [:component {:width 0.75
                         :template '(anything :label)
                         :parallel-ids [joe-joseph-id]
+                        :render-dom render-item-DOM
+                        :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
                         [(comp-AD)
                          [(parallel-do-batch-AD)
@@ -651,6 +669,8 @@
             [:div {:class "indent-wrapper"}
              [:component
               {:relative-id joe-joseph-id
+               :render-dom render-item-DOM
+               :get-action-data (default-AD)
                :template '("" ("name" :label) ("id" :label))
                :width 0.75
                :excluded-element-ids
@@ -687,6 +707,7 @@
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
                         :render-dom render-table-condition-DOM
+                        :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
                         get-table-condition-do-batch-edit-action-data}]
            [:div {:class "table-main"}
@@ -698,7 +719,8 @@
                 :properties {["single" {:label 1}] 1}
                 :cumulative-properties {["single" {:label 1}] 1}}
                (any) (any) (any) (any)]
-              :render-dom render-table-header-DOM}]
+              :render-dom render-table-header-DOM
+              :get-action-data (default-AD)}]
             [:component
              {:relative-id :body
               :alternate-row-sibling column-headers-id

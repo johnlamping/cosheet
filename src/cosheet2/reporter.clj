@@ -4,6 +4,20 @@
                                      swap-returning-both!
                                      swap-control-return!]])))
 
+;;; TODO: Reporters should distinguish whether they have a valid value
+;;; from whether their value has changed. Going from valid to invalid
+;;; isn't a value change, and going from invalid to valid isn't a
+;;; value change if the old value has become valid again. Callback
+;;; descriptions need to say whether they are only a validity
+;;; change. And there needs to be a way to register for only value
+;;; changes, not validity changes.
+
+;;; TODO: Reporters could keep a version number, which they report on
+;;; callbacks. That would let the recipient trust the value given in
+;;; the callback, if its version number was later than the last
+;;; version told about. That would mean that many with-current-value
+;;; calls, which require two atom dereferences, could go away.
+
 (defprotocol Reporter
   "A protocol that indicates an object has an atom with fields expected
   for a reporter.

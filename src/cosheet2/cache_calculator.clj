@@ -56,11 +56,31 @@
 ;;; none with demand yet. So they wouldn't be in the cache, and they
 ;;; wouldn't share computation.
 
-;;; Forwarding reporters get around this problem by addinmg a layer of
+;;; Forwarding reporters get around this problem by adding a layer of
 ;;; indirection, so we can have it both ways. The cache keeps track of
 ;;; only active computations. And a forwarding reporter looks in the
 ;;; cache when demand changes, seeing if there is currently a reporter
 ;;; already calculating its value, and redirects its value to there.
+
+;;; TODO: It is possible to elide many forwarding reporters.
+
+;;; Add an elide-cache expression that requires a calculator data,
+;;; looks in the cache first, and returns that reporter if it finds
+;;; it, only making a forwarding reporter if it doesn't find one in
+;;; the cache. That doesn't avoid all forwarding reporters, but it
+;;; would eliminate many of them.
+
+;;; But if a cached reporter loses all demand, and then gets demand
+;;; again, it would have to look in the cache to see if another one
+;;; has its key, and if it finds one, turn itself into a forwarding
+;;; reporter to that one.
+
+;;; In addition, a version of elide-cache could give the reporter
+;;; phony demand as it is created, so that doesn't make a forwarding
+;;; reporter if it doesn't find a cached reporter. It would have to be
+;;; be called in a try expression that adds phony demand to it, and
+;;; then removes that demand at the end of the try (after real demand
+;;; is probably added.)
 
 (defn- cache-key
   "Return the cache key for an application."
@@ -88,7 +108,7 @@
 (defn- adjust-cache-membership
   "Make sure the reporter is in the cache if and only if it is attended to.
    (Except, if there is another reporter already in the cache
-   with the same key, throw this one out.)"
+   with the same key, don't put this in.)"
   [reporter key cd]
   (with-latest-value [attended (attended? reporter)]
     (mm/update-in-clean-up!
@@ -139,7 +159,7 @@
 
 (defn data-for-forwarding-reporter
   "Given an application for a forwarding reporter, return a list of
-   keywords and values map of the properties that make a reporter with
+   keywords and values of the properties that make a reporter with
    that application a forwarding reporter."
   [application]
   [:value-source-priority-delta 1

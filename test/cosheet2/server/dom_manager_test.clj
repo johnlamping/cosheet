@@ -9,16 +9,18 @@
              [utils :refer [dissoc-in]]
              [test-utils :refer [check any as-set]]
              [entity :as entity :refer [to-list description->entity]]
-             [reporter :as reporter :refer [new-reporter
+             [reporter :as reporter :refer [new-reporter set-value!
                                             reporter-data reporter-value]]
-             [calculator :as calculator :refer [new-calculator-data compute]]
+             [calculator :as calculator :refer [new-calculator-data compute
+                                                current-value]]
              [application-calculator :as application-calculator]
-             [expression :refer [expr]]
+             [expression :refer [expr expr-seq expr-let]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]
              mutable-store-impl
              [store-utils :refer [add-entity]]
+             [hiccup-utils :refer [dom-attributes]]
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]])
             (cosheet2.server
@@ -345,3 +347,167 @@
         (is (nil? (:dom-specification @c1-)))
         (is (nil? (:dom-specification @c1)))))))
 
+(deftest asynchronous-test
+  ;; Creates width base reporters, then a series layers of lookups
+  ;; that use the value at the previous layer as an index into another
+  ;; value at that layer. Then makes a bunch of components whose
+  ;; values depend on that stack. Each has a level and a position
+  ;; among the reporters at its level. Each takes one or more values
+  ;; at its level near its position. If it is not at the lowest level,
+  ;; it creates subsidiary components at the next lower level at the
+  ;; position of those values.  Components at the lowest level, just
+  ;; return the values in their dom.
+  
+  ;; The code then sets up a thread that tries to get ready components
+  ;; for the client, and process acknowledgements, along with a thread
+  ;; that mutates the bottom reporters. After running the mutation for
+  ;; a limited number of times, we check that the doms the client has
+  ;; been given match the current doms of the reporters.
+  (let [width 11
+        depth 3
+        trials 10
+        changes-per-trial 100
+        base (vec (for [i (range width)]
+                    (new-reporter :name [0 i]
+                                  :value (mod (inc i) width))))
+        reporters (loop [d 1
+                         prev base
+                         reporters [base]]
+                    (if (= d depth)
+                      (vec reporters)
+                      (let [current
+                            (mapv (fn [i]
+                                    (expr ^{:name [d i]}
+                                        nth prev (nth prev i)))
+                                  (range width))]
+                        (recur (+ d 1) current (conj reporters current)))))
+        cd (new-calculator-data (new-priority-task-queue 4))
+        ms (new-mutable-store (new-element-store))
+        dm (new-dom-manager ms cd)
+        evals (atom 0)
+        ;; A map from client id to the latest dom the client has.
+        client-copy (atom {})]
+    (letfn [(layer-reporter [level position]
+              (-> reporters (nth level) (nth position)))
+            (subdom-values-R [level position]
+              (expr-let [value (layer-reporter level position)]
+                (let [num (max 1 (int (/ width (+ value 2))))]
+                  (map #(mod % width)
+                       (range value (+ value num))))))
+            (value->keyword [value] (keyword (str "root" value)))
+            (value->id [value] (make-item-id (str value)))
+            (id->value [id] (Integer. (:id id)))
+            (dom-for-position-R [level position]
+              (expr-let [subdom-values (subdom-values-R level position)]
+                (let [parts (map 
+                             (if (= 0 level)
+                               (fn [value] [:div (str value)])
+                               (fn [value]
+                                 [:component
+                                  {:relative-id (value->id value)
+                                   :level (- level 1)
+                                   :render-dom render-dom
+                                   :get-action-data get-action-data}]))
+                             subdom-values)]
+                  ;; If we have only one part beneath us, then half
+                  ;; the time, return just it. That gives us eliding.
+                  (if (and (= (count parts) 1)
+                           (= (first (first parts)) :component)
+                           (= (mod position 2) 0))
+                    (first parts)
+                    (into [:div {}] parts)))))
+            (render-dom [{:keys [relative-id item-id level]} store]
+              (let [position (id->value (or item-id relative-id))]
+                (dom-for-position-R level position)))
+            (get-action-data
+              [specification inherited-action-data action immutable-store]
+              {})
+            (record-doms [for-client]
+              (doseq [dom for-client]
+                (let [{:keys [id version]} (dom-attributes dom)]
+                  (swap! client-copy
+                         (fn [data]
+                           (cond-> data
+                             (if-let [current (data id)]
+                               (let [our-version (:version
+                                                  (dom-attributes current))]
+                                 (if (= version our-version)
+                                   (do (assert (= current dom))
+                                       false)
+                                   (> version our-version)))
+                               true)
+                             (assoc id dom)))))))
+            (acknowledge-doms [for-client]
+              (let [acknowledgements
+                    (map (fn [[dom position]]
+                           (let [{:keys [id version]} (dom-attributes dom)]
+                             [id
+                              ;; Sometimes ack an outdated version.
+                              (- version (if (= (mod position 3) 2) 1 0))]))
+                         (map vector
+                              for-client
+                              (range (count for-client))))]
+                (process-acknowledgements dm acknowledgements)))
+            ;; Get client ready doms, and acknowledge them.
+            ;; Return the number of doms gotten.
+            (get-and-acknowledge-doms []
+              (let [for-client (first (get-response-doms dm nil 20))]
+                (record-doms for-client)
+                (acknowledge-doms for-client)
+                (count for-client)))
+            (get-and-acknowledge-all-doms []
+              (loop []
+                (let [num-processed (get-and-acknowledge-doms)]
+                  (when (> num-processed 0)
+                    (recur)))))
+            (check-client-copy [require-latest]
+              (let [client-data @client-copy]
+                (if (empty? client-data)
+                  ;; We return the number of doms we checked.
+                  0
+                  (loop [pairs client-data
+                         num-checked 0]
+                    (let [[[id our-dom] & rest] pairs
+                          _ (when (nil? id) (println "XXXXXX" our-dom))
+                          component (client-id->component @dm id)]
+                      (when component ; Doms we have might no longer be needed.
+                        (let [[dom monitored]
+                              (prepare-dom-for-client component nil)]
+                          (if require-latest
+                            (is (check our-dom dom))
+                            (when (and dom
+                                       (>= (:version (dom-attributes our-dom))
+                                           (:version (dom-attributes dom))))
+                              (is (check our-dom dom))))))
+                      (if (seq rest)
+                        (recur rest
+                               (+ num-checked (if component 1 0)))
+                        num-checked))))))]
+      (doseq [position (range width)]
+        (add-root-dom dm {:relative-id (value->keyword position)
+                          :item-id (value->id position)
+                          :level (- depth 1)
+                          :render-dom render-dom
+                          :get-action-data get-action-data}))
+      ;; First see if everything is starting out right.
+      (compute cd)
+      (get-and-acknowledge-all-doms)
+      (println "INITIAL CHECK OF"(check-client-copy true))
+      (println (map current-value (nth reporters (- depth 1))))
+      (doseq [i (range trials)]
+        (when (= (mod i 1) 0)
+          (println "starting trial" i))
+        (doseq [j (range changes-per-trial)]
+          (set-value! (base (mod (* (inc i) j) width))
+                      (mod (* j j) width))
+          (when (zero? (mod j 17))
+            (future (compute cd (mod i 34))))
+          (when (zero? (mod j (+ 10 (mod i 50))))
+            (future (get-and-acknowledge-doms)))
+          (when (zero? (mod j (+ 20 (mod i 100))))
+            (check-client-copy false)))
+        (compute cd)
+        (get-and-acknowledge-all-doms)
+        (is (>= (check-client-copy true)
+                (* width (- depth 1)))))
+      (println "XXXXXXXXX"(map current-value (nth reporters (- depth 1)))))))

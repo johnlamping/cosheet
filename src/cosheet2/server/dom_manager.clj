@@ -301,7 +301,10 @@
      :dom-specification specification
      :client-id client-id
      :elided-from elided-from
-     :depth depth})))
+     :depth depth
+     ;; Deactivation expects a dom version. And we can be deactivated
+     ;; before we even get activated.
+     :dom-version 0})))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
@@ -436,12 +439,13 @@
     ;; Now we can get the final dom versions for each of them and make
     ;; sure the dom-manager's highest version dom is at least that
     ;; high.
-    (let [dom-versions (map (fn [component] (:dom-version @component))
-                        obsolete)]
+    (let [max-of-dom-versions
+          (apply max (map (fn [component] (:dom-version @component))
+                          obsolete))]
       (swap! dom-manager
              (fn [manager-data]
                (update manager-data :highest-version
-                       #(apply max % dom-versions)))))
+                       #(max % max-of-dom-versions)))))
     ;; Next, remove these subcomponents from the list of obsolete
     ;; ones. (The set of obsolete ones might have changed from when we
     ;; started running.)
@@ -615,16 +619,17 @@
   "Returns the component for the given client id."
   [manager-data client-id]
   (let [id-sequence (client-id->relative-ids client-id)
-        root ((:root-components manager-data) (first id-sequence))]
-    (reduce (fn [component id]
-              (when component
-                (let [result ((:id->subcomponent @component) id)]
-                  (when (not result)
-                    (println "!!!!!! Can't find component for" id
-                             "in" (:client-id @component)))
-                  result)))
-            root
-            (rest id-sequence))))
+        root ((:root-components manager-data) (first id-sequence))
+        result (reduce (fn [component id]
+                         (when component
+                           (when-let [id->subcomponent (:id->subcomponent
+                                                        @component)]
+                             (id->subcomponent id))))
+                root
+                (rest id-sequence))]
+    (when result
+      (assert (= (:client-id @result) client-id))
+      result)))
 
 (defn action-data-to-providing-dom
   "Given the action data for the component atom, get it for the
@@ -710,7 +715,7 @@
   component gets elided."
   [component-atom dom]
    (when dom
-     (let [{:keys [client-id dom-version]} @component-atom]
+     (let [{:keys [client-id]} @component-atom]
         (into [(first dom)
                (second dom)]
               (map (partial adjust-subdom-for-client client-id)
@@ -731,7 +736,7 @@
         ;; We get whatever the latest reporter value is. It is possible
         ;; That our reporter is temporarily invalid, in which case
         ;; we will have no dom for now.
-        ;; The repoter may have gotten ahead of the current
+        ;; The dom-R reporter may have gotten ahead of the current
         ;; dom-version number, but that is OK. Worst case, we will
         ;; send the same dom more than once, until the version number
         ;; catches up with it.
@@ -740,13 +745,15 @@
         monitored (component-is-monitored? component-atom monitored-ids)]
     (when dom
       (if (= (first dom) :component)
-        (let [class-attribute (select-keys (dom-attributes dom) [:class])
-              [inner-dom _ inner-monitored] (find-displayed-dom
-                                             (first (vals id->subcomponent))
-                                             monitored-ids)]
-          (assert (= (count id->subcomponent) 1))
-          [(add-attributes inner-dom class-attribute)
-           (or monitored inner-monitored)])
+        ;; It's possible that id->subcomponent isn't up to date with the dom.
+        ;; If it doesn't match, we'll get called again.
+        (when (= (count id->subcomponent) 1)
+          (let [class-attribute (select-keys (dom-attributes dom) [:class])
+                [inner-dom _ inner-monitored] (find-displayed-dom
+                                               (first (vals id->subcomponent))
+                                               monitored-ids)]
+            [(add-attributes inner-dom class-attribute)
+             (or monitored inner-monitored)]))
         [(adjust-dom-for-client component-atom dom)
          monitored]))))
 
@@ -754,14 +761,20 @@
   "Given a component-atom, prepare its dom to send to the client. Also
   return whether it presents one of the monitored ids."
   [component-atom monitored-ids]
-  (let [[dom monitored] (find-displayed-dom
-                         component-atom monitored-ids)]
-    (when dom
-      (let [{:keys [client-id dom-version]} @component-atom
-            added (add-attributes dom {:id client-id
-                                       :version dom-version})]
-        [added
-         monitored]))))
+  ;; We have to get the dom after getting the dom version. That's
+  ;; because it's OK to assign an older version to a new dom, but bad
+  ;; to assign a newer version to an old dom.
+  (let [{:keys [client-id dom-version elided-from]} @component-atom]
+    ;; We should normally never be called with an elided-from dom. But
+    ;; the unit test can do that sometimes, since it can have a record
+    ;; of a client-id that it is no longer getting.
+    (when (not elided-from)
+      (let [[dom monitored] (find-displayed-dom
+                             component-atom monitored-ids)]
+        (when dom
+          [(add-attributes dom {:id client-id
+                                :version dom-version})
+           monitored])))))
 
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
@@ -783,56 +796,61 @@
                [dom monitored] (prepare-dom-for-client component monitored-ids)]
            (recur
             ;; The dom might be temporarily invalid.
-            (if dom (conj response dom) response)
+            (cond-> response dom (conj dom))
             (longer-string monitored-client-id
                            (when monitored (:client-id @component)))
             (max highest-version
                  (if dom (:version (dom-attributes dom)) 0))
             remaining-components)))))))
 
+(defn need-to-send-to-client-given-acknowledgement?
+  "Return whether we need to send the component to the client, given a
+  dom version that the client acknowledges getting."
+  [component-atom ack-version]
+  (let [{:keys [elided-from dom-version]} @component-atom]
+    (and (not elided-from) (< ack-version dom-version))))
+
 (defn process-acknowledgements
   "Modify the the dom-manager to reflect the acknowledgements."
   [dom-manager acknowledgements]
-  (with-latest-value
-    ;; We read the information we need from all the components before
-    ;; updating the dom-manager. This has the advantage that we need
-    ;; to do only one swap! on the manager for all the changes. But it
-    ;; has the disadvantage that we have to start over if any of that
-    ;; information for any of the components changed while we were
-    ;; working.
-    [states (let [manager-data @dom-manager]
-              (mapcat
-               (fn [[client-id version]]
-                 (let [component-atom (client-id->component
-                                       manager-data client-id)]
-                   (if component-atom
-                     (do
-                       (when (not= (:client-id @component-atom) client-id)
-                         (println "!!!!!!!!!! Got mismatch"
-                                  (:client-id @component-atom)
-                                  "for" client-id))
-                       [[component-atom
-                         (assoc (select-keys @component-atom
-                                             [:elided-from :dom-version])
-                                :ack-version version)]])
-                     (do (println "!!!!!!!!!!!! No component found for"
-                                  client-id)
-                         nil))))
-               acknowledgements))]
-    (swap!
-     dom-manager
-     (fn [manager-data]
-       (let [components-to-send
-             (reduce
-              (fn [components-to-send
-                   [component-atom
-                    {:keys [elided-from dom-version ack-version]}]]
-                (cond-> components-to-send
-                  (or elided-from (>= ack-version dom-version))
-                  (dissoc component-atom)))
-              (:components-to-send manager-data)
-              states)]
-         (assoc manager-data :components-to-send components-to-send))))))
+  ;; Determine which of the acknowledged doms no longer need to be
+  ;; sent to the client. Make a list of them and their acknowledged
+  ;; versions.
+  (let [components-to-remove
+        (let [manager-data @dom-manager] ; Only used for client-id->component.
+          (mapcat
+           (fn [[client-id version]]
+             (when-let [component-atom (client-id->component
+                                        manager-data client-id)]
+               (when (not (need-to-send-to-client-given-acknowledgement?
+                           component-atom version))
+                 [[component-atom version]])))
+           acknowledgements))]
+    (swap! dom-manager
+           (fn [manager-data]
+             (update manager-data :components-to-send
+                     #(apply dissoc % (map first components-to-remove)))))
+    ;; It's possible that a component got updated between the time we
+    ;; decided that it needed to be removed and the swap! In that
+    ;; case, we may have removed it incorrectly. So we go back through
+    ;; the component data of the components we removed, and see if
+    ;; they need to go back in the components-to-send. It is OK to use
+    ;; out of date information here, because it is OK to unnecessarily
+    ;; add a component to send.
+    (let [components-to-add-back
+          (map first
+               (filter #(apply need-to-send-to-client-given-acknowledgement? %)
+                       components-to-remove))]
+      (when components-to-add-back
+        (swap! dom-manager
+               (fn [manager-data]
+                 (update manager-data :components-to-send
+                         (fn [components-to-send]
+                           (reduce (fn [components-to-send component]
+                                     (assoc components-to-send component
+                                            (:depth @component)))
+                                   components-to-send
+                                   components-to-add-back)))))))))
 
 (defn add-root-dom
   "Add dom with the given specification to the dom-manager.

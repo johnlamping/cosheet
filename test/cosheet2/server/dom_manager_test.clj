@@ -80,7 +80,7 @@
         c2 (reuse-or-make-component-atom s2 manager "c2" 2 c1 c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 2))
-    (is (= (:dom-version @c1) nil)) ; Not activated yet.
+    (is (= (:dom-version @c1) 0)) ; Not activated yet.
     (is (not (:elided c1)))
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
@@ -125,7 +125,7 @@
                       :elided-from c2-
                       :dom-manager manager
                       :dom-specification s2
-                      :dom-version nil
+                      :dom-version 0
                       :depth 4
                       :dom-R nil})))))))
 
@@ -363,10 +363,15 @@
   ;; that mutates the bottom reporters. After running the mutation for
   ;; a limited number of times, we check that the doms the client has
   ;; been given match the current doms of the reporters.
+
+  ;; TODO: !!! Change the check to walk through the reachable
+  ;; doms. There are lots fewer of them than there are ids we have
+  ;; ever heard of, so the test will run much faster, and the checks
+  ;; won't interfere with the test as much.
   (let [width 11
         depth 3
-        trials 10
-        changes-per-trial 100
+        trials 100
+        changes-per-trial 200
         base (vec (for [i (range width)]
                     (new-reporter :name [0 i]
                                   :value (mod (inc i) width))))
@@ -422,6 +427,7 @@
             (get-action-data
               [specification inherited-action-data action immutable-store]
               {})
+            (dom-version [dom] (:version (dom-attributes dom)))
             (record-doms [for-client]
               (doseq [dom for-client]
                 (let [{:keys [id version]} (dom-attributes dom)]
@@ -431,10 +437,11 @@
                              (if-let [current (data id)]
                                (let [our-version (:version
                                                   (dom-attributes current))]
+                                 (assert (>= version our-version))
                                  (if (= version our-version)
                                    (do (assert (= current dom))
                                        false)
-                                   (> version our-version)))
+                                   true))
                                true)
                              (assoc id dom)))))))
             (acknowledge-doms [for-client]
@@ -460,29 +467,70 @@
                 (let [num-processed (get-and-acknowledge-doms)]
                   (when (> num-processed 0)
                     (recur)))))
+            ;; Check that our version of the dom of one id is correct.
+            ;; If require latest is true, we assume that we are caught up
+            ;; with the manager, and require that the doms match.
+            ;; Otherwise, we allow that the manager's version is ahead
+            ;; of ours, and even if its version is the same, we allow
+            ;; that it might have a newer dom that is not yet
+            ;; reflected in its version.
+            ;; We return:
+            ;;            nil if we didn't compare doms.
+            ;;           true if the doms matched.
+            ;;   :must-review if the versions matched but the doms didn't.
+            ;;                This indicates that we should check later
+            ;;                that the manager got to a higher version.
+            (check-one-id [id our-dom require-latest]
+              (let [component (client-id->component @dm id)]
+                (when (and component
+                           (not (:elided-from @component))) 
+                  (let [[dom monitored]
+                        (prepare-dom-for-client component nil)]
+                    (when dom ; We might have a client-id for an
+                              ; obsolete component.
+                      (if require-latest
+                        (do (is (check our-dom dom)) true)
+                        (when dom
+                          (let [our-version (dom-version our-dom)
+                                their-version (dom-version dom)]
+                            (assert (>= their-version our-version))
+                            (when (= their-version our-version)
+                              (if (= our-dom dom)
+                                true
+                                :must-review))))))))))
+            ;; Check that all of the information we have recorded
+            ;; accords with the manager. If require-latest is true,
+            ;; require an exact match. Otherwise, allow for the
+            ;; manager to be ahead of us.
+            ;; We return the number of doms that matched, and a list
+            ;; of pairs of [id version] of ids for which we expect the
+            ;; manager to get a higher version.
             (check-client-copy [require-latest]
               (let [client-data @client-copy]
                 (if (empty? client-data)
-                  ;; We return the number of doms we checked.
-                  0
+                  [0 []]
                   (loop [pairs client-data
-                         num-checked 0]
+                         num-matched 0
+                         must-review []]
                     (let [[[id our-dom] & rest] pairs
-                          _ (when (nil? id) (println "XXXXXX" our-dom))
-                          component (client-id->component @dm id)]
-                      (when component ; Doms we have might no longer be needed.
-                        (let [[dom monitored]
-                              (prepare-dom-for-client component nil)]
-                          (if require-latest
-                            (is (check our-dom dom))
-                            (when (and dom
-                                       (>= (:version (dom-attributes our-dom))
-                                           (:version (dom-attributes dom))))
-                              (is (check our-dom dom))))))
+                          check-result (check-one-id id our-dom require-latest)
+                          num-matched (if (= check-result true)
+                                        (+ num-matched 1)
+                                        num-matched)
+                          must-review (if (= check-result :must-review)
+                                        (conj must-review
+                                              [id (dom-version our-dom)] )
+                                        must-review)]
                       (if (seq rest)
-                        (recur rest
-                               (+ num-checked (if component 1 0)))
-                        num-checked))))))]
+                        (recur rest num-matched must-review)
+                        [num-matched must-review]))))))
+            ;; Takes a list of [id version] pairs.  Check that the dom
+            ;; manager has a higher version for each of the specified
+            ;; ids than the one we recorded.
+            (review-for-dom-increases [items-to-review]
+              (doseq [[id our-version] items-to-review]
+                (when-let [component (client-id->component @dm id)]
+                  (assert (> (:dom-version @component) our-version)))))]
       (doseq [position (range width)]
         (add-root-dom dm {:relative-id (value->keyword position)
                           :item-id (value->id position)
@@ -492,11 +540,11 @@
       ;; First see if everything is starting out right.
       (compute cd)
       (get-and-acknowledge-all-doms)
-      (println "INITIAL CHECK OF"(check-client-copy true))
-      (println (map current-value (nth reporters (- depth 1))))
+      (is (>= (first (check-client-copy true))
+                (* width (- depth 1))))
       (doseq [i (range trials)]
-        (when (= (mod i 1) 0)
-          (println "starting trial" i))
+        (when (= (mod i 100) 0)
+          (println "starting dom-manager asynchronous trial" i))
         (doseq [j (range changes-per-trial)]
           (set-value! (base (mod (* (inc i) j) width))
                       (mod (* j j) width))
@@ -505,9 +553,12 @@
           (when (zero? (mod j (+ 10 (mod i 50))))
             (future (get-and-acknowledge-doms)))
           (when (zero? (mod j (+ 20 (mod i 100))))
-            (check-client-copy false)))
+            (let [[num-checked must-review] (check-client-copy false)]
+              (when (seq must-review)
+                ;; Complete pending dom manager stuff.
+                (compute cd)
+                (review-for-dom-increases must-review)))))
         (compute cd)
         (get-and-acknowledge-all-doms)
-        (is (>= (check-client-copy true)
-                (* width (- depth 1)))))
-      (println "XXXXXXXXX"(map current-value (nth reporters (- depth 1)))))))
+        (is (>= (first (check-client-copy true))
+                (* width (- depth 1))))))))

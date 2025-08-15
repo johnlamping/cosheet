@@ -20,7 +20,7 @@
                             string->id]]
              mutable-store-impl
              [store-utils :refer [add-entity]]
-             [hiccup-utils :refer [dom-attributes]]
+             [hiccup-utils :refer [dom-attributes add-attributes]]
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]])
             (cosheet2.server
@@ -363,15 +363,10 @@
   ;; that mutates the bottom reporters. After running the mutation for
   ;; a limited number of times, we check that the doms the client has
   ;; been given match the current doms of the reporters.
-
-  ;; TODO: !!! Change the check to walk through the reachable
-  ;; doms. There are lots fewer of them than there are ids we have
-  ;; ever heard of, so the test will run much faster, and the checks
-  ;; won't interfere with the test as much.
-  (let [width 11
-        depth 3
-        trials 100
-        changes-per-trial 200
+  (let [width 17
+        depth 4
+        trials 10 ; 10000
+        changes-per-trial 300
         base (vec (for [i (range width)]
                     (new-reporter :name [0 i]
                                   :value (mod (inc i) width))))
@@ -386,6 +381,12 @@
                                         nth prev (nth prev i)))
                                   (range width))]
                         (recur (+ d 1) current (conj reporters current)))))
+        ;; These count how many times we have calculated a dom for the
+        ;; specific location.
+        calculation-counters (doall (map (fn [depth]
+                                           (doall (map (fn [pos] (atom 0))
+                                                       (range width))))
+                                        (range depth)))
         cd (new-calculator-data (new-priority-task-queue 4))
         ms (new-mutable-store (new-element-store))
         dm (new-dom-manager ms cd)
@@ -402,6 +403,10 @@
             (value->keyword [value] (keyword (str "root" value)))
             (value->id [value] (make-item-id (str value)))
             (id->value [id] (Integer. (:id id)))
+            (specification-for-dom [level]
+              {:level level
+               :render-dom render-dom
+               :get-action-data get-action-data})
             (dom-for-position-R [level position]
               (expr-let [subdom-values (subdom-values-R level position)]
                 (let [parts (map 
@@ -409,18 +414,25 @@
                                (fn [value] [:div (str value)])
                                (fn [value]
                                  [:component
-                                  {:relative-id (value->id value)
-                                   :level (- level 1)
-                                   :render-dom render-dom
-                                   :get-action-data get-action-data}]))
-                             subdom-values)]
-                  ;; If we have only one part beneath us, then half
-                  ;; the time, return just it. That gives us eliding.
-                  (if (and (= (count parts) 1)
-                           (= (first (first parts)) :component)
-                           (= (mod position 2) 0))
-                    (first parts)
-                    (into [:div {}] parts)))))
+                                  (assoc (specification-for-dom (- level 1))
+                                         :relative-id (value->id value))]))
+                             subdom-values)
+                      calculation-number (swap! (nth (nth calculation-counters
+                                                          level)
+                                                     position)
+                                                inc)]
+                  (add-attributes
+                   ;; If we have only one part beneath us, then half
+                   ;; the time, return just it. That gives us eliding.
+                   (if (and (= (count parts) 1)
+                            (= (first (first parts)) :component)
+                            (= (mod position 2) 0))
+                     (first parts)
+                     (into [:div {}] parts))
+                   ;; Add information that lets us detect if calculation
+                   ;; has gotten ahead of the dom manager
+                   {:calculation-number calculation-number
+                    :location [level position]}))))
             (render-dom [{:keys [relative-id item-id level]} store]
               (let [position (id->value (or item-id relative-id))]
                 (dom-for-position-R level position)))
@@ -428,6 +440,9 @@
               [specification inherited-action-data action immutable-store]
               {})
             (dom-version [dom] (:version (dom-attributes dom)))
+            (dom-location [dom] (:location (dom-attributes dom)))
+            (dom-calculation-number [dom]
+              (:calculation-number (dom-attributes dom)))
             (record-doms [for-client]
               (doseq [dom for-client]
                 (let [{:keys [id version]} (dom-attributes dom)]
@@ -470,78 +485,77 @@
             ;; Check that our version of the dom of one id is correct.
             ;; If require latest is true, we assume that we are caught up
             ;; with the manager, and require that the doms match.
-            ;; Otherwise, we allow that the manager's version is ahead
-            ;; of ours, and even if its version is the same, we allow
-            ;; that it might have a newer dom that is not yet
-            ;; reflected in its version.
-            ;; We return:
-            ;;            nil if we didn't compare doms.
-            ;;           true if the doms matched.
-            ;;   :must-review if the versions matched but the doms didn't.
-            ;;                This indicates that we should check later
-            ;;                that the manager got to a higher version.
+            ;; Otherwise, we allow a couple of extenuating circumstances:
+            ;;    The manager's version is ahead of ours
+            ;;    The manager's dom is from a later computation than ours.
+            ;;    The manager's dom was elided from a different client id
+            ;;                  than ours.
+            ;; We return true if the doms matched, or we required them to.
             (check-one-id [id our-dom require-latest]
               (let [component (client-id->component @dm id)]
                 (when (and component
-                           (not (:elided-from @component))) 
+                           (not (:elided-from @component)))
                   (let [[dom monitored]
                         (prepare-dom-for-client component nil)]
                     (when dom ; We might have a client-id for an
                               ; obsolete component.
                       (if require-latest
-                        (do (is (check our-dom dom)) true)
-                        (when dom
-                          (let [our-version (dom-version our-dom)
-                                their-version (dom-version dom)]
-                            (assert (>= their-version our-version))
-                            (when (= their-version our-version)
-                              (if (= our-dom dom)
-                                true
-                                :must-review))))))))))
-            ;; Check that all of the information we have recorded
-            ;; accords with the manager. If require-latest is true,
-            ;; require an exact match. Otherwise, allow for the
-            ;; manager to be ahead of us.
-            ;; We return the number of doms that matched, and a list
-            ;; of pairs of [id version] of ids for which we expect the
-            ;; manager to get a higher version.
+                        (do (is (check our-dom dom))
+                            true)
+                        (let [our-version (dom-version our-dom)
+                              their-version (dom-version dom)]
+                          (assert (>= their-version our-version))
+                          (when (= their-version our-version)
+                            (if (= our-dom dom)
+                              true
+                              ;; The dom manager's dom may have
+                              ;; gotten ahead of its dom
+                              ;; version. Confirm that by checking
+                              ;; that the calculation number we
+                              ;; recorded for it is higher than the
+                              ;; one we last heard about. Sometimes,
+                              ;; that test fails because a
+                              ;; containing dom has switched which
+                              ;; doms it is eliding from. Allow that
+                              ;; case, too.
+                              (do (is (or (> (dom-calculation-number dom)
+                                             (dom-calculation-number our-dom))
+                                          (not= (dom-location dom)
+                                                (dom-location our-dom))))
+                                  false))))))))))
+            (check-one-id-and-subcomponents [id client-data require-latest]
+              (if-let [our-dom (client-data id)]
+                (let [matched (if (check-one-id id our-dom require-latest)
+                                1 0)
+                      sub-specs (subcomponent-specifications our-dom)
+                      sub-ids (map #(:id %) sub-specs)
+                      sub-matches (map #(check-one-id-and-subcomponents
+                                         % client-data require-latest)
+                                       sub-ids)]
+                  (apply + matched sub-matches))
+                0))
+            ;; Check that all of the information we have recorded on
+            ;; the reachable components accords with the manager. If
+            ;; require-latest is true, require an exact
+            ;; match. Otherwise, allow for the manager to be ahead of
+            ;; us.
+            ;; We return the number of doms that matched.
             (check-client-copy [require-latest]
               (let [client-data @client-copy]
-                (if (empty? client-data)
-                  [0 []]
-                  (loop [pairs client-data
-                         num-matched 0
-                         must-review []]
-                    (let [[[id our-dom] & rest] pairs
-                          check-result (check-one-id id our-dom require-latest)
-                          num-matched (if (= check-result true)
-                                        (+ num-matched 1)
-                                        num-matched)
-                          must-review (if (= check-result :must-review)
-                                        (conj must-review
-                                              [id (dom-version our-dom)] )
-                                        must-review)]
-                      (if (seq rest)
-                        (recur rest num-matched must-review)
-                        [num-matched must-review]))))))
-            ;; Takes a list of [id version] pairs.  Check that the dom
-            ;; manager has a higher version for each of the specified
-            ;; ids than the one we recorded.
-            (review-for-dom-increases [items-to-review]
-              (doseq [[id our-version] items-to-review]
-                (when-let [component (client-id->component @dm id)]
-                  (assert (> (:dom-version @component) our-version)))))]
+                (apply + (map #(check-one-id-and-subcomponents
+                                (id-subpart->client-id-subpart
+                                 (value->keyword %))
+                                client-data require-latest)
+                              (range width)))))]
       (doseq [position (range width)]
-        (add-root-dom dm {:relative-id (value->keyword position)
-                          :item-id (value->id position)
-                          :level (- depth 1)
-                          :render-dom render-dom
-                          :get-action-data get-action-data}))
+        (add-root-dom dm (assoc (specification-for-dom (- depth 1))
+                                :item-id (value->id position)
+                                :relative-id (value->keyword position))))
       ;; First see if everything is starting out right.
       (compute cd)
       (get-and-acknowledge-all-doms)
-      (is (>= (first (check-client-copy true))
-                (* width (- depth 1))))
+      (is (>= (check-client-copy true)
+              (* width (- depth 1))))
       (doseq [i (range trials)]
         (when (= (mod i 100) 0)
           (println "starting dom-manager asynchronous trial" i))
@@ -553,12 +567,8 @@
           (when (zero? (mod j (+ 10 (mod i 50))))
             (future (get-and-acknowledge-doms)))
           (when (zero? (mod j (+ 20 (mod i 100))))
-            (let [[num-checked must-review] (check-client-copy false)]
-              (when (seq must-review)
-                ;; Complete pending dom manager stuff.
-                (compute cd)
-                (review-for-dom-increases must-review)))))
+            (check-client-copy false)))
         (compute cd)
         (get-and-acknowledge-all-doms)
-        (is (>= (first (check-client-copy true))
+        (is (>= (check-client-copy true)
                 (* width (- depth 1))))))))

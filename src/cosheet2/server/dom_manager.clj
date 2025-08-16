@@ -333,6 +333,13 @@
   [& {:keys [key]}]
   (handle-dom-change key))
 
+(defn deactivate-dom-R
+  "Remove our callback to the atom's dom-R. That should be its only
+  attendee, so it should stop updating at that point."
+  [component-atom dom-R]
+  (when (reporter? dom-R)
+    (remove-attendee! dom-R component-atom)))
+
 (defn activate-dom-R
   "Give the atom's dom-R its calculator-data, and set up a callback for
   when its value changes.
@@ -351,16 +358,17 @@
           (propagate-calculator-data! dom-R calculator-data)
           (set-attendee-and-call!
            dom-R component-atom (* 10 (:depth @component-atom))
-           dom-calculator-callback))
+           dom-calculator-callback)
+          ;; It is possible that the component was already
+          ;; deactivated, and we are running late. So we could have
+          ;; activated a dom-R that should be deactivated. Detect
+          ;; that, and fix it. It is good enough to check just this
+          ;; once, because once deactivated, a component can't be
+          ;; activated again.
+          (when (not (:dom-R @component-atom))
+            (deactivate-dom-R component-atom dom-R)))
         ;; Our dom-R is a constant. We need to handle its value just this once.
         (handle-dom-change component-atom)))))
-
-(defn deactivate-dom-R
-  "Remove our callback to the atom's dom-R. That should be its only
-  attendee, so it should stop updating at that point."
-  [component-atom dom-R]
-  (when (reporter? dom-R)
-    (remove-attendee! dom-R component-atom)))
 
 (defn activate-component
   "Make a reporter to calculate the component's DOM, and activate it.

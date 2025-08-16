@@ -6,11 +6,13 @@
             (cosheet2
              [debug :refer [simplify-for-print]]
              orderable
-             [utils :refer [dissoc-in]]
+             [utils :refer [dissoc-in with-latest-value]]
              [test-utils :refer [check any as-set]]
              [entity :as entity :refer [to-list description->entity]]
              [reporter :as reporter :refer [new-reporter set-value!
-                                            reporter-data reporter-value]]
+                                            reporter-data reporter-value
+                                            reporter-value-when-valid
+                                            reporter-atom data-attended?]]
              [calculator :as calculator :refer [new-calculator-data compute
                                                 current-value]]
              [application-calculator :as application-calculator]
@@ -386,11 +388,12 @@
         calculation-counters (doall (map (fn [depth]
                                            (doall (map (fn [pos] (atom 0))
                                                        (range width))))
-                                        (range depth)))
+                                         (range depth)))
         cd (new-calculator-data (new-priority-task-queue 4))
         ms (new-mutable-store (new-element-store))
         dm (new-dom-manager ms cd)
-        evals (atom 0)
+        ;; A set of all active dom-R reporters.
+        active-dom-Rs (atom #{})
         ;; A map from client id to the latest dom the client has.
         client-copy (atom {})]
     (letfn [(layer-reporter [level position]
@@ -433,9 +436,25 @@
                    ;; has gotten ahead of the dom manager
                    {:calculation-number calculation-number
                     :location [level position]}))))
+            ;; Make a wrapper for a reporter's calculator that keeps
+            ;; it in our active-dom-Rs set iff it has demand.
+            (calculator-wrapper [calculator]
+              (fn [reporter cd]
+                (with-latest-value [attended
+                                    (data-attended? (reporter-data reporter))]
+                  (if attended
+                    (swap! active-dom-Rs #(conj % reporter))
+                    (swap! active-dom-Rs #(disj % reporter))))
+                (calculator reporter cd)))
             (render-dom [{:keys [relative-id item-id level]} store]
-              (let [position (id->value (or item-id relative-id))]
-                (dom-for-position-R level position)))
+              (let [position (id->value (or item-id relative-id))
+                    dom-R (dom-for-position-R level position)]
+                ;; Hook our wrapper into the DOM reporter's calculator.
+                (swap! (reporter-atom dom-R)
+                       (fn [reporter-data]
+                         (update reporter-data :calculator
+                                 #(calculator-wrapper %))))
+                dom-R))
             (get-action-data
               [specification inherited-action-data action immutable-store]
               {})
@@ -546,7 +565,25 @@
                                 (id-subpart->client-id-subpart
                                  (value->keyword %))
                                 client-data require-latest)
-                              (range width)))))]
+                              (range width)))))
+            (component-and-subcomponent-ids [id]
+              ;; We can't use our cache, because we want to get the
+              ;; elided ids too. So we go to the manager.
+              (when-let [component (client-id->component @dm id)]
+                (when-let [dom-R (:dom-R @component)]
+                  (when-let [dom (reporter-value-when-valid dom-R)]
+                    (apply concat
+                           [id]
+                           (->> (subcomponent-specifications dom)
+                                (map #(subcomponent-client-id
+                                       id (:relative-id %)))
+                                (map component-and-subcomponent-ids)))))))
+            (all-dom-ids []
+              (let [client-data @client-copy]
+                (apply concat (->> (range width)
+                                   (map #(id-subpart->client-id-subpart
+                                          (value->keyword %)))
+                                   (map component-and-subcomponent-ids)))))]
       (doseq [position (range width)]
         (add-root-dom dm (assoc (specification-for-dom (- depth 1))
                                 :item-id (value->id position)
@@ -570,5 +607,23 @@
             (check-client-copy false)))
         (compute cd)
         (get-and-acknowledge-all-doms)
-        (is (>= (check-client-copy true)
-                (* width (- depth 1))))))))
+        (let [dom-count (check-client-copy true)]
+          (is (>= dom-count
+                  (* width (- depth 1)))))
+        (let [known-ids (all-dom-ids)
+              active-ids (->> @active-dom-Rs
+                              (map #(keys (:attendees (reporter-data %))))
+                              (apply concat)
+                              (map #(:client-id @%)))
+              excess-active (clojure.set/difference (set active-ids)
+                                                    (set known-ids))
+              excess-known (clojure.set/difference (set known-ids)
+                                                   (set active-ids))]
+          (is (empty? excess-active))
+          (is (empty? excess-known))
+          ;; If we fail either of the above two tests, we will
+          ;; probably keep failing on successive trials, since the
+          ;; mismatch continues across trials. So stop the test now if
+          ;; either of the above failes.
+          (assert (empty? excess-active))
+          (assert (empty? excess-known)))))))

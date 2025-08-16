@@ -6,7 +6,7 @@
             (cosheet2
              [debug :refer [simplify-for-print]]
              orderable
-             [utils :refer [dissoc-in with-latest-value]]
+             [utils :refer [dissoc-in with-latest-value swap-control-return!]]
              [test-utils :refer [check any as-set]]
              [entity :as entity :refer [to-list description->entity]]
              [reporter :as reporter :refer [new-reporter set-value!
@@ -392,6 +392,8 @@
         cd (new-calculator-data (new-priority-task-queue 4))
         ms (new-mutable-store (new-element-store))
         dm (new-dom-manager ms cd)
+        doms-not-acknowledged (atom 0)
+        repeat-doms-received (atom 0)
         ;; A set of all active dom-R reporters.
         active-dom-Rs (atom #{})
         ;; A map from client id to the latest dom the client has.
@@ -465,19 +467,22 @@
             (record-doms [for-client]
               (doseq [dom for-client]
                 (let [{:keys [id version]} (dom-attributes dom)]
-                  (swap! client-copy
+                  (when (swap-control-return!
+                         client-copy
                          (fn [data]
-                           (cond-> data
-                             (if-let [current (data id)]
-                               (let [our-version (:version
-                                                  (dom-attributes current))]
-                                 (assert (>= version our-version))
-                                 (if (= version our-version)
-                                   (do (assert (= current dom))
-                                       false)
-                                   true))
-                               true)
-                             (assoc id dom)))))))
+                           (let [matches
+                                 (if-let [current (data id)]
+                                   (let [our-version (:version
+                                                      (dom-attributes current))]
+                                     (assert (>= version our-version))
+                                     (if (= version our-version)
+                                       (do (assert (= current dom))
+                                           true)
+                                       (= current dom)))
+                                   false)]
+                             [(cond-> data (not matches) (assoc id dom))
+                              matches])))
+                    (swap! repeat-doms-received inc)))))
             (acknowledge-doms [for-client]
               (let [acknowledgements
                     (map (fn [[dom position]]
@@ -488,6 +493,9 @@
                          (map vector
                               for-client
                               (range (count for-client))))]
+                
+                (swap! doms-not-acknowledged
+                       #(+ % (int(/ (count acknowledgements) 3))))
                 (process-acknowledgements dm acknowledgements)))
             ;; Get client ready doms, and acknowledge them.
             ;; Return the number of doms gotten.
@@ -626,4 +634,6 @@
           ;; mismatch continues across trials. So stop the test now if
           ;; either of the above failes.
           (assert (empty? excess-active))
-          (assert (empty? excess-known)))))))
+          (assert (empty? excess-known))))
+      (println "doms test did not acknowledge" @doms-not-acknowledged
+               "repeat doms received" @repeat-doms-received))))

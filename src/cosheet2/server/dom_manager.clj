@@ -507,8 +507,8 @@
     ;; Since we copied data from one atom to another, we would
     ;; normally have to operate inside a with-latest-value, checking
     ;; that the component atom was still activate, to make sure we
-    ;; didn't stepping on some thread with more recent data. But since
-    ;; a component can only transition from active to inactive, and
+    ;; didn't step on some thread with more recent data. But since a
+    ;; component can only transition from active to inactive, and
     ;; never back, it is sufficient to check once that it hasn't gone
     ;; inactive.
     (when (not= (component-data-state @component-atom) :active)

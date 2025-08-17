@@ -180,7 +180,7 @@
   [new-state
    modified-ids
    (categories-affected-by-ids
-    modified-ids (:value old-state) (:value new-state))])
+    modified-ids (data-value old-state) (data-value new-state))])
 
 (defn change-and-add-to-history
   "Given the mutable store's reporter state, the revised store from

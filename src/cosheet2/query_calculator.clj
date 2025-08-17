@@ -1,6 +1,6 @@
 (ns cosheet2.query-calculator
   (:require (cosheet2 [reporter :refer [reporter-data reporter-value
-                                        invalid valid?
+                                        data-value valid?
                                         set-attendee-and-call!
                                         remove-attendee!
                                         inform-attendees
@@ -12,7 +12,8 @@
                       entity-impl
                       [query :refer [matching-items matching-extensions]]
                       query-impl
-                      [calculator :refer [modify-and-act!]]
+                      [calculator :refer [modify-and-act! update-to-invalid
+                                          update-value update-to-invalid]]
                       [task-queue :refer [add-task-with-priority]]
                       [utils :refer [with-latest-value
                                      update-new-further-action]])))
@@ -33,6 +34,9 @@
 ;;;                      last-valid-value was valid. If this is nil,
 ;;;                      anything may have changed since then.
 
+;;; TODO: !!! Get rid of last-valid-value once reporters keep the old
+;;;       valid value.
+
 (defn store-change
   "The function to call asynchronously after the store has changed."
   [reporter store]
@@ -41,12 +45,13 @@
     (modify-and-act!
      reporter
      (fn [data]
-       (let [{:keys [value term last-valid-value ids-to-reevaluate]}
-             data
+       (let [{:keys [term last-valid-value ids-to-reevaluate]} data
+             value (data-value data)
+             valid-store (valid? immutable)
              [new-value changed-ids]
              (cond
-               (not (valid? immutable))
-               [invalid #{}]
+               (not valid-store)
+               [nil #{}]
                (= #{} ids-to-reevaluate)
                [value #{}]
                (and (valid? last-valid-value) ids-to-reevaluate)
@@ -65,18 +70,23 @@
                                  [(disj value id) (conj changed-ids id)]
                                  true
                                  [value changed-ids])))
-                       [last-valid-value #{}] (seq ids-to-reevaluate))
+                       [last-valid-value #{}]
+                       (seq ids-to-reevaluate))
                true
                (let [items (matching-items term immutable)]
                  [(set (map :item-id items))
+                  ;; Here, nil means we don't know what changed.
                   nil]))]
          (if
            (= new-value value)
            data
            (cond-> (-> data
-                       (assoc :value new-value)
                        (update-new-further-action
                         inform-attendees reporter changed-ids changed-ids))
+             valid-store
+             (update-value new-value)
+             (not valid-store)
+             (update-to-invalid)
              (valid? new-value)
              (assoc :last-valid-value new-value
                     :ids-to-reevaluate #{}))))))))
@@ -90,7 +100,7 @@
      reporter
      (fn [data]
         (-> data
-           (assoc :value invalid)
+           (update-to-invalid)
            (update :ids-to-reevaluate
                    (fn [old] (when (and (not (nil? old))
                                         (not (nil? categories)))
@@ -114,7 +124,7 @@
               set-attendee-and-call!
               store reporter (+ (:priority data) 1) store-change-callback))
          (-> data
-             (assoc :value :invalid)
+             (update-to-invalid)
              ;; The following line isn't strictly necessary, since
              ;; the first call we get when we are attended to again will
              ;; say that the changes aren't known. But this makes the

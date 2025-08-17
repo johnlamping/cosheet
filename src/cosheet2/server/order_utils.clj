@@ -2,11 +2,12 @@
   (:require
    (cosheet2
     [orderable :refer [split earlier? initial]]
-    [reporter :refer [reporter-data set-value! set-attendee! invalid
+    [reporter :refer [reporter-data set-value! set-attendee!
                       inform-attendees data-attended? remove-attendee!
                       new-reporter reporter-value reporter?
                       valid?]]
-    [calculator :refer [modify-and-act! propagate-calculator-data!]]
+    [calculator :refer [modify-and-act! propagate-calculator-data!
+                        update-to-invalid]]
     [store :refer [update-source add-link declare-temporary-id
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
@@ -132,7 +133,7 @@
      reporter
      (fn [data]
        (-> data
-           (assoc :value invalid)
+           (update-to-invalid)
            (update-new-further-action inform-attendees reporter #{} #{})
            (update-new-further-action
             add-task-with-priority (:queue cd) (:priority data)
@@ -156,7 +157,7 @@
             add-task-with-priority (:queue cd) (:priority data)
             ordered-ids-register-and-calculate reporter))
          (-> data
-             (assoc :value :invalid)
+             (update-to-invalid)
              (update-new-further-action remove-attendee! store reporter)
              (update-new-further-action remove-attendee! ids reporter)))))))
 

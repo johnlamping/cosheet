@@ -5,7 +5,8 @@
                                         set-calculator-data-if-needed!
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
-                                        inform-attendees]]
+                                        inform-attendees
+                                        invalid]]
                       [mutable-map :as mm]
                       [task-queue :refer [is_task_queue?
                                           run-all-pending-tasks
@@ -88,6 +89,16 @@
    a list of actions that should be performed."
   [reporter f]
   (swap-and-act! (reporter-atom reporter) f))
+
+;;; Some utilities for updating reporters.
+;;; (These will make it easier to transition to keeping a value while invalid.)
+(defn update-value
+  [data value]
+  (assoc data :value value))
+
+(defn update-to-invalid
+  [data]
+  (assoc data :value invalid))
 
 (defn update-value-and-dependent-depth
   "Given the data from a reporter, and the reporter, set the value

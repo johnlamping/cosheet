@@ -1,11 +1,11 @@
 (ns cosheet2.application-calculator
   (:require (cosheet2 [reporter :refer [reporter? valid? invalid
-                                        reporter-data
+                                        reporter-data data-value
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
                                         data-attended?]]
                       [calculator :refer [propagate-calculator-data!
-                                          modify-and-act!
+                                          modify-and-act! update-to-invalid
                                           update-value-and-dependent-depth
                                           copy-value
                                           register-for-value-source]]
@@ -72,6 +72,7 @@
 ;;;                      empty) set of reporters whose values this
 ;;;                      reporter needs to run its application and
 ;;;                      that it doesn't have a valid value for.
+;;;  TODO: !!! Get rid of this once reporters keep their old values around.
 ;;;  :former-application-value
 ;;;                      The previous result of our application, if we
 ;;;                      know it, and we don't currently have a valid
@@ -177,7 +178,7 @@
 (defn update-remove-unnecessary-former-application-value
   [data reporter cd]
   (cond-> data
-    (valid? (:value data))
+    (valid? (data-value data))
     ;; We have finished computing a value, so the old application
     ;; is not holding onto anything useful.
     (update-former-application-value reporter invalid cd)))
@@ -243,13 +244,13 @@
   ;; We must only set to a valid value if there are attendees for our
   ;; value, otherwise, we will create demand when we have none
   ;; ourselves.
-  (assert (or (= value invalid) (data-attended? data)))
+  (assert (or (not (valid? value)) (data-attended? data)))
   (let [recorded-former-value (:former-application-value data)]
     (if (= value recorded-former-value)
       data
       (let [data (-> data
                      (assoc :former-application-value value)
-                     (assoc :arguments-unchanged (not= value invalid)))]
+                     (assoc :arguments-unchanged (valid? value)))]
         (reduce
          (fn [data src]
            (update-new-further-action data
@@ -264,7 +265,7 @@
   [reporter from cd]
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter-data from)]
-                        [(:value data) (or (:dependent-depth data) 0)])]
+                        [(data-value data) (or (:dependent-depth data) 0)])]
     (modify-and-act!
      reporter
      (fn [data]
@@ -273,14 +274,14 @@
          (if (or (not (data-attended? data))
                  (not (contains? data :needed-values))
                  (if (contains? (:needed-values data) from)
-                   (= value invalid)
+                   (not (valid? value))
                    same-value))
            data
            ;; A value that we care about changed.  We are invalid
            ;; until the recomputation runs, which may not be for a
            ;; while.
            (let [last-application-value (or (:value-source data)
-                                            (:value data))
+                                            (data-value data))
                  newer-data (cond-> (update-value-and-dependent-depth
                                      data reporter invalid nil)
                               (not= last-application-value invalid)
@@ -371,7 +372,7 @@
           ;; one to run will run the application, and the later ones
           ;; will notice that the value is valid, and not bother to
           ;; re-evaluate.
-          (valid? (:value data))
+          (valid? (data-value data))
           ;; We don't run if we still need values, or if
           ;; :needed-values is nil, which means that
           ;; nobody is attending to the reporter.
@@ -432,7 +433,7 @@
                (-> new-data
                    (dissoc :needed-values)
                    (dissoc :subordinate-values)
-                   (assoc :value invalid)
+                   (update-to-invalid)
                    (assoc :dependent-depth nil)
                    (update-former-application-value reporter invalid cd)
                    (update-value-source reporter nil cd))))))))))

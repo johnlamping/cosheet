@@ -1,12 +1,12 @@
 (ns cosheet2.cache-calculator
   (:require (cosheet2 [reporter :refer [reporter? attended? new-reporter
-                                        reporter-data data-attended?
-                                        invalid]]
+                                        reporter-data data-attended?]]
                       [mutable-map :as mm]
                       [calculator :refer [propagate-calculator-data!
                                           register-for-value-source
                                           copy-value-callback
-                                          modify-and-act!]]
+                                          modify-and-act!
+                                          update-to-invalid]]
                       [utils :refer [with-latest-value
                                      update-new-further-action
                                      assoc-if-non-empty]]
@@ -155,7 +155,7 @@
                           (get-or-make-reporter data cd)))]
          (cond-> (update-value-source data reporter source cd)
            (nil? source)
-           (assoc :value invalid)))))))
+           (update-to-invalid)))))))
 
 (defn data-for-forwarding-reporter
   "Given an application for a forwarding reporter, return a list of

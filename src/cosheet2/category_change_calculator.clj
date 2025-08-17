@@ -1,9 +1,10 @@
 (ns cosheet2.category-change-calculator
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call!
-                                        reporter? invalid]]
+                                        reporter?]]
                       [calculator :refer [modify-and-act!
-                                          copy-value-callback]]
+                                          copy-value-callback
+                                          update-to-invalid]]
                       [utils :refer [update-new-further-action]])))
 
 ;;; Manage a reporter that forwards requests to another reporter,
@@ -31,6 +32,9 @@
 ;;;      :categories  The categories of demand it should pass down.
 ;;; Those may not change once the category change reporter is created.
 
+;;; TODO: !!! This has a bug. It is always propagating demand, even
+;;; when it has none.
+
 (defn category-change-calculator
   "Calculator that changes the categories of requests."
   [reporter cd]
@@ -51,4 +55,4 @@
                       (:categories data)
                       (when attended copy-value-callback)))
            (not attended)
-           (assoc :value invalid)))))))
+           (update-to-invalid)))))))

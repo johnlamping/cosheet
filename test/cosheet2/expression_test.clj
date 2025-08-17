@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [reporter :refer [new-reporter reporter-data
-                                        universal-category]]
+                                        universal-category invalid]]
                       [expression :refer :all]
                       [application-calculator :refer [application-calculator]]
                       [cache-calculator :refer [cache-calculator]]

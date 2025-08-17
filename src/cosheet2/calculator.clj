@@ -104,11 +104,12 @@
   "Given the data from a reporter, and the reporter, set the value
    and dependent-depth in the data, and request the appropriate propagation."
   [data reporter value dependent-depth]
-  (if (and (= value (:value data)) (= dependent-depth (:dependent-depth data)))
+  (if (and (= value (data-value data))
+           (= dependent-depth (:dependent-depth data)))
     data
     (-> data
-        (assoc :value value
-               :dependent-depth dependent-depth)
+        (update-value value)
+        (assoc :dependent-depth dependent-depth)
         ;; We inform the attendees even if only the dependent-depth
         ;; changed, because application reporters want to hear about
         ;; that. The cost is small because it is rare that
@@ -124,7 +125,7 @@
   [reporter from data-finalizer]
   (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter-data from)]
-                        [(:value data) (or (:dependent-depth data) 0)])]
+                        [(data-value data) (or (:dependent-depth data) 0)])]
     (modify-and-act!
      reporter
      (fn [data]

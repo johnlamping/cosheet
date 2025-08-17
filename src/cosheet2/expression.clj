@@ -7,9 +7,6 @@
 
 ;;; Code for creating reporters that contain expressions.
 
-;;; Make it possible to import invalid from here, as well.
-(def invalid cosheet2.reporter/invalid)
-
 (defn new-application
   "Takes an application, and optionally a trace thunk, and a calculator,
    and additional arguments, and returns a new expression reporter.

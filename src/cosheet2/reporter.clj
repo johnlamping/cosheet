@@ -32,8 +32,23 @@
   In other words, the attendees are called when the value changes,
   while the calculator is called when the demand changes.
 
-  A special value, ::invalid, indicates that the reporter's value is
-  not currently known.
+  It is possible for a reporter to not have a valid value. Usually,
+  this is because something there has been a change to something that
+  the reporter's value depends on, and the reporter hasn't recomputed
+  its value yet. Some clients of a reporter only need the most recent
+  valid value. And it can often be that recomputation will reveal that
+  that value was the right value after all. So there is a way to
+  access the last valid valud. It is possible to ask a reporter:
+     * whether it has a valid value
+     * for its last valid value
+
+  Some methods that interact with the value, support a special
+  value, ::invalid, that indicates that the reporter's value is not
+  valid. Some methods that set a value accept ::invalid to indicate
+  that the current value should be marked invalid. And some methods
+  that get the current value use ::invalid to indicate that the
+  current value is not valid. Reporter defines the variable invalid to
+  be ::invalid.
 
   Changes to a reporter's value can be associated with categories -
   which can be anything that the attendees and the calculator agree
@@ -113,8 +128,10 @@
   references.
 
   The atom must be in the field, data, and hold a map consisting of
-  these fields, and that may have additional fields.  
-     :value            The value of the reporter.
+  these fields, and that may have additional fields.
+     :valid            True if the reporter has a valid value.
+     :value            The value of the reporter. If the value is not
+                       currently valid, this will be the last valid one.
      :priority         The priority for recomputing this reporter
                        (lower first)
                        This will be the minimum of the priorities of all
@@ -156,8 +173,56 @@
   [r]
   @(:data r))
 
-(defn data-value [data]
+(def invalid
+  "A special value indicating that a value is not valid"
+  ::invalid)
+
+(defn data-valid? [data]
+  (:valid data))
+
+(defn reporter-valid? [r]
+  (data-valid? @(:data r)))
+
+(defn value-valid? [value]
+  (not= value invalid))
+
+(defn data-latest-value [data]
   (:value data))
+
+(defn reporter-latest-value [r]
+  (if (reporter? r)
+    (data-latest-value @(:data r))
+    r))
+
+(defn data-value-or-invalid [data]
+  (if (data-valid? data)
+    (data-latest-value data)
+    invalid))
+
+(defn reporter-value-or-invalid [r]
+  (if (reporter? r)
+    (data-value-or-invalid @(:data r))
+    r))
+
+(defn data-value-when-valid [data]
+  (when (data-valid? data)
+    (data-latest-value data)))
+
+(defn reporter-value-when-valid
+  "Return the current value of the reporter, if the value is
+  valid. Otherwise return nil. If the argument is not a reporter,
+  treat it as a constant reporter, and return it."
+  [r]
+  (if (reporter? r)
+    (data-value-when-valid @(:data r) )
+    r))
+
+;;; TODO: !!! replace all calls to these with one of the above new
+;;;           functions.
+(defn data-value [data]
+  (if (:valid data)
+    (:value data)
+    invalid))
 
 (defn reporter-value
   "Return the current value of the reporter. If the argument is not a
@@ -167,23 +232,10 @@
     (data-value @(:data r))
     r))
 
-(def invalid
-  "A special value indicating that the reporter does not have a valid value"
-  ::invalid)
-
 (defn valid? [r]
   "Return whether a reporter's value is valid. If given a plain value,
   this returns whether that value is valid."
   (not= (reporter-value r) invalid))
-
-(defn reporter-value-when-valid
-  "Return the current value of the reporter, if the value is
-  valid. Otherwise return nil. If the argument is not a reporter,
-  treat it as a constant reporter, and return it."
-  [r]
-  (let [value (reporter-value r)]
-    (when (not= value invalid)
-      value)))
 
 (defn data-attended? [data]
   (not (empty? (:attendees data))))
@@ -220,12 +272,27 @@
                    :description description
                    :categories categories))))))
 
+(defn update-value
+  [data value]
+  (if (value-valid? value)
+    (assoc data :value value :valid true)
+    (assoc data :valid false)))
+
+(defn update-to-invalid
+  [data]
+  (assoc data :valid false))
+
+(defn same-state?
+  [data1 data2]
+  (and (= (:value data1) (:value data2))
+       (= (:valid data1) (:valid data2))))
+
 (defn set-value!
   "Set the value of the reporter, informing all attendees."
   [r value]
   (let [[old current]
-        (swap-returning-both! (:data r) #(assoc % :value value))]
-    (if (not= (:value old) (:value current))
+        (swap-returning-both! (:data r) #(update-value % value))]
+    (if (not (same-state? old current))
       (inform-attendees r))))
 
 (defn change-data-control-return!
@@ -241,10 +308,10 @@
   (let [[changed description categories return-value]
         (swap-control-return!
          (:data r)
-         #(let [[data description categories return-value] (f %)]
+         #(let [[data description categories return-value] (f %)
+                changed (not (same-state? % data))]
             [data
-             [(not= (:value %) (:value data))
-              description categories return-value]]))]
+             [changed description categories return-value]]))]
     (if changed
       (inform-attendees r description categories))
     return-value))
@@ -264,8 +331,7 @@
          (:data r)
          #(let [[data description categories] (f %)]
             [data
-             [(not= (:value %) (:value data))
-              description categories]]))]
+             [(not (same-state? % data)) description categories]]))]
     (if changed
       (inform-attendees r description categories))))
 
@@ -280,8 +346,8 @@
         (swap-control-return!
          (:data r)
          #(let [[value description categories] (f (:value %))]
-            [(assoc % :value value)
-             [(not= (:value %) value) description categories]]))]
+            [(update-value % value)
+             [(not= (data-value-or-invalid %) value) description categories]]))]
     (if changed
       (inform-attendees r description categories))))
 
@@ -418,12 +484,18 @@
    (when callback
      (call-callback-for-undescribed-change callback :key key :reporter r))))
 
+(defn new-reporter-data
+  [& {:as args}]
+  (merge {:valid (value-valid? (get args :value invalid))
+          :value invalid
+          :priority Double/MAX_VALUE}
+         args))
+
 (defn new-reporter
   [& {:as args}]
   (when-let [calculator (:calculator args)] (check-callback calculator))
   (->ReporterImpl
-   (atom (merge {:value invalid :priority Double/MAX_VALUE}
-                args))))
+   (atom (new-reporter-data args))))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (let [data @(:data s)]

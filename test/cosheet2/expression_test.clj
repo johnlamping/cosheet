@@ -19,11 +19,13 @@
            {:application [r 2 3]
             :calculator application-calculator
             :value invalid
+            :valid false
             :priority Double/MAX_VALUE}))
     (is (= (dissoc (reporter-data (cache r 2 3)) :trace)
            {:application [r 2 3]
             :calculator cache-calculator
             :value invalid
+            :valid false
             :priority Double/MAX_VALUE
             :value-source-priority-delta 1
             :cache-key [r 2 3]}))
@@ -32,6 +34,7 @@
             :calculator category-change-calculator
             :value-source r
             :value invalid
+            :valid false
             :priority Double/MAX_VALUE}))
     (is (= (category-change nil r) r))
     (is (= (category-change [universal-category] r) r)))

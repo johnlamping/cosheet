@@ -2,7 +2,10 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [reporter :refer [reporter? valid? invalid
-                                        reporter-data reporter-value
+                                        data-valid? same-state?
+                                        reporter-data
+                                        data-value-or-invalid
+                                        reporter-value-or-invalid
                                         universal-category]]
                       [test-utils :refer [check any]]
                       [application-calculator
@@ -45,7 +48,8 @@
       (println " " :value-source (:name (reporter-data source)))))
   (doseq [[rep value] (:subordinate-values (reporter-data r))]
     (println "    Stored" value
-             "for" (pretty-expression rep false) (reporter-value rep)))
+             "for" (pretty-expression rep false)
+             (reporter-value-or-invalid rep)))
   (doseq [key (keys (:attendees (reporter-data r)))]
     (println "    callback" (pretty-expression key true))))
 
@@ -65,7 +69,7 @@
   (let [data (reporter-data reporter)
         source (:value-source data)]
     (if source
-      (do (is (= (:value data) (reporter-value source)))
+      (do (is (= (same-state? data (reporter-data source))))
           (is (check (get-in (reporter-data source)
                              [:attendees `(:copy-value ~reporter)])
                      [(any #(> % (:priority data)))
@@ -79,7 +83,7 @@
   (let [data (reporter-data reporter)
         old-source (:old-value-source data)]
     (if old-source
-      (do (is (= (:value data) invalid))
+      (do (is (not (data-valid? data)))
           (is (check (get-in (reporter-data old-source)
                              [:attendees `(:copy-value ~reporter)])
                      [(any)
@@ -96,7 +100,7 @@
        (if (contains? (:needed-values data) subordinate)
          need-checking
          (do
-           (is (= value (reporter-value subordinate)))
+           (is (= value (reporter-value-or-invalid subordinate)))
            (is (contains? (:attendees (reporter-data subordinate)) reporter))
            (conj need-checking subordinate))))
      need-checking
@@ -107,7 +111,7 @@
   (let [data (reporter-data reporter)]
     (reduce
      (fn [checked needed]
-       (is (not (valid? (reporter-value needed))))
+       (is (not (valid? (reporter-value-or-invalid needed))))
        (is (contains? (:attendees (reporter-data needed)) reporter))
        (conj need-checking needed))
      need-checking

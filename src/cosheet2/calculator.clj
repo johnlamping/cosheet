@@ -1,12 +1,14 @@
 (ns cosheet2.calculator
   (:require (cosheet2 [reporter :refer [reporter? reporter-data reporter-value
                                         reporter-atom data-value
+                                        value-valid?
                                         valid? attended?
                                         set-calculator-data-if-needed!
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
                                         inform-attendees
-                                        invalid]]
+                                        invalid]
+                       :as reporter]
                       [mutable-map :as mm]
                       [task-queue :refer [is_task_queue?
                                           run-all-pending-tasks
@@ -90,15 +92,15 @@
   [reporter f]
   (swap-and-act! (reporter-atom reporter) f))
 
-;;; Some utilities for updating reporters.
-;;; (These will make it easier to transition to keeping a value while invalid.)
+;;; These functions make most sense for calculators to be using,
+;;; So we make them accessible here.
 (defn update-value
   [data value]
-  (assoc data :value value))
+  (reporter/update-value data value))
 
 (defn update-to-invalid
   [data]
-  (assoc data :value invalid))
+  (reporter/update-to-invalid data))
 
 (defn update-value-and-dependent-depth
   "Given the data from a reporter, and the reporter, set the value

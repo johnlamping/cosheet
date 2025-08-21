@@ -479,7 +479,8 @@
 
 (defn- change-and-inform-calculator!
   "Run the change on the reporter, and inform the calculator if there
-   has been a change in the nature of the demand."
+  has been a change in the nature of the demand.
+  The change must not affect the value or validity."
   [r f]
   (let [[old current] (swap-returning-both! (:data r) f)
         calculator (:calculator current)

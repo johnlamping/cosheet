@@ -157,7 +157,8 @@
                             (make-callback value-history))
     (set-attendee-and-call! r :validity 1 [:never validity-category]
                             (make-callback validity-history))
-    ;; TODO: !!! This shouldn't be getting called for each attendee, just twice.
+    ;; Each attendee adds a different demand. So the calculator should
+    ;; have been notified after each of them.
     (is (check @calculator-history
                [[r :cd] [r :cd] [r :cd] [r :cd]]))
     (is (check @universal-history
@@ -167,8 +168,8 @@
     (is (check @value-history
                [[:key :value :reporter r :description nil :categories nil]]))
     (is (check @validity-history
-               ;; an uncharacterized change matches the other option
-               ;; of the validity callback
+               ;; An uncharacterized change matches the :never option
+               ;; of the validity callback.
                [[:key :validity :reporter r :description nil :categories nil]]))
 
     (set-value! r invalid)
@@ -251,6 +252,8 @@
     (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
     (is (reporter-valid? r))
     (is (= (reporter-value r) 5))
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
     (is (check @universal-history
                [[:key :all :reporter r :description nil
                  :categories [validity-category]]
@@ -278,12 +281,18 @@
                 [:key :validity :reporter r :description nil
                  :categories [validity-category]]
                 [:key :validity :reporter r :description nil
-                 :categories nil]]))))
+                 :categories nil]]))
 
-
-
-
-
-
-
-
+    ;; Should not cause a calculator call, because the selections
+    ;; don't change.
+    (set-attendee! r :sel2 1 [:a]
+                   (make-callback selective-history))
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    (set-attendee! r :sel2 1 [:a] nil)
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    ;; Removes the last demand for :b
+    (set-attendee! r :sel)
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd] [r :cd]]))))

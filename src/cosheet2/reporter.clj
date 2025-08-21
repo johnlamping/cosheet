@@ -67,6 +67,13 @@
   updates that aren't associated with categories will be given to all
   attendees.)
 
+  Since categories can only describe changes to the value, if the
+  value didn't change, the provided categories are ignored. However,
+  there is an additional category, validity-category, which is
+  triggered when the value doesn't change but the validity does
+  change. An attendee that registers for specific categories may also
+  register for validity-category to be informed of validity changes.
+
   Am attendee also optionally specify a priority for how important
   that it have the the latest value for this reporter (lower priority
   numbers first). A reporter calculates its priority as the minimum of
@@ -244,8 +251,23 @@
   (data-attended? @(:data r)))
 
 (def universal-category
-  "A special category of change that includes all changes"
+  "A special category of change that includes all changes, both to to
+  values and to validity"
   ::universal-category)
+
+(def value-category
+  "A special category of chaqnge that includes all changes that alter
+  the value, but doesn't include changes that affect only the
+  validity. Clients that only want to see updated values should attend
+  to this change."
+  ::value-category)
+
+(def validity-category
+  "A special category of change that consists of changes that affect the
+  validity. This means either going invalid or going valid. Clients
+  that subscribe to only specific categories of change should also
+  attend to this if they want to keep track of validity."
+  ::validity-category)
 
 (defn inform-attendees
   "Notify the attendees that the value may have changed."
@@ -258,13 +280,17 @@
   ;; This does mean that an attendee may be called after it has cancelled
   ;; its request.
    (let [data (reporter-data r) 
-         reporter-keys (if (or (nil? categories)
-                               (not (valid? (data-value data))))
+         reporter-keys (if (nil? categories)
+                         ;; We have to inform all attendees
                          (keys (:attendees data))
                          ;; Avoid calling the same reporter twice
                          ;; if several of its categories match.
                          (set (mapcat (partial get (:selections data))
-                                      (conj categories universal-category))))]
+                                      (cond->
+                                          (conj categories universal-category)
+                                        (not= categories [validity-category])
+                                        ;; The value changed.
+                                        (conj value-category)))))]
      (doseq [key reporter-keys]    
        (let [[_ classes callback] (get-in data [:attendees key])]
          (callback :key key
@@ -287,13 +313,38 @@
   (and (= (:value data1) (:value data2))
        (= (:valid data1) (:valid data2))))
 
+(defn add-validity-category-when-appropriate
+  "Given the old and new state of the reporter data, and the category
+  changes the user provided, if they provided them, add the validity
+  category to the categories of change if necessary.
+  Alsso, check that the change satisfies the requirements on changes."
+  [old-data new-data categories]
+  (let [value-changed (not= (:value old-data) (:value new-data))
+        validity-changed (not= (:valid old-data) (:valid new-data))]
+    ;; We should only be called when something changed.
+    (assert (or value-changed validity-changed))
+    ;; If the value changed, we are required to be valid. Otherwise
+    ;; the change is effectively changing the last valid value,
+    ;; without giving a valid value.
+    (when value-changed (assert (:valid new-data)))
+    (if validity-changed
+      (if value-changed
+        ;; If the categories were nil, they already encompass changes
+        ;; to validity.
+        (when (seq categories)
+          (conj categories validity-category))
+        ;; The validity changed, but the value didn't change.
+        [validity-category])
+      categories)))
+
 (defn set-value!
   "Set the value of the reporter, informing all attendees."
   [r value]
   (let [[old current]
         (swap-returning-both! (:data r) #(update-value % value))]
     (if (not (same-state? old current))
-      (inform-attendees r))))
+      (inform-attendees r nil (add-validity-category-when-appropriate
+                               old current nil)))))
 
 (defn change-data-control-return!
   "This is the most general function for updating a reporter. But it
@@ -304,16 +355,16 @@
   wants.  Set the data of the reporter to the new map, and inform any
   attendees that care about any of the categories of the change.
   Return the specified value."
-    [r f]
-  (let [[changed description categories return-value]
+  [r f]
+  (let [[old-data new-data description categories return-value]
         (swap-control-return!
          (:data r)
-         #(let [[data description categories return-value] (f %)
-                changed (not (same-state? % data))]
+         #(let [[data description categories return-value] (f %) ]
             [data
-             [changed description categories return-value]]))]
-    (if changed
-      (inform-attendees r description categories))
+             [% data description categories return-value]]))]
+    (if (not (same-state? old-data new-data))
+      (inform-attendees r description (add-validity-category-when-appropriate
+                                       old-data new-data categories)))
     return-value))
 
 (defn change-data!
@@ -326,14 +377,15 @@
   reporter to the new map, and inform any attendees that care about
   any of the categories of the change."
     [r f]
-  (let [[changed description categories]
+  (let [[old-data new-data description categories]
         (swap-control-return!
          (:data r)
          #(let [[data description categories] (f %)]
             [data
-             [(not (same-state? % data)) description categories]]))]
-    (if changed
-      (inform-attendees r description categories))))
+             [% data description categories]]))]
+    (if (not (same-state? old-data new-data))
+      (inform-attendees r description (add-validity-category-when-appropriate
+                                       old-data new-data categories)))))
 
 (defn change-value!
   "Call the function with the current value of the reporter.  It must
@@ -342,14 +394,16 @@
   reporter to the new value, and inform any attendees that care about
   any of the categories of the change."
   [r f]
-  (let [[changed description categories]
+  (let [[old-data new-data description categories]
         (swap-control-return!
          (:data r)
-         #(let [[value description categories] (f (:value %))]
-            [(update-value % value)
-             [(not= (data-value-or-invalid %) value) description categories]]))]
-    (if changed
-      (inform-attendees r description categories))))
+         #(let [[value description categories] (f (:value %))
+                data (update-value % value)]
+            [data
+             [% data description categories]]))]
+    (if (not (same-state? old-data new-data))
+      (inform-attendees r description (add-validity-category-when-appropriate
+                                       old-data new-data categories)))))
 
 (defn set-calculator-data-if-needed!
   "If the calculator data is not already present, set it
@@ -471,6 +525,10 @@
    (set-attendee! r key priority [universal-category] callback))
   ([r key priority categories callback]
    (when callback (check-callback callback))
+   ;; You can't subscribe to only validity changes.
+   ;; This makes value changes that don't specify a category match
+   ;; all callbacks.
+   (assert (not= categories [validity-category]))
    (when (reporter? r)
      (change-and-inform-calculator! r #(update-attendee
                                         % key priority categories callback)))))

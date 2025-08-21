@@ -5,7 +5,7 @@
     [reporter :refer [reporter-data set-value! set-attendee!
                       inform-attendees data-attended? remove-attendee!
                       new-reporter reporter-value reporter?
-                      valid?]]
+                      valid? validity-category]]
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
     [store :refer [update-source add-link declare-temporary-id
@@ -106,6 +106,8 @@
                   ;; that. Otherwise, we have to watch the entire item,
                   ;; to see if an order element appears.
                   ids-to-watch (map #(or %1 %2) order-ids immutable-ids)]
+              ;; Now we only need to be attending to the ids that affect
+              ;; the order.
               ;; By doing the set-attendee! inside with-latest-value
               ;; we make sure that we won't miss a change between our
               ;; computation and the registration kicking in.
@@ -113,7 +115,11 @@
               ;; store only keeps one set of catagories for each id
               ;; (our reporter).
               (set-attendee!
-               (:store data) reporter (+ (:priority data) 1) ids-to-watch
+               (:store data)
+               reporter
+               (+ (:priority data) 1)
+               (when (seq ids-to-watch)
+                 (conj ids-to-watch validity-category))
                ordered-ids-callback)
               (let [order-info (map
                                 ;; It is possible for an item not to

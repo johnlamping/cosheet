@@ -5,7 +5,8 @@
                                         remove-attendee!
                                         inform-attendees
                                         data-attended?
-                                        new-reporter]]
+                                        new-reporter
+                                        validity-category]]
                       [store :refer (mutable-store?)]
                       [entity :refer [description->entity in-different-store
                                       to-list]]
@@ -104,7 +105,8 @@
            (update :ids-to-reevaluate
                    (fn [old] (when (and (not (nil? old))
                                         (not (nil? categories)))
-                               (clojure.set/union old categories))))
+                               (disj (clojure.set/union old categories)
+                                     :validity-category))))
            (update-new-further-action inform-attendees reporter #{} #{})
            (update-new-further-action
             add-task-with-priority

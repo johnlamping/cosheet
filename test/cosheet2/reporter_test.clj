@@ -136,67 +136,150 @@
     (is (thrown? java.lang.AssertionError (set-calculator-data! r :stuff))))
 
   ;; Check selective attending.
-  (let [history (atom [])
-        callback (fn [& args] (swap! history #(conj % args)))
-        calculator (partial callback :c)
-        r (new-reporter :value 2 :calculator calculator)]
+  (let [calculator-history (atom [])
+        universal-history (atom [])
+        selective-history (atom [])
+        value-history (atom [])
+        validity-history (atom [])
+        make-callback (fn [history]
+                        (fn [& args] (swap! history #(conj % args))))
+        r (new-reporter :value 2
+                        :calculator (make-callback calculator-history))]
+
     (set-calculator-data! r :cd)
     (is (thrown? java.lang.AssertionError
                  (set-calculator-data! r 1)))
-    (set-attendee-and-call! r :sel 1 [:a :b] (partial callback :s))
-    (set-attendee! r :all 1 (partial callback :a))
-    (is (check @history
-               [[:c r :cd]
-                [:s :key :sel :reporter r :description nil :categories nil]
-                [:c r :cd]]))
-    (change-data! r (fn [d] [(assoc d :value 3) nil nil]))
+    (set-attendee! r :all 1
+                   (make-callback universal-history))
+    (set-attendee-and-call! r :sel 1 [:a :b]
+                            (make-callback selective-history))
+    (set-attendee-and-call! r :value 1 [value-category]
+                            (make-callback value-history))
+    (set-attendee-and-call! r :validity 1 [:never validity-category]
+                            (make-callback validity-history))
+    ;; TODO: !!! This shouldn't be getting called for each attendee, just twice.
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    (is (check @universal-history
+               []))
+    (is (check @selective-history
+               [[:key :sel :reporter r :description nil :categories nil]]))
+    (is (check @value-history
+               [[:key :value :reporter r :description nil :categories nil]]))
+    (is (check @validity-history
+               ;; an uncharacterized change matches the other option
+               ;; of the validity callback
+               [[:key :validity :reporter r :description nil :categories nil]]))
+
+    (set-value! r invalid)
+    (is (not (reporter-valid? r)))
+    (is (= (reporter-value r) invalid))
+    (is (= (reporter-latest-value r) 2))
+    (is (= (reporter-value-when-valid r) nil))
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    (is (check @universal-history
+               [[:key :all :reporter r :description nil
+                 :categories [validity-category]]]))
+    (is (check @selective-history
+               [[:key :sel :reporter r :description nil :categories nil]]))
+    (is (check @value-history
+               [[:key :value :reporter r :description nil :categories nil]]))
+    (is (check @validity-history
+               ;; an uncharacterized change matches the other option
+               ;; of the validity callback
+               [[:key :validity :reporter r :description nil :categories nil]
+                [:key :validity :reporter r :description nil
+                 :categories [validity-category]]]))
+    
+    (set-value! r 3)
+    (is (reporter-valid? r))
     (is (= (reporter-value r) 3))
+    (is (= (reporter-latest-value r) 3))
     (is (= (reporter-value-when-valid r) 3))
-    (is (check (multiset @history)
-               (multiset
-                [[:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]])))
-    (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    (is (check @universal-history
+               [[:key :all :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :all :reporter r :description nil :categories nil]]))
+    (is (check @selective-history
+               [[:key :sel :reporter r :description nil :categories nil]
+                [:key :sel :reporter r :description nil :categories nil]]))
+    (is (check @value-history
+               [[:key :value :reporter r :description nil :categories nil]
+                [:key :value :reporter r :description nil :categories nil]]))
+    (is (check @validity-history
+               ;; an uncharacterized change matches the other option
+               ;; of the validity callback
+               [[:key :validity :reporter r :description nil :categories nil]
+                [:key :validity :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :validity :reporter r :description nil
+                 :categories nil]]))
+    
+    (change-value! r (fn [v] [(+ v 1) :increment [:a]]))
+    (is (reporter-valid? r))
     (is (= (reporter-value r) 4))
-    (is (= (reporter-value-when-valid r) 4))
-    (is (check (multiset @history)
-               (multiset
-                [[:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r
-                  :description :increment :categories [:c]]])))
-    (let [rv (change-data-control-return!
-              r (fn [d] [(assoc d
-                                :value (* (:value d) 2)
-                                :extra "extra")
-                         :double [:c :a] :rv]))]
-      (is (= rv :rv)))
-    (is (= (:extra (reporter-data r)) "extra"))
-    (is (= (reporter-value r) 8))
-    (is (= (reporter-value-when-valid r) 8))
-    (is (check (multiset @history)
-               (multiset
-                [[:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c r :cd]
-                 [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r
-                  :description :increment :categories [:c]]
-                 [:s :key :sel :reporter r
-                  :description :double :categories [:c :a]]
-                 [:a :key :all :reporter r
-                  :description :double :categories [:c :a]]])))
-    ))
+    (is (check @calculator-history
+               [[r :cd] [r :cd] [r :cd] [r :cd]]))
+    (is (check @universal-history
+               [[:key :all :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :all :reporter r :description nil :categories nil]
+                [:key :all :reporter r :description :increment
+                 :categories [:a]]]))
+    (is (check @selective-history
+               [[:key :sel :reporter r :description nil :categories nil]
+                [:key :sel :reporter r :description nil :categories nil]
+                [:key :sel :reporter r :description :increment
+                 :categories [:a]]]))
+    (is (check @value-history
+               [[:key :value :reporter r :description nil :categories nil]
+                [:key :value :reporter r :description nil :categories nil]
+                [:key :value :reporter r :description :increment
+                 :categories [:a]]]))
+    (is (check @validity-history
+               ;; an uncharacterized change matches the other option
+               ;; of the validity callback
+               [[:key :validity :reporter r :description nil :categories nil]
+                [:key :validity :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :validity :reporter r :description nil
+                 :categories nil]]))
 
+    (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
+    (is (reporter-valid? r))
+    (is (= (reporter-value r) 5))
+    (is (check @universal-history
+               [[:key :all :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :all :reporter r :description nil :categories nil]
+                [:key :all :reporter r :description :increment
+                 :categories [:a]]
+                [:key :all :reporter r :description :increment
+                 :categories [:c]]]))
+    (is (check @selective-history
+               [[:key :sel :reporter r :description nil :categories nil]
+                [:key :sel :reporter r :description nil :categories nil]
+                [:key :sel :reporter r :description :increment
+                 :categories [:a]]]))
+    (is (check @value-history
+               [[:key :value :reporter r :description nil :categories nil]
+                [:key :value :reporter r :description nil :categories nil]
+                [:key :value :reporter r :description :increment
+                 :categories [:a]]
+                [:key :value :reporter r :description :increment
+                 :categories [:c]]]))
+    (is (check @validity-history
+               ;; an uncharacterized change matches the other option
+               ;; of the validity callback
+               [[:key :validity :reporter r :description nil :categories nil]
+                [:key :validity :reporter r :description nil
+                 :categories [validity-category]]
+                [:key :validity :reporter r :description nil
+                 :categories nil]]))))
 
-;; TODO: Check descriptive updates
 
 
 

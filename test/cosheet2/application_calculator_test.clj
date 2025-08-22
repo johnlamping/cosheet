@@ -160,7 +160,7 @@
                {[:copy-value r] [(+ 6 3) [universal-category] (any)]}))
     (swap! (reporter-atom r)
            #(into % {:value-source nil
-                     :value invalid}))
+                     :valid false}))
     (run-application-if-ready r cd)
     (is (= (reporter-value rc) 3))
     (is (= (:attendees (reporter-data r0)) nil))

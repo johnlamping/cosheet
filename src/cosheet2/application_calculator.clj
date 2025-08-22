@@ -1,5 +1,5 @@
 (ns cosheet2.application-calculator
-  (:require (cosheet2 [reporter :refer [reporter? valid? invalid
+  (:require (cosheet2 [reporter :refer [reporter? valid? data-valid? invalid
                                         reporter-data data-value
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
@@ -372,7 +372,7 @@
           ;; one to run will run the application, and the later ones
           ;; will notice that the value is valid, and not bother to
           ;; re-evaluate.
-          (valid? (data-value data))
+          (data-valid? data) ; 
           ;; We don't run if we still need values, or if
           ;; :needed-values is nil, which means that
           ;; nobody is attending to the reporter.

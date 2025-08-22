@@ -3,7 +3,10 @@
             (cosheet2 [reporter :refer [new-reporter reporter-atom reporter-data
                                         reporter-value set-value!
                                         data-value 
-                                        valid? reporter?]]
+                                        valid? reporter?
+                                        set-calculator-data-if-needed!
+                                        set-attendee! change-data! invalid
+                                        validity-category]]
                       [task-queue :refer [new-priority-task-queue]]
                       [calculator :refer :all]
                       [utils :refer [update-new-further-action
@@ -48,6 +51,63 @@
     (is (not (activated? f6)))
     (propagate-calculator-data! f6 :cd)
     (is (activated? f6))))
+
+(deftest update-value-and-dependent-depth-test
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        r (new-reporter :value :v :dependent-depth 2)
+        history (atom [])
+        callback (fn [&{:keys [categories]}]
+                   (swap! history #(conj % categories)))
+        data-keys [:value :valid :dependent-depth]
+        data (reporter-data r)]
+    (set-calculator-data-if-needed! r cd)
+    (set-attendee! r :foo 1 callback)
+    ; Make the reporter go invalid.
+    (modify-and-act! r (fn [data]
+                         (update-value-and-dependent-depth data r invalid 4)))
+    ;; The value and depth shouldn't change.
+    (is (= (select-keys (reporter-data r) data-keys)
+           {:valid false
+            :value :v                    
+            :dependent-depth 2}))
+    (compute cd)
+    (is (= @history [[validity-category]]))
+    ;; Now make it valid, with the original value, but a different depth.
+    (modify-and-act! r (fn [data]
+                         (update-value-and-dependent-depth data r :v 4)))
+    (is (= (select-keys (reporter-data r) data-keys)
+           {:valid true
+            :value :v                    
+            :dependent-depth 4}))
+    (compute cd)
+    ;; This should show up as only a validity change.
+    (is (= @history [[validity-category]
+                     [validity-category]]))
+    ;; Now change the the depth, but leave the value alone
+    (modify-and-act! r (fn [data]
+                         (update-value-and-dependent-depth data r :v 6)))
+    (is (= (select-keys (reporter-data r) data-keys)
+           {:valid true
+            :value :v                    
+            :dependent-depth 6}))
+    (compute cd)
+    ;; This should be a change with no categories
+    (is (= @history [[validity-category]
+                     [validity-category]
+                     []]))
+    ;; Now change the value
+    (modify-and-act! r (fn [data]
+                         (update-value-and-dependent-depth data r :x 6)))
+    (is (= (select-keys (reporter-data r) data-keys)
+           {:valid true
+            :value :x                    
+            :dependent-depth 6}))
+    (compute cd)
+    ;; This should be an unspecified change
+    (is (= @history [[validity-category]
+                     [validity-category]
+                     []
+                     nil]))))
 
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))

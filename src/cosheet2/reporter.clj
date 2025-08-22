@@ -228,7 +228,8 @@
 ;;;           functions.
 (defn data-value [data]
   (if (:valid data)
-    (:value data)
+    (do (assert (not (= invalid (:value data))))
+        (:value data))
     invalid))
 
 (defn reporter-value
@@ -317,7 +318,7 @@
   "Given the old and new state of the reporter data, and the category
   changes the user provided, if they provided them, add the validity
   category to the categories of change if necessary.
-  Alsso, check that the change satisfies the requirements on changes."
+  Also, check that the change satisfies the requirements on changes."
   [old-data new-data categories]
   (let [value-changed (not= (:value old-data) (:value new-data))
         validity-changed (not= (:valid old-data) (:valid new-data))]
@@ -535,12 +536,25 @@
                                         % key priority categories callback)))))
 
 (defn set-attendee-and-call!
-  "Add an attending callback, and call it immediately"
+  "Add an attending callback, and call it immediately."
   ([r key priority callback]
    (set-attendee-and-call! r key priority [universal-category] callback))
   ([r key priority categories callback]
    (set-attendee! r key priority categories callback)
    (when callback
+     (call-callback-for-undescribed-change callback :key key :reporter r))))
+
+(defn set-attendee-and-call-if-valid!
+  "Add an attending callback, and if the reporter has a valid value,
+  call the attendee immediately."
+  ([r key priority callback]
+   (set-attendee-and-call-if-valid! r key priority [universal-category]
+                                    callback))
+  ([r key priority categories callback]
+   (set-attendee! r key priority categories callback)
+   ;; It's OK the reporter goes invalid before we get here, because
+   ;; when it goes valid again, the callback will be called.
+   (when (and callback (reporter-valid? r))
      (call-callback-for-undescribed-change callback :key key :reporter r))))
 
 (defn new-reporter-data

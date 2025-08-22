@@ -1,7 +1,8 @@
 (ns cosheet2.calculator
   (:require (cosheet2 [reporter :refer [reporter? reporter-data reporter-value
                                         reporter-atom data-value
-                                        value-valid?
+                                        value-valid? data-valid?
+                                        validity-category
                                         valid? attended?
                                         set-calculator-data-if-needed!
                                         set-attendee! set-attendee-and-call!
@@ -103,21 +104,43 @@
   (reporter/update-to-invalid data))
 
 (defn update-value-and-dependent-depth
-  "Given the data from a reporter, and the reporter, set the value
-   and dependent-depth in the data, and request the appropriate propagation."
+  "Given a reporter's data, and the reporter, set the value and
+  dependent-depth in the data, and request the appropriate
+  notification."
   [data reporter value dependent-depth]
-  (if (and (= value (data-value data))
-           (= dependent-depth (:dependent-depth data)))
-    data
-    (-> data
-        (update-value value)
-        (assoc :dependent-depth dependent-depth)
-        ;; We inform the attendees even if only the dependent-depth
-        ;; changed, because application reporters want to hear about
-        ;; that. The cost is small because it is rare that
-        ;; dependent-depth would change without the value changing
-        ;; too.
-        (update-new-further-action inform-attendees reporter))))
+  (if (value-valid? value)
+    (if (and (data-valid? data)
+             (= value (data-value data))
+             (= dependent-depth (:dependent-depth data)))
+      data
+      (if (= (:value data) value)
+        ;; The only change is that we have become valid again, or the
+        ;; dependency depth has changed. Only report to attendees that
+        ;; want to see everything or that track validity.
+        (let [categories (if (data-valid? data)
+                           ;; only dependency depth changed, which is
+                           ;; not a selectable category
+                           []
+                           [validity-category])]
+          (-> data
+              (assoc :valid true)
+              (assoc :dependent-depth dependent-depth)
+              (update-new-further-action
+               inform-attendees reporter nil categories)))
+        (-> data
+            (update-value value)
+            (assoc :dependent-depth dependent-depth)
+            (update-new-further-action inform-attendees reporter))))
+    ;; We're becoming invalid. We don't touch the dependent-depth, as it
+    ;; is only valid when the data if valid. This way, if we recompute
+    ;; and get the same value and reporter depth, we won't report a
+    ;; depth change.
+    (if (not (data-valid? data))
+      data
+      (-> data
+          update-to-invalid
+          (update-new-further-action
+           inform-attendees reporter nil [validity-category])))))
 
 (defn copy-value
   "If from is the value-source of this reporter, copy its value to be

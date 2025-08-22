@@ -6,6 +6,7 @@
                                         valid? attended?
                                         set-calculator-data-if-needed!
                                         set-attendee! set-attendee-and-call!
+                                        add-validity-category-if-appropriate
                                         remove-attendee!
                                         inform-attendees
                                         invalid]
@@ -108,39 +109,25 @@
   dependent-depth in the data, and request the appropriate
   notification."
   [data reporter value dependent-depth]
-  (if (value-valid? value)
-    (if (and (data-valid? data)
-             (= value (data-value data))
-             (= dependent-depth (:dependent-depth data)))
+  (let [valid (value-valid? value)
+        same-value (= value (data-value data))
+        same-depth (= dependent-depth (:dependent-depth data))]
+    (if (and (= valid (data-valid? data))
+             (or (not valid) ; We only change anything else if valid.
+                 (and same-value same-depth)))
       data
-      (if (= (:value data) value)
-        ;; The only change is that we have become valid again, or the
-        ;; dependency depth has changed. Only report to attendees that
-        ;; want to see everything or that track validity.
-        (let [categories (if (data-valid? data)
-                           ;; only dependency depth changed, which is
-                           ;; not a selectable category
-                           []
-                           [validity-category])]
-          (-> data
-              (assoc :valid true)
-              (assoc :dependent-depth dependent-depth)
-              (update-new-further-action
-               inform-attendees reporter nil categories)))
-        (-> data
-            (update-value value)
-            (assoc :dependent-depth dependent-depth)
-            (update-new-further-action inform-attendees reporter))))
-    ;; We're becoming invalid. We don't touch the dependent-depth, as it
-    ;; is only valid when the data if valid. This way, if we recompute
-    ;; and get the same value and reporter depth, we won't report a
-    ;; depth change.
-    (if (not (data-valid? data))
-      data
-      (-> data
-          update-to-invalid
-          (update-new-further-action
-           inform-attendees reporter nil [validity-category])))))
+      (let [revised
+            (cond-> (assoc data :valid valid)
+              valid (assoc :value value :dependent-depth dependent-depth))
+            ;; If only the dependent-depth changed, we know what the
+            ;; categories of change are, and they are none that can
+            ;; be specifically asked for. Otherwise we don't know
+            ;; what the category of change is.
+            base-categories (if (and same-value (not same-depth)) [] nil)
+            categories (add-validity-category-if-appropriate
+                        data revised base-categories)]
+        (update-new-further-action
+         revised inform-attendees reporter nil categories)))))
 
 (defn copy-value
   "If from is the value-source of this reporter, copy its value to be

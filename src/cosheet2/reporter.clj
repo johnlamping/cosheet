@@ -314,7 +314,7 @@
   (and (= (:value data1) (:value data2))
        (= (:valid data1) (:valid data2))))
 
-(defn add-validity-category-when-appropriate
+(defn add-validity-category-if-appropriate
   "Given the old and new state of the reporter data, and the category
   changes the user provided, if they provided them, add the validity
   category to the categories of change if necessary.
@@ -322,8 +322,10 @@
   [old-data new-data categories]
   (let [value-changed (not= (:value old-data) (:value new-data))
         validity-changed (not= (:valid old-data) (:valid new-data))]
-    ;; We should only be called when something changed.
-    (assert (or value-changed validity-changed))
+    ;; We should only be called when something changed, or it is a
+    ;; category of change that we can't describe (like
+    ;; dependent-depth).
+    (assert (or value-changed validity-changed (= categories [])))
     ;; If the value changed, we are required to be valid. Otherwise
     ;; the change is effectively changing the last valid value,
     ;; without giving a valid value.
@@ -344,7 +346,7 @@
   (let [[old current]
         (swap-returning-both! (:data r) #(update-value % value))]
     (if (not (same-state? old current))
-      (inform-attendees r nil (add-validity-category-when-appropriate
+      (inform-attendees r nil (add-validity-category-if-appropriate
                                old current nil)))))
 
 (defn change-data-control-return!
@@ -364,7 +366,7 @@
             [data
              [% data description categories return-value]]))]
     (if (not (same-state? old-data new-data))
-      (inform-attendees r description (add-validity-category-when-appropriate
+      (inform-attendees r description (add-validity-category-if-appropriate
                                        old-data new-data categories)))
     return-value))
 
@@ -385,7 +387,7 @@
             [data
              [% data description categories]]))]
     (if (not (same-state? old-data new-data))
-      (inform-attendees r description (add-validity-category-when-appropriate
+      (inform-attendees r description (add-validity-category-if-appropriate
                                        old-data new-data categories)))))
 
 (defn change-value!
@@ -403,7 +405,7 @@
             [data
              [% data description categories]]))]
     (if (not (same-state? old-data new-data))
-      (inform-attendees r description (add-validity-category-when-appropriate
+      (inform-attendees r description (add-validity-category-if-appropriate
                                        old-data new-data categories)))))
 
 (defn set-calculator-data-if-needed!

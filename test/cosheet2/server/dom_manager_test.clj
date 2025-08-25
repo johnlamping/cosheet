@@ -82,7 +82,7 @@
         c2 (reuse-or-make-component-atom s2 manager "c2" 2 c1 c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 2))
-    (is (= (:dom-version @c1) 0)) ; Not activated yet.
+    (is (= (:dom-version @c1) nil)) ; Not activated yet.
     (is (not (:elided c1)))
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
@@ -127,7 +127,7 @@
                       :elided-from c2-
                       :dom-manager manager
                       :dom-specification s2
-                      :dom-version 0
+                      :dom-version nil
                       :depth 4
                       :dom-R nil})))))))
 
@@ -144,7 +144,8 @@
                 :calculator-data cd
                 :mutable-store ms
                 :root-components {}
-                :further-actions nil}))
+                :further-actions nil
+                :client-lock (any)}))
     (is (check (:attendees (reporter-data ms))
                nil))
     (compute cd)
@@ -154,7 +155,7 @@
                 :dom-manager manager
                 :dom-specification s2
                 :dom-R (any)
-                :dom-version 2
+                :dom-version nil
                 :elided-from nil
                 :depth 1
                 :obsolete-components nil
@@ -172,7 +173,8 @@
                   :components-to-send {c2 1}
                   :calculator-data cd
                   :mutable-store ms
-                  :further-actions nil}))
+                  :further-actions nil
+                  :client-lock (any)}))
       (deactivate-component c2)
       (is (check @c2
                  {:client-id "c2"
@@ -180,7 +182,7 @@
                   :dom-manager manager
                   :dom-specification nil
                   :dom-R nil
-                  :dom-version 2
+                  :dom-version nil
                   :elided-from nil
                   :depth 1
                   :obsolete-components nil
@@ -198,7 +200,8 @@
                   :components-to-send {}
                   :calculator-data cd
                   :mutable-store ms
-                  :further-actions nil}))
+                  :further-actions nil
+                  :client-lock (any)}))
       (compute cd)
       (is (check
            (:attendees (reporter-data ms))
@@ -308,15 +311,15 @@
             c2 (first (vals (:id->subcomponent @c1)))]
         (is (:highest-version @manager) 1)
         (is (check (get-response-doms manager [id2] 3)
-                   [(as-set [[:div {:id "root" :version 4}
+                   [(as-set [[:div {:id "root" :version 2}
                               2
                               [:component {:id "root_Ifoo_Ibar"}]]
-                             [:div {:id "root_Ifoo_Ibar" :version 3}
+                             [:div {:id "root_Ifoo_Ibar" :version 2}
                               3]])
                     "root_Ifoo_Ibar"]))
         (is (:highest-version @manager) 3)
         (is (check (get-response-doms manager [id2] 1)
-                   [[[:div {:id "root" :version 4}
+                   [[[:div {:id "root" :version 2}
                       2
                       [:component {:id "root_Ifoo_Ibar"}]]]
                     nil]))

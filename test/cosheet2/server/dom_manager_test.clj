@@ -392,6 +392,7 @@
         cd (new-calculator-data (new-priority-task-queue 4))
         ms (new-mutable-store (new-element-store))
         dm (new-dom-manager ms cd)
+        client-lock (atom 0)
         doms-not-acknowledged (atom 0)
         repeat-doms-received (atom 0)
         ;; A set of all active dom-R reporters.
@@ -500,10 +501,12 @@
             ;; Get client ready doms, and acknowledge them.
             ;; Return the number of doms gotten.
             (get-and-acknowledge-doms []
-              (let [for-client (first (get-response-doms dm nil 20))]
-                (record-doms for-client)
-                (acknowledge-doms for-client)
-                (count for-client)))
+              ;; Make sure that only one fetch is active at a time.
+              (locking client-lock
+                (let [for-client (first (get-response-doms dm nil 20))]
+                  (record-doms for-client)
+                  (acknowledge-doms for-client)
+                  (count for-client))))
             (get-and-acknowledge-all-doms []
               (loop []
                 (let [num-processed (get-and-acknowledge-doms)]
@@ -531,7 +534,12 @@
                             true)
                         (let [our-version (dom-version our-dom)
                               their-version (dom-version dom)]
-                          (assert (>= their-version our-version))
+                          ;; The manager may have a new component for
+                          ;; this id, that hasn't sent us a dom
+                          ;; yet. In which case, its dom-version will
+                          ;; still be nil.
+                          (assert (or (nil? their-version)
+                                      (>= their-version our-version)))
                           (when (= their-version our-version)
                             (if (= our-dom dom)
                               true
@@ -616,6 +624,9 @@
         (compute cd)
         (get-and-acknowledge-all-doms)
         (let [dom-count (check-client-copy true)]
+          ;; This test is only probabilistic. Fewer doms can be
+          ;; checked if there is lots of elision. But it virtually
+          ;; certain to succeed if the width is at least 7.
           (is (>= dom-count
                   (* width (- depth 1)))))
         (let [known-ids (all-dom-ids)
@@ -635,5 +646,11 @@
           ;; either of the above failes.
           (assert (empty? excess-active))
           (assert (empty? excess-known))))
+      ;; The main reason we receive a dom more than once is because we
+      ;; didn't acknowledge it. But benign races in the manager can
+      ;; occasionally cause us to get a dom an extra time. Make sure
+      ;; this didn't happen very often.
+      (assert (< @repeat-doms-received (+ 2 ; for noise tolerance on small runs
+                                          (* 1.001 @doms-not-acknowledged))))
       (println "doms test did not acknowledge" @doms-not-acknowledged
                "repeat doms received" @repeat-doms-received))))

@@ -2,11 +2,10 @@
   (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
-                                        set-attendee-and-call!
+                                        set-attendee-and-call-if-valid!
                                         reporter?
-                                        reporter-value 
                                         reporter-value-when-valid valid?
-                                        universal-category]]
+                                        value-category]]
                       [expression :refer [new-application category-change]]
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [is-item-id? id->string string->id
@@ -99,11 +98,14 @@
                            ; might send their dom to the client with a
                            ; higher version number than the current
                            ; subcomponent.
-     dom-version           ; A monotonically increasing version number
-                           ; for the current dom. It goes up every
-                           ; time the dom changes.  It is sent by the
-                           ; client, which uses it to acknowledge
-                           ; which version they got.
+     dom-version           ; If this component's dom has ever been sent to
+                           ; the client, then this is equal to the
+                           ; last version sent to the client, if the
+                           ; dom hasn't changed since then. And is
+                           ; larger than that version if the dom has
+                           ; changed. Each time the dom is sent to the
+                           ; client, this version will be sent, so the
+                           ; client knows it is getting a new version.
      further-actions       ; A list of [function arg arg ...] calls that
                            ; need to be performed. The function will be
                            ; called with the atom, and the additional
@@ -188,8 +190,10 @@
                         ; ones get cleaned up. This way, removing an
                         ; obsolete component atom from the queue will
                         ; never take out a live one.
-     calculator-data    ; The calculator data we use. (Currently, we only use
-                        ; its queue.)
+     calculator-data    ; The calculator data we use. (Currently, we only
+                        ; use its queue.)
+     client-lock        ; An atom used for locking access while doing a
+                        ; client interatcion.
      mutable-store      ; The mutable store that holds the data the doms
                         ; rely on.
      further-actions    ; A list of [function arg arg ...] calls that
@@ -302,9 +306,7 @@
      :client-id client-id
      :elided-from elided-from
      :depth depth
-     ;; Deactivation expects a dom version. And we can be deactivated
-     ;; before we even get activated.
-     :dom-version 0})))
+     :dom-version nil})))
 
 (defn reuse-or-make-component-atom
   "Given the particulars for a component, plus an existing component atom,
@@ -325,6 +327,10 @@
     old-component-atom
     (make-component-atom
      specification dom-manager new-client-id new-depth new-elided-from)))
+
+(defn increment-if-non-nil
+  [n]
+  (when n (inc n)))
 
 (def handle-dom-change)
 
@@ -356,8 +362,9 @@
       (if (reporter? dom-R)
         (do
           (propagate-calculator-data! dom-R calculator-data)
-          (set-attendee-and-call!
+          (set-attendee-and-call-if-valid!
            dom-R component-atom (* 10 (:depth @component-atom))
+           [value-category] ; We don't care when doms go invalid.
            dom-calculator-callback)
           ;; It is possible that the component was already
           ;; deactivated, and we are running late. So we could have
@@ -372,7 +379,6 @@
 
 (defn activate-component
   "Make a reporter to calculate the component's DOM, and activate it.
-  Also set up the current dom version.
   This can't be done at the time the component-atom is created, as
   that typically happens during a dom update for this component's
   containing component, inside a swap-control-return!. The
@@ -385,12 +391,11 @@
    (fn [component-data]
      (let [{:keys [dom-specification dom-manager]} component-data]
        (if (= (component-data-state component-data) :created)
-         (let [{:keys [mutable-store highest-version]} @dom-manager
+         (let [{:keys [mutable-store]} @dom-manager
                dom-R ((dom-renderer dom-specification)
                       dom-specification mutable-store)]
            (-> component-data
                (assoc :dom-R dom-R)
-               (assoc :dom-version (+ 1 highest-version))
                (update-new-further-action activate-dom-R component-atom)))
          ;; The atom has already been activated. Don't do anything.
          component-data)))))
@@ -431,9 +436,9 @@
 (defn deactivate-then-activate
   "The atom-with-obsolete must hold something with
   an :obsolete-components field. Deactivate all the components listed
-  there, then make sure the dom manager's highest version is at least
-  as big as their dom-versions, then remove the deactivated components
-  from the field, and finally activate the components-to-activate.
+  there, then remove the deactivated components from
+  the :obsolete-components field, and finally activate the
+  components-to-activate.
   See the explanation in update-dom for why we need to deactivate
   obsolete components first, if they might be identified with the same
   client id as the a one. (It's OK if still newer components become
@@ -444,16 +449,6 @@
     ;; messages to the client.
     (doseq [subcomponent obsolete]
       (deactivate-component subcomponent))
-    ;; Now we can get the final dom versions for each of them and make
-    ;; sure the dom-manager's highest version dom is at least that
-    ;; high.
-    (let [max-of-dom-versions
-          (apply max (map (fn [component] (:dom-version @component))
-                          obsolete))]
-      (swap! dom-manager
-             (fn [manager-data]
-               (update manager-data :highest-version
-                       #(max % max-of-dom-versions)))))
     ;; Next, remove these subcomponents from the list of obsolete
     ;; ones. (The set of obsolete ones might have changed from when we
     ;; started running.)
@@ -524,10 +519,10 @@
       ;; Since the component we are elided-from sends our dom to the
       ;; client, that compoment's dom, as seen by the client, has
       ;; logically changed. So we need to increment that component's
-      ;; dom version, and then add the component to the ones to send
+      ;; dom version, and then add that component to the ones to send
       ;; to the client. We don't add ourselves to be sent to the
-      ;; client, since our elided-from component will send our dom.
-      (do (swap! elided-from #(update % :dom-version inc))
+      ;; client, since our dom will be sent by our elided-from component.
+      (do (swap! elided-from #(update % :dom-version increment-if-non-nil))
           (add-to-components-to-send dom-manager elided-from))
       ;; Our dom version was already incremented when we heard about
       ;; the new dom. We just have to add ourselves to the dom
@@ -592,22 +587,25 @@
       (-> component-data
           (assoc :id->subcomponent id->subcomponent
                  :obsolete-components obsolete)
-          (update :dom-version inc)
+          (update :dom-version increment-if-non-nil)
           (update-new-further-action
            process-dom-ready-for-client dom-manager component-atom)
           (update-new-further-actions follow-ons)))))
 
 (defn handle-dom-change
   [component-atom]
-  (with-latest-value [dom (reporter-value-when-valid (:dom-R @component-atom))]
-    (when dom
-      (swap-and-act!
-       component-atom
-       #(let [result (update-dom % component-atom dom)]
-          ;; Check for problems where an update to the component-data, like
-          ;; a dissoc, turned it into a map.
-          (assert (instance? ComponentData result))
-          result)))))
+  ;; It is possible for a dom update to arrive at a disabled
+  ;; component, which has no :dom-R.  So we tolerate that.
+  (when-let [reporter (:dom-R @component-atom)]
+    (with-latest-value [dom (reporter-value-when-valid reporter)]
+      (when dom
+        (swap-and-act!
+         component-atom
+         #(let [result (update-dom % component-atom dom)]
+            ;; Check for problems where an update to the component-data, like
+            ;; a dissoc, turned it into a map.
+            (assert (instance? ComponentData result))
+            result))))))
 
 (defn new-dom-manager
   "Return a new dom-manager object for doms over the store."
@@ -621,6 +619,7 @@
       :components-to-send (priority-map)
       :calculator-data calculator-data
       :mutable-store mutable-store
+      :client-lock (atom 0)
       :further-actions nil})))
 
 (defn client-id->component
@@ -788,28 +787,54 @@
   "Return a seq of doms for the client containing up to num components.
   Also, if any of the monitored ids are the :item-id or :relative-id of any
   of the components, return the client id of that component.
-  Finally, do the side-effect of updating :highest-version."
+  Add dom-version to any components sent that don't have one yet. And
+  finally, do the side-effect of updating :highest-version."
   [dom-manager monitored-ids num]
-  (swap-control-return!
-   dom-manager
-   (fn [manager-data]
-     (loop [response []
-            monitored-client-id nil
-            highest-version (:highest-version manager-data)
-            components (map first (:components-to-send manager-data))]
-       (if (or (>= (count response) num) (empty? components))
-         [(assoc manager-data :highest-version highest-version)
-          [response monitored-client-id]]
-         (let [[component & remaining-components] components
-               [dom monitored] (prepare-dom-for-client component monitored-ids)]
-           (recur
-            ;; The dom might be temporarily invalid.
-            (cond-> response dom (conj dom))
-            (longer-string monitored-client-id
-                           (when monitored (:client-id @component)))
-            (max highest-version
-                 (if dom (:version (dom-attributes dom)) 0))
-            remaining-components)))))))
+  ;; We run this function under a lock. This lets us move dom version
+  ;; data between components and the dom manager without race
+  ;; conditions, since this is the only function that moves this
+  ;; information between them.
+  (locking (:client-lock @dom-manager)
+    (let [manager-data @dom-manager
+          ;; This is the starting version for every dom we send the
+          ;; client whose component doesn't have a version number yet.
+          starting-dom-version (+ 1 (:highest-version manager-data))
+          [response monitored-client-id highest-version]
+          (loop [response []
+                 monitored-client-id nil
+                 highest-version starting-dom-version
+                 components (keys (:components-to-send manager-data))]
+            (if (or (>= (count response) num) (empty? components))
+              [response monitored-client-id highest-version]
+              (let [[component & remaining-components] components]
+                (when (nil? (:dom-version @component))
+                  ;; The client has never gotten a dom from this
+                  ;; component. But it may have gotten doms from other
+                  ;; components with the same id. So we set the
+                  ;; component's version to one higher than the
+                  ;; highest the client has received so far. That way,
+                  ;; the client will recognize its dom as new.
+                  (swap! component
+                         (fn [component-data]
+                           (update component-data :dom-version
+                                   #(or % starting-dom-version)))))
+                (let [[dom monitored] (prepare-dom-for-client
+                                       component monitored-ids)]
+                  (recur
+                   ;; The dom might be temporarily invalid.
+                   (cond-> response
+                     dom (conj dom))
+                   (longer-string monitored-client-id
+                                  (when monitored (:client-id @component)))
+                   (max highest-version
+                        (if dom (:version (dom-attributes dom)) 0))
+                   remaining-components)))))]
+      (swap! dom-manager
+             (fn [manager-data]
+               (-> manager-data
+                   (update :highest-version
+                           #(max % highest-version)))))
+      [response monitored-client-id])))
 
 (defn need-to-send-to-client-given-acknowledgement?
   "Return whether we need to send the component to the client, given a
@@ -821,44 +846,45 @@
 (defn process-acknowledgements
   "Modify the the dom-manager to reflect the acknowledgements."
   [dom-manager acknowledgements]
-  ;; Determine which of the acknowledged doms no longer need to be
-  ;; sent to the client. Make a list of them and their acknowledged
-  ;; versions.
-  (let [components-to-remove
-        (let [manager-data @dom-manager] ; Only used for client-id->component.
-          (mapcat
-           (fn [[client-id version]]
-             (when-let [component-atom (client-id->component
-                                        manager-data client-id)]
-               (when (not (need-to-send-to-client-given-acknowledgement?
-                           component-atom version))
-                 [[component-atom version]])))
-           acknowledgements))]
-    (swap! dom-manager
-           (fn [manager-data]
-             (update manager-data :components-to-send
-                     #(apply dissoc % (map first components-to-remove)))))
-    ;; It's possible that a component got updated between the time we
-    ;; decided that it needed to be removed and the swap! In that
-    ;; case, we may have removed it incorrectly. So we go back through
-    ;; the component data of the components we removed, and see if
-    ;; they need to go back in the components-to-send. It is OK to use
-    ;; out of date information here, because it is OK to unnecessarily
-    ;; add a component to send.
-    (let [components-to-add-back
-          (map first
-               (filter #(apply need-to-send-to-client-given-acknowledgement? %)
-                       components-to-remove))]
-      (when components-to-add-back
-        (swap! dom-manager
-               (fn [manager-data]
-                 (update manager-data :components-to-send
-                         (fn [components-to-send]
-                           (reduce (fn [components-to-send component]
-                                     (assoc components-to-send component
-                                            (:depth @component)))
-                                   components-to-send
-                                   components-to-add-back)))))))))
+  (locking (:client-lock @dom-manager)
+    ;; Determine which of the acknowledged doms no longer need to be
+    ;; sent to the client. Make a list of them and their acknowledged
+    ;; versions.
+    (let [components-to-remove
+          (let [manager-data @dom-manager] ; Only used for client-id->component.
+            (mapcat
+             (fn [[client-id version]]
+               (when-let [component-atom (client-id->component
+                                          manager-data client-id)]
+                 (when (not (need-to-send-to-client-given-acknowledgement?
+                             component-atom version))
+                   [[component-atom version]])))
+             acknowledgements))]
+      (swap! dom-manager
+             (fn [manager-data]
+               (-> manager-data
+                   (update :components-to-send
+                           #(apply dissoc % (map first components-to-remove))))))
+      ;; It's possible that a component got updated between the time we
+      ;; decided that it needed to be removed and the swap! In that
+      ;; case, we may have removed it incorrectly. So we go back through
+      ;; the component data of the components we removed, and see if
+      ;; they need to go back in the components-to-send. It is OK to use
+      ;; out of date information here, because it is OK to unnecessarily
+      ;; add a component to send.
+      (let [components-to-add-back
+            (filter #(apply need-to-send-to-client-given-acknowledgement? %)
+                    components-to-remove)]
+        (when (seq components-to-add-back)
+          (swap! dom-manager
+                 (fn [manager-data]
+                   (update manager-data :components-to-send
+                           (fn [components-to-send]
+                             (reduce (fn [components-to-send component]
+                                       (assoc components-to-send component
+                                              (:depth @component)))
+                                     components-to-send
+                                     (map first components-to-add-back)))))))))))
 
 (defn add-root-dom
   "Add dom with the given specification to the dom-manager.

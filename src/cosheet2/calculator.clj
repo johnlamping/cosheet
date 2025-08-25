@@ -88,9 +88,11 @@
 
 (defn modify-and-act!
   "Atomically call the function on the reporter's data.
-   The function should return the new data for the reporter,
-   which may also contain a temporary field, :further-actions with
-   a list of actions that should be performed."
+  The function should return the new data for the reporter,
+  which may also contain a temporary field, :further-actions with
+  a list of actions that should be performed.
+  The change methods in Reporter primarily support changing the
+  value. This supports any change."
   [reporter f]
   (swap-and-act! (reporter-atom reporter) f))
 

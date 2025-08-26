@@ -72,7 +72,6 @@
 ;;;                      empty) set of reporters whose values this
 ;;;                      reporter needs to run its application and
 ;;;                      that it doesn't have a valid value for.
-;;;  TODO: !!! Get rid of this once reporters keep their old values around.
 ;;;  :former-application-value
 ;;;                      The previous result of our application, if we
 ;;;                      know it, and we don't currently have a valid

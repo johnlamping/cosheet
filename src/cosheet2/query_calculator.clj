@@ -1,11 +1,12 @@
 (ns cosheet2.query-calculator
   (:require (cosheet2 [reporter :refer [reporter-data reporter-value
-                                        data-value valid?
+                                        data-value-or-invalid
+                                        valid?
                                         set-attendee-and-call!
                                         remove-attendee!
                                         inform-attendees
                                         data-attended?
-                                        new-reporter
+                                        new-reporter invalid
                                         validity-category]]
                       [store :refer (mutable-store?)]
                       [entity :refer [description->entity in-different-store
@@ -30,13 +31,9 @@
 ;;; This manager adds following fields to the reporter:
 ;;;                :term The term whose matches we report.
 ;;;               :store The mutable store to run the term against.
-;;;    :last-valid-value The last valid value we had.
 ;;;   :ids-to-reevaluate The store ids whose items may have changed since
-;;;                      last-valid-value was valid. If this is nil,
+;;;                      our value was last valid. If this is nil,
 ;;;                      anything may have changed since then.
-
-;;; TODO: !!! Get rid of last-valid-value once reporters keep the old
-;;;       valid value.
 
 (defn store-change
   "The function to call asynchronously after the store has changed."
@@ -46,40 +43,39 @@
     (modify-and-act!
      reporter
      (fn [data]
-       (let [{:keys [term last-valid-value ids-to-reevaluate]} data
-             value (data-value data)
-             valid-store (valid? immutable)
+       (let [{:keys [term value ids-to-reevaluate]} data
+             value-or-invalid (data-value-or-invalid data)
+             valid-store (valid? store)
              [new-value changed-ids]
              (cond
                (not valid-store)
-               [nil #{}]
+               [invalid #{}]
                (= #{} ids-to-reevaluate)
                [value #{}]
-               (and (valid? last-valid-value) ids-to-reevaluate)
+               (and (valid? value) ids-to-reevaluate)
                ;; We have an old value, and we know how the store changed.
                ;; we can do an update, rather than a whole re-query.
-               (reduce (fn [[value changed-ids] id]
+               (reduce (fn [[new-value changed-ids] id]
                          (let [immutable-entity
                                (description->entity id immutable)
                                matches
                                (not-empty (matching-extensions
                                            term immutable-entity))
-                               currently-in (contains? value id)]
+                               currently-in (contains? new-value id)]
                            (cond (and matches (not currently-in))
-                                 [(conj value id) (conj changed-ids id)]
+                                 [(conj new-value id) (conj changed-ids id)]
                                  (and (not matches) currently-in)
-                                 [(disj value id) (conj changed-ids id)]
+                                 [(disj new-value id) (conj changed-ids id)]
                                  true
-                                 [value changed-ids])))
-                       [last-valid-value #{}]
+                                 [new-value changed-ids])))
+                       [value #{}]
                        (seq ids-to-reevaluate))
                true
                (let [items (matching-items term immutable)]
                  [(set (map :item-id items))
                   ;; Here, nil means we don't know what changed.
                   nil]))]
-         (if
-           (= new-value value)
+         (if (= new-value value-or-invalid)
            data
            (cond-> (-> data
                        (update-new-further-action
@@ -89,8 +85,7 @@
              (not valid-store)
              (update-to-invalid)
              (valid? new-value)
-             (assoc :last-valid-value new-value
-                    :ids-to-reevaluate #{}))))))))
+             (assoc :ids-to-reevaluate #{}))))))))
 
 (defn store-change-callback
   "The function we ask the store to call when its value changes."

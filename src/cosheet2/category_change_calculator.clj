@@ -1,6 +1,6 @@
 (ns cosheet2.category-change-calculator
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
-                                        set-attendee-and-call!
+                                        set-attendee-and-call! remove-attendee!
                                         validity-category
                                         reporter?]]
                       [calculator :refer [modify-and-act!
@@ -33,9 +33,6 @@
 ;;;      :categories  The categories of demand it should pass down.
 ;;; Those may not change once the category change reporter is created.
 
-;;; TODO: !!! This has a bug. It is always propagating demand, even
-;;; when it has none.
-
 (defn category-change-calculator
   "Calculator that changes the categories of requests."
   [reporter cd]
@@ -43,17 +40,21 @@
     (modify-and-act!
      reporter
      (fn [{:keys [value-source priority categories] :as data}]
-       (let [attended (data-attended? data)]
-         (assert (reporter? value-source))
-         (assert (seq categories))
-         (cond-> (-> data
-                     (assoc :value-source-priority-delta 1)
-                     (update-new-further-action
-                      set-attendee-and-call!
-                      value-source
-                      (list :copy-value reporter)
-                      (+ 1 priority)
-                      (conj categories validity-category)
-                      (when attended copy-value-callback)))
+       (assert (reporter? value-source))
+       (assert (seq categories))
+       (let [attended (data-attended? data)
+             callback-key (list :copy-value reporter)]
+         (cond-> (assoc data :value-source-priority-delta 1)
+           attended
+           (update-new-further-action
+            set-attendee-and-call!
+            value-source
+            callback-key
+            (+ 1 priority)
+            (conj categories validity-category)
+            copy-value-callback)
            (not attended)
-           (update-to-invalid)))))))
+           (update-to-invalid)
+           (not attended)
+           (update-new-further-action
+            remove-attendee! value-source callback-key)))))))

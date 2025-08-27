@@ -115,14 +115,14 @@
         r2 (new-reporter :value-source r1
                          :value-source-priority-delta 1
                          :calculator-data cd)]
-    (register-for-value-source r2 r1 copy-value-callback cd)
+    (register-for-value-source r2 r1 copy-value-callback)
     (compute cd)
     (is (= (reporter-value r2) :v))
     (set-value! r1 :w)
     (compute cd)
     (is (= (reporter-value r2) :w))
     (swap! (reporter-atom r2) dissoc :value-source)
-    (register-for-value-source r2 r1 copy-value-callback cd)
+    (register-for-value-source r2 r1 copy-value-callback)
     (compute cd)
     (set-value! r1 :x)
     (compute cd)

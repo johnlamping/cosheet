@@ -137,7 +137,7 @@
             ;; We have to adjust our source's registration before we
             ;; determine whether it belongs in the cache.
             (update-new-further-action
-             register-for-value-source reporter s copy-value-callback cd)
+             register-for-value-source reporter s copy-value-callback)
             (update-new-further-action
              adjust-cache-membership s (:cache-key data) cd))))))
 

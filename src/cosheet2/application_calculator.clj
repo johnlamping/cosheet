@@ -189,8 +189,8 @@
 
 (defn register-copy-value
   "Register to copy the value from our value source."
-  [reporter from cd]
-  (register-for-value-source reporter from copy-value-and-cleanup-callback cd))
+  [reporter from]
+  (register-for-value-source reporter from copy-value-and-cleanup-callback))
 
 (defn null-callback
   "We use this when we want to preserve demand for a reporter,
@@ -218,7 +218,7 @@
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
    to the given source, and request the appropriate registrations."
-  [data reporter source cd]
+  [data reporter source]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
   (assert (or (nil? source) (data-attended? data)))
@@ -229,7 +229,7 @@
       (reduce
        (fn [data src]
          (update-new-further-action
-          data register-copy-value reporter src cd))
+          data register-copy-value reporter src))
        (assoc-if-non-empty data source-key source)
        ;; Add the new source before removing any old one, so that any
        ;; subsidiary reporters common to both will always have demand.
@@ -291,7 +291,7 @@
                               (#(-> %
                                     (update-former-application-value
                                      reporter last-application-value cd)
-                                    (update-value-source reporter nil cd))))]
+                                    (update-value-source reporter nil))))]
              (if (valid? value)
                (let [new-data
                      (cond-> (update-in newer-data [:needed-values] disj from)
@@ -307,7 +307,7 @@
                      (let [{:keys [former-application-value]} new-data]
                        (-> (if (reporter? former-application-value)
                              (update-value-source
-                              new-data reporter former-application-value cd)
+                              new-data reporter former-application-value)
                              (update-value-and-dependent-depth
                               new-data reporter former-application-value
                               (subordinate-depth data)))
@@ -387,13 +387,13 @@
                ;; We have to set our value source first, so we
                ;; generate demand for the new value, before we
                ;; activate it.
-               (update-value-source reporter value cd)
+               (update-value-source reporter value)
                (assoc :value-source-priority-delta (+ 1 subordinate-depth))
                (update-new-further-action propagate-calculator-data! value cd))
            (-> data
                (update-value-and-dependent-depth
                 reporter value subordinate-depth)
-               (update-value-source reporter nil cd)
+               (update-value-source reporter nil)
                (update-former-application-value reporter invalid cd))))))))
 
 (defn do-application-calculate
@@ -420,7 +420,7 @@
              (cond-> new-data
                (:value-source new-data)
                (update-new-further-action
-                register-copy-value reporter (:value-source new-data) cd))
+                register-copy-value reporter (:value-source new-data)))
              (if (data-attended? new-data)
                (-> new-data
                    (assoc :needed-values subordinates)
@@ -435,7 +435,7 @@
                    (update-to-invalid)
                    (assoc :dependent-depth nil)
                    (update-former-application-value reporter invalid cd)
-                   (update-value-source reporter nil cd))))))))))
+                   (update-value-source reporter nil))))))))))
 
 (defn application-calculator
   [reporter cd]

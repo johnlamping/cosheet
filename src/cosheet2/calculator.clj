@@ -174,7 +174,7 @@
 (defn register-for-value-source
   "Register the callback for the value of the second
    reporter, when it is the value-source of our reporter."
-  [reporter from callback cd]
+  [reporter from callback]
   (with-latest-value
     [priority 
      (let [data (reporter-data reporter)]
@@ -200,7 +200,7 @@
 
 (defn unrequest
   "Remove request for computation of a reporter."
-  [r cd]
+  [r]
   (remove-attendee! r ::computation-request))
 
 (defn compute

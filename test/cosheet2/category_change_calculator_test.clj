@@ -34,5 +34,5 @@
     (change-value! r (fn [v] [1 :change [3 1]]))
     (compute cd)
     (is (= (reporter-value r1) 1))
-    (unrequest r1 cd)
+    (unrequest r1)
     (is (not (valid? r1)))))

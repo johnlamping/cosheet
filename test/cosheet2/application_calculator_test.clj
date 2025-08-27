@@ -29,14 +29,14 @@
         r3 (new-reporter :former-application-value r1
                          :value-source-priority-delta 1
                          :calculator-data cd)]
-    (register-copy-value r2 r1 cd)
+    (register-copy-value r2 r1)
     (compute cd)
     (is (= (reporter-value r2) :v))
     (set-value! r1 :w)
     (compute cd)
     (is (= (reporter-value r2) :w))
     (swap! (reporter-atom r2) dissoc :value-source)
-    (register-copy-value r2 r1 cd)
+    (register-copy-value r2 r1)
     (compute cd)
     (set-value! r1 :x)
     (compute cd)
@@ -91,8 +91,8 @@
     (clear-cd-queue)
     (swap! (reporter-atom r2)
            assoc :value-source r0 :value-source-priority-delta 1)
-    (register-copy-value r2 r0 cd)
-    (register-copy-value r3 r2 cd)
+    (register-copy-value r2 r0)
+    (register-copy-value r3 r2)
     (compute cd)
     (is (= (reporter-value r3) :r0))
     (set-value! r1 invalid)
@@ -130,7 +130,7 @@
                          :calculator-data cd)]
     ;; Give rc priority 6
     (set-attendee! rc :test 6 (fn [& _] nil))
-    (register-copy-value rc r cd)
+    (register-copy-value rc r)
     (is (= (:priority (reporter-data r)) 7))
    ;; Try when the application is not ready.
     (run-application-if-ready r cd)
@@ -152,7 +152,7 @@
                      :application [r0]
                      :value-source r1
                      :value-source-priority-delta 2}))
-    (register-copy-value r r1 cd)
+    (register-copy-value r r1)
     (is (= (:calculator-data (reporter-data r1)) nil))
     (compute cd)
     (is (= (:dependent-depth (reporter-data r)) 2))    
@@ -192,7 +192,7 @@
     ;; Run when there is interest.
     ;; Give rc priority 6
     (set-attendee! rc :test 6 (fn [& _] nil))
-    (register-copy-value rc r cd)
+    (register-copy-value rc r)
     (do-application-calculate r cd)
     (compute cd)
     (is (= (:needed-values (reporter-data r)) #{}))
@@ -202,7 +202,7 @@
     (is (= (:dependent-depth (reporter-data r)) 1))    
     ;; Run when there is no interest again.
     (remove-attendee! rc :test)
-    (register-copy-value rc r cd)
+    (register-copy-value rc r)
     (do-application-calculate r cd)
     (compute cd)
     (is (not (contains? (reporter-data r) :needed-values)))

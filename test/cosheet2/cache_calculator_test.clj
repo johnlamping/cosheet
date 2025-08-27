@@ -47,7 +47,7 @@
      (request r0 cd)
      (#'cosheet2.cache-calculator/adjust-cache-membership r0 [:a :b] cd)
      (is (= (get-or-make-reporter data cd) r0))
-     (unrequest r0 cd)
+     (unrequest r0)
      (#'cosheet2.cache-calculator/adjust-cache-membership r0 [:a :b] cd)
      (is (not= (get-or-make-reporter data cd) r0))))
 
@@ -84,7 +84,7 @@
     (let [orig-source (:value-source  (reporter-data r1))]
       ;; Lose interest in r1 then get it back, and the same value
       ;; source should come back.
-      (unrequest r1 cd)
+      (unrequest r1)
       (is (not (contains? (reporter-data r1) :value-source)))
       (is (not (valid? r1)))
       (is (valid? r2))
@@ -97,8 +97,8 @@
              orig-source))
       ;; Now, lose interest in both reporters with that application.
       ;; The cache should drop it.
-      (unrequest r1 cd)
-      (unrequest r2 cd)
+      (unrequest r1)
+      (unrequest r2)
       (is (not (valid? r1)))
       (is (not (valid? r2)))
       (is (not= (:value-source (reporter-data r1))
@@ -147,7 +147,7 @@
         ;; Now it should be invalid.
         (is (= (not (valid? (computation-value f45 cd)))))
         (check-propagation f45)
-        (unrequest f45 cd)
+        (unrequest f45)
         (compute cd)
         (is (= (current-contents (:cache cd))) {})))))
 

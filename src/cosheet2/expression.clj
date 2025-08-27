@@ -9,9 +9,15 @@
 
 (defn new-application
   "Takes an application, and optionally a trace thunk, and a calculator,
-   and additional arguments, and returns a new expression reporter.
-   But if it has the application calculator, and none of the parts
-   are reporters, then it just evaluates the expression."
+  and additional arguments, and returns a new expression reporter.
+  But if it has the application calculator, and none of the parts
+  are reporters, then it just evaluates the expression.
+  The trace thunk should be a function that calls its one argument. It
+  should be created at the point in the code where an application is
+  generated. It will be placed on the stack by
+  calculator/current-value, so that the stack backtrace will contain a
+  record of where applications were created. Without the trace, stack
+  will just contain a bunch of recursive calls to current-value."
   [application & {:keys [trace calculator]
                   :as args
                   :or {calculator application-calculator}}]

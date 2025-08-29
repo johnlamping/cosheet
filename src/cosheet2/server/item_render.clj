@@ -2,7 +2,7 @@
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [is-item-id?]]
                       [entity :refer [label? description->entity
-                                      description->updating-entity-R
+                                      id->updating-entity-R
                                       content label? primitive?]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
@@ -552,7 +552,7 @@
   "Render a dom spec for only the content of an item."
   [{:keys [relative-id item-id class]} store]
   (assert (= relative-id :content) relative-id)
-  (expr-let [item (description->updating-entity-R item-id store)]
+  (expr-let [item (id->updating-entity-R item-id store)]
     (item-content-DOM item (if class {:class class} {}))))
 
 (defmethod print-method
@@ -614,7 +614,7 @@
   (assert (:width specification)
           [specification
            (semantic-to-list (description->entity relative-id store))])
-  (expr-let [entity (description->updating-entity-R
+  (expr-let [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
     (let [elements (remove
                     (set (map #(description->entity % (:store entity))

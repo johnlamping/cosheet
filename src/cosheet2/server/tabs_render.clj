@@ -1,6 +1,6 @@
 (ns cosheet2.server.tabs-render
   (:require (cosheet2 [entity :refer [description->entity
-                                      description->updating-entity-R
+                                      id->updating-entity-R
                                       label->elements content elements]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
@@ -44,7 +44,7 @@
   that targets each of the tab items, and :tab-id if there
   is only one tab item."
   (expr-let [example-elements (expr-seq
-                                map #(description->updating-entity-R % store)
+                                map #(id->updating-entity-R % store)
                                 example-element-ids)]
     (if (seq example-element-ids)
       (let [dom (labels-and-elements-DOM
@@ -130,7 +130,7 @@
   "Return a reporter giving the DOM for the elements of the given
   item as tabs."
   [{:keys [relative-id chosen-tab-id] :as specification} store]
-  (expr-let [tabs-entity (description->updating-entity-R
+  (expr-let [tabs-entity (id->updating-entity-R
                           relative-id store)]
     (let [;; The template starts out with an empty name
           tabs-spec {:template `("" :tab "" ~new-tab-table-element)

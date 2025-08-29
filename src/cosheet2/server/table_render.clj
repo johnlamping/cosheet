@@ -5,7 +5,7 @@
                       [reporter :refer [universal-category]]
                       [entity :refer [content elements label->elements
                                       description->entity
-                                      description->updating-entity-R
+                                      id->updating-entity-R
                                       label? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
@@ -160,7 +160,7 @@
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header"
   [{:keys [relative-id] :as spec} store]
-  (expr-let [row-condition (description->updating-entity-R relative-id store)]
+  (expr-let [row-condition (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition)
           spec-down {:template 'anything
                      :width 0.75}
@@ -290,7 +290,7 @@
 ;;; labels of its items.
 (defn render-table-cell-DOM
   [{:keys [row-id query disqualifications] :as specification} store]
-  (expr-let [row-entity (description->updating-entity-R row-id store)]
+  (expr-let [row-entity (id->updating-entity-R row-id store)]
     (let [matches (matching-elements query row-entity)
           entities (if (seq disqualifications)
                      (filter (fn [element] (not (some #(extended-by? % element)
@@ -509,7 +509,7 @@
              ;; change, because the identities of the main parts don't
              ;; change once they are created. So that won't trigger
              ;; recomputation of the main body of the function.
-             (expr-let [table-item (description->updating-entity-R
+             (expr-let [table-item (id->updating-entity-R
                                     table-id store)]
                [(:item-id (table-row-condition-element table-item))
                 (:item-id (table-column-headers-element table-item))])]
@@ -546,9 +546,9 @@
             ;; changes. That makes computations that depend on them
             ;; not depend on changes elsewhere in the table entity.
             row-template-R (expr table-row-condition->row-template
-                                 (description->updating-entity-R
+                                 (id->updating-entity-R
                                   row-condition-id store))
-            column-headers-R (description->updating-entity-R
+            column-headers-R (id->updating-entity-R
                               column-headers-id store)
             hierarchy-R (table-hierarchy-R column-headers-R)
             row-ids-R (table-row-ids-R row-template-R store)

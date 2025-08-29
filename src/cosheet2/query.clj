@@ -25,9 +25,9 @@
 
 ;;; There are several querying operations, that differ in how
 ;;; elaborate a kind of query they take and in whether they operate on
-;;; a single entity or the whole store. All only take immutable
+;;; a single entity or on the whole store. All only take immutable
 ;;; arguments. Where an environment is mentioned, it means a binding
-;;; of some query variables to entities.
+;;; from query variables to entities.
 
 ;;;        extended-by?: Takes a fixed-term and a subject entity. Says
 ;;;                      whether the subject extends the term.

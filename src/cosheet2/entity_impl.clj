@@ -18,8 +18,9 @@
     ^{:doc "An entity whose elements are described by a store."}
     ImmutableStoredEntity
 
-  [store     ; The immutable store that holds the information for this item.
-   item-id]  ; The ItemId of the item in the store.
+    [store        ; The immutable store that holds the information for this item.
+     item-id      ; The ItemId of the item in the store.
+     orientation] ; The endpoint that holds an element entity's content.
 
   StoredEntity
 
@@ -63,8 +64,10 @@
     ^{:doc "An item whose elements are described by a mutable store."}
     MutableStoredEntity
 
-    [store     ; The mutable store that holds the information for this item.
-     item-id]  ; The id of the item in the store.
+    [store        ; The mutable store that holds the information for this item.
+     item-id      ; The ItemId of the item in the store.
+     orientation] ; The endpoint that holds an element entity's content.
+
 
   StoredEntity
 
@@ -213,12 +216,16 @@
   (marked-as-type? [this] false)
   (updating-immutable [this] this))
 
+(extend-protocol ToStoredEntity
+  cosheet2.store.ItemId
+  (id->entity-m [this store orientation]
+    (if (mutable-store? store)
+      (->MutableStoredEntity store this orientation)
+      (->ImmutableStoredEntity store this orientation))))
+
 (extend-protocol Description
   cosheet2.store.ItemId
-  (description->entity [this store]
-    (if (mutable-store? store)
-      (->MutableStoredEntity store this)
-      (->ImmutableStoredEntity store this)))
+  (description->entity [this store] (id->entity this store))
   clojure.lang.Keyword
   (description->entity [this store] this)
   clojure.lang.Symbol
@@ -237,7 +244,7 @@
   (description->entity [this store] this)
   nil
   (description->entity [this store] nil) ;; For convenience in null punning
-)
+  )
 
 
 

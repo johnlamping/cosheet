@@ -128,7 +128,7 @@
                                         (swap! record-of-updates
                                                #(conj % value))
                                         value))
-          reporter-99 (description->updating-entity-R id99 ms)]
+          reporter-99 (id->updating-entity-R id99 ms)]
       (is (= @record-of-updates []))
       ;; See if it gets computed when demand is added.
       (propagate-calculator-data! updating-immutable-result cd)

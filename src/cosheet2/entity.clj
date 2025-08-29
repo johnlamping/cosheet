@@ -2,21 +2,92 @@
   (:require (cosheet2 [calculator :refer [current-value]]
                       [expression :refer [expr-let]])))
 
-;;; An entity is either a constant or an item. An item may have a
-;;; content, which is another entity, and may have elements, which are
-;;; other items. There is no ordering among the elements of an item.
+;;; An entity is either
+;;;    a constant
+;;;    an object
+;;;    a link
+;;;    an element
 
-;;; In list form, an item is written as (content element element ...)
+;;; Constants, objects, and links have the same meaning as they do in
+;;; stores. But elements are a little different.  An element is a
+;;; property, qualifier, or relation of another entity, as seen from
+;;; that entity. There is no ordering among the elements of an entity.
+
+;;; An element's description consists of a content, which is an
+;;; entity, plus any elements of the element. So each element
+;;; determines a tree of its elements, their elements, etc.
+
+;;; In a store, an element is represented by a link. But an element
+;;; additionally picks a direction for that link, thus determing which
+;;; endpoint of the link the element is considered to be about. The
+;;; other endpoint is the entity's content. The endpoint an entity is
+;;; about is normally not considered to be part of the element; it's
+;;; not included in the element's description.
+
+;;; Elements are normally not accessed in terms of source and target,
+;;; but in terms of content. Elements that are associated with stores
+;;; also support a container method, which returns the entity they
+;;; qualify. But the container is not considered to be part of the
+;;; entity.
+
+;;; Elements essentially give a way of parsing the information in a
+;;; store into entities that have more structure than just a bunch of
+;;; links. They give a convenient way to describe
+;;;    * What should be displayed in a cell
+;;;    * Information that should be added to entities in the store.
+;;;    * Queries for searches over the store (to find entities matching
+;;;      an element or containing matches to an element).
+;;; These uses of entities typically require creating an entities that
+;;; doesn't exactly match any entity in the store. To this end, there
+;;; is a representation of entities that is largely independent of
+;;; stores, called the list form.
+
+;;; The list form of constants is just constants, since they are
+;;; already independent of stores. The list form of specific objects
+;;; is a wrapper of their id with the store, because the id is the
+;;; only way to identify specific objects. But the list form of an
+;;; element is
+;;;   ((content orientation) element element ...)
+;;; where orientation is either :source or :target, to indicate which
+;;; endpoint holds the content. That indicates how an entity should be
+;;; turned into a link. The orientation can also be nil if the element
+;;; indicates a query that can match links going in either direction.
+
+;;; Alternatively, in the common case when the orientation is :source,
+;;; the list form of an element may be
+;;;   (content element element ...)
 ;;; For example (5 "value" (3 "x") (4 "y")) describes an item with
 ;;; content 5, and three elements, ("value"), (3 "x") and (4 "y"). As
-;;; illustrated here, elements that have just a content and no items
-;;; can have their parentheses dropped in the list form.
+;;; illustrated here, elements that have just a content, orientation
+;;; :source, and no items can have their parentheses dropped in the
+;;; list form.
+
+;;; When a objects is used in a query as a generic object, there also
+;;; needs to be a list form for it. Its list form is
+;;;    [:object element element ...]
+;;; The code that converts items in the store to their query forms
+;;; generates this representation for generic objects, which have the
+;;; tag, :generic, as a property in the store.
+
+;;; If it turns out that list forms of links are also necessary, they
+;;; should be
+;;;    [:link source target element element ...]
+
+;;; TODO: Add an id->element method, and replace most used of
+;;; description->entity with it. Maybe there should also be
+;;; id->entity. And link entities should not be implemented until they
+;;; are needed somewhere.
 
 ;;; There are functions to get all elements of an entity, or just
 ;;; those elements with a specific label. For the entity
 ;;; ("Joe" "person" (44 ("age" :label) "uncertain")) "age" is the label
 ;;; for the element (44 ("age" :label) "uncertain"). In general, a label
 ;;; of an element is one of its elements that itself has the element :label.
+
+(defprotocol ToStoredEntity
+  "A description of an item."
+  (id->entity-m [this store orientation]
+    "Return an entity corresponding to an item id."))
 
 (defprotocol Description
   "A description of an item or constant."
@@ -160,8 +231,16 @@
   (expr-let [element (label->element entity label)]
     (content element)))
 
-(defn description->updating-entity-R
-  [id store]
-  (let [entity (description->entity id store)]
-    (updating-immutable entity)))
+(defn id->entity
+  ([id store]
+   (id->entity-m id store :source))
+  ([id store orientation]
+   (id->entity-m id store orientation)))
+
+(defn id->updating-entity-R
+  ([id store]
+   (id->updating-entity-R id store :source))
+  ([id store orientation]
+   (let [entity (id->entity id store orientation)]
+     (updating-immutable entity))))
 

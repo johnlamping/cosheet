@@ -177,8 +177,6 @@
     (empty? (elements entity))
     (empty? (rest (elements entity)))))
 
-;;; TODO: !!! This needs to handle the direction of elements.
-;;;           And it needs to expand generic objects.
 (defn content-transformed-immutable-to-list [content-transformer]
   "Internal function that takes a transformer on contents
   and returns a function that converts an immutable entity to a list,
@@ -188,16 +186,26 @@
   ;; a compile error, where the letfn definition was not available deep
   ;; inside.
   (fn [entity]
-    (if (or (primitive? entity) (= (entity-type entity) :object))
-      entity
-      (let [content (content-transformer (content entity))
-            elements (elements entity)
+    (if (or (primitive? entity)
+            (and (= (entity-type entity) :object)
+                 (not (seq (content->elements entity :generic)))))
+      (content-transformer entity)
+      (let [elements (elements entity)
             mapped-elements (map (content-transformed-immutable-to-list
                                   content-transformer)
                                  elements)]
-        (if (empty? elements)
-          content
-          (cons content mapped-elements))))))
+        (if (= (entity-type entity) :object)
+          (apply vector :object mapped-elements)
+          (let [content (content-transformer (content entity))
+                needs-orientation (or (seq? content)
+                                      (not= (orientation entity) :source))]
+            (if (and (empty? elements) (not needs-orientation))
+              content
+              (cons (if needs-orientation
+                      (list (orientation entity)
+                            content)
+                      content)
+                    mapped-elements))))))))
 
 (defn to-list [entity]
   "Return a list form of the entity. If a content is itself an entity,

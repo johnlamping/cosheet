@@ -96,28 +96,25 @@
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) false]))
-  (is (= (closest-template `(~(variable "foo" 5)
-                             ~(description->entity
-                               (make-item-id "test")
-                               (new-element-store))
-                             (:foo ~(variable "baz" (variable "bar")))
-                             ~(not-query 8))
-                           {"bar" 7})
-         ['(5 nil (:foo 7)) false]))
-  (is (= (closest-template `(~(variable "foo" 5)
-                             ~(description->entity
-                               (make-item-id "test")
-                               (new-element-store))
-                             (:foo ~(variable "baz")))
-                           {"bar" 7})
-         ['(5 nil (:foo nil)) #{"foo" "baz"}]))
-  (is (= (closest-template `(~(variable "foo" 5)
-                             ~(description->entity
-                               (make-item-id "test")
-                               (new-element-store))
-                             (:foo ~(variable "foo")))
-                           {"bar" 7})
-         ['(5 nil (:foo nil)) false]))
+  (let [object (description->entity
+                (make-item-id "test")
+                (new-element-store))]
+    (is (= (closest-template `(~(variable "foo" 5)
+                               ~object
+                               (:foo ~(variable "baz" (variable "bar")))
+                               ~(not-query 8))
+                             {"bar" 7})
+           [`(5 ~object (:foo 7)) false]))
+    (is (= (closest-template `(~(variable "foo" 5)
+                               ~object
+                               (:foo ~(variable "baz")))
+                             {"bar" 7})
+           [`(5 ~object (:foo nil)) #{"foo" "baz"}]))
+    (is (= (closest-template `(~(variable "foo" 5)
+                               ~object
+                               (:foo ~(variable "foo")))
+                             {"bar" 7})
+           [`(5 ~object (:foo nil)) false])))
   (is (thrown? java.lang.AssertionError
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))

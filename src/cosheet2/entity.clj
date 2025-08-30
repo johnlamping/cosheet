@@ -1,14 +1,16 @@
 (ns cosheet2.entity
   (:require (cosheet2 [calculator :refer [current-value]]
-                      [expression :refer [expr-let]])))
+                      [expression :refer [expr-let]]
+                      [store :refer [is-item-id?
+                                     is-link-id? is-object-id?]])))
 
 ;;; An entity is either
-;;;    a constant
+;;;    a primitive
 ;;;    an object
 ;;;    a link
 ;;;    an element
 
-;;; Constants, objects, and links have the same meaning as they do in
+;;; Primitives, objects, and links have the same meaning as they do in
 ;;; stores. But elements are a little different.  An element is a
 ;;; property, qualifier, or relation of another entity, as seen from
 ;;; that entity. There is no ordering among the elements of an entity.
@@ -42,16 +44,17 @@
 ;;; is a representation of entities that is largely independent of
 ;;; stores, called the list form.
 
-;;; The list form of constants is just constants, since they are
+;;; The list form of primitives is just the primitive, since they are
 ;;; already independent of stores. The list form of specific objects
 ;;; is a wrapper of their id with the store, because the id is the
 ;;; only way to identify specific objects. But the list form of an
 ;;; element is
-;;;   ((content orientation) element element ...)
+;;;   ((orientation content) element element ...)
 ;;; where orientation is either :source or :target, to indicate which
 ;;; endpoint holds the content. That indicates how an entity should be
-;;; turned into a link. The orientation can also be nil if the element
-;;; indicates a query that can match links going in either direction.
+;;; turned into a link. The orientation can also be :either if the
+;;; element indicates a query that can match links going in either
+;;; direction.
 
 ;;; Alternatively, in the common case when the orientation is :source,
 ;;; the list form of an element may be
@@ -61,6 +64,9 @@
 ;;; illustrated here, elements that have just a content, orientation
 ;;; :source, and no items can have their parentheses dropped in the
 ;;; list form.
+
+;;; In list form, the content can be a list, as long as its first
+;;; element isn't :source, :target, or :either.
 
 ;;; When a objects is used in a query as a generic object, there also
 ;;; needs to be a list form for it. Its list form is
@@ -75,8 +81,7 @@
 
 ;;; TODO: Add an id->element method, and replace most used of
 ;;; description->entity with it. Maybe there should also be
-;;; id->entity. And link entities should not be implemented until they
-;;; are needed somewhere.
+;;; id->entity.
 
 ;;; There are functions to get all elements of an entity, or just
 ;;; those elements with a specific label. For the entity
@@ -90,14 +95,15 @@
     "Return an entity corresponding to an item id."))
 
 (defprotocol Description
-  "A description of an item or constant."
+  "A description of an item or primitive."
   (description->entity [this store]
     "Return an item or other entity, given the store the description
      depends on."))
 
 (defprotocol Entity
-  "An item or constant. For constants, the entity methods behave as if
-  it is an entity with the constant as its content, and no elements."
+  "An store item or a primitive. For primitives, the entity methods
+  behaves as if it were an entity with the primitive as its content,
+  and no elements."
 
   (mutable-entity? [this]
     "True if this entity might change. In that case, most of the methods
@@ -107,6 +113,10 @@
   (primitive? [this]
     "True if this entity is a primitive, like a string or a number.")
 
+  (entity-type [this]
+    "Return the type of the entity, one of :primitive, :object,
+    or :element, (or :link if it gets implemented.)")
+
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
 
@@ -115,6 +125,9 @@
 
   (elements [this]
     "Return a seq of items for all our elements.")
+
+  (orientation [this]
+    "The orientation of an element entity.")
 
   (content->elements [this content-value]
     "Return the elements with the given content")
@@ -164,6 +177,8 @@
     (empty? (elements entity))
     (empty? (rest (elements entity)))))
 
+;;; TODO: !!! This needs to handle the direction of elements.
+;;;           And it needs to expand generic objects.
 (defn content-transformed-immutable-to-list [content-transformer]
   "Internal function that takes a transformer on contents
   and returns a function that converts an immutable entity to a list,
@@ -173,13 +188,16 @@
   ;; a compile error, where the letfn definition was not available deep
   ;; inside.
   (fn [entity]
-    (let [content (content-transformer (content entity))
-          elements (elements entity)]
-      (if (empty? elements)
-        content
-        (cons content
-              (map (content-transformed-immutable-to-list content-transformer)
-                   elements))))))
+    (if (or (primitive? entity) (= (entity-type entity) :object))
+      entity
+      (let [content (content-transformer (content entity))
+            elements (elements entity)
+            mapped-elements (map (content-transformed-immutable-to-list
+                                  content-transformer)
+                                 elements)]
+        (if (empty? elements)
+          content
+          (cons content mapped-elements))))))
 
 (defn to-list [entity]
   "Return a list form of the entity. If a content is itself an entity,
@@ -197,17 +215,6 @@
                          content)))
        immutable))
     ((content-transformed-immutable-to-list identity) entity)))
-
-(defn to-deep-list [entity]
-  "Like to-list, but expand out content that is entities."
-  (if (primitive? entity)
-    entity
-    (expr-let [immutable (updating-immutable entity)]
-      (let [content-as-list (to-deep-list (content entity))
-            elements (elements entity)]
-        (if (empty? elements)
-          content-as-list
-          (cons content-as-list (map to-deep-list elements)))))))
 
 (defn label->element
   "Return the element with the given label.
@@ -231,9 +238,19 @@
   (expr-let [element (label->element entity label)]
     (content element)))
 
+(defn id->element [id store]
+  (assert (is-link-id? id))
+  (id->entity-m id store :source))
+
+(defn id->object [id store]
+  (assert (is-object-id? id))
+  (id->entity-m id store nil))
+
 (defn id->entity
   ([id store]
-   (id->entity-m id store :source))
+   (if (is-object-id? id)
+     (id->entity-m id store nil)
+     (id->entity-m id store :source)))
   ([id store orientation]
    (id->entity-m id store orientation)))
 

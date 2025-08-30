@@ -365,7 +365,8 @@
      [id] id-described-object? this id))
 
   (id->target [this id]
-    (id->target (reporter-value this) id))
+    (cache-and-categorize
+        [id] id->target this id))
 
   (id->source [this id]
     (cache-and-categorize

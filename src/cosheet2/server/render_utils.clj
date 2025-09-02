@@ -10,8 +10,8 @@
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
                       [canonical :refer [canonicalize
-                                         canonical-extended-by
-                                         canonical-have-common-elaboration]]
+                                         canonical-extended-by?
+                                         canonical-have-common-elaboration?]]
                       [hiccup-utils
                        :refer [into-attributes add-attributes]]
                       [expression :refer [expr expr-let expr-seq expr-filter]])
@@ -104,9 +104,9 @@
                        (let [candidate-canonical (entity->canonical-term
                                                   candidate)]
                          (cond-> so-far
-                           (and (canonical-have-common-elaboration
+                           (and (canonical-have-common-elaboration?
                                  entity-canonical candidate-canonical)
-                                (not (canonical-extended-by
+                                (not (canonical-extended-by?
                                       candidate-canonical entity-canonical))
                                 (not (so-far candidate-canonical)))
                            (assoc candidate-canonical candidate))))

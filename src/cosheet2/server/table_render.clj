@@ -21,7 +21,6 @@
                                 hierarchy-node-next-level
                                 hierarchy-nodes-extent
                                 hierarchy-by-labels
-                                hierarchy-node-example-elements
                                 hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [ordered-ids-R ordered-entities]]
              [model-utils :refer [table-column-headers-id

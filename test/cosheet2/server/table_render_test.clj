@@ -716,8 +716,8 @@
               :hierarchy-R
               [{:cosheet2.server.hierarchy/hierarchy-node true
                 :leaves (any)
-                :properties {["single" {:label 1}] 1}
-                :cumulative-properties {["single" {:label 1}] 1}}
+                :properties {[:source "single" {:label 1}] 1}
+                :cumulative-properties {[:source "single" {:label 1}] 1}}
                (any) (any) (any) (any)]
               :render-dom render-table-header-DOM
               :get-action-data (default-AD)}]

@@ -3,7 +3,9 @@
                       [entity :refer [Entity StoredEntity
                                       mutable-entity? primitive?
                                       description->entity
-                                      content elements label->elements
+                                      orientation content elements
+                                      make-element-list 
+                                      label->elements
                                       label->content
                                       to-list
                                       in-different-store]]
@@ -221,17 +223,21 @@
             (if (seq? as-list)
               (let [{dropped-elements true
                      kept-elements false}
-                    (group-by is-fixed-term-special-form? (rest as-list))
-                    converted (map #(closest-template % env)
-                                   (cons (first as-list) kept-elements))
+                    (group-by is-fixed-term-special-form? (elements as-list))
+                    converted-content (closest-template (content as-list) env)
+                    converted-kept-elements (map #(closest-template % env)
+                                                 kept-elements)
                     exact-match (reduce combine-exact-matches
-                                        (concat
-                                         [exact-match
-                                          (not (some special-form?
-                                                     dropped-elements))]
-                                         (map second converted)))
-                    parts (map first converted)]
-                [(if (empty? (rest parts)) (first parts) parts)
+                                          (concat
+                                           [exact-match
+                                            (not (some special-form?
+                                                       dropped-elements))
+                                            (second converted-content)]
+                                           (map second
+                                                converted-kept-elements)))]
+                [(make-element-list (orientation as-list)
+                                    (first converted-content)
+                                    (map first converted-kept-elements))
                  exact-match])
               [as-list exact-match]))))))
 

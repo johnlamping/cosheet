@@ -109,7 +109,7 @@
   "Given
   * a multi-set,
   * a list of keys that, as a multiset, would be a superset of the multiset,
-  * a list of values, one for item in the list of keys.
+  * a list of values, one for each item in the list of keys.
   Return a list of values whose paired keys add up to the multi-set."
   [multiset keys values]
   (let [;; A map from key to a vector of values with that key.

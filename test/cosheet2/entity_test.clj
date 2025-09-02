@@ -83,8 +83,8 @@
       (is (thrown? java.lang.AssertionError
                    (label->content (id->entity id99 sz) "foo"))))
     (is (= (content (id->entity idc s)) 4))
-    (is (check (seq (to-list item99))
-               (as-set (seq list-99))))
+    (is (check (canonicalize (to-list item99))
+               (canonicalize list-99)))
     (is (= (to-list item1) item1))
     (is (= (to-list item-a-reversed) `((:target ~item99) ("foo" :label))))))
 
@@ -107,10 +107,10 @@
         item0 (id->entity id0 ms)
         item1 (id->entity id1 ms)
         item99 (id->entity id99 ms)
-        list-99 `(nil ("baz" "bletch")
-                      (4 "bar")
-                      (3 ("foo" :label))
-                      :generic)
+        list-99 `[:object ("baz" "bletch")
+                          (4 "bar")
+                          (3 ("foo" :label))
+                          :generic]
         item-b (id->entity idb ms)
         item-a-reversed (id->entity ida ms :target)]
     (is (= (:item-id  item0) id0))

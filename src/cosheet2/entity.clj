@@ -57,13 +57,13 @@
 ;;; direction.
 
 ;;; Alternatively, in the common case when the orientation is :source,
-;;; the list form of an element may be
+;;; and provided the content is not a list, the list form of an element may be
 ;;;   (content element element ...)
 ;;; For example (5 "value" (3 "x") (4 "y")) describes an item with
 ;;; content 5, and three elements, ("value"), (3 "x") and (4 "y"). As
-;;; illustrated here, elements that have just a content, orientation
-;;; :source, and no items can have their parentheses dropped in the
-;;; list form.
+;;; illustrated here, elements that have a content that is not a list
+;;; and, orientation :source, and no elements can be represented by
+;;; themselves in list form.
 
 ;;; In list form, the content can be a list, as long as its first
 ;;; element isn't :source, :target, or :either.
@@ -78,10 +78,6 @@
 ;;; If it turns out that list forms of links are also necessary, they
 ;;; should be
 ;;;    [:link source target element element ...]
-
-;;; TODO: Add an id->element method, and replace most used of
-;;; description->entity with it. Maybe there should also be
-;;; id->entity.
 
 ;;; There are functions to get all elements of an entity, or just
 ;;; those elements with a specific label. For the entity
@@ -177,6 +173,19 @@
     (empty? (elements entity))
     (empty? (rest (elements entity)))))
 
+(defn make-element-list
+  "Make the list representation of the described entity."
+  [orientation content elements]
+  ;; We leave off the orientation if we can.
+  (let [needs-orientation (or (seq? content)
+                              (not= orientation :source))]
+    (if (and (empty? elements) (not needs-orientation))
+      content
+      (cons (if needs-orientation
+              (list orientation content)
+              content)
+            elements))))
+
 (defn content-transformed-immutable-to-list [content-transformer]
   "Internal function that takes a transformer on contents
   and returns a function that converts an immutable entity to a list,
@@ -196,16 +205,8 @@
                                  elements)]
         (if (= (entity-type entity) :object)
           (apply vector :object mapped-elements)
-          (let [content (content-transformer (content entity))
-                needs-orientation (or (seq? content)
-                                      (not= (orientation entity) :source))]
-            (if (and (empty? elements) (not needs-orientation))
-              content
-              (cons (if needs-orientation
-                      (list (orientation entity)
-                            content)
-                      content)
-                    mapped-elements))))))))
+          (let [content (content-transformer (content entity))]
+            (make-element-list (orientation entity) content mapped-elements)))))))
 
 (defn to-list [entity]
   "Return a list form of the entity. If a content is itself an entity,

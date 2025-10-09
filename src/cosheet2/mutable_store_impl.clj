@@ -194,10 +194,23 @@
       state
       (let [state (assoc state :value after-store)
             equivalent (equivalent-undo-point? after-store)]
-        (if (empty? modified-ids)
+        (cond
+          (empty? modified-ids)
+          ;; Nothing changed
           state
+          
+          (and equivalent (empty? history))
+          ;; We have no history, and are equivalent to the only
+          ;; previous store. Forget that store, as we will never want
+          ;; to go back to it, and mark the new store as not
+          ;; equivalent to the previous store, as there is no longer a
+          ;; previous store for it to be equivalent to.
+          (assoc state :value (update-equivalent-undo-point after-store false))
+          
+          :else    
           (let [after-history
                 (if equivalent
+                  ;; To get to this point, we must have a history. 
                   (if (equivalent-undo-point? before-store)
                     ;; The after store and the before store are both
                     ;; equivalent to the top one in the history, so we
@@ -217,23 +230,22 @@
                     ;; store, making it available for a later redo.
                     (cons [modified-ids before-store] history))
                   (if (equivalent-undo-point? before-store)
-                    (if (empty? history)
-                      ;; Don't push an equivalent undo point onto an
-                      ;; empty history. (This case shouldn't even happen.)
-                      history
-                      (let [[[top-modified top-store] & remaining-history]
-                            history]
-                        (if (equivalent-undo-point? top-store)
-                          ;; Our before store is equivalent to the top of
-                          ;; the history, and that store is equivalent to
-                          ;; the store before that (which must mean it got
-                          ;; there following an undo). Rather than push,
-                          ;; replace the top of the history with our before
-                          ;; store.
-                          (cons [(union-seqs top-modified modified-ids)
-                                 before-store]
-                                remaining-history)
-                          (cons [modified-ids before-store] history))))
+                    (let [[[top-modified top-store] & remaining-history]
+                          history]
+                      ;; There should be a history for the before
+                      ;; store to be equivalent to.
+                      (assert (seq history))
+                      (if (equivalent-undo-point? top-store)
+                        ;; Our before store is equivalent to the top of
+                        ;; the history, and that store is equivalent to
+                        ;; the store before that (which must mean it got
+                        ;; there following an undo). Rather than push,
+                        ;; replace the top of the history with our before
+                        ;; store.
+                        (cons [(union-seqs top-modified modified-ids)
+                               before-store]
+                              remaining-history)
+                        (cons [modified-ids before-store] history)))
                     (cons [modified-ids before-store] history)))]
             (assoc state
                    :history after-history
@@ -288,7 +300,7 @@
   "Given our reporter's data, return the new state after an undo, and
   also return the modified ids."
   [state]
-  ;; Loop until we find a store that is not equivalent to its
+  ;; Step through until we find a store that is not equivalent to its
   ;; predecessor. We need to undo to the store before that.  (Even
   ;; though we try to avoid having several equivalent stores in the
   ;; history, that can happen if a new store is an equivalent store

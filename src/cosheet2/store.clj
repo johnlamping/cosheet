@@ -27,14 +27,14 @@
 ;;; never be a target of a link.
 
 ;;; A link's target can't change if it is another link. And a link's
-;;; target can never be changed to be a link. In other words, a link's
-;;; target can only be a link if the link was created that way. This
-;;; ensures that the target structure is always a DAG; there are no
-;;; circular references in chasing targets through links. Change
-;;; tracking relies on this, as it propagates change notifications
-;;; through targets to links. (It doesn't propagate changes through
-;;; objects, and there can be loops if targets are also chased through
-;;; objects.)
+;;; target can never be changed to become a link. In other words, a
+;;; link's target can only be a link if the link was created that
+;;; way. This ensures that the target structure is always a DAG; there
+;;; are no circular references in chasing targets through
+;;; links. Change tracking relies on this, as it propagates change
+;;; notifications through targets to links. (It doesn't propagate
+;;; changes through objects, and there can be loops if targets are
+;;; also chased through objects.)
 
 ;;; Objects are not saved in the store, as such. All that is known
 ;;; about objects comes from the links that link to them.

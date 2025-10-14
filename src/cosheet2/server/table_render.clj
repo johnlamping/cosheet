@@ -4,7 +4,7 @@
                       [store :refer [id->target target-label->ids]]
                       [reporter :refer [universal-category]]
                       [entity :refer [content elements label->elements
-                                      description->entity
+                                      id->entity
                                       id->updating-entity-R
                                       label? label->element]]
                       [query :refer [matching-elements matching-items
@@ -59,7 +59,7 @@
   [specification containing-action-data action immutable-store]
   (let [column-headers-id (table-column-headers-id
                            (:table-id containing-action-data) immutable-store)
-        column-headers (description->entity column-headers-id immutable-store)
+        column-headers (id->entity column-headers-id immutable-store)
         columns (semantic-elements column-headers)
         last-column-id (:item-id (last (ordered-entities columns))) 
         ;; Add the column header for the new column to the store.
@@ -70,7 +70,7 @@
          {:subject-ids [last-column-id]}
          action immutable-store)
         new-column-id (first subject-ids)
-        template (semantic-to-list (description->entity new-column-id store))]
+        template (semantic-to-list (id->entity new-column-id store))]
     (get-virtual-action-data
      {:template template} containing-action-data action store)))
 
@@ -83,7 +83,7 @@
   [specification containing-action-data action immutable-store]
   (let [row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
-        row-condition (description->entity row-condition-id immutable-store)
+        row-condition (id->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
@@ -102,7 +102,7 @@
   (let [id (or item-id relative-id)
         row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
-        row-condition (description->entity row-condition-id immutable-store)
+        row-condition (id->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)
         stack-ids (concat (when (= (count column-ids) 1)
@@ -126,7 +126,7 @@
    containing-action-data action immutable-store]
   (let [row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
-        row-condition (description->entity row-condition-id immutable-store)
+        row-condition (id->entity row-condition-id immutable-store)
         condition-elements (semantic-elements row-condition)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data

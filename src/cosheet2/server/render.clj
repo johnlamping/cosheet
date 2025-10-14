@@ -3,7 +3,7 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid-link?]]
                       [entity :refer [container content label->elements
-                                      label->element description->entity]]
+                                      label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
@@ -356,7 +356,7 @@
   (defn batch-editing-selector-items [store session-temporary-id client-state]
     (expr-let [batch-editing (state-map-get client-state :batch-editing)]
       (when batch-editing
-        (let [temporary-item (description->entity session-temporary-id store)]
+        (let [temporary-item (id->entity session-temporary-id store)]
           (expr-let [selector-items (label->elements
                                      temporary-item :batch-selector)
                      row-selector (expr first
@@ -379,7 +379,7 @@
   ;; The batch edit ids never change, so we can pick them out of the
   ;; current store.
   (let [immutable-store (current-value store)
-        temporary-item (description->entity temporary-id immutable-store)
+        temporary-item (id->entity temporary-id immutable-store)
         query-item (label->element temporary-item :batch-query)
         stack-item (label->element temporary-item :batch-stack)]
     (make-component {:relative-id :batch-edit
@@ -400,7 +400,7 @@
       (batch-editing-component store temporary-id)
       (when id
         (expr-let [immutable-store (category-change [id] store)]
-          (let [immutable-item (description->entity id immutable-store)
+          (let [immutable-item (id->entity id immutable-store)
                 is-tab (seq (matching-elements :tab immutable-item))]
             [:div {}
              (if is-tab
@@ -479,7 +479,7 @@
                                                    referent immutable-store)))
                                          (first-tab-R immutable-store))))]
           (if immutable-item
-            (let [item (description->entity (:item-id immutable-item) store)
+            (let [item (id->entity (:item-id immutable-item) store)
                   inherited (cond-> starting-inherited
                               subject-referent
                               (assoc :subject-referent subject-referent))]

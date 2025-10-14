@@ -1,7 +1,7 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [is-item-id?]]
-                      [entity :refer [label? description->entity
+                      [entity :refer [label? id->entity
                                       id->updating-entity-R
                                       content label? primitive?]]
                       [query :refer [matching-elements]]
@@ -613,11 +613,11 @@
   (println "Generating DOM for" (simplify-for-print relative-id))
   (assert (:width specification)
           [specification
-           (semantic-to-list (description->entity relative-id store))])
+           (semantic-to-list (id->entity relative-id store))])
   (expr-let [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
     (let [elements (remove
-                    (set (map #(description->entity % (:store entity))
+                    (set (map #(id->entity % (:store entity))
                               excluded-element-ids))
                     (semantic-elements entity))
           [labels non-labels] (separate-by label? elements)]

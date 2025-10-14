@@ -1,6 +1,6 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
-                      [entity :refer [description->entity updating-immutable
+                      [entity :refer [id->entity updating-immutable
                                       elements to-list label? label->elements
                                       container]]
                       [query :refer [matching-elements matching-items
@@ -43,7 +43,7 @@
 
 (defn get-batch-count-rendering-data
   [{:keys [query-id]} mutable-store]
-  (let [mutable-query-entity (description->entity query-id mutable-store)
+  (let [mutable-query-entity (id->entity query-id mutable-store)
         query-R (updating-immutable mutable-query-entity)] 
     [[(match-count-R query-R :top-level mutable-store)
       [universal-category]]
@@ -69,7 +69,7 @@
   [{:keys [query-id] :as specification} store]
   (->
    (labels-and-elements-DOM
-    (semantic-elements (description->entity query-id store))
+    (semantic-elements (id->entity query-id store))
     nil false false :horizontal
     (-> (select-keys specification [:query-id :stack-id])
         (assoc :template 'anything
@@ -93,8 +93,8 @@
 ;;; and for tables.
 (defn batch-edit-matching-rows
   [{:keys [query-id stack-id do-not-match-query]} store]
-  (let [query-entity (description->entity query-id store)
-        stack-entity (description->entity stack-id store)
+  (let [query-entity (id->entity query-id store)
+        stack-entity (id->entity stack-id store)
         query (pattern-to-fixed-term (semantic-to-list query-entity))
         row-query (add-elements-to-entity-list query [:row-condition])
         matching-table-conditions (matching-items row-query store)]
@@ -112,13 +112,13 @@
   [{:keys [item-id relative-id excluding-ids stack-id]
     :as specification} ; Also uses query-id, do-not-match-query.
    containing-action-data action store]
-  (let [stack-entity (description->entity stack-id store)
+  (let [stack-entity (id->entity stack-id store)
         selecting-query (-> (or item-id relative-id)
-                            (description->entity store)
+                            (id->entity store)
                             semantic-to-list
                             pattern-to-fixed-term)
         excluding-queries (map #(-> %
-                                    (description->entity store)
+                                    (id->entity store)
                                     semantic-to-list
                                     pattern-to-fixed-term)
                                excluding-ids)
@@ -207,10 +207,10 @@
   ;; for that item.
   (let [specification {:query-id query-id
                        :stack-id stack-id}
-        query-entity (description->entity query-id store)
+        query-entity (id->entity query-id store)
         query-elements (ordered-entities (semantic-elements query-entity))
         [query-labels query-non-labels] (separate-by label? query-elements)
-        stack-entity (description->entity stack-id store)
+        stack-entity (id->entity stack-id store)
         stack-elements (ordered-entities (semantic-elements stack-entity))
         [stack-labels stack-non-labels] (separate-by label? stack-elements)
         ;; TODO: If there are no labels, add a virtual one,

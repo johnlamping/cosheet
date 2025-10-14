@@ -1,6 +1,5 @@
 (ns cosheet2.server.tabs-render
-  (:require (cosheet2 [entity :refer [description->entity
-                                      id->updating-entity-R
+  (:require (cosheet2 [entity :refer [id->updating-entity-R
                                       label->elements content elements]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes

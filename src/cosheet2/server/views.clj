@@ -7,8 +7,7 @@
      [store :refer [current-store data-to-store store-reset!]]
      store-impl
      mutable-store-impl
-     [entity :refer [description->entity in-different-store
-                     content label->elements]]
+     [entity :refer [in-different-store content label->elements]]
      entity-impl
      [query :refer [matching-elements]]
      [debug :refer [simplify-for-print]]

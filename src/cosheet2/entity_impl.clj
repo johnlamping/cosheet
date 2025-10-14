@@ -26,18 +26,17 @@
   StoredEntity
 
   (container [this]
-    (if (= orientation :target)
-      (when-let [container-id (id->source store item-id)]
-        (description->entity container-id store))
-      (when-let [container-id (id->target store item-id)]
-        (description->entity container-id store))))
-
+    (when (not (is-object-id? item-id))
+      (if (= orientation :target)
+        (description->entity (id->source store item-id) store)
+        (description->entity (id->target store item-id) store))))
+  
   (in-different-store [this store-or-entity]
-    (id->entity (:item-id this)
+    (id->entity item-id
                 (if (satisfies? Store store-or-entity)
                   store-or-entity
                   (:store store-or-entity))
-                (:orientation this)))
+                orientation))
   
   Entity
 
@@ -46,16 +45,17 @@
   (primitive? [this] false)
 
   (entity-type [this]
-    (if (is-object-id? (:item-id this))
+    (if (is-object-id? item-id)
       :object
-      (if (:orientation this)
+      (if orientation
         :element
         :link)))
 
   (content [this]
-    (if (= orientation :target)
-      (description->entity (id->target store item-id) store)
-      (description->entity (id->source store item-id) store)))
+    (when (not (is-object-id? item-id))
+      (if (= orientation :target)
+        (description->entity (id->target store item-id) store)
+        (description->entity (id->source store item-id) store))))
 
   (elements [this]
     (seq (for [element-id (target->ids store item-id)]
@@ -89,20 +89,21 @@
   StoredEntity
 
   (container [this]
-    (if (= orientation :target)
-      (expr-let [container-id (id->source store item-id)]
-        (when container-id
-          (description->entity container-id store)))
-      (expr-let [container-id (id->target store item-id)]
-        (when container-id
-          (description->entity container-id store)))))
+    (when (not (is-object-id? item-id))
+      (if (= orientation :target)
+        (expr-let [container-id (id->source store item-id)]
+          (when container-id
+            (description->entity container-id store)))
+        (expr-let [container-id (id->target store item-id)]
+          (when container-id
+            (description->entity container-id store))))))
 
   (in-different-store [this store-or-entity]
-    (id->entity (:item-id this)
+    (id->entity item-id 
                 (if (satisfies? Store store-or-entity)
                   store-or-entity
                   (:store store-or-entity))
-                (:orientation this)))
+                orientation))
 
   Entity
 
@@ -111,18 +112,19 @@
   (primitive? [this?] false)
 
   (entity-type [this]
-    (if (is-object-id? (:item-id this))
+    (if (is-object-id? item-id)
       :object
-      (if (:orientation this)
+      (if orientation
         :element
         :link)))
 
   (content [this]
-    (if (= orientation :target)
-      (expr-let [content (id->target store item-id)]
-        (description->entity content store))
-      (expr-let [content (id->source store item-id)]
-        (description->entity content store))))
+    (when (not (is-object-id? item-id))
+      (if (= orientation :target)
+        (expr-let [content (id->target store item-id)]
+          (description->entity content store))
+        (expr-let [content (id->source store item-id)]
+          (description->entity content store)))))
 
   (elements [this]
     (expr-let [element-ids (target->ids store item-id)]
@@ -348,7 +350,3 @@
   nil
   (description->entity [this store] nil) ;; For convenience in null punning
   )
-
-
-
-

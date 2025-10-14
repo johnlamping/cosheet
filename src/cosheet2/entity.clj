@@ -68,7 +68,7 @@
 ;;; In list form, the content can be a list, as long as its first
 ;;; element isn't :source, :target, or :either.
 
-;;; When a objects is used in a query as a generic object, there also
+;;; When an object is used in a query as a generic object, there also
 ;;; needs to be a list form for it. Its list form is
 ;;;    [:object element element ...]
 ;;; The code that converts items in the store to their query forms
@@ -90,6 +90,8 @@
   (id->entity-m [this store orientation]
     "Return an entity corresponding to an item id."))
 
+;;; TODO: This needs to be able to take an orientation in the most
+;;; general case. (Or is this deprecated now?)
 (defprotocol Description
   "A description of an item or primitive."
   (description->entity [this store]
@@ -209,10 +211,10 @@
             (make-element-list (orientation entity) content mapped-elements)))))))
 
 (defn to-list [entity]
-  "Return a list form of the entity. If a content is itself an entity,
-  include the entity in the list, rather than its content.
-  That way, the value of to-list will only change if the entity or something
-  that pertains to it changes."
+  "Return a list form of the entity. If a content is a non-generic object,
+  include the object in the list, rather than its list form.
+  That way, the value of to-list will only change if the entity or one
+  of its elements that pertains to it changes."
   (if (mutable-entity? entity)
     ;; We want to run with updating-immutable, but if a content is an
     ;; entity, we want the resulting entity to reference the mutable

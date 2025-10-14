@@ -9,7 +9,7 @@
                                         new-reporter invalid
                                         validity-category]]
                       [store :refer (mutable-store?)]
-                      [entity :refer [description->entity in-different-store
+                      [entity :refer [id->entity in-different-store
                                       to-list]]
                       entity-impl
                       [query :refer [matching-items matching-extensions]]
@@ -57,7 +57,7 @@
                ;; we can do an update, rather than a whole re-query.
                (reduce (fn [[new-value changed-ids] id]
                          (let [immutable-entity
-                               (description->entity id immutable)
+                               (id->entity id immutable)
                                matches
                                (not-empty (matching-extensions
                                            term immutable-entity))

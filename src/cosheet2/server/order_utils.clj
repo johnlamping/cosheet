@@ -11,7 +11,7 @@
     [store :refer [update-source add-link declare-temporary-id
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
-                    description->entity]]
+                    id->entity]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
     [expression :refer [expr-let expr-seq]]
@@ -60,7 +60,7 @@
   "Return the ids in the correct order, based on their order data."
   [ids immutable-store]
   (let [order-info (map #(-> %
-                             (description->entity immutable-store)
+                             (id->entity immutable-store)
                              (label->content :order))
                         ids)]
     (sort-by-order ids order-info)))

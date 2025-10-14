@@ -53,7 +53,7 @@
 
 ;;; A link or object, plus all its qualifiers, and their qualifiers,
 ;;; etc, determines an entity. And the Entity code knows how to use a
-;;; store to satisfy the Entity APIs. The method description->entity
+;;; store to satisfy the Entity APIs. The method id->entity
 ;;; will convert an item's id and a store into the entity it
 ;;; represents. The source of links becomes the content of entities,
 ;;; In the other direction, there are functions to put the list form

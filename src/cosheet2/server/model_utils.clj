@@ -7,7 +7,7 @@
                       [canonical :refer [canonicalize]]
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
-                      [entity :refer [primitive? label? description->entity
+                      [entity :refer [primitive? label? id->entity
                                       content elements content->elements
                                       label->elements label->element
                                       container]]
@@ -103,7 +103,7 @@
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
   [immutable-store id]
-  (let [item (description->entity id immutable-store)]
+  (let [item (id->entity id immutable-store)]
     (reduce remove-entity-by-id
             immutable-store
             (map :item-id (semantic-elements item)))))
@@ -273,11 +273,11 @@
    a selector. Return the updated store and the id of the new element."
   [template target-id adjacent-id position use-bigger store]
   (let [template (if (and target-id
-                          (selector? (description->entity target-id store)))
+                          (selector? (id->entity target-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
     (update-add-entity-adjacent-to store target-id template
-                                   (description->entity adjacent-id store)
+                                   (id->entity adjacent-id store)
                                    position use-bigger)))
 
 (defn create-possible-selector-elements
@@ -416,7 +416,7 @@
                          store)]
         (first (update-add-entity-adjacent-to
                 store tabs-holder-id tab                   
-                (description->entity orderable-id store) :after false)))
+                (id->entity orderable-id store) :after false)))
       store)))
 
 ;;; Consistency checks
@@ -445,7 +445,7 @@
    problems, otherwise the old store."
   [old-store new-store id]
   (if (and id
-           (let [revised-entity (description->entity id new-store)]
+           (let [revised-entity (id->entity id new-store)]
              (or (column-header-problem revised-entity)
                  (column-header-problem (container revised-entity)))))
     old-store

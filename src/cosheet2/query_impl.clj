@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [Entity StoredEntity
                                       mutable-entity? primitive?
-                                      description->entity
+                                      id->entity
                                       orientation content elements
                                       make-element-list 
                                       label->elements
@@ -397,7 +397,7 @@
    #(not (empty? (matching-extensions term {} %)))
    ;; TODO: Make this use precise information.
    (let [[template precise] (closest-template term {})]
-     (map #(description->entity % store)
+     (map #(id->entity % store)
           (first (candidate-matching-ids store template))))))
 
 (defmethod matching-items-m true [term store]
@@ -414,7 +414,7 @@
             ;; TODO: Make this use precise information.
             candidate-ids (first (candidate-matching-ids store template))
             matches (map #(variable-matches
-                           var env (description->entity % store))
+                           var env (id->entity % store))
                      candidate-ids)]
         (distinct-concat matches))
       (when (seq (query-matches value env store)) [env]))))
@@ -475,7 +475,7 @@
 (defn item-matches-in-store [item env store]
   (let [[template template-exact] (closest-template item env)
         [candidate-ids precise] (candidate-matching-ids store template)
-        candidates (map #(description->entity % store) candidate-ids)]
+        candidates (map #(id->entity % store) candidate-ids)]
     (if (and template-exact precise)
       (when (seq candidates)
         [env])

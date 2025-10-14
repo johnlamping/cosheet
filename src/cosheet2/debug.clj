@@ -54,7 +54,7 @@
 
 (defn store-as-list [store]
   (map
-   #(entity/to-list (entity/description->entity % store))
+   #(entity/to-list (entity/id->entity % store))
    (filter #(nil? (store/id->target store %))
            (first (store/candidate-matching-ids store nil)))))
 

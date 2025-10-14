@@ -19,7 +19,7 @@
                    Store]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
-    [entity :refer [StoredEntity description->entity to-list label->element
+    [entity :refer [StoredEntity id->entity to-list label->element
                     content elements label->elements label->content]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
@@ -105,7 +105,7 @@
 (defn update-set-source
   [store id from to]
   (let [to (if (and (= to "")
-                    (selector? (description->entity id store)))
+                    (selector? (id->entity id store)))
              'anything
              to)
         modified (update-set-source-if-matching store id from to)]
@@ -168,7 +168,7 @@
   (println "adding row")
   (let [{:keys [row-id table-id column-ids client-id]}  arguments]
     (when (and row-id table-id)
-      (let [table-entity (description->entity table-id store)
+      (let [table-entity (id->entity table-id store)
             row-template (table-row-template table-entity)
             row-parent-id (id->target store row-id)
             [ids store] (create-possible-selector-elements
@@ -232,7 +232,7 @@
   (let [{:keys [column-ids table-id]}  arguments]
     (when (and column-ids table-id)
       (let [column-headers-id (table-column-headers-id table-id store)
-            column-headers-entity (description->entity column-headers-id store)
+            column-headers-entity (id->entity column-headers-id store)
             columns (semantic-elements column-headers-entity)]
         (when (and (> (count columns) 1) ; Don't remove the last column.
                    (= (count column-ids) 1)) ; Don't remove multiple columns.
@@ -272,16 +272,16 @@
   [id template-id store]
   (when id
     (let [query (exemplar-to-fixed-term
-                 (description->entity template-id store))]
+                 (id->entity template-id store))]
       (map :item-id
-       (matching-elements query (description->entity id store))))))
+       (matching-elements query (id->entity id store))))))
 
 (defn do-batch-edit
   [store {:keys [query-ids stack-ids
                  selected-index selection-sequence must-show-label
                  session-state]}]
   (let [temporary-id (:session-temporary-id session-state)
-        temporary-item (description->entity temporary-id store)]
+        temporary-item (id->entity temporary-id store)]
     (if query-ids
       (let [[new-ids [store _]]
             ;; For each of query-id and stack-id, replace the
@@ -293,7 +293,7 @@
                (let [item (label->element temporary-item item-label)
                      target-id (:item-id item)
                      new-lists (map #(ordered-semantic-to-list
-                                      (description->entity % store))
+                                      (id->entity % store))
                                     ids)
                      store (remove-semantic-elements store (:item-id item))]
                  (thread-map

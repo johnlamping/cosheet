@@ -6,7 +6,7 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [is-item-id? id->target id->source]]
                       [entity :refer [elements content label->elements
-                                      description->entity]]
+                                      id->entity]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
@@ -172,10 +172,10 @@
   (if (= (id->target immutable-store exemplar-id) subject-id)
     ;; The exemplar id is an element of the given subject. Return it.
     exemplar-id
-    (let [template (-> (description->entity exemplar-id immutable-store)
+    (let [template (-> (id->entity exemplar-id immutable-store)
                        semantic-to-list
                        pattern-to-fixed-term)
-          subject (description->entity subject-id immutable-store)]
+          subject (id->entity subject-id immutable-store)]
       (:item-id (best-match template (matching-elements template subject))))))
 
 (defn get-item-or-exemplars-for-id
@@ -370,7 +370,7 @@
     targets
     (map
      (fn [target]
-       (let [target-entity (description->entity target immutable-store)
+       (let [target-entity (id->entity target immutable-store)
              adjacent-elements (matching-elements
                                 adjacent-query target-entity)
              sorted (sort-by

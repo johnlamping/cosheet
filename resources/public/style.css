@@ -869,10 +869,6 @@ body {
     width: 35px;
 }
 
-.virtual-column.selected {
-    width: 200px;
-}
-
 /* --- toolbar --- */
 
 .toolbar {
@@ -1023,6 +1019,7 @@ body {
     &.editing {
 	display: block;
 	width: max(200px, calc(anchor-size(width) * 1.5));
+	height: calc(anchor-size(height) + 15px);
 	position-anchor: --selected;
 	position-area: span-right span-bottom;
 	position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
@@ -1033,8 +1030,8 @@ body {
     /* display: none; */
     display: block;
     width: 100%;
+    height: 100%;
     font-size: 100%;
-    height: auto;
     resize: none;
     border-radius: 5px;
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);

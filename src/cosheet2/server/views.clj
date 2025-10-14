@@ -223,7 +223,7 @@
            [:a.link {:href (str servlet-path "/")} "Open"]]
           [:div#app "root"] ;; Client will create a component with id "root".
           [:div#select_holder.select_holder
-           [:input#edit_input {"type" "text"}]]
+           [:textarea#edit_input {"type" "text"}]]
           [:script "cosheet2.client.run();"]]))
      (html5
      [:head

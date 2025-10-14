@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2
              [store :refer [new-element-store]]
-             [entity :as entity  :refer [to-list description->entity]]
+             [entity :as entity  :refer [to-list id->entity]]
              [canonical :refer [canonicalize]]
              [store-utils :refer [add-entity]]
              [debug :refer [simplify-for-print]]
@@ -48,10 +48,10 @@
         [s2 item-a1-id] (add-entity s1 joe-id '(anything 1))
         [s3 item-b3-id] (add-entity s2 joe-id '("" 3))
         [store item-21-id] (add-entity s3 joe-id '(2 1))
-        joe (description->entity joe-id store)
-        item-a1 (description->entity item-a1-id store)
-        item-b3 (description->entity item-b3-id store)
-        item-21 (description->entity item-21-id store)]
+        joe (id->entity joe-id store)
+        item-a1 (id->entity item-a1-id store)
+        item-b3 (id->entity item-b3-id store)
+        item-21 (id->entity item-21-id store)]
     (let [competing (competing-siblings item-a1)]
       (is (check (map entity/to-list competing)
                  (as-set ['(anything 1) '(2 1) '(2 3) '("" 3)])))

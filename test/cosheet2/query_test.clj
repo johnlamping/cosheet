@@ -4,7 +4,7 @@
             (cosheet2 [store :refer [new-element-store make-item-id]]
                       store-impl
                       [store-utils :refer [add-entity]]
-                      [entity :refer [to-list description->entity content
+                      [entity :refer [to-list id->entity content
                                       elements label->elements mutable-entity?
                                       primitive?]]
                       entity-impl
@@ -96,7 +96,7 @@
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) false]))
-  (let [object (description->entity
+  (let [object (id->entity
                 (make-item-id "test")
                 (new-element-store))]
     (is (= (closest-template `(~(variable "foo" 5)
@@ -158,16 +158,16 @@
   (let [s (new-element-store)
         [s1 id1] (add-entity s nil '(1 2))]
     (is (empty? (matching-extensions '(1 2 2) {:a :b}
-                                     (description->entity id1 s1)))))
+                                     (id->entity id1 s1)))))
   (let [s (new-element-store)
         [s1 id1] (add-entity s nil '(1 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
-                                (description->entity id1 s1))
+                                (id->entity id1 s1))
            [{:a :b}])))
   (let [s (new-element-store)
         [s1 id1] (add-entity s nil '(1 2 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
-                                (description->entity id1 s1))
+                                (id->entity id1 s1))
            [{:a :b}])))
   ;; Variables
   (is (= (matching-extensions (variable "foo") {:a :b}
@@ -312,18 +312,18 @@
         [s4 id4] (add-entity s3 ic '(2 ("C" :label) ("C" :label)))]
     (comment
       (let [matches (matching-elements '(nil ("A"))
-                                       (description->entity ia s4))]
+                                       (id->entity ia s4))]
         (is (= (map #(to-list %) matches)
                ['(1 ("a" 3))])))
       (let [matches (matching-elements nil
-                                       (description->entity ia s4))]
+                                       (id->entity ia s4))]
         (is (= (set (map #(to-list %) matches))
                (set ['(1 ("a" 3)) '(3 (4 5))])))))
     ;; Test a complex term that can match the element more than one
     ;; way.  (There had been a bug where this would return the same
     ;; element multiple times.)
     (let [matches (matching-elements '(nil ("C" :label))
-                                     (description->entity ic s4))]
+                                     (id->entity ic s4))]
       (is (= (map #(to-list %) matches)
              ['(2 ("C" :label) ("C" :label))])))))
 

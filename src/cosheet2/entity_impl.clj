@@ -3,7 +3,7 @@
                                      target->ids
                                      target-source->ids
                                      id->source id->target
-                                     is-object-id?
+                                     is-item-id? is-object-id?
                                      id->marked-as-type?
                                      mutable-store?
                                      current-store
@@ -14,6 +14,18 @@
                       [entity :refer :all]
                       [expression :refer [expr-seq expr-let expr
                                           category-change]])))
+
+(defn endpoint->entity
+  "Given any value of an endpoint, the store, and an optional
+  orientation, return the described entity."
+  ([value store]
+   (if (is-object-id? value)
+     (endpoint->entity value store nil)
+     (endpoint->entity value store :source)))
+  ([value store orientation]
+   (if (is-item-id? value)
+     (id->entity value store orientation)
+     value)))
 
 (defrecord
     ^{:doc "An entity whose elements are described by a store."}
@@ -28,8 +40,8 @@
   (container [this]
     (when (not (is-object-id? item-id))
       (if (= orientation :target)
-        (description->entity (id->source store item-id) store)
-        (description->entity (id->target store item-id) store))))
+        (endpoint->entity (id->source store item-id) store)
+        (endpoint->entity (id->target store item-id) store))))
   
   (in-different-store [this store-or-entity]
     (id->entity item-id
@@ -54,8 +66,8 @@
   (content [this]
     (when (not (is-object-id? item-id))
       (if (= orientation :target)
-        (description->entity (id->target store item-id) store)
-        (description->entity (id->source store item-id) store))))
+        (endpoint->entity (id->target store item-id) store)
+        (endpoint->entity (id->source store item-id) store))))
 
   (elements [this]
     (seq (for [element-id (target->ids store item-id)]
@@ -93,10 +105,10 @@
       (if (= orientation :target)
         (expr-let [container-id (id->source store item-id)]
           (when container-id
-            (description->entity container-id store)))
+            (endpoint->entity container-id store)))
         (expr-let [container-id (id->target store item-id)]
           (when container-id
-            (description->entity container-id store))))))
+            (endpoint->entity container-id store))))))
 
   (in-different-store [this store-or-entity]
     (id->entity item-id 
@@ -122,9 +134,9 @@
     (when (not (is-object-id? item-id))
       (if (= orientation :target)
         (expr-let [content (id->target store item-id)]
-          (description->entity content store))
+          (endpoint->entity content store))
         (expr-let [content (id->source store item-id)]
-          (description->entity content store)))))
+          (endpoint->entity content store)))))
 
   (elements [this]
     (expr-let [element-ids (target->ids store item-id)]
@@ -328,25 +340,3 @@
       (->MutableStoredEntity store this orientation)
       (->ImmutableStoredEntity store this orientation))))
 
-(extend-protocol Description
-  cosheet2.store.ItemId
-  (description->entity [this store] (id->entity this store))
-  clojure.lang.Keyword
-  (description->entity [this store] this)
-  clojure.lang.Symbol
-  (description->entity [this store] this)
-  java.lang.String
-  (description->entity [this store] this)
-  java.lang.Number
-  (description->entity [this store] this)
-  java.lang.Boolean
-  (description->entity [this store] this)
-  clojure.lang.PersistentVector
-  (description->entity [this store] this)
-  cosheet2.orderable.Orderable
-  (description->entity [this store] this)
-  clojure.lang.ISeq
-  (description->entity [this store] this)
-  nil
-  (description->entity [this store] nil) ;; For convenience in null punning
-  )

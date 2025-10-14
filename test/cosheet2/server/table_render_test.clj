@@ -7,7 +7,7 @@
              store-impl
              [store-utils :refer [add-entity]]
              [query :refer [matching-items matching-elements not-query]]
-             [entity :as entity  :refer [description->entity
+             [entity :as entity  :refer [id->entity
                                          label->elements elements to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [calculator :refer [new-calculator-data computation-value]]
@@ -102,7 +102,7 @@
               nil store)
         new-store (:store data)
         new-id (first (:subject-ids data))]
-    (is (= (semantic-to-list (description->entity new-id new-store))
+    (is (= (semantic-to-list (id->entity new-id new-store))
            '("" (" A" :label))))))
 
 (deftest table-DOM-test
@@ -169,13 +169,13 @@
         [s2 jane-id] (add-entity s1 nil jane-list)
         [s3 test-id] (add-entity s2 nil test-list)
         [store table-id] (add-entity s3 nil table-list)
-        joe (description->entity joe-id store)
+        joe (id->entity joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))
         joe-joe-id (:item-id joe-joe)
         joe-joseph (first (matching-elements "Joseph" joe))
         joe-joseph-id (:item-id joe-joseph)
-        table (description->entity table-id store)
+        table (id->entity table-id store)
         row-condition (entity/label->element table :row-condition)
         row-condition-id (:item-id row-condition)
         rc1 (first (matching-elements `(nil ~o8) row-condition))

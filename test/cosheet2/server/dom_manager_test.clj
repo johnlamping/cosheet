@@ -8,7 +8,6 @@
              orderable
              [utils :refer [dissoc-in with-latest-value swap-control-return!]]
              [test-utils :refer [check any as-set]]
-             [entity :as entity :refer [to-list description->entity]]
              [reporter :as reporter :refer [new-reporter set-value!
                                             reporter-data reporter-value
                                             reporter-value-when-valid

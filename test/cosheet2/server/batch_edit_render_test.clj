@@ -12,8 +12,8 @@
              [store-utils :refer [add-entity]]
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
-             [entity :as entity  :refer [description->entity
-                                         label->elements elements to-list]]
+             [entity :as entity  :refer [id->entity
+                                         label->elements elements]]
              [expression :refer [expr-let]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -29,7 +29,6 @@
                                   parallel-items-get-action-data
                                   get-item-or-exemplar-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
-             [model-utils :refer [semantic-to-list]]
              [batch-edit-render :refer :all])
              ; :reload
             ))
@@ -137,7 +136,7 @@
                 "2 row matches.  1 table matches."]))))
 
 (deftest render-batch-query-DOM-test
-  (let [q2-entity (description->entity q2 s)
+  (let [q2-entity (id->entity q2 s)
         q2-2 (:item-id (first (matching-elements 2 q2-entity)))
         q2-c1-entity (first (matching-elements '(nil "c1") q2-entity))
         q2-c1 (:item-id q2-c1-entity)
@@ -179,7 +178,7 @@
                          :width 0.75}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test
-  (let [q1-entity (description->entity q1 s)
+  (let [q1-entity (id->entity q1 s)
         q1-element (first (matching-elements '(nil "c1") q1-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q1-element)
@@ -192,10 +191,10 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
   ;; But as a stack selector, we only require the '(nil "c1") to match.
-  (let [q2-entity (description->entity q2 s)
+  (let [q2-entity (id->entity q2 s)
         q2-element (first (matching-elements '(nil "c1") q2-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
@@ -210,10 +209,10 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
   ;; Test excluding ids. Neither of the rows should match, as their
   ;; (nil ("c1" :label)) elements are all have content 2
-  (let [q2-entity (description->entity q2 s)
+  (let [q2-entity (id->entity q2 s)
         q2-element (first (matching-elements '(nil "c1") q2-entity))
         q2-2 (first (matching-elements 2 q2-entity))
         action-data (get-batch-edit-stack-element-action-data
@@ -229,9 +228,9 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
   ;; Test a query that matches multiple elements in some rows.
-  (let [q3-entity (description->entity q3 s)
+  (let [q3-entity (id->entity q3 s)
         q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q3-element)
@@ -246,11 +245,11 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q3 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
+      (is (extended-by? '(nil (nil :label)) (id->entity id s))))))
 
 ;;; TODO: Test a query element that doesn't match the stack element.
 (deftest stack-DOM-test
-  (let [stk1-entity (description->entity stk1 s)
+  (let [stk1-entity (id->entity stk1 s)
         stk1-element (first (matching-elements '(nil "c1") stk1-entity))
         dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
     (is (check

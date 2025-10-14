@@ -4,7 +4,7 @@
             (cosheet2
              [store :refer :all]
              [store-utils :refer :all]
-             [entity :refer [to-list description->entity]]
+             [entity :refer [to-list id->entity]]
              entity-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
@@ -19,7 +19,7 @@
         [s2 element-id]
         (add-entity s1 id '("Fred" ("by" :label)))]
     (is (= (id->target s1 id)) (make-item-id "0"))
-    (is (= (to-list (description->entity element-id s2))
+    (is (= (to-list (id->entity element-id s2))
            '("Fred" ("by" :label))))))
 
 (deftest remove-entity-by-id-test
@@ -29,11 +29,11 @@
         [added-store2 e2]
         (add-entity added-store e1 '("Fred" ("by" :label)))
         removed-store (remove-entity-by-id added-store2 e2)]
-    (is (check (to-list (description->entity e1 added-store2))
+    (is (check (to-list (id->entity e1 added-store2))
                (as-set '("foo"
                          ("test" :label)
                          ("Fred" ("by" :label))))))
-    (is (= (to-list (description->entity e1 removed-store))
+    (is (= (to-list (id->entity e1 removed-store))
            '("foo" ("test" :label))))
     (is (= (assoc removed-store :next-number (:next-number added-store))
            added-store))))

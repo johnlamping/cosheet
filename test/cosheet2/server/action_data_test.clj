@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [orderable :as orderable]
-                      [entity :as entity  :refer [description->entity
+                      [entity :as entity  :refer [id->entity
                                                   elements to-list]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
@@ -81,16 +81,16 @@
 (def t4 (add-entity (first t3) nil age-condition-list))
 (def age-condition-id (second t4))
 (def store (first t4))
-(def joe (description->entity joe-id store))
+(def joe (id->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
 (def joe-age-tag (first (matching-elements "age" joe-age)))
-(def jane (description->entity jane-id store))
+(def jane (id->entity jane-id store))
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-female (first (matching-elements "female" jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
-(def dup (description->entity dup-id store))
+(def dup (id->entity dup-id store))
 (def dup-females (matching-elements "female" dup))
 (def dup-female-1 (first dup-females))
 (def dup-female-2 (second dup-females))
@@ -148,7 +148,7 @@
       (is (= (id->target store id) joe-id))
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
-      (is (= (semantic-to-list (description->entity id store))
+      (is (= (semantic-to-list (id->entity id store))
              ""))))
   ;; Try several initial targets, one a selector and one not, and a
   ;; vector as the template.
@@ -161,15 +161,15 @@
           {:keys [subject-ids store]} data
           [new-jane-id new-joe-id] subject-ids]
       (is (=  (id->target store (id->target store new-joe-id)) joe-id))
-      (is (check (semantic-to-list (description->entity new-joe-id store))
+      (is (check (semantic-to-list (id->entity new-joe-id store))
                  '(2 ("name" :label))))
-      (is (check (semantic-to-list (description->entity
+      (is (check (semantic-to-list (id->entity
                                     (id->target store new-joe-id) store))
                  '("" (2 ("name" :label)))))
       (is (= (id->target store (id->target store new-jane-id)) jane-id))
-      (is (check (semantic-to-list (description->entity new-jane-id store))
+      (is (check (semantic-to-list (id->entity new-jane-id store))
                  '(2 ("name" :label))))
-      (is (check (semantic-to-list (description->entity
+      (is (check (semantic-to-list (id->entity
                                     (id->target store new-jane-id) store))
                  '(anything (2 ("name" :label)))))))
   ;; Try :sibling true
@@ -188,7 +188,7 @@
              (:left (get-order (:item-id joe-age) original-store))))
       (is (< (:right (get-order id store))
              (:right (get-order (:item-id joe-age) original-store))))
-      (is (check (semantic-to-list (description->entity id store))
+      (is (check (semantic-to-list (id->entity id store))
                  ""))))
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
@@ -202,19 +202,19 @@
           {:keys [subject-ids store]} data
           [new-jane-id new-joe-id] subject-ids]
       (is (= (id->target store new-joe-id) joe-id))
-      (is (check (semantic-to-list (description->entity new-joe-id store))
+      (is (check (semantic-to-list (id->entity new-joe-id store))
                  '("" 2)))
       (is (check (map semantic-to-list
                       (semantic-elements
                        (order-recursively
-                        (description->entity joe-id store))))
+                        (id->entity joe-id store))))
                  '("male" "married"
                    ("" 2) (39 "age" ("doubtful" "confidence")) (45 "age"))))
       (is (= (id->target store new-jane-id) jane-id))
       (is (check (map semantic-to-list
                       (ordered-entities
                        (semantic-elements
-                        (description->entity jane-id store))))
+                        (id->entity jane-id store))))
                  '("female" (anything 2) (45 "age")))))))
 
 (deftest get-item-do-batch-edit-action-data-test

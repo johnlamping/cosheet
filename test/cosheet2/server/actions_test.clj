@@ -7,7 +7,7 @@
              [orderable :refer [initial split earlier?]]
              [map-state :refer [new-map-state map-state-get-current
                                 map-state-reset!]]
-             [entity :as entity :refer [description->entity to-list
+             [entity :as entity :refer [id->entity to-list
                                         content elements label->element
                                         label->elements label->content]]
              [calculator :refer [new-calculator-data compute]]
@@ -82,14 +82,14 @@
 (def headers-id (first (target-label->ids
                        store table-id :column-headers)))
 (def header-ids (map :item-id (semantic-elements
-                               (description->entity headers-id store))))       
-(def joe (description->entity joe-id store))
+                               (id->entity headers-id store))))       
+(def joe (id->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
 (def joe-age-tag (first (matching-elements "age" joe-age)))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
-(def jane (description->entity jane-id store))
+(def jane (id->entity jane-id store))
 (def jane-female (first (matching-elements "female" jane)))
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
@@ -152,7 +152,7 @@
                               (~'anything
                                ("name" :label (~o1 :order))
                                (~o1 :order))))
-        columns (description->entity columns-id store)
+        columns (id->entity columns-id store)
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         result (do-set-content store
@@ -171,8 +171,8 @@
                              :session-state session-state
                              :template '(anything 5)})
         new-store (:store result)
-        new-jane (description->entity jane-id new-store)
-        new-joe (description->entity joe-id new-store)]
+        new-jane (id->entity jane-id new-store)
+        new-joe (id->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
                (canonicalize
                 '("Joe" "male" "married"
@@ -197,8 +197,8 @@
                                               (:item-id jane-age)]
                                 :session-state session-state})
         new-store (:store result)
-        new-jane-age (description->entity (:item-id jane-age) new-store)
-        new-joe-age (description->entity (:item-id joe-age) new-store)]
+        new-jane-age (id->entity (:item-id jane-age) new-store)
+        new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
                (canonicalize '(45 ("age" :label) ""))))
     (is (check (entity->canonical-semantic new-jane-age)
@@ -217,8 +217,8 @@
                                               (:item-id jane-age)]
                                 :session-state session-state})
         new-store (:store result)
-        new-jane-age (description->entity (:item-id jane-age) new-store)
-        new-joe-age (description->entity (:item-id joe-age) new-store)]
+        new-jane-age (id->entity (:item-id jane-age) new-store)
+        new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
                (canonicalize '(45 ("age" :label) ("" :label)))))
     (is (check (entity->canonical-semantic new-jane-age)
@@ -234,8 +234,8 @@
   (let [new-store (do-delete store
                              {:subject-ids [(:item-id joe-age)
                                             (:item-id jane-age)]})
-        new-jane (description->entity jane-id new-store)
-        new-joe (description->entity joe-id new-store)]
+        new-jane (id->entity jane-id new-store)
+        new-joe (id->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
                (canonicalize
                 '("Joe" "male" "married"
@@ -249,7 +249,7 @@
                               (~'anything
                                ("name" :label (~o1 :order))
                                (~o1 :order))))
-        columns (description->entity columns-id store)
+        columns (id->entity columns-id store)
         column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         new-store (do-delete store
@@ -288,7 +288,7 @@
                                :client-id (relative-ids->client-id
                                            [table-id jane-id first-header-id])})
         [new-store client-data] (normalize-handler-response result store)
-        new-table-entity (description->entity table-id new-store)
+        new-table-entity (id->entity table-id new-store)
         new-headers-entity (first (label->elements new-table-entity
                                                    :column-headers))
         new-headers (semantic-elements new-headers-entity)]
@@ -313,7 +313,7 @@
            (- (count rows) 1)))))
 
 (deftest do-delete-column-test
-  (let [table-entity (description->entity table-id store)
+  (let [table-entity (id->entity table-id store)
         headers-entity (first (label->elements table-entity :column-headers))
         headers (semantic-elements headers-entity)
         first-header-id (:item-id (first headers))
@@ -322,7 +322,7 @@
                                   :table-id table-id
                                   :column-ids [first-header-id]})
         [new-store client-data] (normalize-handler-response result store)
-        new-table-entity (description->entity table-id new-store)
+        new-table-entity (id->entity table-id new-store)
         new-headers-entity (first (label->elements new-table-entity
                                                    :column-headers))
         new-headers (semantic-elements new-headers-entity)]
@@ -335,7 +335,7 @@
                                :table-id table-id
                                :column-ids [first-header-id second-header-id]})
           [new-store client-data] (normalize-handler-response result store)
-          new-headers-entity (description->entity headers-id new-store)
+          new-headers-entity (id->entity headers-id new-store)
           new-headers (semantic-elements new-headers-entity)]
       (is (= (count new-headers)
              (count headers))))))
@@ -348,7 +348,7 @@
                   :selected-index 0
                   :selection-sequence [(:item-id jane-age)]
                   :session-state session-state})
-        session-temporary (description->entity temporary-id (:store updated))
+        session-temporary (id->entity temporary-id (:store updated))
         query-item (first (label->elements session-temporary :batch-query))
         stack-item (first (label->elements session-temporary :batch-stack))]
     (is (check (canonicalize (semantic-to-list query-item))
@@ -373,7 +373,7 @@
                      {:query-ids [jane-id joe-id]
                       :stack-ids []
                       :session-state session-state})
-          session-temporary (description->entity temporary-id
+          session-temporary (id->entity temporary-id
                                                  (:store reupdated))
           query-item (label->element session-temporary :batch-query)
           stack-item (label->element session-temporary :batch-stack)]
@@ -397,7 +397,7 @@
       (let [rereupdated (do-batch-edit
                         (:store reupdated)
                         {:session-state session-state})
-            new-session-temporary (description->entity temporary-id
+            new-session-temporary (id->entity temporary-id
                                                    (:store reupdated))
             new-query-item (first (label->elements session-temporary
                                                    :batch-query))]
@@ -427,7 +427,7 @@
                    :target-key ["jane" "jane-age"]})
           new-store (:store result)]
       (is (check (item->canonical-semantic
-                  (to-list (description->entity (:item-id jane) new-store)))
+                  (to-list (id->entity (:item-id jane) new-store)))
                  (canonicalize '("Jane"
                                       "female"
                                       (45 ("age" :label))
@@ -445,7 +445,7 @@
                    :select-pattern ["jane" [:pattern]]
                    :target-key ["jane" "jane-age"]})]
       (is (check (item->canonical-semantic
-                  (to-list (description->entity (:item-id jane) (:store result))))
+                  (to-list (id->entity (:item-id jane) (:store result))))
                  (canonicalize '("Jane"
                                       "female"
                                       (45 ("age" :label))
@@ -495,12 +495,12 @@
             new-id (last (first select))]
         (is (= select [[:jane new-id] [[:jane]]]))
         (is (check (item->canonical-semantic
-                    (description->entity (:item-id jane) new-store))
+                    (id->entity (:item-id jane) new-store))
                    (canonicalize '("Jane" "female"
                                         (45 ("age" :label))
                                         anything))))
         (is (check (item->canonical-semantic
-                    (description->entity (:item-id joe) new-store))
+                    (id->entity (:item-id joe) new-store))
                    (canonicalize '("Joe"
                                         "male" 
                                         (39 ("age" :label)
@@ -509,7 +509,7 @@
                                         (45 ("age" :label))
                                         ""))))
         (is (= (immutable-semantic-to-list
-                (description->entity new-id new-store))
+                (id->entity new-id new-store))
                'anything)))))
 
   (deftest confirm-actions-test

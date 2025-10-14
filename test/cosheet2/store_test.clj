@@ -4,7 +4,7 @@
             (cosheet2
              [store :refer :all]
              [store-impl :refer :all]
-             [entity :refer [to-list description->entity]]
+             [entity :refer [to-list]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
              [canonical :refer [canonical-primitive-form]]

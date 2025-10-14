@@ -5,7 +5,7 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
-             [entity :refer [description->entity to-list]]
+             [entity :refer [id->entity]]
              entity-impl
              [store :refer [new-element-store]]
              store-impl
@@ -92,8 +92,8 @@
         [s9 jane-id] (add-entity s8 nil "Jane")
         [s10 jane-test-id] (add-entity s9 jane-id "test")
         [store jane-test-label-id] (add-entity s10 jane-test-id :label)
-        joe (description->entity joe-id store)
-        jane (description->entity jane-id store)
+        joe (id->entity joe-id store)
+        jane (id->entity jane-id store)
         ordered-entities [joe jane]
         labelses (map semantic-label-elements ordered-entities)
         item-maps (item-maps-by-elements ordered-entities labelses)
@@ -154,12 +154,12 @@
         [s10 jane-test-id] (add-entity s9 jane-id "test")
         [s11 jane-test-label-id] (add-entity s10 jane-test-id :label)
         [store sally-id] (add-entity s11 nil "Sally")
-        joe (description->entity joe-id store)
-        joe-test (description->entity joe-test-id store)
-        joe-foo (description->entity joe-foo-id store)
-        jane (description->entity jane-id store)
-        jane-test (description->entity jane-test-id store)
-        sally (description->entity sally-id store)]
+        joe (id->entity joe-id store)
+        joe-test (id->entity joe-test-id store)
+        joe-foo (id->entity joe-foo-id store)
+        jane (id->entity jane-id store)
+        jane-test (id->entity jane-test-id store)
+        sally (id->entity sally-id store)]
     ;; Test two non-labels.
     (is (check
          (labels-and-elements-DOM
@@ -354,11 +354,11 @@
                                        `("Fred"
                                          (1 :label (~o1 :order))
                                          (2 :label (~o2 :order))))
-           fred (description->entity fred-id store)
+           fred (id->entity fred-id store)
            id1 (:item-id (first (matching-elements 1 fred)))
            id2 (:item-id (first (matching-elements 2 fred)))
            id-tag2 (:item-id (first (matching-elements
-                                     :label (description->entity id2 store))))
+                                     :label (id->entity id2 store))))
            dom (run-renderer
                 render-item-DOM
                 (assoc basic-dom-specification
@@ -415,7 +415,7 @@
                                     `("Fred"
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         dom (render-item-DOM (assoc basic-dom-specification
@@ -470,7 +470,7 @@
                                     `("Fred"
                                       (2 ("two" :label) (~o2 :order))
                                       (1 ("one" :label) (~o1 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         item1 (first (matching-elements 1 fred))
         label1 (first (matching-elements "one" item1))
         tag1 (first (matching-elements :label label1))
@@ -540,7 +540,7 @@
                                          ("both" :label (~o2 :order))
                                          (~o2 :order))
                                       (3 (~o4 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         item0 (first (matching-elements 0 fred))
         label0 (first (matching-elements "zero" item0))
         tag0 (first (matching-elements :label label0))
@@ -669,7 +669,7 @@
                                       (3 (~o3 :order))
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         id3 (:item-id (first (matching-elements 3 fred)))
@@ -737,7 +737,7 @@
                                     `("Fred"
                                       (2 ("two" :label) (~o2 :order))
                                       (1 ("one" :label) (~o1 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         item1 (first (matching-elements 1 fred))
         label1 (first (matching-elements "one" item1))
         tag1 (first (matching-elements :label label1))
@@ -808,7 +808,7 @@
                                          ("both" :label (~o2 :order))
                                          (~o2 :order))
                                       (3 (~o4 :order))))
-        fred (description->entity fred-id store)
+        fred (id->entity fred-id store)
         item0 (first (matching-elements 0 fred))
         label0 (first (matching-elements "zero" item0))
         tag0 (first (matching-elements :label label0))

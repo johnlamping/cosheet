@@ -6,7 +6,7 @@
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
-                      [entity :refer [description->entity label->elements
+                      [entity :refer [id->entity label->elements
                                       to-list]]
                       entity-impl
                       [reporter :refer [reporter-value]]
@@ -44,7 +44,7 @@
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def store (first t1))
-(def joe (description->entity joe-id store))
+(def joe (id->entity joe-id store))
 
 (deftest transform-pattern-toward-fixed-term-test
   (let [pattern '(anything anything ("a" :label))]
@@ -83,7 +83,7 @@
     (is (= (ordered-semantic-to-list joe)
            expected)))
   (let [removed (remove-semantic-elements store joe-id)
-        removed-joe (description->entity joe-id removed)]
+        removed-joe (id->entity joe-id removed)]
     (is (check (to-list removed-joe)
                `("Joe" (~(any) :order))))))
 
@@ -108,11 +108,11 @@
                                   s1 nil
                                   '(thing (child (1 :order)
                                                  grandchild)))
-        selector-root (description->entity selector-root-id s)
+        selector-root (id->entity selector-root-id s)
         selector-child (first (matching-elements 'child selector-root))
         selector-grandchild (first (matching-elements 'grandchild
                                                       selector-child))
-        non-selector-root (description->entity non-selector-root-id s)
+        non-selector-root (id->entity non-selector-root-id s)
         non-selector-child (first (matching-elements 'child non-selector-root))
         non-selector-grandchild (first (matching-elements 'grandchild
                                                           non-selector-child))
@@ -120,7 +120,7 @@
         cd (new-calculator-data (new-priority-task-queue 0))]
     (request ordered-tab-ids cd)
     (compute cd)
-    (let [first-tab (description->entity
+    (let [first-tab (id->entity
                      (first (reporter-value ordered-tab-ids)) s)]
       (is (selector? (first (label->elements
                              (first (label->elements first-tab :tab-topic))

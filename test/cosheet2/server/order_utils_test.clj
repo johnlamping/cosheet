@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2
-             [entity :as entity :refer [description->entity to-list
+             [entity :as entity :refer [id->entity to-list
                                         label->elements elements]]
              [orderable :as orderable]
              [reporter :refer [reporter-value new-reporter invalid
@@ -53,7 +53,7 @@
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def store (first t1))
-(def joe (description->entity joe-id store))
+(def joe (id->entity joe-id store))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
 (def joe-39 (first (matching-elements 39 joe)))
@@ -132,7 +132,7 @@
   (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before true)
-        joe (description->entity joe-id s)
+        joe (id->entity joe-id s)
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :before)]
     (is (= (to-list new-entity)
@@ -142,7 +142,7 @@
   (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before false)
-        joe (description->entity joe-id s)
+        joe (id->entity joe-id s)
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
@@ -152,7 +152,7 @@
   (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :after true)
-        joe (description->entity joe-id s)
+        joe (id->entity joe-id s)
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
@@ -162,7 +162,7 @@
   (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id '(6 ("height" :label))
                       unused-orderable :before true)
-        joe (description->entity joe-id s)
+        joe (id->entity joe-id s)
         new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
@@ -182,7 +182,7 @@
                                        :temporary
                                        (:other ""))
                       unused-orderable :after false)
-        joe (description->entity joe-id s)
+        joe (id->entity joe-id s)
         new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [x o6] (orderable/split x :before)

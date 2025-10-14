@@ -263,12 +263,14 @@
      (id->entity-m id store nil)
      (id->entity-m id store :source)))
   ([id store orientation]
+   (assert (is-item-id? id))
    (id->entity-m id store orientation)))
 
 (defn id->updating-entity-R
   ([id store]
    (id->updating-entity-R id store :source))
   ([id store orientation]
+   (assert (is-item-id? id))
    (let [entity (id->entity id store orientation)]
      (updating-immutable entity))))
 

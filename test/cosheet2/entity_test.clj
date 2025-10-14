@@ -12,7 +12,7 @@
                       store-impl
                       mutable-store-impl
                       [entity :refer :all]
-                      entity-impl
+                      [entity-impl :as entity-impl]
                       [calculator :refer [current-value new-calculator-data
                                           propagate-calculator-data!]]
                       [canonical :refer [canonicalize]]
@@ -21,6 +21,21 @@
                       [test-utils :refer [check any as-set]])
             ; :reload
             ))
+
+;;; This tests the internal function of entity-impl
+(deftest entity<->endpoint-test
+  (let [s (new-element-store)
+        id (make-item-id "1")
+        item (id->entity id s)
+        reversed-item (id->entity id s :source)]
+    (is (= (entity-impl/endpoint->entity 2 s) 2))
+    (is (= (entity-impl/endpoint->entity :foo s) :foo))
+    (is (= (entity-impl/endpoint->entity 'foo s) 'foo))
+    (is (= (entity-impl/endpoint->entity orderable/initial s)
+           orderable/initial))
+    (is (= (entity-impl/endpoint->entity "1" s) "1"))
+    (is (= (entity-impl/endpoint->entity id s) item))
+    (is (= (entity-impl/endpoint->entity id s :source) reversed-item))))
 
 (deftest storeditem-test
   (let [id0 (make-item-id "0")
@@ -272,17 +287,6 @@
   (is (not (marked-as-type? nil)))
   (is (not (marked-as-type? orderable/initial)))
   (is (to-list 3) 3))
-
-(deftest entity<->description-test
-  (let [s (new-element-store)
-        id (make-item-id "1")
-        item (id->entity id s)]
-    (is (= (description->entity 2 s) 2))
-    (is (= (description->entity :foo s) :foo))
-    (is (= (description->entity 'foo s) 'foo))
-    (is (= (description->entity orderable/initial s) orderable/initial))
-    (is (= (description->entity "1" s) "1"))
-    (is (= (description->entity id s) item))))
 
 (deftest marked-as-type?-test
   (is (marked-as-type? '("foo" :label)))

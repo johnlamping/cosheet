@@ -1,6 +1,6 @@
 (ns cosheet2.ajax
   (:require [ajax.core :refer [GET POST transit-response-format]]
-            [reagent.core :as reagent]
+            reagent.core
             [cosheet2.client-utils :refer
              [component components
               replace-in-struct into-atom-map reset-atom-map-versions!
@@ -214,7 +214,8 @@
             previously-selected-id (and @selected (.-id @selected))]
         (handle-ajax-reset-versions response)
         (handle-ajax-doms response)
-        (reagent/flush)  ;; Must update the dom before the select is processed.
+        (reagent.core/flush)  ;; Must update the dom before
+                              ;; the select is processed.
         (handle-ajax-select response previously-selected-id)
         (handle-ajax-open response)
         (handle-ajax-set-url response)

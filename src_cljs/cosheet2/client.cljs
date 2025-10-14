@@ -1,7 +1,8 @@
 (ns cosheet2.client
-  (:require [reagent.core :as reagent]
-            [goog.events :as gevents]
-            [goog.events.KeyCodes :as key-codes]
+  (:require reagent.core 
+            reagent.dom
+            goog.events
+            goog.events.KeyCodes
             [goog.events.KeyHandler :as key-handler]
             ;; Note: We seem to have to declare any closure packages used
             ;; by our libraries in order for them to be visible to
@@ -21,7 +22,7 @@
                                                 select-and-clear-pending]]
             ))
 
-(reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
+(reset! components {"root" (reagent.core/atom [:div {:id "root" :version 0}])})
 
 (defn store-edit-field
   []
@@ -129,44 +130,49 @@
   (let [ctrl (.-ctrlKey event)
         meta (.-metaKey event)
         alt (.-altKey event)
-        key-code (or (.-key event) (.-keyCode event))
+        key-code (.-keyCode event)
         total-shift (count (filter identity [ctrl alt meta]))]
     (.log js/console
           (str "keydown "
                (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
-               key-code))
+               key-code
+               (if (not key-code) (str" key " (.-key event)) "")))
+    (.log js/console
+          (str (if @selected "selected " "")
+               (if @edit-field-open-on "edit field open " "")
+               (if (is-immutable? @selected) "immutable " "")))
     (when (= total-shift 1)
       (cond  ; We can't use a case statement,
-             ; as it doesn't work right with key-codes.
-        (= key-codes/Z key-code) (do (.preventDefault event)
+             ; as it doesn't work right with goog.events.KeyCodes.
+        (= goog.events.KeyCodes.Z key-code) (do (.preventDefault event)
                                      (if @edit-field-open-on
                                        (close-edit-field)
                                        (do (.log js/console "undo")
                                            (request-action [:undo]))))
-        (= key-codes/Y key-code) (do (.preventDefault event)
+        (= goog.events.KeyCodes.Y key-code) (do (.preventDefault event)
                                      (when (not @edit-field-open-on)
                                        (do (.log js/console "redo")
                                            (request-action [:redo]))))
-        (= key-codes/Q key-code) (do (.preventDefault event)
+        (= goog.events.KeyCodes.Q key-code) (do (.preventDefault event)
                                      (.log js/console "quit-batch-edit")
                                      (close-edit-field)
                                      (request-action [:quit-batch-edit]))))
     (when (and alt meta)
-      (when (= key-codes/R key-code)
+      (when (= goog.events.KeyCodes.R key-code)
         (request-replay :all)))
     (when (and ctrl (not alt) (not meta))
-      (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
-                          (= key-codes/NUM_PLUS key-code) [:add-twin] 
-                          (= key-codes/PERIOD key-code) [:add-element]
-                          (= key-codes/L key-code) [:add-label]
-                          (= key-codes/S key-code) [:add-sibling]
-                          (= key-codes/HASH key-code) [:add-sibling]
-                          (= key-codes/DASH key-code) [:add-row]
-                          (= key-codes/R key-code) [:add-row]
-                          (= key-codes/BACKSLASH key-code) [:add-column]
-                          (= key-codes/C key-code) [:add-column]
-                          (= key-codes/E key-code) [:expand]
-                          (= key-codes/B key-code) [:batch-edit])
+      (let [command (cond (= goog.events.KeyCodes.EQUALS key-code) [:add-twin]
+                          (= goog.events.KeyCodes.NUM_PLUS key-code) [:add-twin] 
+                          (= goog.events.KeyCodes.PERIOD key-code) [:add-element]
+                          (= goog.events.KeyCodes.L key-code) [:add-label]
+                          (= goog.events.KeyCodes.S key-code) [:add-sibling]
+                          (= goog.events.KeyCodes.HASH key-code) [:add-sibling]
+                          (= goog.events.KeyCodes.DASH key-code) [:add-row]
+                          (= goog.events.KeyCodes.R key-code) [:add-row]
+                          (= goog.events.KeyCodes.BACKSLASH key-code) [:add-column]
+                          (= goog.events.KeyCodes.C key-code) [:add-column]
+                          (= goog.events.KeyCodes.E key-code) [:expand]
+                          (= goog.events.KeyCodes.B key-code) [:batch-edit])
             id (when @selected (.-id @selected))]
         (when (and command (not @edit-field-open-on)
                    (or id (#{:batch-edit :quit-batch-edit} (first command))))
@@ -176,15 +182,15 @@
            (apply vector (first command) id (rest command))))))
     (when (= total-shift 0)
       (cond
-        (= key-code key-codes/ESC) (close-edit-field)
-        (= key-code key-codes/ENTER) (do (store-edit-field)
-                                         (close-edit-field))
-        (= key-code key-codes/DELETE) (when (and @selected
+        (= key-code goog.events.KeyCodes.ESC) (close-edit-field)
+        (= key-code goog.events.KeyCodes.ENTER) (do (store-edit-field)
+                                                    (close-edit-field))
+        (= key-code goog.events.KeyCodes.DELETE) (when (and @selected
                                                  (not @edit-field-open-on))
                                         (.log js/console (str [:delete]))
                                         (request-action
                                          [:delete (.-id @selected)]))
-        (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
+        (= key-code goog.events.KeyCodes.BACKSPACE) (when (not @edit-field-open-on)
                                            (when @selected
                                              (.log js/console
                                                    (str [:backspace]))
@@ -192,7 +198,7 @@
                                               [:delete (.-id @selected)]))
                                            ;; Prevent navigating to prev page.
                                            (.preventDefault event))
-        (= key-codes/TAB key-code)
+        (= goog.events.KeyCodes.TAB key-code)
         (do (.preventDefault event)
             (when @edit-field-open-on
               (store-edit-field)
@@ -201,8 +207,8 @@
               (when (not (find-ancestor-with-class selection "tabs-holder"))
                 (when-let [next (next-mutable-editable selection)]
                   (select-and-clear-pending next)))))
-          (key-codes/isCharacterKey key-code)
-          (when (and @selected
+        (goog.events.KeyCodes.isCharacterKey key-code)
+        (when (and @selected
                      (not (is-immutable? @selected))
                      (not @edit-field-open-on))
             (open-edit-field @selected (str (.-charCode event))))))))
@@ -221,15 +227,15 @@
         ;; TODO: We no longer use this because it seems to rely on
         ;; the deprecated field KeyboardEvent.keyIdentifier. See if we can
         ;; get a more recent version of goog.events that fixes the problem.
-        ;; app-key-handler (gevents/KeyHandler. js/document)
+        ;; app-key-handler (goog.events/KeyHandler. js/document)
         ]
-    (reagent/render [component {:id "root"}] app)
-    (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
-    (gevents/listen app gevents/EventType.CLICK click-handler)    
-    (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
-    ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
-    (gevents/listen toolbar gevents/EventType.CLICK click-handler)
-    (gevents/listen js/window gevents/EventType.UNLOAD unload-handler))
+    (reagent.dom/render [component {:id "root"}] app)
+    (goog.events/listen app goog.events.EventType.DBLCLICK double-click-handler)
+    (goog.events/listen app goog.events.EventType.CLICK click-handler)    
+    (goog.events/listen js/document goog.events.EventType.KEYDOWN keypress-handler)
+    ;(goog.events/listen app-key-handler key-handler.EventType.KEY keypress-handler)
+    (goog.events/listen toolbar goog.events.EventType.CLICK click-handler)
+    (goog.events/listen js/window goog.events.EventType.UNLOAD unload-handler))
   (timed-log "page loaded.")
   (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 

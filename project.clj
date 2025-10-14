@@ -15,7 +15,9 @@
                  [clojure-csv/clojure-csv "2.0.2"]
                  ;; Client side
                  [org.clojure/clojurescript "1.11.132"]
-                 [reagent "1.2.0"]
+                 [reagent "1.3.0"]
+                 [cljsjs/react "17.0.2-0"]
+                 [cljsjs/react-dom "17.0.2-0"]
                  [cljs-ajax "0.8.4"]
                  ;; buddy authentication
                  [buddy/buddy-auth "3.0.323"]

@@ -63,10 +63,6 @@
   (let [target @selected]
     (when target
       (.remove (.-classList target) "selected")
-      ;; Put the selection holder at the end, where it will be invisible,
-      ;; but still findable.
-      (gdom/appendChild  (js/document.getElementById "app")
-                         (js/document.getElementById "select_holder"))
       (reset! selected nil))))
 
 (defn select [target]
@@ -75,7 +71,6 @@
     (.log js/console (str "Selecting id " (.-id target) "."))
     (deselect)
     (.add (.-classList target) "selected")
-    (gdom/appendChild target (js/document.getElementById "select_holder"))
     (reset! selected target)
     (scroll-to-be-visible target)))
 

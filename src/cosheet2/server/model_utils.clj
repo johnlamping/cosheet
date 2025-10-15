@@ -10,7 +10,7 @@
                       [entity :refer [primitive? label? id->entity
                                       content elements content->elements
                                       label->elements label->element
-                                      container]]
+                                      target-entity]]
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
@@ -157,8 +157,8 @@
   "Return whether the entity is (or is part of) a selector."
   [entity]
   (or (seq (content->elements entity :selector))
-      (if-let [subj (container entity)]
-        (selector? subj))))
+      (if-let [target (target-entity entity)]
+        (selector? target))))
 
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
@@ -430,7 +430,7 @@
    ;; It has universal content
    (= 'anything (content entity))
    ;; It is a column header.
-   (some #(= (content %) :column-headers) (elements (container entity)))
+   (some #(= (content %) :column-headers) (elements (target-entity entity)))
    ;; It has no elements, or only a :label element.
    (let [semantic (semantic-elements entity)]
      (or (empty? semantic)
@@ -447,7 +447,7 @@
   (if (and id
            (let [revised-entity (id->entity id new-store)]
              (or (column-header-problem revised-entity)
-                 (column-header-problem (container revised-entity)))))
+                 (column-header-problem (target-entity revised-entity)))))
     old-store
     new-store))
 

@@ -24,8 +24,7 @@
 
 ;;; This tests the internal function of entity-impl
 (deftest entity<->endpoint-test
-  (let [s (new-element-store)
-        id (make-item-id "1")
+  (let [[s id] (add-link (new-element-store) (make-item-id "a") "B")
         item (id->entity id s)
         reversed-item (id->entity id s :source)]
     (is (= (entity-impl/endpoint->entity 2 s) 2))
@@ -58,7 +57,8 @@
                           (3 ("foo" :label))
                           :generic]
         item-b (id->entity idb s)
-        item-a-reversed (id->entity ida s :target)]
+        item-a-reversed (id->entity ida s :target)
+        item-b-reversed (id->entity idb s :target)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (primitive? item0)))
@@ -67,8 +67,9 @@
     (is (= (orientation item0)) nil)
     (is (= (orientation item-b)) :source)
     (is (= (orientation item-a-reversed)) :target)
-    (is (= (container (id->entity ida s)) item99))
-    (is (= (container item-a-reversed) 3))
+    (is (= (target-entity (id->entity ida s)) item99))
+    (is (= (target-entity item-a-reversed) item99))
+    (is (= (target-entity item-b-reversed) (id->entity ida s)))
     (is (= (label->elements item99 "foo") [(id->entity ida s)]))
     ;; Check that the :label is required.
     (is (= (label->elements (id->entity id99 s5) "foo") nil))
@@ -98,6 +99,8 @@
       (is (thrown? java.lang.AssertionError
                    (label->content (id->entity id99 sz) "foo"))))
     (is (= (content (id->entity idc s)) 4))
+    (is (= (content item-a-reversed) item99))
+    (is (= (content item-b-reversed) item-a-reversed))
     (is (check (canonicalize (to-list item99))
                (canonicalize list-99)))
     (is (= (to-list item1) item1))
@@ -127,7 +130,8 @@
                           (3 ("foo" :label))
                           :generic]
         item-b (id->entity idb ms)
-        item-a-reversed (id->entity ida ms :target)]
+        item-a-reversed (id->entity ida ms :target)
+        item-b-reversed (id->entity idb ms :target)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (= (entity-type item0)) :object)
@@ -135,8 +139,9 @@
     (is (= (orientation item0)) nil)
     (is (= (orientation item-b)) :source)
     (is (= (orientation item-a-reversed)) :target)
-    (is (= (current-value (container (id->entity ida ms))) item99))
-    (is (= (current-value (container item-a-reversed)) 3))
+    (is (= (current-value (target-entity (id->entity ida ms))) item99))
+    (is (= (current-value (target-entity item-a-reversed)) item99))
+    (is (= (current-value (target-entity item-b-reversed)) (id->entity ida ms)))
     (is (= (primitive? item0) false))
     (is (= (current-value (label->elements item99 "foo"))
            [(id->entity ida ms)]))
@@ -149,6 +154,8 @@
     (is (= (current-value (elements (id->entity idd ms)))
            nil))
     (is (= (current-value (content item99)) nil))
+    (is (= (current-value (content item-a-reversed)) item99))
+    (is (= (current-value (content item-b-reversed)) item-a-reversed))
     (is (current-value (marked-as-type? item-b)))
     (is (not (current-value (marked-as-type? item99))))
     (is (= (current-value (content (id->entity ida ms))) 3))

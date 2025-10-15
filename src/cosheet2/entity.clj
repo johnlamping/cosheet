@@ -90,14 +90,6 @@
   (id->entity-m [this store orientation]
     "Return an entity corresponding to an item id."))
 
-;;; TODO: This needs to be able to take an orientation in the most
-;;; general case. (Or is this deprecated now?)
-(defprotocol Description
-  "A description of an item or primitive."
-  (description->entity [this store]
-    "Return an item or other entity, given the store the description
-     depends on."))
-
 (defprotocol Entity
   "An store item or a primitive. For primitives, the entity methods
   behaves as if it were an entity with the primitive as its content,
@@ -149,8 +141,11 @@
 (defprotocol StoredEntity
   "A tag for stored entities. They must have unique item-ids."
 
-  (container [this]
-    "Return the container of this stored entity (its target), if any.")
+  (target-entity [this]
+    "If the entity represents a link, return the entity corresponding to
+    its target. This is independent of the orientation of the
+    entity. If the resulting entity is also a link, it will have
+    orientation :source, thus this entity will be its content.")
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,
@@ -264,13 +259,14 @@
      (id->entity-m id store :source)))
   ([id store orientation]
    (assert (is-item-id? id))
+   (when (is-object-id? id)
+     (assert (not orientation)))
    (id->entity-m id store orientation)))
 
 (defn id->updating-entity-R
   ([id store]
-   (id->updating-entity-R id store :source))
+   (id->updating-entity-R id store (when (not (is-object-id? id)) :source)))
   ([id store orientation]
-   (assert (is-item-id? id))
    (let [entity (id->entity id store orientation)]
      (updating-immutable entity))))
 

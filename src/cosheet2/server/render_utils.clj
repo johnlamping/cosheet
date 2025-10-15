@@ -1,5 +1,5 @@
 (ns cosheet2.server.render-utils
-  (:require (cosheet2 [entity :refer [container elements label?]]
+  (:require (cosheet2 [entity :refer [target-entity elements label?]]
                       [store :refer [is-item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
@@ -92,7 +92,7 @@
   once."
   [entity]
   (let [entity-canonical (entity->canonical-term entity)
-        siblings (semantic-elements (container entity))
+        siblings (semantic-elements (target-entity entity))
         [labels non-labels] (separate-by label? siblings)
         candidates (if ((set labels) entity) labels non-labels)
         matching (filter #(= entity-canonical (entity->canonical-term %))

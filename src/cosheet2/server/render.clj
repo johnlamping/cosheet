@@ -2,7 +2,7 @@
   (:require (cosheet2 [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid-link?]]
-                      [entity :refer [container content label->elements
+                      [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
@@ -329,7 +329,7 @@
                                 (let [[exemplar subject-ref]
                                       (referent->exemplar-and-subject referent)]
                                   (or subject-ref
-                                      (when-let [target (container item)]
+                                      (when-let [target (target-entity item)]
                                         (when (current-value
                                                (semantic-entity? target))
                                           (item-referent target))))))
@@ -406,7 +406,7 @@
              (if is-tab
                ;; Show the tabs, plus the topic of the selected tab
                (let [topic (first (label->elements immutable-item :tab-topic))
-                     target (container immutable-item)]
+                     target (target-entity immutable-item)]
                  [:div {:class "tabbed"}
                   (make-component
                    {:relative-id (:item-id target)
@@ -490,7 +490,7 @@
                   (top-level-item-DOM-R item referent inherited)
                   ;; Show a selection of tabs.
                   (expr-let [topic (expr first (label->elements item :tab-topic))
-                             target (container item)]
+                             target (target-entity item)]
                     [:div {:class "tabbed"}
                      (make-component {:key [:tabs]}
                                      [tabs-DOM-R target item inherited])

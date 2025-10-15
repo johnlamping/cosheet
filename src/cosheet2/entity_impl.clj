@@ -17,14 +17,15 @@
 
 (defn endpoint->entity
   "Given any value of an endpoint, the store, and an optional
-  orientation, return the described entity."
+  orientation, return the described entity.
+  The orientation is ignored for anything but link values."
   ([value store]
-   (if (is-object-id? value)
-     (endpoint->entity value store nil)
-     (endpoint->entity value store :source)))
+   (endpoint->entity value store :source))
   ([value store orientation]
    (if (is-item-id? value)
-     (id->entity value store orientation)
+     (let [orientation (when (not (is-object-id? value))
+                         orientation)]
+       (id->entity value store orientation))
      value)))
 
 (defrecord
@@ -37,11 +38,9 @@
 
   StoredEntity
 
-  (container [this]
+  (target-entity [this]
     (when (not (is-object-id? item-id))
-      (if (= orientation :target)
-        (endpoint->entity (id->source store item-id) store)
-        (endpoint->entity (id->target store item-id) store))))
+      (endpoint->entity (id->target store item-id) store)))
   
   (in-different-store [this store-or-entity]
     (id->entity item-id
@@ -66,7 +65,7 @@
   (content [this]
     (when (not (is-object-id? item-id))
       (if (= orientation :target)
-        (endpoint->entity (id->target store item-id) store)
+        (endpoint->entity (id->target store item-id) store :target)
         (endpoint->entity (id->source store item-id) store))))
 
   (elements [this]
@@ -100,15 +99,10 @@
 
   StoredEntity
 
-  (container [this]
+  (target-entity [this]
     (when (not (is-object-id? item-id))
-      (if (= orientation :target)
-        (expr-let [container-id (id->source store item-id)]
-          (when container-id
-            (endpoint->entity container-id store)))
-        (expr-let [container-id (id->target store item-id)]
-          (when container-id
-            (endpoint->entity container-id store))))))
+      (expr-let [target-id (id->target store item-id)]
+          (endpoint->entity target-id store))))
 
   (in-different-store [this store-or-entity]
     (id->entity item-id 
@@ -134,7 +128,7 @@
     (when (not (is-object-id? item-id))
       (if (= orientation :target)
         (expr-let [content (id->target store item-id)]
-          (endpoint->entity content store))
+          (endpoint->entity content store :target))
         (expr-let [content (id->source store item-id)]
           (endpoint->entity content store)))))
 

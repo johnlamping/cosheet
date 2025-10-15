@@ -208,10 +208,10 @@
    from which higher levels functions are built."
 
   (add-link [this target source]
-    "Add an item with the given target and source. The target must be
-     either nil or an object id or a link id that is already in the
-     store, and the source must be primitive or an object id. Return
-     the modified store and the id of the new element.")
+    "Add an item with the given target and source. The target must be an
+     object id or a link id that is already in the store, and the
+     source must be primitive or an object id. Return the modified
+     store and the id of the new element.")
   
   (remove-link [this id]
     "Remove the link with the given id from the store.

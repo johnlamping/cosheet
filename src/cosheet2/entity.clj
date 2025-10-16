@@ -15,58 +15,67 @@
 ;;; property, qualifier, or relation of another entity, as seen from
 ;;; that entity. There is no ordering among the elements of an entity.
 
-;;; An element's description consists of a content, which is an
-;;; entity, plus any elements of the element. So each element
-;;; determines a tree of its elements, their elements, etc.
-
-;;; In a store, an element is represented by a link. But an element
-;;; additionally picks a direction for that link, thus determing which
-;;; endpoint of the link the element is considered to be about. The
-;;; other endpoint is the entity's content. The endpoint an entity is
-;;; about is normally not considered to be part of the element; it's
-;;; not included in the element's description.
-
-;;; Elements are normally not accessed in terms of source and target,
-;;; but in terms of content. Elements that are associated with stores
-;;; also support a container method, which returns the entity they
-;;; qualify. But the container is not considered to be part of the
-;;; entity.
-
-;;; Elements essentially give a way of parsing the information in a
-;;; store into entities that have more structure than just a bunch of
-;;; links. They give a convenient way to describe
-;;;    * What should be displayed in a cell
+;;; Elements give a way of overlaying a structure on information in a
+;;; store, or on information that might be stored there. That makes
+;;; them more convenient than just a bunch of links. They give a
+;;; convenient way to describe:
+;;;    * What should be displayed in a cell.
 ;;;    * Information that should be added to entities in the store.
 ;;;    * Queries for searches over the store (to find entities matching
 ;;;      an element or containing matches to an element).
-;;; These uses of entities typically require creating an entities that
-;;; doesn't exactly match any entity in the store. To this end, there
-;;; is a representation of entities that is largely independent of
-;;; stores, called the list form.
+
+;;; An element's description consists of
+;;;   * a content, which is an entity.
+;;;   * an orientation, either :source or :target, which indicates how the
+;;;     content is related to the element.
+;;;   * any sub-elements of the element.
+;;;     So each element determines a tree of its elements, their
+;;;     elements, etc.
+
+;;; In a store, an element is represented by a link, and the element's
+;;; orientation says which endpoint of the link holds the element's
+;;; content. The other endpoint is the entity that the element is
+;;; about, that is, where the element is seen from. That endpoint of
+;;; the link is the context of the element, and not considered to be
+;;; part of the element. For example, it's not included in the
+;;; element's description.
+
+;;; Elements are normally accessed in terms of content, orientation,
+;;; and sub-elements. But elements that are associated with stores
+;;; also support a target-entity method, which returns the entity
+;;; corresponding to their link's target. Depending on the element's
+;;; orientation, that could either be its content or the entity the
+;;; element is about.
+
+;;; Since some uses of entities require creating an entity that
+;;; doesn't exactly match any entity in the store. There is a
+;;; representation of entities that is largely independent of stores,
+;;; called the list form.
 
 ;;; The list form of primitives is just the primitive, since they are
 ;;; already independent of stores. The list form of specific objects
 ;;; is a wrapper of their id with the store, because the id is the
-;;; only way to identify specific objects. But the list form of an
+;;; only way to identify specific objects.
+;;; Elements are more complicated. The most general list form of an
 ;;; element is
 ;;;   ((orientation content) element element ...)
 ;;; where orientation is either :source or :target, to indicate which
-;;; endpoint holds the content. That indicates how an entity should be
-;;; turned into a link. The orientation can also be :either if the
-;;; element indicates a query that can match links going in either
-;;; direction.
+;;; endpoint holds the content.
 
-;;; Alternatively, in the common case when the orientation is :source,
-;;; and provided the content is not a list, the list form of an element may be
-;;;   (content element element ...)
-;;; For example (5 "value" (3 "x") (4 "y")) describes an item with
-;;; content 5, and three elements, ("value"), (3 "x") and (4 "y"). As
-;;; illustrated here, elements that have a content that is not a list
-;;; and, orientation :source, and no elements can be represented by
-;;; themselves in list form.
-
-;;; In list form, the content can be a list, as long as its first
-;;; element isn't :source, :target, or :either.
+;;; But the most general form isn't always necessary. If an element
+;;; has orientation :source, and its content is either an object or is
+;;; a primitive that is not a list, then one of two simplified forms
+;;; is possible.
+;;;    * If it also has no sub-elements of its own, then its list form is
+;;;      just the list form of its content. This means that the list
+;;;      form can't distinguish between a simple element and
+;;;      primitives or objects. But that is OK, because all uses of
+;;;      the list form either expect elements or non-elements.
+;;;    * If it does have sub-elements of its own, then its list form is
+;;;      (content element element ...)
+;;; Combinding these simplified forms yield compact list
+;;; representations of the most common kinds of elements, like
+;;;   (5 "value" (3 "x") (4 "y"))
 
 ;;; When an object is used in a query as a generic object, there also
 ;;; needs to be a list form for it. Its list form is
@@ -79,6 +88,7 @@
 ;;; should be
 ;;;    [:link source target element element ...]
 
+;;; TODO: !!! Get rid of this once the definition of label changes
 ;;; There are functions to get all elements of an entity, or just
 ;;; those elements with a specific label. For the entity
 ;;; ("Joe" "person" (44 ("age" :label) "uncertain")) "age" is the label

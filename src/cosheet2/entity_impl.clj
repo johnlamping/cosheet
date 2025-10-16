@@ -55,6 +55,8 @@
 
   (primitive? [this] false)
 
+  (object? [this] (is-object-id? item-id))
+
   (entity-type [this]
     (if (is-object-id? item-id)
       :object
@@ -117,6 +119,8 @@
 
   (primitive? [this?] false)
 
+  (object? [this] (is-object-id? item-id))
+
   (entity-type [this]
     (if (is-object-id? item-id)
       :object
@@ -172,6 +176,8 @@
 
   (primitive? [this] false)
 
+  (object? [this] false)
+
   (entity-type [this] :element)
 
   (content [this]
@@ -216,7 +222,9 @@
 
   (primitive? [this] false)
 
-  (entity-type [this] :object)
+  (object? [this] (= (first this) :object))
+
+  (entity-type [this] (if (= (first this) :object) :object :link))
 
   (content [this] nil)
   
@@ -245,6 +253,7 @@
   clojure.lang.Keyword
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -257,6 +266,7 @@
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -269,6 +279,7 @@
   java.lang.String
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -281,6 +292,7 @@
   java.lang.Number
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -293,6 +305,7 @@
   java.lang.Boolean
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -305,6 +318,7 @@
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
@@ -317,6 +331,7 @@
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (object? [this] false)
   (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)

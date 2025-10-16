@@ -103,6 +103,9 @@
   (primitive? [this]
     "True if this entity is a primitive, like a string or a number.")
 
+  (object? [this]
+    "True if this entity is an object (neither an element or a primitive)")
+
   (entity-type [this]
     "Return the type of the entity, one of :primitive, :object,
     or :element, (or :link if it gets implemented.)")

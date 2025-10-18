@@ -12,15 +12,21 @@
             ; :reload
             ))
 
-(deftest add-entity-test
-  (let [[s1 id]
-        (add-entity (new-element-store)
-                    (make-item-id "0") '(77 ("test" :label)))
-        [s2 element-id]
-        (add-entity s1 id '("Fred" ("by" :label)))]
-    (is (= (id->target s1 id)) (make-item-id "0"))
-    (is (= (to-list (id->entity element-id s2))
-           '("Fred" ("by" :label))))))
+(deftest add-test
+  (let [s (new-element-store)
+        [s1 id] (add-entity s (make-item-id "0") '(77 ("test" :label)))
+        [s2 id1] (add-object s1 [:object :generic "Hello"])
+        [s3 id2] (add-entity s2 "Fred" `((:target ~(id->entity id1 s2))
+                                         ("by" :label)))]
+    (is (= (id->target s3 id)) (make-item-id "0"))
+    (is (= (id->target s3 id2)) id1)
+    (is (= (id->source s3 id2)) "Fred")
+    (is (check (to-list (id->entity id s3))
+               '(77 ("test" :label))))
+    (is (= (to-list (id->entity id2 s3))
+           '("Fred" ("by" :label))))
+    (is (check (to-list (id->entity id1 s3))
+               (as-set [:object :generic "Hello" '("Fred" ("by" :label))])))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]

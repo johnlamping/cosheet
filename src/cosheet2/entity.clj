@@ -118,7 +118,9 @@
 
   (entity-type [this]
     "Return the type of the entity, one of :primitive, :object,
-    or :element, (or :link if it gets implemented.)")
+    or :element, (or :link if it gets implemented.)
+    Note that the list form of an element that consists of nothing but
+    its content will be the entity-type of its content.")
 
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.

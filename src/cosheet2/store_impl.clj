@@ -179,6 +179,8 @@
   ImmutableStore
 
   (add-link [this target source]
+    ;; TODO: !!! Once we are using objects at top level, assert that
+    ;; neither target nor source are nil.
     (let [item-id (->ItemId (:next-number this))]
       [(-> this
            (update-in [:next-number] inc)
@@ -223,8 +225,9 @@
         (add-modified-id id)))
 
   (get-new-object-id [this]
-    [(->ItemId (- (:next-number this))) ; object ids are negative numbers.
-     (update-in this [:next-number] inc)])
+    (let [next (:next-number this)]
+      [(update-in this [:next-number] inc)
+       (->ItemId (- next))])) ; Object ids are negative numbers.
 
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))

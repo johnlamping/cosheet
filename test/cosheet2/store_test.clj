@@ -229,7 +229,7 @@
   (is (not (id->marked-as-type? test-store (make-link-id 1)))))
 
 (deftest get-new-object-id-test
-  (let [[id store] (get-new-object-id test-store)]
+  (let [[store id] (get-new-object-id test-store)]
     (is (= (:id id) (- (:next-number test-store))))
     (is (= (:next-number store) (+ 1 (:next-number test-store))))))
 

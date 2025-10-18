@@ -1,67 +1,68 @@
 (ns cosheet2.store-utils
-  (:require (cosheet2 [store :refer [add-link remove-link
+  (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
-                                     is-link-id?]])))
+                                     is-link-id?]]
+                      [entity :refer [StoredEntity entity-type
+                                      content orientation elements]])))
 
-(defn- items-to-add
-  "Return a seq of items, described as [target source], to add
-   to accomplish the addition of an link with the given target
-   and with elements and source equal to the template.
-   Also return the item that corresponds to the entity.
-   Targets or sources may reference earlier elements in the seq,
-   and should be replaced by the id of the added element."
-  [target-id template]
-  (let [compound? (fn [entity]
-                    ;; We use ISeq, because, for example, while '(1 2)
-                    ;; is a PersistentList, `(1 2) is a Cons.
-                    (instance? clojure.lang.ISeq entity))]
-    (if (compound? template)
-      (let [[content-elements content-entity]
-            (let [content (first template)]
-              (if (compound? content)
-                (items-to-add nil content)
-                [[] content]))
-            entity-item [target-id content-entity]]
-        [(apply concat
-                content-elements
-                [entity-item]
-                (map (fn [element] (first (items-to-add entity-item element)))
-                     (rest template)))
-         entity-item])
-      (let [entity-item [target-id template]]
-        [[entity-item] entity-item]))))
+;;; These are utilities for adding and removing element and object
+;;; entities from the store.
 
-(defn add-entity
-  "Add an entity, given in list form, to the store, with source
-   and elements equal to the template, and with the given target.
-   Return the new store and the id of the item for the entity."
-  [store target-id template]
-  (let [[items entity-item] (items-to-add target-id template)
-        [store item->id]
-        (reduce (fn [[store item->id] item]
-                  (let [mapped-item (map #(or (item->id %) %) item)
-                        [added-store id] (apply add-link
-                                                store mapped-item)]
-                    [added-store (assoc item->id item id)]))
-                [store {}]
-                items)]
-    [store (item->id entity-item)]))
+(def add-element)
+
+(defn- add-elements [store container-id elements]
+  "Add the given elements, all to the given container."
+  (reduce (fn [store element]
+            (first (add-element store container-id element)))
+          store elements))
+
+(defn add-object
+  "Add an object, given in vector form, to the store.
+  Return the new store and the id of the new object."
+  [store template]
+  (let [[store object-id] (get-new-object-id store)
+        store (add-elements store object-id (elements template))]
+    [store object-id]))
+
+(defn add-element
+  "In the store, add an element matching the template to the containing
+  entity with the given id.
+  Return the new store and the id of the new element."
+  [store container-id template]
+  (assert (not= (entity-type (content template)) :element))
+  (let [[store content-endpoint]
+        (let [element-content (content template)]
+          ;; If we have an expanded object, we need to make an instance of it.
+          (if (instance? clojure.lang.PersistentVector element-content)
+            (add-object element-content)
+            [store (if (satisfies? StoredEntity element-content)
+                     (:item-id element-content)
+                     element-content)]))
+        [store entity-link] (apply add-link store
+                                   (if (= (orientation template) :target)
+                                     [content-endpoint container-id]
+                                     [container-id content-endpoint]))
+        store (add-elements store entity-link (elements template))]
+    [store entity-link]))
+
+;;; TODO: Replace all calls to this with add-element or add-object
+(defn add-entity [store container-id template]
+  (add-element store container-id template))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the
   entity with the given id, and all its elements.  Return the list in
   an order suitable for removing."
   [store id]
-  (let [source (id->source store id)
-        element-removals (mapcat (partial links-to-remove store)
+  (let [element-removals (mapcat (partial links-to-remove store)
                                  (target->ids store id))]
     (concat element-removals
-            ;; We can only remove the id once everythig pointing to
-            ;; it is gone.
+            ;; Once everythig pointing to the element is gone, we can
+            ;; remove the element.
             (if (is-link-id? id) [id] []))))
 
 (defn remove-entity-by-id
-  "Remove the entity with the given id, and all its elements and source."
+  "Remove the entity with the given id, and all its elements."
   [store id]
   (reduce (fn [store id] (remove-link store id))
           store (links-to-remove store id)))

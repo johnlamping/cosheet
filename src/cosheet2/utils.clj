@@ -420,6 +420,7 @@
                         #(ensure-in-map % key fun)))
 
 (defn add-elements-to-entity-list
+  "Add elements to the list form of an entity."
   [entity elements]
   (if (empty? elements)
     entity

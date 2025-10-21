@@ -19,7 +19,7 @@
     [map-state :refer [new-map-state map-state-get-current
                        map-state-reset!]])
    (cosheet2.server
-    [order-utils :refer [update-add-entity-adjacent-to order-element-for-item]]
+    [order-utils :refer [order-element-for-item]]
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]

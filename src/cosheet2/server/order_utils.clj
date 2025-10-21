@@ -11,7 +11,7 @@
     [store :refer [update-source add-link declare-temporary-id
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements label->elements label->content
-                    id->entity]]
+                    id->entity object?]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
     [expression :refer [expr-let expr-seq]]
@@ -274,6 +274,7 @@
   (or (first (label->elements item :order))
       (first (matching-items '(nil :unused-orderable) store))))
 
+;;; TODO: !!! Make this private.
 (defn update-add-entity-adjacent-to
   "Add an entity with the given target id and contents,
    taking its order from the given item, in the given position,
@@ -286,6 +287,26 @@
                               store target-id entity
                               order position use-bigger)]
     [(update-source store (:item-id order-element) remainder) id]))
+
+(defn update-add-element-adjacent-to
+  "Add an element with the given contents,
+   taking its order from the given item, in the given position,
+   and giving the entity the bigger piece if use-bigger is true.
+   Return the updated store and the id of the entity."
+  [store target-id element adjacent-to position use-bigger]
+  (assert (not (object? element)))
+  ; (assert (not (nil? target-id))) ;; TODO: !!! Add this back.
+  (update-add-entity-adjacent-to
+   store target-id element adjacent-to position use-bigger))
+
+(defn update-add-object-adjacent-to
+  "Add an object with the given contents,
+   taking its order from the given item, in the given position,
+   and giving the entity the bigger piece if use-bigger is true.
+   Return the updated store and the id of the entity."
+  [store object adjacent-to position use-bigger]
+  (assert (object? object))
+  (update-add-entity-adjacent-to nil object adjacent-to position use-bigger))
 
 (defn add-order-elements-internal
   "This form uses the specified order to order the elements,

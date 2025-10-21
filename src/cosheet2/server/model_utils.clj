@@ -11,7 +11,8 @@
                                       content elements content->elements
                                       label->elements label->element
                                       target-entity]]
-                      [store-utils :refer [add-entity remove-entity-by-id]]
+                      [store-utils :refer [add-object add-element
+                                           remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
                       [query-calculator :refer [matching-item-ids-R]])
@@ -19,8 +20,13 @@
              [order-utils :refer [semantic-entity?
                                   ordered-ids-R ordered-entities
                                   order-element-for-item
-                                  update-add-entity-adjacent-to]]
+                                  update-add-element-adjacent-to
+                                  update-add-object-adjacent-to]]
              [format-convert :refer [current-format]])))
+
+;;; TODO: !!! Get rid of :top-level on row templates once we start
+;;;           using the fact that they are objects, which implies top
+;;;           level.
 
 ;;; Utilities that know about how information is encoded in terms of the store.
 
@@ -52,7 +58,7 @@
            (if last-string-item
              (update-source
               store (:item-id last-string-item) next-new)
-             (first (add-entity store nil `(~next-new :last-new-string))))])))))
+             (first (add-element store nil `(~next-new :last-new-string))))])))))
 
 (defn get-n-new-strings
   "Get n new strings"
@@ -79,21 +85,6 @@
 ;;;             be turned into "" when put into non-selector items. 
 ;;;    generic: a pattern or template that has '??? to indicate values
 ;;;             that need to be filled in with unique strings.
-
-;;; TODO: If this never causes a failure, get rid of it; that means it
-;;; isn't needed.
-(defn flatten-nested-content
-  "If item has a form anywhere like ((a ...b...) ...c...), turn that into
-  (a ...b... ...c...)"
-  [item]
-  (clojure.walk/postwalk
-   (fn [item]
-     (if (and (seq? item) (seq? (first item)))
-       (assert false ["Template with nested content" (first item)])
-       ;; Here's the code in case we do need to handle this case after all:
-       ;; (apply list (concat (first item) (rest item)))
-       item))
-   item))
 
 (defn semantic-elements
   "Return the elements of an entity that are semantic."
@@ -276,21 +267,20 @@
                           (selector? (id->entity target-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
-    (update-add-entity-adjacent-to store target-id template
-                                   (id->entity adjacent-id store)
-                                   position use-bigger)))
+    (update-add-element-adjacent-to store target-id template
+                                  (id->entity adjacent-id store)
+                                  position use-bigger)))
 
 (defn create-possible-selector-elements
   "Create elements, specializing the template as appropriate, depending on
    whether each target is a selector. Return the new ids and the updated
    store."
   [template targets adjacents position use-bigger store]
-  (let [[specialized-template store] (specialize-generic template store) 
-        flattened-template (flatten-nested-content specialized-template)]
+  (let [[specialized-template store] (specialize-generic template store)]
     (thread-map
      (fn [[target adjacent] store]
        (let [[store id] (create-selector-or-non-selector-element
-                         flattened-template
+                         specialized-template
                          target adjacent position use-bigger store)]
          [id store]))
      (map vector targets adjacents)
@@ -400,12 +390,12 @@
   "Return an initial immutable store. If a tab name is provided, the store
   will have a single tab with that name and a table with that name."
   [tab-name]
-  (let [[store _] (add-entity (new-element-store)
-                                      nil (list current-format :format))
-        [store orderable-id] (add-entity store
-                                         nil (list initial :unused-orderable))
-        [store tabs-holder-id] (add-entity store nil
-                                           '("tabs" :tabs))]
+  (let [[store _] (add-element (new-element-store) nil
+                               (list current-format :format))
+        [store orderable-id] (add-element store nil
+                                          (list initial :unused-orderable))
+        [store tabs-holder-id] (add-element store nil
+                                            '("tabs" :tabs))]
     (if tab-name
       (let [[tab store] (specialize-generic
                          `(""
@@ -414,7 +404,7 @@
                            ~(tab-table-element
                              [`(~tab-name :label)] ['(anything (??? :label))]))
                          store)]
-        (first (update-add-entity-adjacent-to
+        (first (update-add-element-adjacent-to
                 store tabs-holder-id tab                   
                 (id->entity orderable-id store) :after false)))
       store)))
@@ -475,12 +465,12 @@
         order-element (order-element-for-item nil store)]
     [(reduce
       (fn [store row]
-        (let [[store row-id] (update-add-entity-adjacent-to
+        (let [[store row-id] (update-add-element-adjacent-to
                               store nil row-template
                               order-element :before false)]
           (reduce
            (fn [store [header-value cell-value]]
-             (first (update-add-entity-adjacent-to
+             (first (update-add-element-adjacent-to
                      store row-id `(~cell-value (~header-value :label))
                      order-element :before false)))
            store
@@ -495,7 +485,7 @@
   [store table-name headers]
   (let [tabs-holder-id (tabs-holder-id-R store) ;; Won't be a reporter.
         last-tab (last (matching-items '(nil :tabs) store))
-        [store new-tab] (update-add-entity-adjacent-to
+        [store new-tab] (update-add-element-adjacent-to
                          store tabs-holder-id
                          `(""
                            :tab

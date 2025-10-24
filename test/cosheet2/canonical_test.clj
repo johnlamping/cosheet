@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [canonical :refer :all]
                       [test-utils :refer [check]]
+                      [entity :refer [make-object-list]]
                       [entity-impl])
             ; :reload
             ))
@@ -12,7 +13,7 @@
                 (39 ("age" tag) ("doubtful" "confidence") )
                 "married"
                 (45 ("age" tag))))
-(def joe-object (apply vector :object (rest joe-list)))
+(def joe-object (make-object-list (rest joe-list)))
 
 (deftest canonicalize-test
   (is (check (canonicalize joe-list)

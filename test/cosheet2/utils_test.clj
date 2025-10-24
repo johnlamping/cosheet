@@ -86,6 +86,10 @@
   (is (= (separate-by even? [1 2 3 4 5 6])
          [[2 4 6] [1 3 5]])))
 
+(deftest unzip-test
+  (is (= (unzip '([1 2] [3 4] [5 6]))
+         [[1 3 5] [2 4 6]])))
+
 (deftest update-last-test
   (is (= (update-last [1 2 3] inc) [1 2 4]))
   (is (= (update-last [] #(conj % 1)) [[1]])))

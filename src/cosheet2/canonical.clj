@@ -1,10 +1,10 @@
 (ns cosheet2.canonical
   (:require (cosheet2 [utils :refer [multiset multiset-diff multiset-sum
                                      multiset-conj]]
-                      [entity :refer [mutable-entity? primitive?
+                      [entity :refer [mutable-entity?
+                                      primitive? object? element?
                                       content elements orientation
-                                      make-element-list
-                                      entity-type]])))
+                                      make-element-list]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -46,11 +46,15 @@
     value))
 
 (defn equivalent-primitives?
-  "Return true if the canonical forms of the primitives are equal."
+  "Return true if the arguments are primitives and their canonical forms
+  are equal."
   [a1 a2]
-  (or (= a1 a2)
-      (and (string? a1) (string? a2)
-           (= (canonical-primitive-form a1) (canonical-primitive-form a2)))))
+  (and (primitive? a1)
+       (primitive? a2)
+       (or (= a1 a2)
+           (and (string? a1) (string? a2)
+                (= (canonical-primitive-form a1)
+                   (canonical-primitive-form a2))))))
 
 (defn simplest-canonical
   "Given an orientation, a canonical content and a multiset of canonical
@@ -71,12 +75,12 @@
         entity
         (primitive? entity)
         (canonical-primitive-form entity)
-        (= (entity-type entity) :object)
+        (object? entity)
         [:object
          (multiset (map canonicalize (elements entity)))]
         true
         (do
-          (assert (= (entity-type entity) :element))
+          (assert (element? entity))
           (simplest-canonical
            (orientation entity)
            (canonicalize (content entity))

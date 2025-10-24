@@ -4,7 +4,7 @@
             (cosheet2
              [store :refer :all]
              [store-utils :refer :all]
-             [entity :refer [to-list id->entity]]
+             [entity :refer [to-list id->entity make-object-list]]
              entity-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
@@ -15,7 +15,7 @@
 (deftest add-test
   (let [s (new-element-store)
         [s1 id] (add-entity s (make-item-id "0") '(77 ("test" :label)))
-        [s2 id1] (add-object s1 [:object :generic "Hello"])
+        [s2 id1] (add-object s1 (make-object-list '(:generic "Hello")))
         [s3 id2] (add-entity s2 "Fred" `((:target ~(id->entity id1 s2))
                                          ("by" :label)))]
     (is (= (id->target s3 id)) (make-item-id "0"))
@@ -26,7 +26,8 @@
     (is (= (to-list (id->entity id2 s3))
            '("Fred" ("by" :label))))
     (is (check (to-list (id->entity id1 s3))
-               (as-set [:object :generic "Hello" '("Fred" ("by" :label))])))))
+               (as-set (make-object-list
+                        '(:generic "Hello" ("Fred" ("by" :label)))))))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]

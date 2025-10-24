@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
                                      is-link-id?]]
-                      [entity :refer [StoredEntity entity-type
+                      [entity :refer [StoredEntity element?
                                       content orientation elements]])))
 
 ;;; These are utilities for adding and removing element and object
@@ -29,7 +29,7 @@
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
-  (assert (not= (entity-type (content template)) :element))
+  (assert (not (element? (content template))))
   (let [[store content-endpoint]
         (let [element-content (content template)]
           ;; If we have an expanded object, we need to make an instance of it.

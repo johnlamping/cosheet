@@ -3,7 +3,7 @@
                                      target->ids
                                      target-source->ids
                                      id->source id->target
-                                     is-item-id? is-object-id?
+                                     is-item-id? is-link-id? is-object-id?
                                      id->marked-as-type?
                                      mutable-store?
                                      current-store
@@ -54,15 +54,8 @@
   (mutable-entity? [this] false)
 
   (primitive? [this] false)
-
+  (element? [this] (is-link-id? item-id))
   (object? [this] (is-object-id? item-id))
-
-  (entity-type [this]
-    (if (is-object-id? item-id)
-      :object
-      (if orientation
-        :element
-        :link)))
 
   (content [this]
     (when (not (is-object-id? item-id))
@@ -78,15 +71,26 @@
     orientation)
 
   (content->elements [this content-value]
-    (seq (for [element-id (target-source->ids store item-id content-value)]
-           (id->element element-id store))))
+    (let [content-key (entity-key content-value)]
+      (seq (concat
+            (for [element-id (target-source->ids
+                              store item-id content-key)]
+              (id->element element-id store))
+            (when (and (is-object-id? item-id)
+                       (is-object-id? content-key))
+              (for [element-id (target-source->ids
+                                store content-key item-id)]
+                (id->element element-id :target store)))))))
 
   (label->elements [this label]
-    (seq (for [element-id (target-label->ids store item-id label)]
+    (seq (for [element-id (target-label->ids store item-id (entity-key label))]
            (id->element element-id store))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
+
+  (entity-key [this]
+    item-id)
 
   (updating-immutable [this] this))
 
@@ -118,15 +122,8 @@
   (mutable-entity? [this] true)
 
   (primitive? [this?] false)
-
+  (element? [this] (is-link-id? item-id))
   (object? [this] (is-object-id? item-id))
-
-  (entity-type [this]
-    (if (is-object-id? item-id)
-      :object
-      (if orientation
-        :element
-        :link)))
 
   (content [this]
     (when (not (is-object-id? item-id))
@@ -145,21 +142,41 @@
     orientation)
 
   (content->elements [this content-value]
-    (expr-let [element-ids (target-source->ids store item-id content-value)]
-      (seq (for [element-id element-ids]
-             (id->element element-id store)))))
+    (let [content-key (entity-key content-value)]
+      (expr-let [element-ids (target-source->ids
+                              store item-id content-key)
+                 reverse-element-ids (when (and (is-object-id? item-id)
+                                                (is-object-id? content-key))
+                                       (target-source->ids
+                                        store content-key item-id))]
+        (seq (concat (for [element-id element-ids]
+                       (id->element element-id store))
+                     (for [element-id reverse-element-ids]
+                       (id->element element-id :target store)))))))
 
   (label->elements [this label]
-    (expr-let [element-ids (target-label->ids store item-id label)]
+    (expr-let [element-ids (target-label->ids store item-id (entity-key label))]
       (seq (for [element-id element-ids]
              (id->element element-id store)))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
+  
+  (entity-key [this]
+    item-id)
 
   (updating-immutable [this]
     (expr-let [immutable-store (category-change [item-id] store)]
-        (in-different-store this immutable-store))))
+      (in-different-store this immutable-store))))
+
+(defn- equivalent-entities?
+  "Return whether the entities are equivalent primitives, or are objects
+  with the same key."
+  [e1 e2]
+  (if (primitive? e1)
+    (equivalent-primitives? e1 e2)
+    (and (object? e1)
+         (= (entity-key e1) (entity-key e2)))))
 
 ;;; Make a list work as an element. The format is either
 ;;;  ((content orientation) element element...)
@@ -175,10 +192,8 @@
   (mutable-entity? [this] false)
 
   (primitive? [this] false)
-
+  (element? [this] true)
   (object? [this] false)
-
-  (entity-type [this] :element)
 
   (content [this]
     (let [f (first this)]
@@ -195,19 +210,22 @@
         :source)))
 
   (content->elements [this content-value]
-    (seq (filter #(equivalent-primitives? content-value (content %))
+    (seq (filter #(equivalent-entities? content-value (content %))
                  (elements this))))
 
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (equivalent-primitives? label (content %))
-                               (label? %))
+                   (some #(and (label? %)
+                               (equivalent-entities? label (content %)))
                          (elements element)))
                  (elements this))))
 
   (marked-as-type? [this]
     (some #(= (content %) :label)
           (elements this)))
+    
+  (entity-key [this]
+    this)
 
   (updating-immutable [this] this))
 
@@ -221,10 +239,8 @@
   (mutable-entity? [this] false)
 
   (primitive? [this] false)
-
+  (element? [this] false)
   (object? [this] (= (first this) :object))
-
-  (entity-type [this] (if (= (first this) :object) :object :link))
 
   (content [this] nil)
   
@@ -235,110 +251,120 @@
   (orientation [this] nil)
 
   (content->elements [this content-value]
-    (seq (filter #(equivalent-primitives? content-value (content %))
+    (seq (filter #(equivalent-entities? content-value (content %))
                  (elements this))))
 
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (equivalent-primitives? label (content %))
-                               (label? %))
+                   (some #(and (label? %)
+                               (equivalent-entities? label (content %)))
                          (elements element)))
                  (elements this))))
 
   (marked-as-type? [this] false)
-  
+    
+  (entity-key [this]
+    this)
+
   (updating-immutable [this] this))
 
 (extend-protocol Entity
   clojure.lang.Keyword
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
   
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
   
   java.lang.String
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
   
   java.lang.Number
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
   
   java.lang.Boolean
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
   
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this)
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
   (primitive? [this] true)
+  (element? [this] false)
   (object? [this] false)
-  (entity-type [this] :primitive)
   (content [this] this)
   (elements [this] nil)
   (orientation [this] nil)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
   (marked-as-type? [this] false)
+  (entity-key [this] this)
   (updating-immutable [this] this))
 
 (extend-protocol ToStoredEntity

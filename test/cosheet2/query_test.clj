@@ -6,7 +6,8 @@
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list id->entity content
                                       elements label->elements mutable-entity?
-                                      primitive?]]
+                                      primitive?
+                                      make-object-list make-element-list]]
                       entity-impl
                       [query :refer :all]
                       [query-impl :refer [closest-template]]
@@ -73,7 +74,23 @@
     (is (not (extended-by? `(1 :a (:b ~(not-query :c)))
                            '(1 :a (:b :c)))))
     (is (not (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
-                           '(1 :a (:b :c)))))))
+                           '(1 :a (:b :c)))))
+    ;; TODO: !!! Remove the :generic keywords below once
+    ;;           lack of names is used to identify anonymous objects
+    (is (extended-by? (make-object-list '(1 2 :generic))
+                      (make-object-list '(1 2 3 :generic))))
+    (is (extended-by? (make-object-list '(1 2  :generic))
+                      (make-object-list '(1 2  :generic))))
+    (is (not (extended-by? (make-object-list '(1 2 3  :generic))
+                           (make-object-list '(1 2  :generic)))))
+    (is (not (extended-by? (make-element-list :source 1 '(1 2 :generic))
+                           (make-object-list '(1 2 :generic)))))
+    (is (not (extended-by? (make-object-list '(1 2 :generic))
+                           (make-element-list :source 1 '(1 2 :generic)))))
+    (is (not (extended-by? (make-element-list :source 1 '(2 :generic))
+                           (make-object-list '(1 2 :generic)))))
+    (is (not (extended-by? (make-object-list '(1 2 :generic))
+                           (make-element-list :source 1 '(2 :generic)))))))
 
 (defn variable
   ([name] (variable-query name))
@@ -93,6 +110,10 @@
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7)))
                            {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) true]))
+  (is (= (closest-template (make-object-list
+                            `(:generic 2 (3 ~(variable "bar" 7))))
+                           {"bar" '(7 6)})
+         [(make-object-list '(:generic 2 (3 (7 6)))) true]))
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) false]))

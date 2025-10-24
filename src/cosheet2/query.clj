@@ -16,44 +16,19 @@
 ;;; be matched against a subject. There are three levels of elaboration
 ;;; that incorporate more kinds of objects into the patterns to yield more
 ;;; involved queries.
-;;;   fixed-term  May have nil as a content, indicating anything.
-;;;               And may have negated elements, which match if the subject
-;;;               does not have an element that matches them.
+;;;   fixed-term  May have nil as the content of an element, indicating
+;;;               anything.  And may have negated elements, which
+;;;               match if the subject does not have an element that
+;;;               matches them.
 ;;;         term  May also have variables. All occurrences of a variable
 ;;;               with the same name have to match the same value.
 ;;;        query  May also have quantifiers and conjunctions.
 
-;;; There are several querying operations, that differ in how
-;;; elaborate a kind of query they take and in whether they operate on
-;;; a single entity or on the whole store. All only take immutable
-;;; arguments. Where an environment is mentioned, it means a binding
-;;; from query variables to entities.
-
-;;;        extended-by?: Takes a fixed-term and a subject entity. Says
-;;;                      whether the subject extends the term.
-;;; matching-extensions: Takes a term, an environment, and a subject
-;;;                      entity.  Returns a set of extensions of the
-;;;                      environment that cause the term to be an
-;;;                      extension of the subject.
-;;;   matching-elements: Takes a term and a subject entity. Returns a
-;;;                      seq of all elements of the subject that are
-;;;                      extensions of the term.
-;;;      matching-items: Takes a term and a store.  Returns
-;;;                      a seq of all items in the store that denote
-;;;                      entities that are extensions of the term.
-;;;       query-matches: Takes a query, an environment, and a store.
-;;;                      Returns a seq of extensions of the
-;;;                      environment that cause some entity in the
-;;;                      store to be an extension of the query.
-
-;;; TODO: Add functions that return all items matching a query, and ones
-;;; that return whether an item matches a query. Change
-;;; query-calculator to use them, rather than requiring terms.
-
-;;; Internally, the elaborations are indicated with special forms, indicated by
-;;; their content being ::special-form and an element (<special-form> :type)
-;;; Client code should never have to know these details, as there are functions
-;;; to construct each of the special forms.
+;;; Internally, the elaborations are indicated with special forms,
+;;; which are elements whose content is ::special-form and that have
+;;; an element (<special-form> :type) Client code should never have to
+;;; know these details, as there are functions to construct each of
+;;; the special forms.
 
 ;;; A variable can match anything, and what it matches is recorded.
 ;;;   (::special-form (:variable ::type)
@@ -92,6 +67,32 @@
 ;;;   (::special-form (:exists ::type)
 ;;;                   <variable ::variable>
 ;;;                   <sub-query ::sub-query>)
+
+;;; There are several querying operations, that differ in how
+;;; elaborate a kind of query they take and in whether they operate on
+;;; a single entity or on the whole store. All only take immutable
+;;; arguments. Where an environment is mentioned, it means a binding
+;;; from query variables to entities.
+;;;        extended-by?: Takes a fixed-term and a subject entity. Says
+;;;                      whether the subject extends the term.
+;;; matching-extensions: Takes a term, an environment, and a subject
+;;;                      entity.  Returns a set of extensions of the
+;;;                      environment that cause the term to be an
+;;;                      extension of the subject.
+;;;   matching-elements: Takes a term and a subject entity. Returns a
+;;;                      seq of all elements of the subject that are
+;;;                      extensions of the term.
+;;;      matching-items: Takes a term and a store.  Returns
+;;;                      a seq of all items in the store that denote
+;;;                      entities that are extensions of the term.
+;;;       query-matches: Takes a query, an environment, and a store.
+;;;                      Returns a seq of extensions of the
+;;;                      environment that cause some entity in the
+;;;                      store to be an extension of the query.
+
+;;; TODO: Add functions that return all items matching a query, and ones
+;;; that return whether an item matches a query. Change
+;;; query-calculator to use them, rather than requiring terms.
 
 (defn variable-query
   [name & {:keys [qualifier reference]

@@ -18,7 +18,6 @@
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
-                                  specialize-generic
                                   create-possible-selector-elements]]
              [order-utils :refer [ordered-entities]])))
 

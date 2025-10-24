@@ -366,6 +366,14 @@
   (let [groups (group-by #(if (fun %) true false) x)]
     [(groups true) (groups false)]))
 
+(defn unzip
+  "Splits a sequence of pairs into a vector of two vectors."
+  [coll]
+  (reduce (fn [[v1 v2] [x y]]
+            [(conj v1 x) (conj v2 y)])
+          [[] []]
+          coll))
+
 (defn update-last
   "Update the last element of a vector."
   [vec fun]

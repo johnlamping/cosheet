@@ -1,7 +1,7 @@
 (ns cosheet2.entity
   (:require (cosheet2 [calculator :refer [current-value]]
                       [expression :refer [expr-let]]
-                      [store :refer [is-item-id?
+                      [store :refer [make-item-id is-item-id?
                                      is-link-id? is-object-id?]])))
 
 ;;; An entity is either
@@ -110,17 +110,16 @@
      on it assume they are runing under a compute-manager, and may return
      reporters.")
 
+  ;; Every element is exactly one of these three:
+
   (primitive? [this]
     "True if this entity is a primitive, like a string or a number.")
 
-  (object? [this]
-    "True if this entity is an object (neither an element or a primitive)")
+  (element? [this]
+    "True if the entity is an element.")
 
-  (entity-type [this]
-    "Return the type of the entity, one of :primitive, :object,
-    or :element, (or :link if it gets implemented.)
-    Note that the list form of an element that consists of nothing but
-    its content will be the entity-type of its content.")
+  (object? [this]
+    "True if this entity is an object.")
 
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
@@ -143,9 +142,13 @@
 
   (marked-as-type? [this]
     "Return whether the entity is marked as being a type. (Has an element
-     whose content is :label)"
-    (some #(= (content %) :label)
-          (elements this)))
+     whose content is :label)")
+
+  (entity-key [this]
+    "Return the key of this entity. For stored entities, it is their
+    item-id. For all other entities it is the entity, itself.
+    Matching of non-generic objects is based on their key, so that it
+    is independent of any particular store.")
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
@@ -177,13 +180,29 @@
         (and (keyword? content) (not= content :label)))
       (marked-as-type? entity)))
 
+;;; TODO: !!! These need to change when the definition of generic object
+;;;           switches to being based on having a name.
+(defn anonymous-object?
+  "Return true if the entity is a generic object."
+  [entity]
+  (println "anonymous-object?" entity (content->elements entity :generic))
+  (and (object? entity)
+       (seq (content->elements entity :generic))))
+
+(defn named-object?
+  "Return true if the entity is a non-generic object."
+  [entity]
+  (and (object? entity)
+       (empty? (content->elements entity :generic))))
+
 (defn minimal-label?
   "Given a label, Return true if it is as small as it can be
    while still being a label."
   [entity]
   (if (keyword? (content entity))
     (empty? (elements entity))
-    (empty? (rest (elements entity)))))
+    (and (empty? (rest (elements entity)))
+         (not (anonymous-object? (content entity))))))
 
 (defn make-element-list
   "Make the list representation of the described entity."
@@ -198,6 +217,11 @@
               content)
             elements))))
 
+(defn make-object-list
+  "Make the list representation of the described object."
+  [elements]
+  (into [:object] elements))
+
 (defn content-transformed-immutable-to-list [content-transformer]
   "Internal function that takes a transformer on contents
   and returns a function that converts an immutable entity to a list,
@@ -207,16 +231,14 @@
   ;; a compile error, where the letfn definition was not available deep
   ;; inside.
   (fn [entity]
-    (if (or (primitive? entity)
-            (and (= (entity-type entity) :object)
-                 (not (seq (content->elements entity :generic)))))
+    (if (or (primitive? entity) (named-object? entity))
       (content-transformer entity)
       (let [elements (elements entity)
             mapped-elements (map (content-transformed-immutable-to-list
                                   content-transformer)
                                  elements)]
-        (if (= (entity-type entity) :object)
-          (apply vector :object mapped-elements)
+        (if (object? entity)
+          (make-object-list mapped-elements)
           (let [content (content-transformer (content entity))]
             (make-element-list (orientation entity) content mapped-elements)))))))
 
@@ -224,7 +246,10 @@
   "Return a list form of the entity. If a content is a non-generic object,
   include the object in the list, rather than its list form.
   That way, the value of to-list will only change if the entity or one
-  of its elements that pertains to it changes."
+  of its elements that pertains to it changes.
+  Note that the list form of an element that consists of nothing but
+  its content will be its content, so converting to list form can
+  change the entity type."
   (if (mutable-entity? entity)
     ;; We want to run with updating-immutable, but if a content is an
     ;; entity, we want the resulting entity to reference the mutable
@@ -236,6 +261,14 @@
                          content)))
        immutable))
     ((content-transformed-immutable-to-list identity) entity)))
+
+(defn presumed-orientation [list-form]
+  "Return the orientation of the entity that could have resulted in this
+  list form of entity. In particular, an element with just a content,
+  and with orientation :source, can be replaced by its content in the
+  list form. So if the list form has no orientation, presume that is
+  was :source."
+  (or (orientation list-form) :source))
 
 (defn label->element
   "Return the element with the given label.
@@ -259,9 +292,12 @@
   (expr-let [element (label->element entity label)]
     (content element)))
 
-(defn id->element [id store]
-  (assert (is-link-id? id))
-  (id->entity-m id store :source))
+(defn id->element 
+  ([id store]
+   (id->element id :source store))
+  ([id orientation store]
+   (assert (is-link-id? id))
+   (id->entity-m id store orientation)))
 
 (defn id->object [id store]
   (assert (is-object-id? id))

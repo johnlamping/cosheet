@@ -1,15 +1,15 @@
 (ns cosheet2.query-impl
   (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [Entity StoredEntity
-                                      mutable-entity? primitive?
-                                      id->entity
-                                      orientation content elements
-                                      make-element-list 
+                                      mutable-entity? primitive? object?
+                                      named-object?
+                                      id->entity entity-key
+                                      presumed-orientation content elements
+                                      make-element-list make-object-list
                                       label->elements
                                       label->content
                                       to-list
-                                      in-different-store]]
-                      [entity :refer [label? minimal-label?]]
+                                      label? minimal-label?]]
                       [query :as query
                        :refer [extended-by-m?
                                matching-extensions-m
@@ -25,9 +25,10 @@
                                sub-query]]
                       [canonical :refer [equivalent-primitives?
                                          canonicalize]]
-                      [utils :refer [prewalk-seqs
+                      [utils :refer [prewalk-seqs unzip
                                      conj-disjoint-combinations
                                      disjoint-combinations]])))
+;;; TODO: !!! Do checking for non-generic objects, not moving into them.
 
 ;;; TODO:
 ;;; Add a term syntax that lets variables bind to the subject.
@@ -104,12 +105,12 @@
     [term true]))
 
 (defn labels-for-element
-  "Given an entity that is an element of a term, find primitives that
-  can serve as labels for finding matching elements of a
-  subject. Returns either '(), meaning that no labels were found; a
-  sequence of labels, any of which will work; or a single label, which
-  means a perfect fit: an element of a subject will match the query
-  element if and only if it has that label."
+  "Given an element of a term, find primitives that can serve as labels
+  for finding matching elements of other entities. Returns either '(),
+  meaning that no labels were found; a sequence of labels, any of
+  which will work; or a single label, which means a perfect fit: an
+  element of an entity will match the query element if and only if it
+  has the right orientation, and has that label."
   [element env]
   (let [[contextualized exact-match] (contextualize-variable element env)
         elems (map #(first (contextualize-variable % env))
@@ -133,13 +134,18 @@
               candidates))))
 
 (defn candidate-elements
-  "Given a subject, and labels that all the elements we are looking for
-   will have, return a set of candidate elements that is guaranteed
-   to include all the possible matches."
-  [labels subject]
+  "Given a entity whose elements we are searching over, and labels that
+  all the elements we are looking for will have, return a set of
+  candidate elements that is guaranteed to include all the possible
+  matches."
+  [labels required-orientation entity]
   (if (empty? labels)
-    (elements subject)
-    (let [candidateses (map #(label->elements subject %) labels)]
+    (filter #(= (presumed-orientation %) required-orientation)
+            (elements entity))
+    (let [candidateses (->> labels
+                            (map #(label->elements entity %))
+                            (filter #(= (presumed-orientation %)
+                                        required-orientation)))]
       (loop [best nil
              candidateses candidateses]
         (if (empty? candidateses)
@@ -155,38 +161,47 @@
                        best)
                      (rest candidateses)))))))))
 
-(defn elements-satisfying [fixed-term subject]
-  "Return a list of the subject elements satisfying the given fixed-term."
-  (when (not (primitive? subject))
+(defn elements-satisfying [fixed-term entity]
+  "Return a list of the entity's elements satisfying the given
+  fixed-term, which must be an element."
+  (assert (not (object? fixed-term)))
+  (when (not (primitive? entity))
     (let [labels (labels-for-element fixed-term {})]
       (if (seq? labels)
         (filter #(extended-by? fixed-term %)
-                (candidate-elements labels subject))
+                (candidate-elements
+                 labels (presumed-orientation fixed-term) entity))
         ;; The special case where being in the label index guarantees
         ;; satisfing the fixed-term.
-        (label->elements subject labels)))))
+        (label->elements entity labels)))))
 
-(defn extended-by? [fixed-term subject]
+(defn extended-by? [fixed-term entity]
   (or (nil? fixed-term)
-      (if (primitive? fixed-term)
+      (cond
+        (primitive? fixed-term)
         (equivalent-primitives? (content fixed-term)
-                                (content subject))
-        (and (extended-by? (content fixed-term) (content subject))
+                                (content entity))
+        (named-object? fixed-term)
+        (= (entity-key fixed-term) (entity-key entity))
+        true
+        (and (= (object? fixed-term) (object? entity))
+             (or (object? fixed-term)
+                 (extended-by? (content fixed-term) (content entity)))
              (or (empty? (elements fixed-term))
                  (let [[positive negative] (separate-negations
                                             (elements fixed-term))]
                    (let [positive-satisfying
-                         (seq (map #(elements-satisfying % subject) positive))
+                         (seq (map #(elements-satisfying % entity) positive))
                          negative-satisfying
-                         (map #(elements-satisfying % subject) negative)]
+                         (map #(elements-satisfying % entity) negative)]
                      (and (or (empty? positive)
                               (not (empty? (disjoint-combinations
                                             positive-satisfying))))
                           (not-any? #(not (empty? %))
                                     negative-satisfying)))))))))
 
-(defmethod extended-by-m? true [fixed-term subject]
-  (extended-by? fixed-term subject))
+(defmethod extended-by-m? true [fixed-term entity]
+  (extended-by? fixed-term entity))
 
 (defn is-fixed-term-special-form?
   "Return true if the term is a special form that fixed terms can
@@ -206,75 +221,72 @@
   Also return whether matching the template is exactly equal to matching
   the term, using the format of combine-exact-matches."
   [term env]
-  ;; TODO: Get rid of this check that we are not getting a mutable query.
-  (assert (not (mutable-entity? term)))
   (let [[contextualized exact-match] (contextualize-variable term env)]
-    ;; TODO: Get rid of this check that we are not getting a mutable
-    ;; query once we contextualize. Then get rid of the following
-    ;; as-list too.
-    (assert (not (mutable-entity? contextualized)))
-    ;; While the term is guaranteed to be immutable, its contextualized
-    ;; value might be an item in a mutable store.
-    ;; TODO: Not any more.
     (let [as-list (to-list contextualized)]
       (if (is-fixed-term-special-form? as-list)
         [nil false]
         (do (assert (not (special-form? as-list)))
-            (if (seq? as-list)
+            (if (or (primitive? as-list) (named-object? as-list))
+              [as-list exact-match]
               (let [{dropped-elements true
                      kept-elements false}
                     (group-by is-fixed-term-special-form? (elements as-list))
-                    converted-content (closest-template (content as-list) env)
-                    converted-kept-elements (map #(closest-template % env)
-                                                 kept-elements)
-                    exact-match (reduce combine-exact-matches
-                                          (concat
-                                           [exact-match
-                                            (not (some special-form?
-                                                       dropped-elements))
-                                            (second converted-content)]
-                                           (map second
-                                                converted-kept-elements)))]
-                [(make-element-list (orientation as-list)
-                                    (first converted-content)
-                                    (map first converted-kept-elements))
-                 exact-match])
-              [as-list exact-match]))))))
+                    [converted-kept-elements converted-kept-exact]
+                    (unzip (map #(closest-template % env)
+                                kept-elements))
+                    exact-element-match (reduce combine-exact-matches
+                                                (list*
+                                                 exact-match
+                                                 (not (some special-form?
+                                                            dropped-elements))
+                                                 converted-kept-exact))]
+                (if (object? as-list)
+                  [(make-object-list converted-kept-elements)
+                   exact-element-match]
+                  (let [[converted-content content-exact]
+                        (closest-template (content as-list) env)]
+                    [(make-element-list (presumed-orientation as-list)
+                                        converted-content
+                                        converted-kept-elements)
+                     (combine-exact-matches content-exact
+                                            exact-element-match)])))))))))
 
 (def matching-extensions)
 
 (defn variable-matches
-  "Return a seq of environments for which the variable matches the subject.
+  "Return a seq of environments for which the variable matches the entity.
   Each environment will a binding for this variable, if it has a name,
   plus bindings for any other variables in the qualifier."
-  [var env subject]
+  [var env entity]
   (let [name (variable-name var)
         qualifier (variable-qualifier var)
         reference (variable-reference var)]
     (let [value (env name)]
       (if (nil? value)
-        (when (and (not (nil? subject))
-                   (or (not reference) (satisfies? StoredEntity subject)))
+        (when (and (not (nil? entity))
+                   (or (not reference) (satisfies? StoredEntity entity)))
           (let [envs (if (nil? qualifier)
                        [env]
-                       (matching-extensions qualifier env subject))]
+                       (matching-extensions qualifier env entity))]
             (if (nil? name)
               envs
-              (seq (map #(assoc % name subject) envs)))))
+              (seq (map #(assoc % name entity) envs)))))
         (if reference
-          (when (and (= value subject) (satisfies? StoredEntity subject))
+          (when (and (= value entity) (satisfies? StoredEntity entity))
                 [env])
           (when (= (canonicalize value)
-                   (canonicalize subject))
+                   (canonicalize entity))
             [env]))))))
 
 (defn element-match-map
-  "Return a map from environment to seq of elements of the subject that match
-  the term in the environment."
-  [term env subject]
+  "Return a map from environment to seq of elements of the entity that match
+  the term in the environment. The term must be an element."
+  [term env entity]
+  (assert (not (object? term)))
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels) (nil? (content labels)))
-      (let [candidates (candidate-elements labels subject)
+      (let [candidates (candidate-elements
+                        labels (presumed-orientation term) entity)
             match-envs (map #(matching-extensions term env %) candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -282,7 +294,7 @@
                           result matching-envs))
                 {} (map vector candidates match-envs)))
       ;; The special case of looking for any element with one specific label.
-      (let [matching-elements (label->elements subject labels)]
+      (let [matching-elements (label->elements entity labels)]
         (cond (empty? matching-elements)
               {}
               (variable-query? term)
@@ -294,8 +306,8 @@
               true
               {env matching-elements})))))
 
-(defn element-matches [term env subject]
-  (keys (element-match-map term env subject)))
+(defn element-matches [term env entity]
+  (keys (element-match-map term env entity)))
 
 (defn concat-maps
   "Given a sequence of maps from key to sequence of values, return a single
@@ -321,33 +333,33 @@
 
 (defn multiple-element-matches
   "Given a sequence of terms, a map from environments to sequences
-  of disallowed elements, and a subject, return a sequence of environments
-  where each term matches a different element in the subject,
+  of disallowed elements, and a entity, return a sequence of environments
+  where each term matches a different element in the entity,
   and not a disallowed element."
-  [terms env-map subject]
+  [terms env-map entity]
   (if (empty? terms)
     (keys env-map)
-    (let [matching-maps (map #(element-match-map (first terms) % subject)
+    (let [matching-maps (map #(element-match-map (first terms) % entity)
                              (keys env-map))
           disjoint-map (concat-maps
                         (map conj-disjoint-maps
                              (vals env-map) matching-maps))]
       (multiple-element-matches
-       (rest terms) disjoint-map subject))))
+       (rest terms) disjoint-map entity))))
 
 (defn no-element-matches
   "Return true if none of the queries are matched
-   by any elements of the subject, given the environment."
-  [queries env subject]
+   by any elements of the entity, given the environment."
+  [queries env entity]
   (if (empty? queries)
     true
-    (when (empty? (element-matches (first queries) env subject))
-      (no-element-matches (rest queries) env subject))))
+    (when (empty? (element-matches (first queries) env entity))
+      (no-element-matches (rest queries) env entity))))
 
-(defn item-matches [item env subject]
+(defn item-matches [item env entity]
   (let [content-match-envs
         (if-let [item-content (content item)]
-          (matching-extensions item-content env (content subject))
+          (matching-extensions item-content env (content entity))
           [env])]
     (when (seq content-match-envs)
       (let [item-elements (elements item)]
@@ -359,38 +371,38 @@
                     (empty? positive)
                     content-match-envs
                     (empty? (rest positive))
-                    (-> (map #(element-matches (first positive) % subject)
+                    (-> (map #(element-matches (first positive) % entity)
                              content-match-envs)
                         distinct-concat)
                     true
                     (multiple-element-matches
                      positive
                      (zipmap content-match-envs (repeat [[]]))
-                     subject))]
+                     entity))]
               (if (empty? negative)
                 envs
-                (filter #(no-element-matches negative % subject) envs)))))))))
+                (filter #(no-element-matches negative % entity) envs)))))))))
 
-(defn matching-extensions [term env subject]
+(defn matching-extensions [term env entity]
   (assert (not (mutable-entity? term)))
   (if (primitive? term)
-    (when (extended-by? term subject) [env])
+    (when (extended-by? term entity) [env])
     (if (variable-query? term)
-      (variable-matches term env subject)
-      (item-matches term env subject))))
+      (variable-matches term env entity)
+      (item-matches term env entity))))
 
-(defmethod matching-extensions-m true [term env subject]
-  (matching-extensions term env subject))
+(defmethod matching-extensions-m true [term env entity]
+  (matching-extensions term env entity))
 
 (defn matching-elements
-  [term subject]
+  [term entity]
   (if (or (nil? term) (= term '()))
-    (elements subject)
-    (let [match-map (element-match-map term {} subject)]
+    (elements entity)
+    (let [match-map (element-match-map term {} entity)]
       (distinct-concat (vals match-map)))))
 
-(defmethod matching-elements-m true [term subject]
-  (matching-elements term subject))
+(defmethod matching-elements-m true [term entity]
+  (matching-elements term entity))
 
 (defn matching-items [term store]
   (filter

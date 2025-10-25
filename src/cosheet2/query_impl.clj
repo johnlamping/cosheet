@@ -4,7 +4,7 @@
                                       mutable-entity? primitive? object?
                                       named-object?
                                       id->entity entity-key
-                                      presumed-orientation content elements
+                                      orientation content elements
                                       make-element-list make-object-list
                                       label->elements
                                       label->content
@@ -140,11 +140,11 @@
   matches."
   [labels required-orientation entity]
   (if (empty? labels)
-    (filter #(= (presumed-orientation %) required-orientation)
+    (filter #(= (orientation %) required-orientation)
             (elements entity))
     (let [candidateses (->> labels
                             (map #(label->elements entity %))
-                            (filter #(= (presumed-orientation %)
+                            (filter #(= (orientation %)
                                         required-orientation)))]
       (loop [best nil
              candidateses candidateses]
@@ -170,7 +170,7 @@
       (if (seq? labels)
         (filter #(extended-by? fixed-term %)
                 (candidate-elements
-                 labels (presumed-orientation fixed-term) entity))
+                 labels (orientation fixed-term) entity))
         ;; The special case where being in the label index guarantees
         ;; satisfing the fixed-term.
         (label->elements entity labels)))))
@@ -245,7 +245,7 @@
                    exact-element-match]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
-                    [(make-element-list (presumed-orientation as-list)
+                    [(make-element-list (orientation as-list)
                                         converted-content
                                         converted-kept-elements)
                      (combine-exact-matches content-exact
@@ -286,7 +286,7 @@
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels) (nil? (content labels)))
       (let [candidates (candidate-elements
-                        labels (presumed-orientation term) entity)
+                        labels (orientation term) entity)
             match-envs (map #(matching-extensions term env %) candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]

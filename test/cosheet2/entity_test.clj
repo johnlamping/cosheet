@@ -85,6 +85,7 @@
                   :generic]
         item-a (id->entity ida s)
         item-b (id->entity idb s)
+        item-k (id->entity idk s)
         item-a-reversed (id->entity ida s :target)
         item-b-reversed (id->entity idb s :target)]
     (is (= (:item-id  item0) id0))
@@ -143,7 +144,8 @@
     (is (check (canonicalize (to-list item99))
                (canonicalize list-99)))
     (is (= (to-list item1) item1))
-    (is (= (to-list item-a-reversed) `((:target ~item99) ("foo" :label))))))
+    (is (= (to-list item-a-reversed) `((:target ~item99) ("foo" :label))))
+    (is (= (to-list item-k) `(~item1)))))
 
 (deftest mutable-storeditem-test
   (let [id0 (make-item-id "0")
@@ -331,6 +333,13 @@
   (is (not (object? 'foo)))
   (is (not (object? nil)))
   (is (not (object? orderable/initial)))
+  (is (= (orientation 1) :source))
+  (is (= (orientation true) :source))
+  (is (= (orientation "foo") :source))
+  (is (= (orientation :foo) :source))
+  (is (= (orientation 'foo) :source))
+  (is (= (orientation nil) :source))
+  (is (= (orientation orderable/initial) :source))
   (is (= (content 1) 1))
   (is (= (content true) true))
   (is (= (content "foo") "foo"))

@@ -76,19 +76,24 @@
 ;;; endpoint holds the content.
 
 ;;; But the most general form isn't always necessary. If an element
-;;; has orientation :source, and its content is either an object or is
-;;; a primitive that is not a list, then one of two simplified forms
-;;; is possible.
-;;;    * If it also has no sub-elements of its own, then its list form is
-;;;      just the list form of its content. This means that the list
-;;;      form can't distinguish between a simple element and
-;;;      primitives or objects. But that is OK, because all uses of
-;;;      the list form either expect elements or non-elements.
+;;; has orientation :source, and its content is not a list, then one
+;;; of two simplified forms is possible.
+;;;    * If its content is a primitive and it has no sub-elements of
+;;;      its own, then its list form is just its content.
 ;;;    * If it does have sub-elements of its own, then its list form is
 ;;;      (content element element ...)
 ;;; Combinding these simplified forms yield compact list
 ;;; representations of the most common kinds of elements, like
 ;;;   (5 "value" (3 "x") (4 "y"))
+
+;;; This means that the list form of an element that consists of
+;;; nothing but a primitive content is just that content. So
+;;; converting to list form can change an entity from an element to a
+;;; primitive.  To reduce the problems from that, primitives return
+;;; the same answers to content, orientation, and elememts as would an
+;;; element consisting of just that primitive as its content. That is,
+;;; they return themselves for their content, :souce for their
+;;; orientation, nil for their elements.
 
 ;;; When an object is used in a query as a generic object, there also
 ;;; needs to be a list form for it. Its list form is
@@ -198,7 +203,6 @@
 (defn anonymous-object?
   "Return true if the entity is a generic object."
   [entity]
-  (println "anonymous-object?" entity (content->elements entity :generic))
   (and (object? entity)
        (seq (content->elements entity :generic))))
 
@@ -218,17 +222,17 @@
          (not (anonymous-object? (content entity))))))
 
 (defn make-element-list
-  "Make the list representation of the described entity."
+  "Make the list representation of the described entity, simplifying it
+  as much as possible without leaving ambiguities."
   [orientation content elements]
   ;; We leave off the orientation if we can.
-  (let [needs-orientation (or (seq? content)
-                              (not= orientation :source))]
-    (if (and (empty? elements) (not needs-orientation))
+  (if (or (seq? content)
+          (not= orientation :source))
+    (cons (list orientation content) elements)
+    (if (and (primitive? content)
+             (empty? elements))
       content
-      (cons (if needs-orientation
-              (list orientation content)
-              content)
-            elements))))
+      (cons content elements))))
 
 (defn make-object-list
   "Make the list representation of the described object."
@@ -259,10 +263,7 @@
   "Return a list form of the entity. If a content is a non-generic object,
   include the object in the list, rather than its list form.
   That way, the value of to-list will only change if the entity or one
-  of its elements that pertains to it changes.
-  Note that the list form of an element that consists of nothing but
-  its content will be its content, so converting to list form can
-  change the entity type."
+  of its elements that pertains to it changes."
   (if (mutable-entity? entity)
     ;; We want to run with updating-immutable, but if a content is an
     ;; entity, we want the resulting entity to reference the mutable
@@ -274,14 +275,6 @@
                          content)))
        immutable))
     ((content-transformed-immutable-to-list identity) entity)))
-
-(defn presumed-orientation [list-form]
-  "Return the orientation of the entity that could have resulted in this
-  list form of entity. In particular, an element with just a content,
-  and with orientation :source, can be replaced by its content in the
-  list form. So if the list form has no orientation, presume that is
-  was :source."
-  (or (orientation list-form) :source))
 
 (defn label->element
   "Return the element with the given label.

@@ -40,6 +40,19 @@
 ;;; part of the element. For example, it's not included in the
 ;;; element's description.
 
+;;; The store's restriction that the target can't be a primitive and
+;;; the source can't be a link restricts the possible elements. In
+;;; addition, for now, a link can only be reversed if both its source
+;;; and target are objects. In other words, only relationships between
+;;; objects are reversible. The case where the target can be a link
+;;; may be supported later. But that means that content of an element
+;;; could be another element, which is viewed from neither its link's
+;;; source or target, but from one of the links to it.
+
+;;; This, in turn, means that the elements of an object correspond to
+;;; all links that have it as a target, and all links that have it as
+;;; a target and that have an object as their subject.
+
 ;;; Elements are normally accessed in terms of content, orientation,
 ;;; and sub-elements. But elements that are associated with stores
 ;;; also support a target-entity method, which returns the entity

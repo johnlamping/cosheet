@@ -36,6 +36,32 @@
     (is (= (entity-impl/endpoint->entity id s) item))
     (is (= (entity-impl/endpoint->entity id s :target) reversed-item))))
 
+(deftest id-only-item-test
+  (let [id0 (make-item-id "0")
+        id1 (make-item-id "1")
+        id99 (make-item-id "99")
+        item0 (id->entity id0 nil)
+        item1 (id->entity id1 nil)
+        item99 (id->entity id99 nil)]
+    (is (= (:item-id  item0) id0))
+    (is (= (:item-id  item99) id99))
+    (is (not (primitive? item0)))
+    (is (object? item0))
+    (is (not (element? item0)))
+    ;; TODO: !!! The next two need to swap polarity when anonymous uses names.
+    (is (not (anonymous-object? item0)))
+    (is (named-object? item0))
+    (is (= (orientation item0)) nil)
+    (is (= (target-entity item0) nil))
+    (is (= (label->elements item99 "foo") nil))
+    (is (= (elements item99) nil))
+    (is (= (content item99) nil))
+    (is (not (marked-as-type? item99)))
+    (is (= (content->elements item99 4) nil))
+    (is (= (label->elements item99 "foo") nil))
+    (is (= (entity-key item99) id99))
+    (is (check (to-list item99) item99))))
+
 (deftest storeditem-test
   (let [id0 (make-item-id "0")
         id1 (make-item-id "1")
@@ -90,7 +116,7 @@
            nil))
     (is (= (content item99) nil))
     (is (marked-as-type? item-b))
-    (is (not(marked-as-type? item99)))
+    (is (not (marked-as-type? item99)))
     (is (= (content (id->entity ida s)) 3))
     (is (= (content item-b) "foo"))
     (is (= (content item-a-reversed) item99))

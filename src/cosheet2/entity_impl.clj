@@ -29,6 +29,44 @@
      value)))
 
 (defrecord
+    ^{:doc
+      "An entity with an id that can be put into a store, but that has no
+      store associated with it. These can be used to create list forms
+      of entities that have known ids based on strings, and can still
+      added to stores. That is useful for both building the initial
+      store and for unit tests."}
+    IdOnlyEntity
+
+    [item-id      ; The ItemId of the item in the store.
+     orientation] ; The endpoint that holds an element entity's content.
+
+  StoredEntity
+
+  (target-entity [this] nil)
+  
+  (in-different-store [this store-or-entity]
+    (id->entity item-id
+                (if (satisfies? Store store-or-entity)
+                  store-or-entity
+                  (:store store-or-entity))
+                orientation))
+  
+  Entity
+
+  (mutable-entity? [this] false)
+  (primitive? [this] false)
+  (element? [this] (is-link-id? item-id))
+  (object? [this] (is-object-id? item-id))
+  (content [this] nil)
+  (elements [this] nil)
+  (orientation [this] orientation)
+  (content->elements [this content-value] nil)
+  (label->elements [this label] nil)
+  (marked-as-type? [this] nil) 
+  (entity-key [this] item-id)
+  (updating-immutable [this] this))
+
+(defrecord
     ^{:doc "An entity whose elements are described by a store."}
     ImmutableStoredEntity
 
@@ -371,7 +409,8 @@
   cosheet2.store.ItemId
   (id->entity-m [this store orientation]
     (assert (or (nil? orientation) (#{:source :target} orientation)))
-    (if (mutable-store? store)
-      (->MutableStoredEntity store this orientation)
-      (->ImmutableStoredEntity store this orientation))))
+    (cond
+      (nil? store) (->IdOnlyEntity this orientation)
+      (mutable-store? store) (->MutableStoredEntity store this orientation)
+      true (->ImmutableStoredEntity store this orientation))))
 

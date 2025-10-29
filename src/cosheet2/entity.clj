@@ -66,9 +66,20 @@
 ;;; called the list form.
 
 ;;; The list form of primitives is just the primitive, since they are
-;;; already independent of stores. The list form of specific objects
-;;; is a wrapper of their id with the store, because the id is the
-;;; only way to identify specific objects.
+;;; already independent of stores. The list form of mutable objects
+;;; and named objects is their normal element form. That provides the
+;;; support for the object methods, while also including their id. And
+;;; one of these objects in a query matches a subject object iff the
+;;; two have the same id (independent of which store they are in).
+
+;;; But anonymous objects don't need an id in list form, as they match
+;;; based on their elements, not their id. So they do have a list form
+;;; that includes just their elements:
+;;;    [:object element element ...]
+;;; The code that converts items in the store to their query forms
+;;; generates this representation for generic objects, which have the
+;;; tag, :generic, as a property in the store.
+
 ;;; Elements are more complicated. The most general list form of an
 ;;; element is
 ;;;   ((orientation content) element element ...)
@@ -94,13 +105,6 @@
 ;;; element consisting of just that primitive as its content. That is,
 ;;; they return themselves for their content, :souce for their
 ;;; orientation, nil for their elements.
-
-;;; When an object is used in a query as a generic object, there also
-;;; needs to be a list form for it. Its list form is
-;;;    [:object element element ...]
-;;; The code that converts items in the store to their query forms
-;;; generates this representation for generic objects, which have the
-;;; tag, :generic, as a property in the store.
 
 ;;; If it turns out that list forms of links are also necessary, they
 ;;; should be
@@ -156,7 +160,7 @@
 
   (label->elements [this label]
     "Return a seq of items for all our elements with an elaboration with
-     the given atomic label.")
+     the given label.")
 
   (marked-as-type? [this]
     "Return whether the entity is marked as being a type. (Has an element
@@ -198,19 +202,22 @@
         (and (keyword? content) (not= content :label)))
       (marked-as-type? entity)))
 
-;;; TODO: !!! These need to change when the definition of generic object
-;;;           switches to being based on having a name.
+;;; TODO: !!! These need to change when the definition of label changes.
 (defn anonymous-object?
   "Return true if the entity is a generic object."
   [entity]
   (and (object? entity)
-       (seq (content->elements entity :generic))))
+       (empty? (label->elements entity "name"))
+       (not (and (satisfies? StoredEntity entity)
+                 (string? (:id (:item-id entity)))))))
 
 (defn named-object?
   "Return true if the entity is a non-generic object."
   [entity]
   (and (object? entity)
-       (empty? (content->elements entity :generic))))
+       (or (seq (label->elements entity "name"))
+           (and (satisfies? StoredEntity entity)
+                 (string? (:id (:item-id entity)))))))
 
 (defn minimal-label?
   "Given a label, Return true if it is as small as it can be
@@ -225,6 +232,8 @@
   "Make the list representation of the described entity, simplifying it
   as much as possible without leaving ambiguities."
   [orientation content elements]
+  ;; Make sure the elements we are given respect the list form.
+  (assert (not-any? object? elements))
   ;; We leave off the orientation if we can.
   (if (or (seq? content)
           (not= orientation :source))
@@ -237,44 +246,47 @@
 (defn make-object-list
   "Make the list representation of the described object."
   [elements]
+  ;; Make sure the elements we are given respect the list form.
+  (assert (not-any? object? elements))
   (into [:object] elements))
 
-(defn content-transformed-immutable-to-list [content-transformer]
-  "Internal function that takes a transformer on contents
-  and returns a function that converts an immutable entity to a list,
-  running the content transformer on contents."
-  ;; Note: We tried using a letfn here, so we didn't have to recursively
-  ;; call content-transformed-immutable-to-list. But that resulted in
-  ;; a compile error, where the letfn definition was not available deep
-  ;; inside.
+(defn immutable-to-list-generator [object-to-list]
+  "Internal function that takes an object to list function and returns
+  an immutable entity to list function, handling objects with the object
+  to list function."
+  ;; Note: We tried using a letfn here, so we didn't have to pass in
+  ;; the object-transformer each time we called ourselves
+  ;; recursively. But that resulted in a compile error, where the
+  ;; letfn definition was not available deep inside.
   (fn [entity]
-    (if (or (primitive? entity) (named-object? entity))
-      (content-transformer entity)
-      (let [elements (elements entity)
-            mapped-elements (map (content-transformed-immutable-to-list
-                                  content-transformer)
-                                 elements)]
-        (if (object? entity)
-          (make-object-list mapped-elements)
-          (let [content (content-transformer (content entity))]
-            (make-element-list (orientation entity) content mapped-elements)))))))
+    (let [recurse (immutable-to-list-generator object-to-list)]
+      (cond
+        (primitive? entity) entity
+        (object? entity) (object-to-list entity)
+        true (make-element-list (orientation entity)
+                                (recurse (content entity))
+                                (map recurse (elements entity)))))))
+
+(defn immutable-object-to-list [object]
+  (if (anonymous-object? object)
+    (let [recurse (immutable-to-list-generator immutable-object-to-list)]
+      (make-object-list (map recurse (elements object))))
+    object))
 
 (defn to-list [entity]
-  "Return a list form of the entity. If a content is a non-generic object,
-  include the object in the list, rather than its list form.
-  That way, the value of to-list will only change if the entity or one
-  of its elements that pertains to it changes."
+  "Return a list form of the entity."
   (if (mutable-entity? entity)
-    ;; We want to run with updating-immutable, but if a content is an
-    ;; entity, we want the resulting entity to reference the mutable
-    ;; store.
+    ;; We want to run with updating-immutable, relative to an
+    ;; immutable store, but for objects, we want to return the
+    ;; corresponding object from the mutable store.
     (expr-let [immutable (updating-immutable entity)]
-      ((content-transformed-immutable-to-list
-        (fn [content] (if (satisfies? StoredEntity content)
-                         (in-different-store content entity)
-                         content)))
+      ((immutable-to-list-generator
+        (fn [object] (if (satisfies? StoredEntity object)
+                         (in-different-store object entity)
+                         object)))
        immutable))
-    ((content-transformed-immutable-to-list identity) entity)))
+    ((immutable-to-list-generator immutable-object-to-list)
+     entity)))
 
 (defn label->element
   "Return the element with the given label.

@@ -4,7 +4,8 @@
                       [entity :refer [mutable-entity?
                                       primitive? object? element?
                                       content elements orientation
-                                      make-element-list]])))
+                                      make-element-list
+                                      named-object?]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -16,8 +17,8 @@
 ;;;   Strings: Their trimmed lower case
 ;;;   Other primitives: Themselves
 ;;;   Mutable entities: Themselves
-;;;   Immutable non-generic objects: Themselves
-;;;   Immutable generic objects: A pair of
+;;;   Immutable named objects: Themselves
+;;;   Immutable anonymous objects: A pair of
 ;;;     [:object
 ;;;      A multiset of the canonical descriptions of their elements.]
 ;;;   Other immutable elements: A triple of
@@ -76,8 +77,10 @@
         (primitive? entity)
         (canonical-primitive-form entity)
         (object? entity)
-        [:object
-         (multiset (map canonicalize (elements entity)))]
+        (if (named-object? entity)
+          entity
+          [:object
+           (multiset (map canonicalize (elements entity)))])
         true
         (do
           (assert (element? entity))

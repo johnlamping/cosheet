@@ -4,7 +4,7 @@
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
                       [expression :refer [expr-let]]
-                      [store :refer [add-link make-item-id
+                      [store :refer [add-link make-item-id get-new-object-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
                                      current-store
@@ -37,8 +37,8 @@
     (is (= (entity-impl/endpoint->entity id s :target) reversed-item))))
 
 (deftest id-only-item-test
-  (let [id0 (make-item-id "0")
-        id1 (make-item-id "1")
+  (let [[sa id0] (get-new-object-id (new-element-store))
+        [_ id1] (get-new-object-id sa)
         id99 (make-item-id "99")
         item0 (id->entity id0 nil)
         item1 (id->entity id1 nil)
@@ -48,9 +48,8 @@
     (is (not (primitive? item0)))
     (is (object? item0))
     (is (not (element? item0)))
-    ;; TODO: !!! The next two need to swap polarity when anonymous uses names.
-    (is (not (anonymous-object? item0)))
-    (is (named-object? item0))
+    (is (anonymous-object? item0))
+    (is (not (named-object? item0)))
     (is (= (orientation item0)) nil)
     (is (= (target-entity item0) nil))
     (is (= (label->elements item99 "foo") nil))
@@ -60,22 +59,25 @@
     (is (= (content->elements item99 4) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (entity-key item99) id99))
-    (is (check (to-list item99) item99))))
+    (is (= (to-list item0) (make-object-list nil)))
+    (is (= (to-list item99) item99))))
 
 (deftest storeditem-test
-  (let [id0 (make-item-id "0")
-        id1 (make-item-id "1")
-        id99 (make-item-id "99")
-        [s1 ida] (add-link (new-element-store) id99 3)
+  (let [[sa id0] (get-new-object-id (new-element-store))
+        [sb id1] (get-new-object-id sa)
+        [sc id99] (get-new-object-id sb)
+        [s1 ida] (add-link sc id99 3)
         [s2 idb] (add-link s1 ida "foo")
         [s3 idc] (add-link s2 id99 4)
         [s4 idd] (add-link s3 idc "bar")
         [s5 ide] (add-link s4 id99 "baz")
         [s6 idg] (add-link s5 ide "bletch")
         [s7 idh] (add-link s6 idb :label)
-        [s8 idi] (add-link s7 id99 :generic)
-        [s9 idj] (add-link s8 id0 "irrelevant")
-        [s idk] (add-link s9 id0 id1)
+        [s8 idi] (add-link s7 id99 "Joe")
+        [s9 idj] (add-link s8 idi "name")
+        [s10 idk] (add-link s9 idj :label)
+        [s11 idl] (add-link s10 id0 "irrelevant")
+        [s idk] (add-link s11 id0 id1)
         item0 (id->entity id0 s)
         item1 (id->entity id1 s)
         item99 (id->entity id99 s)
@@ -93,12 +95,16 @@
     (is (not (primitive? item0)))
     (is (object? item0))
     (is (not (object? item-b)))
-    (is (not (anonymous-object? item-b)))
-    (is (anonymous-object? item99))
-    (is (not (anonymous-object? item0)))
+    (is (named-object? item99))
+    (is (named-object? (id->entity (make-item-id "foo") s)))
     (is (not (named-object? item-b)))
-    (is (not (named-object? item99)))
-    (is (named-object? item0))
+    (is (not (named-object? item0)))
+    (is (not (named-object? "foo")))
+    (is (anonymous-object? item0))
+    (is (not (anonymous-object? item-b)))
+    (is (not (anonymous-object? item99)))
+    (is (not (anonymous-object? (id->entity (make-item-id "foo") s))))
+    (is (not (anonymous-object? "foo")))
     (is (= (orientation item0)) nil)
     (is (= (orientation item-b)) :source)
     (is (= (orientation item-a-reversed)) :target)
@@ -141,11 +147,12 @@
     (is (= (content item-b-reversed) item-a-reversed))
     (is (= (entity-key item-a) ida))
     (is (= (entity-key item-a-reversed) ida))
-    (is (check (canonicalize (to-list item99))
-               (canonicalize list-99)))
-    (is (= (to-list item1) item1))
+    (is (= (to-list item99) item99))
+    (is (check (to-list item0)
+               (as-set (make-object-list `((~(make-object-list nil))
+                                           "irrelevant")))))
     (is (= (to-list item-a-reversed) `((:target ~item99) ("foo" :label))))
-    (is (= (to-list item-k) `(~item1)))))
+    (is (= (to-list item-k) `(~(make-object-list nil))))))
 
 (deftest mutable-storeditem-test
   (let [id0 (make-item-id "0")
@@ -158,9 +165,11 @@
         [s5 ide] (add-link s4 id99 "baz")
         [s6 idg] (add-link s5 ide "bletch")
         [s7 idh] (add-link s6 idb :label)
-        [s8 idi] (add-link s7 id99 :generic)
-        [s9 idj] (add-link s8 id0 "irrelevant")
-        [s idk] (add-link s9 id0 id1)
+        [s8 idi] (add-link s7 id99 "Joe")
+        [s9 idj] (add-link s8 idi "name")
+        [s10 idk] (add-link s9 idj :label)
+        [s11 idl] (add-link s10 id0 "irrelevant")
+        [s idk] (add-link s11 id0 id1)
         queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
         ms (new-mutable-store s)
@@ -223,13 +232,10 @@
     (is (= (current-value (content (id->entity idc ms))) 4))
     (is (= (entity-key item-a) ida))
     (is (= (entity-key item-a-reversed) ida))
-    (is (= (current-value (to-list item0))
-           item0))
-    (is (= (current-value (to-list item1)) item1))
+    (is (= (current-value (to-list item99))
+           item99))
     (is (= (current-value (to-list item-a-reversed))
            `((:target ~item99) ("foo" :label))))
-    (is (check (canonicalize (current-value (to-list item99)))
-               (canonicalize list-99)))
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
           updating-immutable-result (expr-let [current-item (updating-immutable
@@ -294,7 +300,6 @@
   (is (=(entity-key '(1 2)) '(1 2)))
   (is (marked-as-type? '("foo" :label)))
   (is (not (marked-as-type? '("foo" :foo))))
-  (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '((:source ((1) 1 2)) (2 (3 4)))))
   (is (= (to-list '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest vector-test

@@ -193,7 +193,10 @@
       (is (check (canonicalize (to-list (first tables-5)))
                  (canonicalize table-list-5)))
       (is (= (count versions-5) 1))
-      (is (= (to-list (first versions-5)) '([5] :format)))
+      ;; We can't test this any more, because vectors are no longer
+      ;; allowed as contents.
+      (comment
+        (is (= (to-list (first versions-5)) '([5] :format))))
       
       (is (= (count tables-6) 1))
       (is (check (canonicalize (to-list (first tables-6)))

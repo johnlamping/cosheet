@@ -1,7 +1,8 @@
 (ns cosheet2.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            (cosheet2 [store :refer [new-element-store make-item-id]]
+            (cosheet2 [store :refer [new-element-store make-item-id
+                                     get-new-object-id]]
                       store-impl
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list id->entity content
@@ -117,25 +118,27 @@
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) false]))
-  (let [object (id->entity
-                (make-item-id "test")
-                (new-element-store))]
+  (let [named-object (id->entity
+                      (make-item-id "test")
+                      (new-element-store))
+        [_ anonymous-object-id] (get-new-object-id (new-element-store))
+        anonymous-object (id->entity anonymous-object-id nil)]
     (is (= (closest-template `(~(variable "foo" 5)
-                               ~object
+                               (~anonymous-object)
                                (:foo ~(variable "baz" (variable "bar")))
                                ~(not-query 8))
                              {"bar" 7})
-           [`(5 ~object (:foo 7)) false]))
+           [`(5 ([:object]) (:foo 7)) false]))
     (is (= (closest-template `(~(variable "foo" 5)
-                               ~object
+                               (~anonymous-object)
                                (:foo ~(variable "baz")))
                              {"bar" 7})
-           [`(5 ~object (:foo nil)) #{"foo" "baz"}]))
+           [`(5 ([:object]) (:foo nil)) #{"foo" "baz"}]))
     (is (= (closest-template `(~(variable "foo" 5)
-                               ~object
+                               (~anonymous-object)
                                (:foo ~(variable "foo")))
                              {"bar" 7})
-           [`(5 ~object (:foo nil)) false])))
+           [`(5 ([:object]) (:foo nil)) false])))
   (is (thrown? java.lang.AssertionError
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))

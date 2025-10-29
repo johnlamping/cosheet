@@ -13,7 +13,9 @@
                 (39 ("age" tag) ("doubtful" "confidence") )
                 "married"
                 (45 ("age" tag))))
-(def joe-object (make-object-list (rest joe-list)))
+(def joe-anonymous-object (make-object-list (rest joe-list)))
+(def joe-named-object (make-object-list (conj (rest joe-list)
+                                              '("Joe" ("name" :label)))))
 
 (deftest canonicalize-test
   (is (check (canonicalize joe-list)
@@ -24,13 +26,14 @@
                 [:source 39 {[:source "age" {tag 1}] 1
                              [:source "doubtful" {"confidence" 1}] 1}] 1
                 [:source 45 {[:source "age" {tag 1}] 1}] 1}]))
-  (is (check (canonicalize joe-object)
+  (is (check (canonicalize joe-anonymous-object)
              '[:object
                {"male" 1
                 "married" 1
                 [:source 39 {[:source "age" {tag 1}] 1
                              [:source "doubtful" {"confidence" 1}] 1}] 1
-                [:source 45 {[:source "age" {tag 1}] 1}] 1}])))
+                [:source 45 {[:source "age" {tag 1}] 1}] 1}]))
+    (is (= (canonicalize joe-named-object) joe-named-object)))
 
 (deftest canonical-to-list-test
   (let [starting `("starting" ~joe-list ~jane-list ~jane-list)
@@ -47,26 +50,34 @@
          (canonicalize `("Jeanette" "plain" "plain"))))
   (is (= (update-canonical-content (canonicalize "Jane") "Jeanette")
          (canonicalize "Jeanette")))
-  (is (= (update-canonical-content (canonicalize '((:target "Jane"))) "Jeanette")
+  (is (= (update-canonical-content (canonicalize '((:target "Jane")))
+                                   "Jeanette")
          (canonicalize '((:target "Jeanette")))))
-  (is (= (update-canonical-content (canonicalize joe-object) "Jeanette")
-         (canonicalize joe-object))))
+  (is (= (update-canonical-content (canonicalize joe-anonymous-object)
+                                   "Jeanette")
+         (canonicalize  joe-anonymous-object))))
 
 (deftest common-canonical-test
-  (is (= (common-canonical (canonicalize "joe") (canonicalize "joe"))
+  (is (= (common-canonical (canonicalize "joe")
+                           (canonicalize "joe"))
          (canonicalize "joe")))
-  (is (= (common-canonical (canonicalize "joe") (canonicalize joe-object))
+  (is (= (common-canonical (canonicalize "joe")
+                           (canonicalize joe-anonymous-object))
          nil))
-  (is (= (common-canonical (canonicalize [:object "male"]) (canonicalize joe-object))
+  (is (= (common-canonical (canonicalize [:object "male"])
+                           (canonicalize joe-anonymous-object))
          (canonicalize [:object "male"])))
   (is (= (common-canonical (canonicalize '("joe" [:object "male" "junk"]))
-                           (canonicalize `("joe" ~joe-object)))
+                           (canonicalize `("joe" ~joe-anonymous-object)))
          (canonicalize '("joe" [:object "male"]))))
-  (is (= (common-canonical (canonicalize joe-object) (canonicalize joe-object))
-         (canonicalize joe-object)))
-  (is (= (common-canonical (canonicalize "joe") (canonicalize '((:source "joe"))))
+  (is (= (common-canonical (canonicalize joe-anonymous-object)
+                           (canonicalize joe-anonymous-object))
+         (canonicalize joe-anonymous-object)))
+  (is (= (common-canonical (canonicalize "joe")
+                           (canonicalize '((:source "joe"))))
          (canonicalize "joe")))
-  (is (= (common-canonical (canonicalize "joe") (canonicalize '((:target "joe"))))
+  (is (= (common-canonical (canonicalize "joe")
+                           (canonicalize '((:target "joe"))))
          nil))
   (is (= (common-canonical (canonicalize '((:target "joe")))
                            (canonicalize '((:target "joe"))))
@@ -141,16 +152,16 @@
             (canonicalize '("joe" ("name" "e" "c") ("name" "c") "b")))))
   (is (canonical-extended-by?
        (canonicalize [:object "male"])
-       (canonicalize joe-object)))
+       (canonicalize joe-anonymous-object)))
   (is (not (canonical-extended-by?
-            (canonicalize joe-object)
+            (canonicalize joe-anonymous-object)
             (canonicalize [:object "male"]))))
   (is (not (canonical-extended-by?
-            (canonicalize joe-object)
+            (canonicalize joe-anonymous-object)
             (canonicalize joe-list))))
   (is (not (canonical-extended-by?
             (canonicalize joe-list)
-            (canonicalize joe-object)))))
+            (canonicalize joe-anonymous-object)))))
 
 (deftest canonical-have-common-elaboration?-test
   (is (canonical-have-common-elaboration? (canonicalize '("joe" "a"))

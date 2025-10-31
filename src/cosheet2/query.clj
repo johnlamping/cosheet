@@ -77,8 +77,8 @@
 ;;;                      whether the subject extends the term.
 ;;; matching-extensions: Takes a term, an environment, and a subject
 ;;;                      entity.  Returns a set of extensions of the
-;;;                      environment that cause the term to be an
-;;;                      extension of the subject.
+;;;                      environment that cause the subject to be an
+;;;                      extension of the term.
 ;;;   matching-elements: Takes a term and a subject entity. Returns a
 ;;;                      seq of all elements of the subject that are
 ;;;                      extensions of the term.

@@ -231,13 +231,19 @@
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it
   as much as possible without leaving ambiguities."
-  [orientation content elements]
-  ;; Make sure the elements we are given respect the list form.
-  (assert (not-any? object? elements))
+  [element-orientation content elements]
+  ;; Validate the constraints on our object and elements
+  (assert (or (not (element? content))
+              ;; TODO: !!! For now, special forms are lists.
+              ;;           When they become objects, remove this case.
+              (= (keyword? (first content)))))
+  (assert (not-any? #(or (object? %)
+                         (not= (orientation %) :source))
+                    elements))
   ;; We leave off the orientation if we can.
   (if (or (seq? content)
-          (not= orientation :source))
-    (cons (list orientation content) elements)
+          (not= element-orientation :source))
+    (cons (list element-orientation content) elements)
     (if (and (primitive? content)
              (empty? elements))
       content

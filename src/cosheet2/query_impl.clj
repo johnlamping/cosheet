@@ -98,6 +98,8 @@
         ;; We are not an exact match if the query is looking for a
         ;; particular entity, because the callers of this function
         ;; aren't aware of entity identities.
+        ;; TODO: !!! Is this right? If the environment is looking for a
+        ;;           named object, we should be exact.
         [value (not (variable-reference term))]
         (let [[contextual exact]
               (contextualize-variable (variable-qualifier term) env)]
@@ -179,8 +181,7 @@
   (or (nil? fixed-term)
       (cond
         (primitive? fixed-term)
-        (equivalent-primitives? (content fixed-term)
-                                (content entity))
+        (equivalent-primitives? fixed-term (content entity))
         (named-object? fixed-term)
         (= (entity-key fixed-term) (entity-key entity))
         true

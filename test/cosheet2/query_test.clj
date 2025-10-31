@@ -25,7 +25,9 @@
 (deftest extended-by-test
   (let [element0 '(3 "Foo")
         element1 '(3 ("foo" :label))
-        itemx `(nil ~element0 ~element1)]
+        itemx `(nil ~element0 ~element1)
+        object-foo (id->entity (make-item-id "foo") (new-element-store))
+        object-bare-foo (id->entity (make-item-id "foo") nil)]
     (is (extended-by? 1 1) true)
     (is (not (extended-by? 1 2)))
     (is (extended-by? "1" "1"))
@@ -60,8 +62,7 @@
     (is (not (extended-by? element1 3)))
     (is (extended-by? `(1 ~(not-query :x))
                       1))
-    (is (not (extended-by? `(1 ~(not-query :a))
-                           '(1 :a))))
+
     (is (extended-by? `(1 :a :b ~(not-query :x) ~(not-query :u))
                       '(1 :a (:b :c))))
     (is (not (extended-by? `(1 :a :b :c ~(not-query :x) ~(not-query :u))
@@ -76,22 +77,41 @@
                            '(1 :a (:b :c)))))
     (is (not (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
                            '(1 :a (:b :c)))))
-    ;; TODO: !!! Remove the :generic keywords below once
-    ;;           lack of names is used to identify anonymous objects
-    (is (extended-by? (make-object-list '(1 2 :generic))
-                      (make-object-list '(1 2 3 :generic))))
-    (is (extended-by? (make-object-list '(1 2  :generic))
-                      (make-object-list '(1 2  :generic))))
-    (is (not (extended-by? (make-object-list '(1 2 3  :generic))
-                           (make-object-list '(1 2  :generic)))))
-    (is (not (extended-by? (make-element-list :source 1 '(1 2 :generic))
-                           (make-object-list '(1 2 :generic)))))
-    (is (not (extended-by? (make-object-list '(1 2 :generic))
-                           (make-element-list :source 1 '(1 2 :generic)))))
-    (is (not (extended-by? (make-element-list :source 1 '(2 :generic))
-                           (make-object-list '(1 2 :generic)))))
-    (is (not (extended-by? (make-object-list '(1 2 :generic))
-                           (make-element-list :source 1 '(2 :generic)))))))
+    (is (extended-by? (make-object-list '(1 2))
+                      (make-object-list '(1 2 3))))
+    (is (extended-by? (make-object-list '(1 2))
+                      (make-object-list '(1 2))))
+    (is (not (extended-by? (make-object-list '(1 2 3))
+                           (make-object-list '(1 2)))))
+    (is (not (extended-by? (make-element-list :source 1 '(1 2))
+                           (make-object-list '(1 2)))))
+    (is (not (extended-by? (make-object-list '(1 2))
+                           (make-element-list :source 1 '(1 2)))))
+    (is (not (extended-by? (make-element-list :source 1 '(2))
+                           (make-object-list '(1 2)))))
+    (is (not (extended-by? (make-object-list '(1 2))
+                           (make-element-list :source 1 '(2)))))
+    (is (extended-by? object-foo object-foo))
+    (is (extended-by? object-foo object-bare-foo))
+    (is (extended-by? object-bare-foo object-foo))
+    (is (extended-by? (make-object-list nil) object-bare-foo))
+    (is (not (extended-by? object-foo
+                           (make-object-list nil))))
+    ;; Objects by themselves can't stand in for entities with that content.
+    (is (not (extended-by? object-foo
+                           (make-element-list :source object-foo nil))))
+    (is (extended-by? (make-element-list :source object-foo nil)
+                      (make-element-list :source object-foo nil)))
+    (is (extended-by? (make-element-list :source object-foo nil)
+                      (make-element-list
+                       :source object-foo `((~object-bare-foo)))))
+    (is (extended-by? (make-element-list
+                       :source object-foo `((~object-foo)))
+                      (make-element-list
+                       :source object-foo `((~object-bare-foo) 5))))
+    (is (not (extended-by? (make-element-list
+                            :source object-foo `((~object-bare-foo)))
+                           (make-element-list :source object-foo nil))))))
 
 (defn variable
   ([name] (variable-query name))
@@ -105,19 +125,31 @@
   (is (= (closest-template '(1 2 (3 4))
                            {"bar" 7})
          ['(1 2 (3 4)) true]))
+  (is (= (closest-template '((:target 1) 2 (3 4))
+                           {"bar" 7})
+         ['((:target 1) 2 (3 4)) true]))
   (is (= (closest-template `(1 2 (3 ~(variable "foo" 5)))
                            {"bar" 7})
          ['(1 2 (3 5)) #{"foo"}]))
   (is (= (closest-template `(1 2 (3 ~(variable "bar" 7)))
                            {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) true]))
-  (is (= (closest-template (make-object-list
-                            `(:generic 2 (3 ~(variable "bar" 7))))
-                           {"bar" '(7 6)})
-         [(make-object-list '(:generic 2 (3 (7 6)))) true]))
-  (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
+  (let [reversed (fn [content elements]
+                   (make-element-list :target content elements))]
+    (is (= (closest-template (make-object-list
+                              `(2 ~(reversed (variable "bar") '(3))))
+                             {"bar" 7})
+           [(make-object-list `(2 ~(reversed 7 '(3)))) true]))
+    (is (= (closest-template (make-object-list
+                              `(2 (3 (~(make-object-list [(variable "bar")
+                                                          (reversed 7 nil)])))))
+                             {})
+           [(make-object-list `(2 (3 (~(make-object-list [nil
+                                                          (reversed 7 nil)])))))
+            #{"bar"}]))
+    (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
-         ['(1 2 (3 (7 6))) false]))
+           ['(1 2 (3 (7 6))) false])))
   (let [named-object (id->entity
                       (make-item-id "test")
                       (new-element-store))
@@ -138,7 +170,23 @@
                                (~anonymous-object)
                                (:foo ~(variable "foo")))
                              {"bar" 7})
-           [`(5 ([:object]) (:foo nil)) false])))
+           [`(5 ([:object]) (:foo nil)) false]))
+    (is (= (closest-template `(~(variable "foo" 5)
+                               (~named-object)
+                               (:foo ~(variable "baz" (variable "bar")))
+                               ~(not-query 8))
+                             {"bar" 7})
+           [`(5 (~named-object) (:foo 7)) false]))
+    (is (= (closest-template `(~(variable "foo" 5)
+                               (~named-object)
+                               (:foo ~(variable "baz")))
+                             {"bar" 7})
+           [`(5 (~named-object) (:foo nil)) #{"foo" "baz"}]))
+    (is (= (closest-template `(~(variable "foo" 5)
+                               (~named-object)
+                               (:foo ~(variable "foo")))
+                             {"bar" 7})
+           [`(5 (~named-object) (:foo nil)) false])))
   (is (thrown? java.lang.AssertionError
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))

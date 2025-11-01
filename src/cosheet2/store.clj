@@ -226,8 +226,8 @@
      specified source.")
 
   (get-new-object-id [this]
-    "Return an object id and an updated store that will never return that
-     id again.")
+    "Return an an updated store, and an object id that will never be
+     freturned again.")
 
   (track-modified-ids [this]
     "Start recording the ids of items that have been modified.")

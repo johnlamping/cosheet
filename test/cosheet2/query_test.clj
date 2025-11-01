@@ -4,7 +4,7 @@
             (cosheet2 [store :refer [new-element-store make-item-id
                                      get-new-object-id]]
                       store-impl
-                      [store-utils :refer [add-entity]]
+                      [store-utils :refer [add-element]]
                       [entity :refer [to-list id->entity content
                                       elements label->elements mutable-entity?
                                       primitive?
@@ -225,22 +225,64 @@
   (is (= (matching-extensions '((1 2) 3 (4 (5 6))) {:a :b}
                               '((1 2) 3 (4 (5 6))))
          [{:a :b}]))
+
+  ;; Objects
+  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
+                              (make-object-list '(1 2)))
+         [{:a :b}]))
+  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
+                              (make-object-list '(1 (2 3) 4)))
+         [{:a :b}]))
+  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
+                              (make-object-list '(1)))
+         nil))
+  (is (= (matching-extensions '(1 2) {:a :b}
+                              (make-object-list '(0 1 2)))
+         nil))
+  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
+                              '(0 1 2))
+         nil))
+
+  ;; Orientation
+  (is (= (matching-extensions (make-element-list :target 1 '(2 3)) {:a :b}
+                              (make-element-list :target 1 '(2 3)))
+         [{:a :b}]))
+  (is (= (matching-extensions (make-element-list :target 1 '(2 3)) {:a :b}
+                              (make-element-list :source 1 '(2 3)))
+         nil))
+  (is (= (matching-extensions (make-element-list :target 1 '(2 3)) {:a :b}
+                              1)
+         nil))
+  (is (= (matching-extensions (make-element-list :source 1 '(2 3)) {:a :b}
+                              (make-element-list :target 1 '(2 3)))
+         nil))
+  (is (= (matching-extensions (make-object-list
+                               `(~(make-element-list :target 1 '(2 3)))) {:a :b}
+                              (make-object-list
+                               `(~(make-element-list :target 1 '(2 3)))))
+         [{:a :b}]))
+  (is (= (matching-extensions (make-object-list
+                               `(~(make-element-list :target 1 '(2 3)))) {:a :b}
+                              (make-object-list
+                               `(~(make-element-list :source 1 '(2 3)))))
+         nil))
   
   ;; Duplicates in term
   (let [s (new-element-store)
-        [s1 id1] (add-entity s nil '(1 2))]
+        [s1 id1] (add-element s nil '(1 2))]
     (is (empty? (matching-extensions '(1 2 2) {:a :b}
                                      (id->entity id1 s1)))))
   (let [s (new-element-store)
-        [s1 id1] (add-entity s nil '(1 2 2))]
+        [s1 id1] (add-element s nil '(1 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
                                 (id->entity id1 s1))
            [{:a :b}])))
   (let [s (new-element-store)
-        [s1 id1] (add-entity s nil '(1 2 2 2))]
+        [s1 id1] (add-element s nil '(1 2 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
                                 (id->entity id1 s1))
            [{:a :b}])))
+  
   ;; Variables
   (is (= (matching-extensions (variable "foo") {:a :b}
                               2)
@@ -248,6 +290,12 @@
   (is (= (matching-extensions (variable "foo") {:a :b}
                               '(1 (2 3)))
          [{:a :b, "foo" '(1 (2 3))}]))
+  (is (= (matching-extensions (variable "foo") {:a :b}
+                              (make-element-list :target 1 '(2 3)))
+         [{:a :b, "foo" (make-element-list :target 1 '(2 3))}]))
+  (is (= (matching-extensions (variable "foo") {:a :b}
+                              (make-object-list '(2 3)))
+         [{:a :b, "foo" (make-object-list '(2 3))}]))
   (is (= (matching-extensions `(1 ~(variable "foo")) {:a :b}
                               '(1 2))
          [{:a :b, "foo" 2}]))
@@ -372,36 +420,59 @@
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))
-  (let [ia (make-item-id "A")
-        ib (make-item-id "B")
-        ic (make-item-id "C")
-        s0 (new-element-store)
-        [s1 id1] (add-entity s0 ia '(1 ("a" 3)))
-        [s2 id2] (add-entity s1 ia '(3 (4 5)))
-        [s3 id3] (add-entity s2 ib '(1 ("a" 4)))
-        [s4 id4] (add-entity s3 ic '(2 ("C" :label) ("C" :label)))]
+  (let [[sa ia] (get-new-object-id (new-element-store))
+        ib (make-item-id "ib") ;; a named object
+        [sc ic] (get-new-object-id sa)
+        [s1 id1] (add-element sa ia '(1 ("a" 3)))
+        [s2 id2] (add-element s1 ia '(3 (4 5)))
+        [s3 id3] (add-element s2 ib '(1 ("a" 4)))
+        [s4 id4] (add-element s3 ic '(2 ("C" :label) ("C" :label)))
+        [s5 id5] (add-element s4 ia (make-element-list
+                                    :target (id->entity ib s4) '("reversed")))
+        [s id6] (add-element s5 ia `(~(make-object-list '(1)) 3))]
     (let [matches (matching-elements '(nil ("A"))
-                                     (id->entity ia s4))]
-      (is (= (map #(to-list %) matches)
+                                     (id->entity ia s))]
+      (is (= (map to-list matches)
              ['(1 ("a" 3))])))
     (let [matches (matching-elements nil
-                                     (id->entity ia s4))]
-      (is (= (set (map #(to-list %) matches))
-             (set ['(1 ("a" 3)) '(3 (4 5))]))))
+                                     (id->entity ia s))]
+      (is (check (map to-list matches)
+                 (as-set ['(1 ("a" 3))
+                          '(3 (4 5))
+                          `(~(make-object-list '(1)) 3)]))))
+    ;; Test elements of an element.
+    (let [matches (matching-elements "A" (id->entity id1 s))]
+      (is (= (map to-list matches)
+             ['("a" 3)])))
+    ;; Test matching an object.
+    (let [matches (matching-elements `(~(make-object-list '(1)))
+                                     (id->entity ia s))]
+      (is (= (map to-list matches)
+             [`(~(make-object-list '(1)) 3)])))
+    ;; Test matching the link that was put in backwards.
+    (let [matches (matching-elements (make-element-list
+                                      :source (id->entity ia s) nil)
+                                     (id->entity ib s))]
+      (is (= (map to-list matches)
+             [`(~(to-list (id->entity ia s)) "reversed")])))
+    
+    ;; TODO: !!! Once (elements ...) returns reversed elements of objects,
+    ;;           Test matching reversed orientation
+    
     ;; Test a complex term that can match the element more than one
     ;; way.  (There had been a bug where this would return the same
     ;; element multiple times.)
     (let [matches (matching-elements '(nil ("C" :label))
-                                     (id->entity ic s4))]
-      (is (= (map #(to-list %) matches)
+                                     (id->entity ic s))]
+      (is (= (map to-list matches)
              ['(2 ("C" :label) ("C" :label))])))))
 
 (deftest query-matches-test
   (let [s0 (new-element-store)
-        [s1 id1] (add-entity s0 nil '(:a (1 (2 3)) (3 (4 5))))
-        [s2 id2] (add-entity s1 nil '(:b (1 (2 4))))
-        [s-more ids] (add-entity s2 nil ' (:c 1 (1 2) (1 3) 2))]
-    ;; atoms
+        [s1 id1] (add-element s0 nil '(:a (1 (2 3)) (3 (4 5))))
+        [s2 id2] (add-element s1 nil '(:b (1 (2 4))))
+        [s-more ids] (add-element s2 nil '(:c 1 (1 2) (1 3) 2))]
+    ;; primitives
     (is (= (query-matches :a s2)
            [{}]))
     (is (empty? (query-matches :x s2)))
@@ -562,9 +633,9 @@
   (let [ia (make-item-id "A")
         ib (make-item-id "B")
         s0 (new-element-store)
-        [s1 id1] (add-entity s0 ia '(1 (2 3)))
-        [s2 id2] (add-entity s1 ia '(3 (4 5)))
-        [s3 id3] (add-entity s2 ib '(1 (2 4)))]
+        [s1 id1] (add-element s0 ia '(1 (2 3)))
+        [s2 id2] (add-element s1 ia '(3 (4 5)))
+        [s3 id3] (add-element s2 ib '(1 (2 4)))]
     (let [matches (matching-items '(nil (2)) s3)]
       (= (map :item-id matches) [ia ib]))
     (let [matches (matching-items '(nil (3)) s3)]

@@ -359,9 +359,14 @@
 
 (defn item-matches [item env entity]
   (let [content-match-envs
-        (if-let [item-content (content item)]
-          (matching-extensions item-content env (content entity))
-          [env])]
+        (if (object? item)
+          (when (object? entity)
+            [env])
+          (when (and (not (object? entity))
+                     (= (orientation item) (orientation entity)))
+            (if-let [item-content (content item)]
+              (matching-extensions item-content env (content entity))
+              [env])))]
     (when (seq content-match-envs)
       (let [item-elements (elements item)]
         (if (empty? item-elements)

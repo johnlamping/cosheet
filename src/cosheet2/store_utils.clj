@@ -34,7 +34,7 @@
         (let [element-content (content template)]
           ;; If we have an expanded object, we need to make an instance of it.
           (if (instance? clojure.lang.PersistentVector element-content)
-            (add-object element-content)
+            (add-object store element-content)
             [store (if (satisfies? StoredEntity element-content)
                      (:item-id element-content)
                      element-content)]))
@@ -45,7 +45,7 @@
         store (add-elements store entity-link (elements template))]
     [store entity-link]))
 
-;;; TODO: Replace all calls to this with add-element or add-object
+;;; TODO: Replace all calls to this with add-element
 (defn add-entity [store container-id template]
   (add-element store container-id template))
 

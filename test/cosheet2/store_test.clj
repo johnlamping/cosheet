@@ -4,7 +4,8 @@
             (cosheet2
              [store :refer :all]
              [store-impl :refer :all]
-             [entity :refer [to-list make-object-list make-element-list]]
+             [entity :refer [to-list make-object-list make-element-list
+                             id->element id->object]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
              [canonical :refer [canonical-primitive-form]]
@@ -13,8 +14,9 @@
             ))
 
 (defn make-object-id [n]
-  (assert (number? n))
-  (assert (< n 0))
+  (if (number? n)
+    (assert (< n 0))
+    (assert (string? n)))
   (->ItemId n))
 
 (defn make-link-id [n]
@@ -33,7 +35,7 @@
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->target
-    {(make-link-id 1) (make-object-id -1)
+    {(make-link-id 1) (make-object-id "object")
      (make-link-id 2) (make-link-id 1)
      (make-link-id 3) (make-link-id 2)
      (make-link-id 5) (make-link-id 2)
@@ -171,7 +173,8 @@
   (is (= (id->source test-store (make-link-id 6)) :baz)))
 
 (deftest target->ids-test
-  (is (= (target->ids test-store (make-object-id -1)) [(make-link-id 1)]))
+  (is (= (target->ids test-store (make-object-id "object"))
+         [(make-link-id 1)]))
   (is (= (set (target->ids test-store (make-link-id 1)))
          (set [(make-link-id 2) (make-link-id 9)])))
   (is (= (target->ids test-store (make-link-id 999)) nil)))
@@ -263,7 +266,7 @@
 
 (deftest update-target-test
   (let [[different-store id]
-        (add-link test-store (make-object-id -1) 22)
+        (add-link test-store (make-object-id "object") 22)
         changed-store
         (update-target (track-modified-ids different-store)
                         id (make-object-id -2))]
@@ -448,9 +451,48 @@
              [1 [(make-link-id 2)] true]))
   (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
              [3 [(make-link-id 2) (make-link-id 1)] false]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->object (make-object-id "object") nil) nil))
+             [1 [(make-link-id 1)] true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->object (make-object-id "object") nil) '("Foo")))
+             [1 [(make-link-id 1)] true]))
+  
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              `(nil (~(make-element-list
+                       :target (id->object (make-object-id "object") nil) nil))))
+             [1 [(make-link-id 1)] true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->element (make-link-id 1) test-store) nil))
+             [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->element (make-link-id 1) test-store) '("Baz")))
+             [1 (as-set [(make-link-id 2)]) true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->element (make-link-id 1) test-store) '(5)))
+             [1 () true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store
+              (make-element-list
+               :target (id->element (make-link-id 1) test-store) nil))
+             [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store (make-element-list :target 5 nil))
+             [0 () true]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-object-id -1) (make-link-id 1)
+             [(as-set [(make-object-id "object") (make-link-id 1)
                        (make-link-id 2) (make-link-id 3)
                        (make-link-id 4) (make-link-id 5)
                        (make-link-id 6) (make-link-id 7)
@@ -459,7 +501,7 @@
                        (make-link-id 12)])
               false]))
   (is (check (candidate-matching-ids test-store '(nil))
-             [(as-set [ (make-link-id 1)
+             [(as-set [(make-link-id 1)
                        (make-link-id 2) (make-link-id 3)
                        (make-link-id 4) (make-link-id 5)
                        (make-link-id 6) (make-link-id 7)
@@ -468,7 +510,7 @@
                        (make-link-id 12)])
               false]))
   (is (check (candidate-matching-ids test-store (make-object-list nil))
-             [(as-set  [(make-object-id -1)])
+             [(as-set  [(make-object-id "object")])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
              [(as-set  [(make-link-id 1)
@@ -480,10 +522,18 @@
              [[(make-link-id 2)] true]))
   (is (check (candidate-matching-ids test-store 5)
              [[(make-link-id 4)] true]))
-    (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
+  (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
              [[(make-link-id 1)] false]))
   (is (check (candidate-matching-ids test-store '(5 nil))
-             [[(make-link-id 4)] false])))
+             [[(make-link-id 4)] false]))
+  (is (check (candidate-matching-ids test-store (make-object-list '((44))))
+             [[(->ItemId "object")] true]))
+  (is (check (candidate-matching-ids test-store (make-object-list '((nil))))
+             [[(->ItemId "object")] false]))
+  (is (check (candidate-matching-ids test-store (make-object-list '((44) (44))))
+             [[(->ItemId "object")] false]))
+  (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
+             [nil true])))
 
 (deftest declare-temporary-id-test
   (is (= (:temporary-ids test-store) #{}))
@@ -523,7 +573,7 @@
   (let [store (first
                ;; Add an Orderable to the store to check its serialization.
                (add-link test-store
-                         (make-object-id -1)
+                         (make-object-id "object")
                          (first (orderable/split orderable/initial))))
         outstr (java.io.ByteArrayOutputStream.)]
     (write-store store outstr)

@@ -433,7 +433,7 @@
             candidate-ids (first (candidate-matching-ids store template))
             matches (map #(variable-matches
                            var env (id->entity % store))
-                     candidate-ids)]
+                         candidate-ids)]
         (distinct-concat matches))
       (when (seq (query-matches value env store)) [env]))))
 

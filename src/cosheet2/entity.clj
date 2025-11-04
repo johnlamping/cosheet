@@ -169,8 +169,8 @@
   (entity-key [this]
     "Return the key of this entity. For stored entities, it is their
     item-id. For all other entities it is the entity, itself.
-    Matching of non-generic objects is based on their key, so that it
-    is independent of any particular store.")
+    Matching of named objects is based on their key, so that it
+    will be independent of any particular store.")
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
@@ -184,8 +184,8 @@
   (target-entity [this]
     "If the entity represents a link, return the entity corresponding to
     its target. This is independent of the orientation of the
-    entity. If the resulting entity is also a link, it will have
-    orientation :source, thus this entity will be its content.")
+    entity. If the target is a link, the resulting entity will be given
+    orientation :source.")
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,

@@ -7,6 +7,7 @@
                                      pseudo-set-conj
                                      pseudo-set-disj
                                      pseudo-set-contains?
+                                     union-seqs
                                      dissoc-in
                                      update-in-clean-up]]
                       [canonical :refer [canonical-primitive-form]]
@@ -161,18 +162,34 @@
     (contains? (:marked-as-type this) id))
 
   (candidate-matching-ids [this template]
-    (let [[estimate ids precise]
-          (candidate-matching-ids-and-estimate this template)]
-      (if (nil? estimate)
-        ;; The template is so generic that none of our indices can narrow
-        ;; it down based on any of its sources. Return basically everything.
-        [(if (and (sequential? template) (seq (rest template)))
-            ;; The template has an element.
-            ;; Return all items that have elements.
-            (keys target->ids)
-            (keys (:id->source this)))
-         false]
-        [ids precise])))
+    (if (nil? template)
+      ;; The template is vacuous. Return all ids we know of.
+      [(seq (union-seqs (keys id->source) ;; This picks up all elements.
+                        ;; These pick up all objects.
+                        (filter is-object-id?
+                                (union-seqs (keys target->ids)
+                                            (keys source->ids)))))
+       false]
+      (let [[estimate ids precise]
+            (candidate-matching-ids-and-estimate this template)
+            id-filter (if (entity/object? template)
+                        is-object-id?
+                        is-link-id?)]
+        (if (nil? estimate)
+          ;; The template is so generic that none of our indices can narrow
+          ;; it down based on any of its elements. Return basically everything.
+          [(seq (if (seq (entity/elements template))
+                  ;; The template has an element.
+                  ;; Return all ids of the right kind that have elements.
+                  (filter id-filter (keys target->ids))
+                  ;; Nothing in the index helps. Find all of the right kind
+                  ;; of ids that the store knows about.
+                  (filter id-filter (if (entity/object? template)
+                                      (union-seqs (keys target->ids)
+                                                  (keys source->ids))
+                                      (keys id->source)))))
+           false]
+          [(seq (filter id-filter ids)) precise]))))
 
   (mutable-store? [this] false)
   
@@ -506,32 +523,48 @@
               (deferred id)))))
 
 ;;; TODO: If there are precise lists for each element, but the
-;;; elements don't have distinct sources, group the elements that
+;;; elements don't have distinct contents, group the elements that
 ;;; might overlap, and if they have reasonably similar costs, do
 ;;; sort-by their targets, then run utils/disjoint_combinations for
 ;;; each target to see if it qualifies.
-(defn subsuming-elements-ids-and-estimates
-  "Return a seq of pairs, <estimate of number of candidates, a lazy
-  seq of the candidate matching ids>, one pair for each informative
-  element. Each list will subsume all possible matches. Also return a
-  boolean that is true if an id in the intersection of the candidate
-  lists is always a match."
-  [store elements]
-  (if (empty? elements)
-    [nil true]
-    (let [candidates (map #(candidate-matching-ids-and-estimate store %)
-                          elements)]
-      [(keep (fn [[estimate ids precise]]
-               (when estimate [estimate (keep #(id->target store %) ids)]))
-             candidates)
-       ;; We are precise if we have precise id lists for each element,
-       ;; and a match for one element is never a match for
-       ;; another. (Otherwise, we might, for example, return a one
-       ;; element item for a template that requires two elements.)
-       (and (every? (fn [[estimate ids precise]] precise) candidates)
-            (let [contents (map entity/content elements)]
-              (and (not-any? nil? contents)
-                   (apply distinct? contents))))])))
+(defn subsuming-ids-and-estimates-from-elements
+  "Given a template, return a seq of pairs: <estimate of number of
+  candidates, a lazy seq of the candidate matching ids>, with one pair
+  for each informative element of the template. The candidate ids of
+  each pair include the ids of all possible entities with an element
+  possibly matching that element of the template. This means that each
+  list will include all possible ids matching the template. Also
+  return a boolean that is true if an id in the intersection of the
+  candidate lists is always a match."
+  [store template]
+  (let [elements (entity/elements template)]
+    (if (empty? elements)
+      [nil true]
+      (let [candidates
+            (keep (fn [element]
+                    (let [[estimate element-ids precise]
+                          (candidate-matching-ids-and-estimate store element)]
+                      (when estimate
+                        (let [subject-getter (if (= (entity/orientation element)
+                                                    :target)
+                                               id->source
+                                               id->target)
+                              ids (keep #(subject-getter store %) element-ids)]
+                          [estimate ids precise]))))
+                  elements)]
+        [(map (fn [[estimate ids precise]] [estimate ids])
+              candidates)
+         ;; For us to be precise we require
+         ;;   * Our id lists for each element are precise for that element.
+         ;;   * A match for one element is never a match for another.
+         ;;     (Otherwise, we might, for example, return a one
+         ;;     element item for a template that requires two elements.)
+         (and (= (count elements) (count candidates))
+              (every? (fn [[estimate ids precise]] precise) candidates)
+              (let [contents (map entity/content elements)]
+                (and (not-any? #(or (nil? %) (entity/anonymous-object? %))
+                               contents)
+                     (apply distinct? contents))))]))))
 
 (defn subsuming-ids-and-estimates
   "Return a seq of pairs <estimate of number of candidates,
@@ -539,16 +572,21 @@
   possible matches. Also return a boolean that is true if an id in the
   intersection of the candidate lists is always a match."
   [store template]
-  (let [content (entity/content template)
-        elements (entity/elements template)
-        [element-matches element-matches-precise]
-        (subsuming-elements-ids-and-estimates store elements)]
-    (if (nil? content)
-      [element-matches element-matches-precise]
-      (let [source-ids (source->ids store content)]
-        [(concat [[(count source-ids) source-ids]]
-                 element-matches)
-         element-matches-precise]))))
+  (let [[element-matches element-matches-precise]
+        (subsuming-ids-and-estimates-from-elements store template)
+        content (entity/content template)]
+    (cond
+      (nil? content) [element-matches element-matches-precise]
+      ;; TODO: When the content is an anonymous object, get candidate
+      ;;       ids for it, then use those as if they were content?
+      (entity/anonymous-object? content) [element-matches false]
+      true (let [content-index (if (= (entity/orientation template) :target)
+                                 target->ids
+                                 source->ids)
+                 content-ids (content-index store (entity/entity-key content))]
+             [(concat [[(count content-ids) content-ids]]
+                      element-matches)
+              element-matches-precise]))))
 
 ;;; TODO: Instead using an estimate of the number of final candidates,
 ;;; the estimate should use the number of candidates that need to be
@@ -586,7 +624,10 @@
                         (filter good?)
                         (map second)
                         (map set)
-                        (apply clojure.set/intersection)))
+                        (apply clojure.set/intersection)
+                        (filter (if (entity/object? template)
+                                  is-object-id?
+                                  is-link-id?))))
          (and precise
               (every? good? possibilities))]))))
 

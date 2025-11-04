@@ -4,7 +4,7 @@
             (cosheet2
              [store :refer :all]
              [store-impl :refer :all]
-             [entity :refer [to-list]]
+             [entity :refer [to-list make-object-list make-element-list]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
              [canonical :refer [canonical-primitive-form]]
@@ -450,7 +450,7 @@
              [3 [(make-link-id 2) (make-link-id 1)] false]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-link-id 1)
+             [(as-set [(make-object-id -1) (make-link-id 1)
                        (make-link-id 2) (make-link-id 3)
                        (make-link-id 4) (make-link-id 5)
                        (make-link-id 6) (make-link-id 7)
@@ -458,8 +458,20 @@
                        (make-link-id 10) (make-link-id 11)
                        (make-link-id 12)])
               false]))
+  (is (check (candidate-matching-ids test-store '(nil))
+             [(as-set [ (make-link-id 1)
+                       (make-link-id 2) (make-link-id 3)
+                       (make-link-id 4) (make-link-id 5)
+                       (make-link-id 6) (make-link-id 7)
+                       (make-link-id 8) (make-link-id 9)
+                       (make-link-id 10) (make-link-id 11)
+                       (make-link-id 12)])
+              false]))
+  (is (check (candidate-matching-ids test-store (make-object-list nil))
+             [(as-set  [(make-object-id -1)])
+              false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
-             [(as-set  [(make-object-id -1) (make-link-id 1)
+             [(as-set  [(make-link-id 1)
                         (make-link-id 2) (make-link-id 3)
                         (make-link-id 5) (make-link-id 9)
                         (make-link-id 11)])

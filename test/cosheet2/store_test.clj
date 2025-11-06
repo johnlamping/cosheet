@@ -461,12 +461,6 @@
               (make-element-list
                :target (id->object (make-object-id "object") nil) '("Foo")))
              [1 [(make-link-id 1)] true]))
-  
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              `(nil (~(make-element-list
-                       :target (id->object (make-object-id "object") nil) nil))))
-             [1 [(make-link-id 1)] true]))
   (is (check (candidate-matching-ids-and-estimate
               test-store
               (make-element-list

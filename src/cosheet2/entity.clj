@@ -191,6 +191,35 @@
     "Replace the entity with an entity with the same id,
     but with the specified store or the store of the second entity."))
 
+(defn id->element 
+  ([id store]
+   (id->element id :source store))
+  ([id orientation store]
+   (assert (is-link-id? id))
+   (id->entity-m id store orientation)))
+
+(defn id->object [id store]
+  (assert (is-object-id? id))
+  (id->entity-m id store nil))
+
+(defn id->entity
+  ([id store]
+   (if (is-object-id? id)
+     (id->entity-m id store nil)
+     (id->entity-m id store :source)))
+  ([id store orientation]
+   (assert (is-item-id? id))
+   (when (is-object-id? id)
+     (assert (not orientation)))
+   (id->entity-m id store orientation)))
+
+(defn id->updating-entity-R
+  ([id store]
+   (id->updating-entity-R id store (when (not (is-object-id? id)) :source)))
+  ([id store orientation]
+   (let [entity (id->entity id store orientation)]
+     (updating-immutable entity))))
+
 ;;; Utility functions that work on entities
 
 ;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
@@ -202,12 +231,15 @@
         (and (keyword? content) (not= content :label)))
       (marked-as-type? entity)))
 
-;;; TODO: !!! These need to change when the definition of label changes.
+;;; TODO: !!! These need to change when the definition of name label
+;;; changes to be a specific object id.
 (defn anonymous-object?
   "Return true if the entity is a generic object."
   [entity]
   (and (object? entity)
-       (empty? (label->elements entity "name"))
+       (not (when-let [names (label->elements entity "name")]
+              (some #(and (not (nil? %)) (not= 'anything %))
+                    (map content names))))
        (not (and (satisfies? StoredEntity entity)
                  (string? (:id (:item-id entity)))))))
 
@@ -215,9 +247,11 @@
   "Return true if the entity is a non-generic object."
   [entity]
   (and (object? entity)
-       (or (seq (label->elements entity "name"))
+       (or (when-let [names (label->elements entity "name")]
+             (some #(and (not (nil? %)) (not= 'anything %))
+                   (map content names)))
            (and (satisfies? StoredEntity entity)
-                 (string? (:id (:item-id entity)))))))
+                (string? (:id (:item-id entity)))))))
 
 (defn minimal-label?
   "Given a label, Return true if it is as small as it can be
@@ -316,32 +350,4 @@
   (expr-let [element (label->element entity label)]
     (content element)))
 
-(defn id->element 
-  ([id store]
-   (id->element id :source store))
-  ([id orientation store]
-   (assert (is-link-id? id))
-   (id->entity-m id store orientation)))
-
-(defn id->object [id store]
-  (assert (is-object-id? id))
-  (id->entity-m id store nil))
-
-(defn id->entity
-  ([id store]
-   (if (is-object-id? id)
-     (id->entity-m id store nil)
-     (id->entity-m id store :source)))
-  ([id store orientation]
-   (assert (is-item-id? id))
-   (when (is-object-id? id)
-     (assert (not orientation)))
-   (id->entity-m id store orientation)))
-
-(defn id->updating-entity-R
-  ([id store]
-   (id->updating-entity-R id store (when (not (is-object-id? id)) :source)))
-  ([id store orientation]
-   (let [entity (id->entity id store orientation)]
-     (updating-immutable entity))))
 

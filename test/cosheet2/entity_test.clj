@@ -306,6 +306,7 @@
   (is (not (primitive? [:object 1 2])))
   (is (not (element? [:object 1 2])))
   (is (object? [:object 1 2]))
+  (is (not (object? [1 2])))
   (is (= (elements [:object 1 2]) [1 2]))
   (is (= (elements '[:object (2 3) (4 5)]) '[(2 3) (4 5)]))
   (is (= (label->elements '[:object (2 (3 :label)) (4 3)] 3)
@@ -314,7 +315,17 @@
   (is (= (content->elements '[:object (2 3) (4 5)] 4) '[(4 5)]))
   (is (= (entity-key [:object 1 2]) [:object 1 2]))
   (is (not (marked-as-type? [:object 1 2])))
-  (is (= (to-list [:object 1 2]) [:object 1 2])))
+  (is (= (to-list [:object 1 2]) [:object 1 2]))
+  ;; More extensive tests of anonymous-item
+  (let [name-label '("name" :label)]
+    (is (anonymous-object? [:object]))
+    (is (anonymous-object? [:object `(nil ~name-label)]))
+    (is (anonymous-object? [:object `(~'anything ~name-label)]))
+    (is (not (anonymous-object? [:object `("Joe" ~name-label)])))
+    (is (not (named-object? [:object])))
+    (is (not (named-object? [:object `(nil ~name-label)])))
+    (is (not (named-object? [:object `(~'anything ~name-label)])))
+    (is (named-object? [:object `("Joe" ~name-label)]))))
 
 (deftest constant-test
   (is (primitive? 1))

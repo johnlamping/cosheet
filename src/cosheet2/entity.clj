@@ -1,8 +1,8 @@
 (ns cosheet2.entity
   (:require (cosheet2 [calculator :refer [current-value]]
                       [expression :refer [expr-let]]
-                      [store :refer [make-item-id is-item-id?
-                                     is-link-id? is-object-id?]])))
+                      [store :refer [make-item-id item-id?
+                                     link-id? object-id?]])))
 
 ;;; An entity is either
 ;;;    a primitive
@@ -196,22 +196,22 @@
   ([id store]
    (id->element id :source store))
   ([id orientation store]
-   (assert (is-link-id? id))
+   (assert (link-id? id))
    (id->entity-m id orientation store)))
 
 (defn id->object [id store]
-  (assert (is-object-id? id))
+  (assert (object-id? id))
   (id->entity-m id nil store))
 
 (defn id->entity
   [id store]
-  (if (is-object-id? id)
+  (if (object-id? id)
     (id->entity-m id nil store)
     (id->entity-m id :source store)))
 
 (defn id->updating-entity-R
   ([id store]
-   (id->updating-entity-R id store (when (not (is-object-id? id)) :source)))
+   (id->updating-entity-R id store (when (not (object-id? id)) :source)))
   ([id store orientation]
    (let [entity (id->entity-m id orientation store)]
      (updating-immutable entity))))

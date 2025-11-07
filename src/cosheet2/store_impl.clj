@@ -100,19 +100,19 @@
   Store
 
   (id-valid-link? [this id]
-    (and (is-link-id? id)
+    (and (link-id? id)
          (contains? (:id->source this) id)))
 
   (id-described-object? [this id]
-    (and (is-object-id? id))
+    (and (object-id? id))
     (contains? (:target->ids this) id))
 
   (id->target [this id]
-    (when (is-link-id? id)
+    (when (link-id? id)
       (get-in this [:id->target id])))
 
   (id->source [this id]
-    (when (is-link-id? id)
+    (when (link-id? id)
       (get-in this [:id->source id])))
 
   (target->ids [this target]
@@ -166,15 +166,15 @@
       ;; The template is vacuous. Return all ids we know of.
       [(seq (union-seqs (keys id->source) ;; This picks up all elements.
                         ;; These pick up all objects.
-                        (filter is-object-id?
+                        (filter object-id?
                                 (union-seqs (keys target->ids)
                                             (keys source->ids)))))
        false]
       (let [[estimate ids precise]
             (candidate-matching-ids-and-estimate this template)
             id-filter (if (entity/object? template)
-                        is-object-id?
-                        is-link-id?)]
+                        object-id?
+                        link-id?)]
         (if (nil? estimate)
           ;; The template is so generic that none of our indices can narrow
           ;; it down based on any of its elements. Return basically everything.
@@ -205,7 +205,7 @@
        item-id]))
 
   (remove-link [this id]
-    (assert (is-link-id? id)
+    (assert (link-id? id)
             ["Not a link id "id])
     ;; We have to explicitly ask for the versions of id->source and
     ;; target->ids from the store namespace, because inside
@@ -224,8 +224,8 @@
     (assert (not (nil? (store/id->source this id)))
             ["Link id not present." id])
     (assert (not (nil? target)))
-    (assert (not (is-link-id? target)))
-    (assert (not (is-link-id? (store/id->target this id))))
+    (assert (not (link-id? target)))
+    (assert (not (link-id? (store/id->target this id))))
     (-> this
         (assoc-in [:id->target id] target)
         (index-all this id)
@@ -235,7 +235,7 @@
     (assert (not (nil? (store/id->source this id)))
             ["Link id not present." id])
     (assert (not (nil? source)))
-    (assert (not (is-link-id? source)))
+    (assert (not (link-id? source)))
     (-> this
         (assoc-in [:id->source id] source)
         (index-all this id)
@@ -283,7 +283,7 @@
              :when (not (temporary-ids id))]
          [(:id id)
           (:id (get-in this [:id->target id]))
-          (cond (is-item-id? source)
+          (cond (item-id? source)
                 [:id (:id source)]
                 (instance? cosheet2.orderable.Orderable source)
                 [:ord (:left source) (:right source)]
@@ -477,11 +477,11 @@
   [store item-id target source]
   ;; TODO: !!! disallow nil once objects are supported.
   (assert (or (nil? target)
-              (is-object-id? target)
+              (object-id? target)
               (id-valid-link? store target))
           [item-id target source])
   (assert (and (not (nil? source))
-               (not (is-link-id? source)))
+               (not (link-id? source)))
           [item-id target source])
   (when (number? (:id item-id))
     (assert (< (:id item-id) (:next-number store)) [item-id target source])
@@ -510,7 +510,7 @@
   ;; waiting for, then add it when we get what it needs.  Return the
   ;; new store and new deferred.
   [store deferred id target source]
-  (let [waiting-for (first (filter #(and (is-link-id? %)
+  (let [waiting-for (first (filter #(and (link-id? %)
                                          (not ((:id->source store) %)))
                                    [target source]))]
     (if waiting-for
@@ -626,8 +626,8 @@
                         (map set)
                         (apply clojure.set/intersection)
                         (filter (if (entity/object? template)
-                                  is-object-id?
-                                  is-link-id?))))
+                                  object-id?
+                                  link-id?))))
          (and precise
               (every? good? possibilities))]))))
 

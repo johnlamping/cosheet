@@ -1,7 +1,7 @@
 (ns cosheet2.store-utils
   (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
-                                     is-link-id?]]
+                                     link-id?]]
                       [entity :refer [StoredEntity element?
                                       content orientation elements]])))
 
@@ -59,7 +59,7 @@
     (concat element-removals
             ;; Once everythig pointing to the element is gone, we can
             ;; remove the element.
-            (if (is-link-id? id) [id] []))))
+            (if (link-id? id) [id] []))))
 
 (defn remove-entity-by-id
   "Remove the entity with the given id, and all its elements."

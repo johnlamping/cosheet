@@ -1,6 +1,5 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
-                      [store :refer [is-item-id?]]
                       [entity :refer [label? id->entity
                                       id->updating-entity-R
                                       content label? primitive?]]

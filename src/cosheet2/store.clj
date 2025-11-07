@@ -97,12 +97,12 @@
   (assert (not (integer? id)))
   (->ItemId id))
 
-(defn is-item-id?
+(defn item-id?
   "Return true if the argument is an item id."
   [x]
   (instance? ItemId x))
 
-(defn is-link-id?
+(defn link-id?
   "Return true if the argument is an item id for a link."
   [x]
   (and (instance? ItemId x)
@@ -110,7 +110,7 @@
          (and (number? id)
               (> id 0)))))
 
-(defn is-object-id?
+(defn object-id?
    "Return true if the argument is an item id for an object."
   [x]
   (and (instance? ItemId x)

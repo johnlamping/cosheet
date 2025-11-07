@@ -1,6 +1,6 @@
 (ns cosheet2.server.render-utils
   (:require (cosheet2 [entity :refer [target-entity elements label?]]
-                      [store :refer [is-item-id?]]
+                      [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
                                      add-elements-to-entity-list
@@ -33,7 +33,7 @@
   to the category of the specification-item-id"
   [specification mutable-store]
    (let [id (specification-item-id specification)]
-     (assert (is-item-id? id) id)
+     (assert (item-id? id) id)
      (category-change [id] mutable-store)))
 
 (defn condition-satisfiers

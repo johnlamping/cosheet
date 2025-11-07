@@ -3,7 +3,7 @@
                                      target->ids
                                      target-source->ids
                                      id->source id->target
-                                     is-item-id? is-link-id? is-object-id?
+                                     item-id? link-id? object-id?
                                      id->marked-as-type?
                                      mutable-store?
                                      current-store
@@ -22,8 +22,8 @@
   ([value store]
    (endpoint->entity value store :source))
   ([value store orientation]
-   (if (is-item-id? value)
-     (if (is-object-id? value)
+   (if (item-id? value)
+     (if (object-id? value)
        (id->object value store)
        (id->element value orientation store))
      value)))
@@ -55,8 +55,8 @@
 
   (mutable-entity? [this] false)
   (primitive? [this] false)
-  (element? [this] (is-link-id? item-id))
-  (object? [this] (is-object-id? item-id))
+  (element? [this] (link-id? item-id))
+  (object? [this] (object-id? item-id))
   (content [this] nil)
   (elements [this] nil)
   (orientation [this] orientation)
@@ -77,7 +77,7 @@
   StoredEntity
 
   (target-entity [this]
-    (when (not (is-object-id? item-id))
+    (when (not (object-id? item-id))
       (endpoint->entity (id->target store item-id) store)))
   
   (in-different-store [this store-or-entity]
@@ -92,11 +92,11 @@
   (mutable-entity? [this] false)
 
   (primitive? [this] false)
-  (element? [this] (is-link-id? item-id))
-  (object? [this] (is-object-id? item-id))
+  (element? [this] (link-id? item-id))
+  (object? [this] (object-id? item-id))
 
   (content [this]
-    (when (not (is-object-id? item-id))
+    (when (not (object-id? item-id))
       (if (= orientation :target)
         (endpoint->entity (id->target store item-id) store :target)
         (endpoint->entity (id->source store item-id) store))))
@@ -114,8 +114,8 @@
             (for [element-id (target-source->ids
                               store item-id content-key)]
               (id->element element-id store))
-            (when (and (is-object-id? item-id)
-                       (is-object-id? content-key))
+            (when (and (object-id? item-id)
+                       (object-id? content-key))
               (for [element-id (target-source->ids
                                 store content-key item-id)]
                 (id->element element-id :target store)))))))
@@ -144,7 +144,7 @@
   StoredEntity
 
   (target-entity [this]
-    (when (not (is-object-id? item-id))
+    (when (not (object-id? item-id))
       (expr-let [target-id (id->target store item-id)]
           (endpoint->entity target-id store))))
 
@@ -160,11 +160,11 @@
   (mutable-entity? [this] true)
 
   (primitive? [this?] false)
-  (element? [this] (is-link-id? item-id))
-  (object? [this] (is-object-id? item-id))
+  (element? [this] (link-id? item-id))
+  (object? [this] (object-id? item-id))
 
   (content [this]
-    (when (not (is-object-id? item-id))
+    (when (not (object-id? item-id))
       (if (= orientation :target)
         (expr-let [content (id->target store item-id)]
           (endpoint->entity content store :target))
@@ -183,8 +183,8 @@
     (let [content-key (entity-key content-value)]
       (expr-let [element-ids (target-source->ids
                               store item-id content-key)
-                 reverse-element-ids (when (and (is-object-id? item-id)
-                                                (is-object-id? content-key))
+                 reverse-element-ids (when (and (object-id? item-id)
+                                                (object-id? content-key))
                                        (target-source->ids
                                         store content-key item-id))]
         (seq (concat (for [element-id element-ids]

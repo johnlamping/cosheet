@@ -4,7 +4,7 @@
                                      add-elements-to-entity-list
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [is-item-id? id->target id->source]]
+                      [store :refer [item-id? id->target id->source]]
                       [entity :refer [elements content label->elements
                                       id->entity]]
                       [canonical :refer [canonicalize
@@ -180,7 +180,7 @@
 (defn get-item-or-exemplars-for-id
   "Given the subject(s), find items or exemplars for the id."
   [subject-ids immutable-store id]
-  (assert (is-item-id? id) id)
+  (assert (item-id? id) id)
   ;; If there are any subjects, and exemplar id has a target,
   ;; it must be an element of one of the subjects.
   (assert (or (empty? subject-ids)

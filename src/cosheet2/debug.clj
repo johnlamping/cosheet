@@ -63,7 +63,7 @@
         (if (store/mutable-store? item)
           (symbol "MutableStore")
           (symbol "Store"))
-        (store/is-item-id? item)
+        (store/item-id? item)
         (symbol (store/item-id-name item))
         (or (instance? cosheet2.entity_impl.ImmutableStoredEntity item)
             (instance? cosheet2.entity_impl.MutableStoredEntity item))

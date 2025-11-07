@@ -422,7 +422,7 @@
                             (= 0 (gen/uniform 0 4))
                             (update-source id (random-source))
                             (and (= 0 (gen/uniform 0 4))
-                                 (is-object-id? (id->target store id)))
+                                 (object-id? (id->target store id)))
                             (update-target id (random-object)))))
                       added-store (range 1 (+ n 1)))
               removed-store

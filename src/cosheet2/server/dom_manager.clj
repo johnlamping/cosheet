@@ -8,7 +8,7 @@
                                         value-category]]
                       [expression :refer [new-application category-change]]
                       [calculator :refer [propagate-calculator-data!]]
-                      [store :refer [is-item-id? id->string string->id
+                      [store :refer [item-id? id->string string->id
                                      mutable-store?]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
@@ -226,7 +226,7 @@
      ;; Not a character that an item id's representation
      ;; could start with.
      (not (re-matches #"^[0-9I].*" (name id))))
-    (is-item-id? id)))
+    (item-id? id)))
 
 (defn valid-relative-id? [id]
   (every? valid-id-subpart? (if (sequential? id) id [id])))
@@ -247,7 +247,7 @@
   "Turn a subpart of a :relative-id to its client form."
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
-        (is-item-id? id) (id->string id)
+        (item-id? id) (id->string id)
         true (assert false (str "unknown relative id subpart:"
                                 [(type id) id]))))
 

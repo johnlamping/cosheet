@@ -467,7 +467,6 @@
       (is (= (map to-list matches)
              ['(2 ("C" :label) ("C" :label))])))))
 
-;;; TODO: Add tests for objects.
 (deftest query-matches-test
   (let [s0 (new-element-store)
         [s1 id1] (add-element s0 (make-item-id "a") '(:a (1 (2 3)) (3 (4 5))))
@@ -487,6 +486,14 @@
     (is (= (query-matches '(nil (1)) s2) [{}]))
     (is (= (query-matches '(:a) s2) [{}]))
     (is (= (query-matches '(:x) s2) nil))
+    ;; TODO: !!! When reversed elements are returned from objects,
+    ;;           check for those, too.
+    ;; objects
+    (is (= (query-matches (make-object-list '(nil)) s2) [{}]))
+    (is (= (query-matches (make-object-list '((:a))) s2) [{}]))
+    (is (= (query-matches (make-object-list '((:a 1))) s2) [{}]))
+    (is (= (query-matches (make-object-list '((:a 2))) s2) nil))
+    (is (= (query-matches (make-object-list '((:d))) s2) nil))
     ;; variables as top level entities
     (is (check (set (envs-to-list (query-matches (variable "v") s2)))
                #{{"v" (id->object (make-item-id "a") s2)}
@@ -502,6 +509,21 @@
                  {"v" 5}
                  {"v" 4}
                  {"v" 3}}))
+    (is (= (set (envs-to-list
+                 (query-matches (variable "v" (make-object-list '((:a)))) s2)))
+           #{{"v" (id->object (make-item-id "a") s2)}}))
+    (is (= (set (envs-to-list
+                 (query-matches
+                  (variable "v" (make-object-list '((:a 1)))) s2)))
+           #{{"v" (id->object (make-item-id "a") s2)}}))
+    (is (= (set (envs-to-list
+                 (query-matches
+                  (variable "v" (make-object-list '((:a 2)))) s2)))
+           #{}))
+    (is (= (set (envs-to-list
+                 (query-matches
+                  (variable "v" (make-object-list '((:d)))) s2)))
+           #{}))
     (is (= (set (envs-to-list
                  (query-matches (and-query `(1 ~(variable "v"))
                                            (variable "v"))

@@ -432,7 +432,7 @@
   [entity elements]
   (if (empty? elements)
     entity
-    (concat (if (sequential? entity) entity (list entity))
+    (concat (if (seq? entity) entity (list entity))
             elements)))
 
 (defn call-pseudo-closure

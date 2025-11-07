@@ -1,6 +1,6 @@
 (ns cosheet2.query
   (:require (cosheet2 [entity :refer [content label->elements label->content
-                                      to-list]]
+                                      to-list object? primitive?]]
                       [utils :refer [add-elements-to-entity-list]])))
 
 ;;; Querying involves looking for entities that are extensions of a
@@ -33,13 +33,16 @@
 ;;; A variable can match anything, and what it matches is recorded.
 ;;;   (::special-form (:variable ::type)
 ;;;                   (<name> ::name)
-;;;                   (<qualifier ::sub-query>)
+;;;                   (<qualifier> ?::content ::sub-query)
 ;;;                   (true ::reference))
 ;;; Each of the elements except for the type is optional.
 ;;;   * A variable with a name of nil is considered distinct from any
 ;;;     other variable.
 ;;;   * A variable with a qualifier can only match entities satisfying
-;;;     the qualifier.
+;;;     the qualifier. If ::content is present on the qualifier, then
+;;;     the variable must match the content of the
+;;;     qualifier. Otherwise, it much match the entire element, except
+;;;     for the ::sub-query
 ;;;   * A variable with ::reference binds to an item in the
 ;;;     store, rather than to an abstract pattern.
 ;;;     If more than one instance of a reference variable with a given
@@ -102,8 +105,11 @@
   (apply list
          (cond-> [::special-form '(:variable ::type)]
            name (conj `(~name ::name))
-           qualifier (conj (add-elements-to-entity-list
-                            qualifier [::sub-query]))
+           qualifier (conj (concat (if (or (primitive? qualifier)
+                                           (object? qualifier))
+                                     `(~qualifier ::content)
+                                     qualifier)
+                                   '(::sub-query)))
            reference (conj '(true ::reference)))))
 
 (defn not-query
@@ -151,7 +157,10 @@
   (label->content variable ::name))
 
 (defn variable-qualifier [variable]
-  (first (label->elements variable ::sub-query)))
+  (let [qualifier (first (label->elements variable ::sub-query))]
+    (if (some #(= ::content %) qualifier)
+      (content qualifier)
+      qualifier)))
 
 (defn variable-reference [variable]
   (label->content variable ::reference))

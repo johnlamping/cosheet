@@ -8,7 +8,7 @@
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
                                      target-label->ids]] 
-                      [store-utils :refer [add-entity]]
+                      [store-utils :refer [add-element]]
                       [query :refer [matching-elements]]
                       [expression :refer [expr expr-let expr-seq]]
                       [debug :refer [simplify-for-print]]
@@ -72,13 +72,13 @@
                 ("female" (~o2 :order))
                 ("female" (~o3 :order))))
 (def age-condition-list '(anything ("age" :tag)))
-(def t1 (add-entity (new-element-store) nil joe-list))
+(def t1 (add-element (new-element-store) nil joe-list))
 (def joe-id (second t1))
-(def t2 (add-entity (first t1) nil jane-list))
+(def t2 (add-element (first t1) nil jane-list))
 (def jane-id (second t2))
-(def t3 (add-entity (first t2) nil dup-list))
+(def t3 (add-element (first t2) nil dup-list))
 (def dup-id (second t3))
-(def t4 (add-entity (first t3) nil age-condition-list))
+(def t4 (add-element (first t3) nil age-condition-list))
 (def age-condition-id (second t4))
 (def store (first t4))
 (def joe (id->entity joe-id store))

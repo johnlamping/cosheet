@@ -9,7 +9,7 @@
              [store :refer [new-element-store new-mutable-store store-reset!
                             id->target]]
              store-impl
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
              [entity :as entity  :refer [id->entity
@@ -66,35 +66,35 @@
 (defn batch-virtual-element-AD []
   get-batch-edit-stack-virtual-element-subject-action-data)
 
-(def t0 (add-entity (new-element-store) nil
+(def t0 (add-element (new-element-store) nil
                     (add-order-elements
                      '(:x ("s1" :label)
                           (anything ("c1" :label) :column)
                           (anything ("c2" :label) :column)
                           :row-condition))))
 (def h1 (second t0))
-(def t1 (add-entity (first t0) nil (add-order-elements
+(def t1 (add-element (first t0) nil (add-order-elements
                                     '(""
                                       (2 ("c1" :label))
                                       (2 ("c2" :label))
                                       :top-level))))
 (def r1 (second t1))
-(def t2 (add-entity (first t1) nil (add-order-elements
+(def t2 (add-element (first t1) nil (add-order-elements
                                     '(""
                                       (2 ("c1" :label))
                                       (3 ("c2" :label))
                                       :top-level))))
 (def r2 (second t2))
-(def t3 (add-entity (first t2) nil (add-order-elements
+(def t3 (add-element (first t2) nil (add-order-elements
                                     '(anything (anything ("c1" :label))))))
 (def q1 (second t3))
-(def t4 (add-entity (first t3) nil (add-order-elements
+(def t4 (add-element (first t3) nil (add-order-elements
                                     '(anything 2 (anything ("c1" :label))))))
 (def q2 (second t4))
-(def t5 (add-entity (first t4) nil (add-order-elements
+(def t5 (add-element (first t4) nil (add-order-elements
                                     '(anything (anything (anything :label))))))
 (def q3 (second t5))
-(def t6 (add-entity (first t5) nil (add-order-elements
+(def t6 (add-element (first t5) nil (add-order-elements
                                     '(anything (anything ("c1" :label))))))
 (def stk1 (second t6))
 (def s (first t6))

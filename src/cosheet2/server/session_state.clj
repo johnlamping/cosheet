@@ -12,7 +12,7 @@
                    store-update! id-valid-link? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
-    [store-utils :refer [add-entity remove-entity-by-id]]
+    [store-utils :refer [add-element remove-entity-by-id]]
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     [calculator :refer [compute propagate-calculator-data!]]
@@ -159,15 +159,15 @@
 
 (defn update-add-session-temporary-element
   [immutable-store]
-  (add-entity immutable-store nil
-              '(:root-temporary
-                ;; These hold the data that control batch edit mode.
-                (anything :batch-query :selector)
-                (anything :batch-stack :selector)
-                ;; Normally, the selection is stored as a keyword. By
-                ;; putting in a symbol, we are saying there is no
-                ;; current selection.
-                (nothing :current-selection))))
+  (add-element immutable-store nil
+               '(:root-temporary
+                 ;; These hold the data that control batch edit mode.
+                 (anything :batch-query :selector)
+                 (anything :batch-stack :selector)
+                 ;; Normally, the selection is stored as a keyword. By
+                 ;; putting in a symbol, we are saying there is no
+                 ;; current selection.
+                 (nothing :current-selection))))
 
 (defn add-session-temporary-element!
   "Add a session temporary element to the store, and return its id."

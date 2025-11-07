@@ -34,9 +34,9 @@
 
 (deftest test-store
   (let [[store element]
-        (add-entity (new-element-store)
-                    nil '(77 ("test" :label)
-                             ("Fred" ("by" :label))))
+        (add-element (new-element-store)
+                     nil '(77 ("test" :label)
+                              ("Fred" ("by" :label))))
         initial-store (track-modified-ids store)
         queue (new-priority-task-queue 0)
         calculator-data (new-calculator-data queue) 

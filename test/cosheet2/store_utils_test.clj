@@ -14,9 +14,9 @@
 
 (deftest add-test
   (let [s (new-element-store)
-        [s1 id] (add-entity s (make-item-id "0") '(77 ("test" :label)))
+        [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
         [s2 id1] (add-object s1 (make-object-list '("Hello")))
-        [s3 id2] (add-entity s2 "Fred" `((:target ~(id->entity id1 s2))
+        [s3 id2] (add-element s2 "Fred" `((:target ~(id->entity id1 s2))
                                          ("by" :label)))
         [s id3] (add-element s3 id `(~(make-object-list '(1)) 3))]
     (is (= (id->target s id)) (make-item-id "0"))
@@ -36,10 +36,10 @@
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]
-        (add-entity (new-element-store) (make-item-id "0")
+        (add-element (new-element-store) (make-item-id "0")
                     '("foo" ("test" :label)))
         [added-store2 e2]
-        (add-entity added-store e1 '("Fred" ("by" :label)))
+        (add-element added-store e1 '("Fred" ("by" :label)))
         removed-store (remove-entity-by-id added-store2 e2)]
     (is (check (to-list (id->entity e1 added-store2))
                (as-set '("foo"

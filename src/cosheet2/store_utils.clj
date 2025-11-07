@@ -29,6 +29,7 @@
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
+  (assert (not (instance? clojure.lang.PersistentVector template)))
   (assert (not (element? (content template))))
   (let [[store content-endpoint]
         (let [element-content (content template)]
@@ -44,10 +45,6 @@
                                      [container-id content-endpoint]))
         store (add-elements store entity-link (elements template))]
     [store entity-link]))
-
-;;; TODO: Replace all calls to this with add-element
-(defn add-entity [store container-id template]
-  (add-element store container-id template))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the

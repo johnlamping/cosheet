@@ -5,7 +5,7 @@
              [entity :refer [label->elements]]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [entity :refer [id->entity]]
              [query :refer [matching-elements]]
              [debug :refer [simplify-for-print]]
@@ -68,7 +68,7 @@
                      :tab
                      (:blank :table)
                      (~o3 :order)))
-        [store tabs-id] (add-entity (new-element-store) nil tabs-list)
+        [store tabs-id] (add-element (new-element-store) nil tabs-list)
         tabs (id->entity tabs-id store)
         t1 (first (matching-elements `(nil ~o1) tabs))
         t2 (first (matching-elements `(nil ~o2) tabs))

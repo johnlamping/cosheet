@@ -10,7 +10,6 @@
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
-                      [store-utils :refer [add-entity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]
                       :as query])

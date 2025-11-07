@@ -5,7 +5,7 @@
              [orderable :as orderable]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->entity
                                          label->elements elements to-list]]
@@ -85,7 +85,7 @@
     (computation-value dom-R cd)))
 
 (deftest get-virtual-column-cell-action-data-test
-  (let [[s1 table-id] (add-entity (new-element-store) nil
+  (let [[s1 table-id] (add-element (new-element-store) nil
                                   (add-order-elements
                                    '(""
                                      (:x :row-condition
@@ -93,7 +93,7 @@
                                      (:x :column-headers
                                          (anything ("c1" :label))
                                          (anything ("c2" :label))))))
-        [store row-id] (add-entity s1 nil (add-order-elements
+        [store row-id] (add-element s1 nil (add-order-elements
                                            '(anything (1 ("c1" :label))
                                                       (2 ("c2" :label)))))
         data (get-virtual-column-cell-action-data
@@ -165,10 +165,10 @@
                        (~o6 :order))
                       ("something" ("child" (~o1 :order))
                        (~o7 :order))))
-        [s1 joe-id] (add-entity (new-element-store) nil joe-list)
-        [s2 jane-id] (add-entity s1 nil jane-list)
-        [s3 test-id] (add-entity s2 nil test-list)
-        [store table-id] (add-entity s3 nil table-list)
+        [s1 joe-id] (add-element (new-element-store) nil joe-list)
+        [s2 jane-id] (add-element s1 nil jane-list)
+        [s3 test-id] (add-element s2 nil test-list)
+        [store table-id] (add-element s3 nil table-list)
         joe (id->entity joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))

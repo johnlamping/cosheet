@@ -5,7 +5,7 @@
              [store :refer [new-element-store]]
              [entity :as entity  :refer [to-list id->entity]]
              [canonical :refer [canonicalize]]
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
@@ -40,14 +40,14 @@
              ["a"])))
 
 (deftest competing-siblings-test
-  (let [[s1 joe-id] (add-entity
+  (let [[s1 joe-id] (add-element
                      (new-element-store) nil
                      '("joe"
                        anything (anything 1) (anything 1)
                        (2 1) (2 3)))
-        [s2 item-a1-id] (add-entity s1 joe-id '(anything 1))
-        [s3 item-b3-id] (add-entity s2 joe-id '("" 3))
-        [store item-21-id] (add-entity s3 joe-id '(2 1))
+        [s2 item-a1-id] (add-element s1 joe-id '(anything 1))
+        [s3 item-b3-id] (add-element s2 joe-id '("" 3))
+        [store item-21-id] (add-element s3 joe-id '(2 1))
         joe (id->entity joe-id store)
         item-a1 (id->entity item-a1-id store)
         item-b3 (id->entity item-b3-id store)

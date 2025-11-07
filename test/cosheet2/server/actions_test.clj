@@ -18,7 +18,7 @@
              [store :refer [new-element-store new-mutable-store
                             target-label->ids
                             current-store id-valid-link? id->source]]
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
@@ -70,11 +70,11 @@
                    :selector
                    (:x :row-condition ~@row-condition-elements)
                    (:x :column-headers ~@column-headers))))
-(def t0 (add-entity (new-element-store) nil table-list))
+(def t0 (add-element (new-element-store) nil table-list))
 (def table-id (second t0))
-(def t1 (add-entity (first t0) nil joe-list))
+(def t1 (add-element (first t0) nil joe-list))
 (def joe-id (second t1))
-(def t2 (add-entity (first t1) nil jane-list))
+(def t2 (add-element (first t1) nil jane-list))
 (def jane-id (second t2))
 (def t3 (update-add-session-temporary-element (first t2)))
 (def temporary-id (second t3))
@@ -146,7 +146,7 @@
     (is (= (id->source (:store result) (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
-  (let [[store columns-id] (add-entity
+  (let [[store columns-id] (add-element
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything
@@ -243,7 +243,7 @@
     (is (check (entity->canonical-semantic new-jane)
                (canonicalize '("Jane" "female")))))
   ;; Test that deleting the only element of a column does nothing.
-  (let [[store columns-id] (add-entity
+  (let [[store columns-id] (add-element
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything

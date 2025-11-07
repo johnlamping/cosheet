@@ -13,7 +13,7 @@
     [entity :refer [content elements label->elements label->content
                     id->entity object?]]
     [query :refer [matching-items]]
-    [store-utils :refer [add-entity]]
+    [store-utils :refer [add-element]]
     [expression :refer [expr-let expr-seq]]
     [utils :refer [thread-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
@@ -209,7 +209,7 @@
         trans (some (fn [element] (= (content element) :temporary))
                     entity-elements)]
     (if (not (orderable-entity? entity))
-      (let [[s1 id] (add-entity store target-id entity)]
+      (let [[s1 id] (add-element store target-id entity)]
         [s1 id order])
       (let [value-to-store entity-content
             [s1 id] (add-link store target-id value-to-store)
@@ -237,7 +237,7 @@
                     (case position ;; Make the order match
                       :before entity-elements
                       :after (reverse entity-elements)))
-            [s3 _] (add-entity
+            [s3 _] (add-element
                     s2 id `(~(if use-bigger bigger-order smaller-order)
                             :order))]
         [(if trans (declare-temporary-id s3 id) s3)

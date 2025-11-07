@@ -19,7 +19,7 @@
              [store :refer [new-element-store new-mutable-store store-update!]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-entity remove-entity-by-id]]
+             [store-utils :refer [add-element remove-entity-by-id]]
              [canonical :refer [canonicalize]]
              [test-utils :refer [check any]])
             (cosheet2.server
@@ -50,7 +50,7 @@
                     ("doubtful" "confidence" (~o7 :order)))
                 (45 (~o5 :order)
                     ("age" :label))))
-(def t1 (add-entity (new-element-store) nil joe-list))
+(def t1 (add-element (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def store (first t1))
 (def joe (id->entity joe-id store))

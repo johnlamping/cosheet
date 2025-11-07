@@ -2,7 +2,7 @@
   (:require (cosheet2 [debug :refer [simplify-for-print]]             
                       [entity :refer [to-list label->elements content]]
                       [store :refer [update-source id-valid-link?]]
-                      [store-utils :refer [add-entity remove-entity-by-id]]
+                      [store-utils :refer [add-element remove-entity-by-id]]
                       [query :refer [matching-items]])))
 
 (def current-format 7)
@@ -20,11 +20,11 @@
              columns (label->elements table :column)]
          (reduce
           (fn [store column]
-            (first (add-entity (remove-entity-by-id store (:item-id column))
+            (first (add-element (remove-entity-by-id store (:item-id column))
                                (:item-id condition)
                                (to-list column))))
           store columns)))
-     (first (add-entity store nil '(1 :format)))
+     (first (add-element store nil '(1 :format)))
      tables)))
 
 (defn convert-from-1-or-2-to-3
@@ -39,7 +39,7 @@
     (reduce
      (fn [store table]
        (let [condition (first (label->elements table :row-condition))]
-         (first (add-entity store (:item-id condition)
+         (first (add-element store (:item-id condition)
                             '(:selector :non-semantic)))))
      (update-source store (:item-id format) 3)
      tables)))
@@ -119,19 +119,19 @@
        (let [condition (first (label->elements table :row-condition))
              columns (label->elements condition :column)]
          (let [;; The row-condition should also have :non-semantic.
-               [store _] (add-entity
+               [store _] (add-element
                           store (:item-id condition) :non-semantic)
                ;; Add the column header element.
                [store column-headers-id]
-               (add-entity
+               (add-element
                 store (:item-id table)
                 '(anything :column-headers :selector :non-semantic))]
            ;; Move the columns from the row-condition to the column-headers.
            (reduce
             (fn [store column]
-              (first (add-entity (remove-entity-by-id store (:item-id column))
-                                 column-headers-id
-                                 (remove #{:column} (to-list column)))))
+              (first (add-element (remove-entity-by-id store (:item-id column))
+                                  column-headers-id
+                                  (remove #{:column} (to-list column)))))
             store columns))))
      store
      tables)))

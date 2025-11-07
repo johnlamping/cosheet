@@ -12,7 +12,7 @@
              mutable-store-impl
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
-             [store-utils :refer [add-entity]]
+             [store-utils :refer [add-element]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
              [model-utils :refer [semantic-label-elements]]
@@ -84,14 +84,14 @@
 
 
 (deftest horizontal-label-hierarchy-node-DOM-test
-  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-entity s4 joe-id "test")
-        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
-        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
-        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
-        [s9 jane-id] (add-entity s8 nil "Jane")
-        [s10 jane-test-id] (add-entity s9 jane-id "test")
-        [store jane-test-label-id] (add-entity s10 jane-test-id :label)
+  (let [[s4 joe-id] (add-element (new-element-store) nil "Joe")
+        [s5 joe-test-id] (add-element s4 joe-id "test")
+        [s6 joe-test-label-id] (add-element s5 joe-test-id :label)
+        [s7 joe-foo-id] (add-element s6 joe-id "foo")
+        [s8 joe-foo-label-id] (add-element s7 joe-foo-id :label)
+        [s9 jane-id] (add-element s8 nil "Jane")
+        [s10 jane-test-id] (add-element s9 jane-id "test")
+        [store jane-test-label-id] (add-element s10 jane-test-id :label)
         joe (id->entity joe-id store)
         jane (id->entity jane-id store)
         ordered-entities [joe jane]
@@ -143,17 +143,17 @@
                         :excluded-element-ids [jane-test-id]}]]]))))
 
 (deftest labels-and-elements-DOM-test
-  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-entity s4 joe-id "test")
-        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
-        [s6p _] (add-entity s6 joe-test-id `(~o1 :order))
-        [s7 joe-foo-id] (add-entity s6p joe-id "foo")
-        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
-        [s8p _] (add-entity s8 joe-foo-id `(~o2 :order))
-        [s9 jane-id] (add-entity s8p nil "Jane")
-        [s10 jane-test-id] (add-entity s9 jane-id "test")
-        [s11 jane-test-label-id] (add-entity s10 jane-test-id :label)
-        [store sally-id] (add-entity s11 nil "Sally")
+  (let [[s4 joe-id] (add-element (new-element-store) nil "Joe")
+        [s5 joe-test-id] (add-element s4 joe-id "test")
+        [s6 joe-test-label-id] (add-element s5 joe-test-id :label)
+        [s6p _] (add-element s6 joe-test-id `(~o1 :order))
+        [s7 joe-foo-id] (add-element s6p joe-id "foo")
+        [s8 joe-foo-label-id] (add-element s7 joe-foo-id :label)
+        [s8p _] (add-element s8 joe-foo-id `(~o2 :order))
+        [s9 jane-id] (add-element s8p nil "Jane")
+        [s10 jane-test-id] (add-element s9 jane-id "test")
+        [s11 jane-test-label-id] (add-element s10 jane-test-id :label)
+        [store sally-id] (add-element s11 nil "Sally")
         joe (id->entity joe-id store)
         joe-test (id->entity joe-test-id store)
         joe-foo (id->entity joe-foo-id store)
@@ -342,7 +342,7 @@
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
-     (let [[store fred-id] (add-entity (new-element-store) nil "Fred")
+     (let [[store fred-id] (add-element (new-element-store) nil "Fred")
            dom (run-renderer
                 render-item-DOM
                 (assoc basic-dom-specification :relative-id fred-id)
@@ -350,7 +350,7 @@
        (is (check dom
                   [:div {:class "content-text editable item"} "Fred"])))
      ;; Test a cell with a couple of labels, one excluded.
-     (let [[store fred-id] (add-entity (new-element-store) nil
+     (let [[store fred-id] (add-element (new-element-store) nil
                                        `("Fred"
                                          (1 :label (~o1 :order))
                                          (2 :label (~o2 :order))))
@@ -382,7 +382,7 @@
                                  :get-action-data (pass-AD)
                                  :width 1.5}]]])))
      ;; Test must-show-label.
-     (let [[store fred-id] (add-entity (new-element-store) nil
+     (let [[store fred-id] (add-element (new-element-store) nil
                                        "Fred")
            dom (run-renderer
                 render-item-DOM
@@ -411,7 +411,7 @@
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
@@ -466,7 +466,7 @@
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]]]])))
   ;; Test an item with two elements, each with one distinct label.
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (2 ("two" :label) (~o2 :order))
                                       (1 ("one" :label) (~o1 :order))))
@@ -529,7 +529,7 @@
                                 :render-dom render-item-DOM
                                 :get-action-data (default-AD)}]]]]])))
   ;; Test an item with four elements, with label sharing among them.
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (0 ("zero" :label)
                                          (~o1 :order))
@@ -664,7 +664,7 @@
 
 (deftest item-DOM-test-two-column
   ;; Try three elements with no labels, but one of them marked as excluded.
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (3 (~o3 :order))
                                       (2 (~o2 :order))
@@ -733,7 +733,7 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (2 ("two" :label) (~o2 :order))
                                       (1 ("one" :label) (~o1 :order))))
@@ -797,7 +797,7 @@
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]]])))
   ;; Test an item with four elements, with label sharing among them.
-  (let [[store fred-id] (add-entity (new-element-store) nil
+  (let [[store fred-id] (add-element (new-element-store) nil
                                     `("Fred"
                                       (0 ("zero" :label)
                                          (~o1 :order))

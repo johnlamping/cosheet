@@ -17,7 +17,7 @@
                    current-store
                    id->string string->id id->source
                    Store]]
-    [store-utils :refer [add-entity remove-entity-by-id]]
+    [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [id->entity to-list label->element
                     content elements label->elements label->content]]

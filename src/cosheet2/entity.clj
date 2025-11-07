@@ -119,8 +119,9 @@
 
 (defprotocol ToStoredEntity
   "A description of an item."
-  (id->entity-m [this store orientation]
-    "Return an entity corresponding to an item id."))
+  (id->entity-m [this orientation store]
+    "Return an entity corresponding to an item id.
+    Should only be called by Entity and its implementation"))
 
 (defprotocol Entity
   "An store item or a primitive. For primitives, the entity methods
@@ -196,28 +197,23 @@
    (id->element id :source store))
   ([id orientation store]
    (assert (is-link-id? id))
-   (id->entity-m id store orientation)))
+   (id->entity-m id orientation store)))
 
 (defn id->object [id store]
   (assert (is-object-id? id))
-  (id->entity-m id store nil))
+  (id->entity-m id nil store))
 
 (defn id->entity
-  ([id store]
-   (if (is-object-id? id)
-     (id->entity-m id store nil)
-     (id->entity-m id store :source)))
-  ([id store orientation]
-   (assert (is-item-id? id))
-   (when (is-object-id? id)
-     (assert (not orientation)))
-   (id->entity-m id store orientation)))
+  [id store]
+  (if (is-object-id? id)
+    (id->entity-m id nil store)
+    (id->entity-m id :source store)))
 
 (defn id->updating-entity-R
   ([id store]
    (id->updating-entity-R id store (when (not (is-object-id? id)) :source)))
   ([id store orientation]
-   (let [entity (id->entity id store orientation)]
+   (let [entity (id->entity-m id orientation store)]
      (updating-immutable entity))))
 
 ;;; Utility functions that work on entities

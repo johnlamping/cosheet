@@ -23,9 +23,9 @@
    (endpoint->entity value store :source))
   ([value store orientation]
    (if (is-item-id? value)
-     (let [orientation (when (not (is-object-id? value))
-                         orientation)]
-       (id->entity value store orientation))
+     (if (is-object-id? value)
+       (id->object value store)
+       (id->element value orientation store))
      value)))
 
 (defrecord
@@ -45,11 +45,11 @@
   (target-entity [this] nil)
   
   (in-different-store [this store-or-entity]
-    (id->entity item-id
-                (if (satisfies? Store store-or-entity)
-                  store-or-entity
-                  (:store store-or-entity))
-                orientation))
+    (id->entity-m item-id
+                  orientation
+                  (if (satisfies? Store store-or-entity)
+                    store-or-entity
+                    (:store store-or-entity))))
   
   Entity
 
@@ -81,11 +81,11 @@
       (endpoint->entity (id->target store item-id) store)))
   
   (in-different-store [this store-or-entity]
-    (id->entity item-id
-                (if (satisfies? Store store-or-entity)
-                  store-or-entity
-                  (:store store-or-entity))
-                orientation))
+    (id->entity-m item-id
+                  orientation
+                  (if (satisfies? Store store-or-entity)
+                    store-or-entity
+                    (:store store-or-entity))))
   
   Entity
 
@@ -149,11 +149,11 @@
           (endpoint->entity target-id store))))
 
   (in-different-store [this store-or-entity]
-    (id->entity item-id 
-                (if (satisfies? Store store-or-entity)
-                  store-or-entity
-                  (:store store-or-entity))
-                orientation))
+    (id->entity-m item-id 
+                  orientation
+                  (if (satisfies? Store store-or-entity)
+                    store-or-entity
+                    (:store store-or-entity))))
 
   Entity
 
@@ -407,7 +407,7 @@
 
 (extend-protocol ToStoredEntity
   cosheet2.store.ItemId
-  (id->entity-m [this store orientation]
+  (id->entity-m [this orientation store]
     (assert (or (nil? orientation) (#{:source :target} orientation)))
     (cond
       (nil? store) (->IdOnlyEntity this orientation)

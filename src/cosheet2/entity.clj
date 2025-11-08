@@ -270,6 +270,8 @@
   (assert (not-any? #(or (object? %)
                          (not= (orientation %) :source))
                     elements))
+  (assert (or (nil? element-orientation)
+              (#{:source :target} element-orientation)))
   ;; We leave off the orientation if we can.
   (if (or (seq? content)
           (not= element-orientation :source))

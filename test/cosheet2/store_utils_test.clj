@@ -4,7 +4,8 @@
             (cosheet2
              [store :refer :all]
              [store-utils :refer :all]
-             [entity :refer [to-list id->entity make-object-list]]
+             [entity :refer [to-list id->object id->element
+                             make-element-list make-object-list]]
              entity-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
@@ -16,22 +17,27 @@
   (let [s (new-element-store)
         [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
         [s2 id1] (add-object s1 (make-object-list '("Hello")))
-        [s3 id2] (add-element s2 "Fred" `((:target ~(id->entity id1 s2))
-                                         ("by" :label)))
-        [s id3] (add-element s3 id `(~(make-object-list '(1)) 3))]
+        [s3 id2] (add-element s2 "Fred" (make-element-list
+                                         :target
+                                         (id->object id1 s2)
+                                         '(("by" :label))))
+        [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
+        [s id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))]
     (is (= (id->target s id)) (make-item-id "0"))
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
-    (is (check (to-list (id->entity id s))
+    (is (check (to-list (id->element id s))
                (as-set `(77
                          ("test" :label)
                          (~(make-object-list '(1)) 3)))))
-    (is (= (to-list (id->entity id2 s))
+    (is (= (to-list (id->element id2 s))
            '("Fred" ("by" :label))))
-    (is (check (to-list (id->entity id1 s))
+    (is (check (to-list (id->object id1 s))
                (as-set (make-object-list
-                        '("Hello" ("Fred" ("by" :label)))))))
-    (is (check (to-list (id->entity id3 s))
+                        `("Hello"
+                          ("Fred" ("by" :label))
+                          (~(id->object (make-item-id "a") s)))))))
+    (is (check (to-list (id->element id3 s))
                `(~(make-object-list '(1)) 3)))))
 
 (deftest remove-entity-by-id-test
@@ -41,11 +47,11 @@
         [added-store2 e2]
         (add-element added-store e1 '("Fred" ("by" :label)))
         removed-store (remove-entity-by-id added-store2 e2)]
-    (is (check (to-list (id->entity e1 added-store2))
+    (is (check (to-list (id->element e1 added-store2))
                (as-set '("foo"
                          ("test" :label)
                          ("Fred" ("by" :label))))))
-    (is (= (to-list (id->entity e1 removed-store))
+    (is (= (to-list (id->element e1 removed-store))
            '("foo" ("test" :label))))
     (is (= (assoc removed-store :next-number (:next-number added-store))
            added-store))))

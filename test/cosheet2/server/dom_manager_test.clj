@@ -27,7 +27,6 @@
             (cosheet2.server
              [dom-manager :refer :all]
              [item-render :refer [render-item-DOM]]
-             [order-utils :refer [update-add-entity-with-order-and-temporary]]
              [action-data :refer [default-get-action-data]])
             ; :reload
             ))

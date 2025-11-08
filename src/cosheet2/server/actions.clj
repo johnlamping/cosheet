@@ -37,7 +37,7 @@
                          table-row-template table-column-headers-id
                          unspecified-column-header-template]]
     [order-utils :refer [furthest-item
-                         update-add-entity-with-order-and-temporary]])))
+                         update-add-element-with-order-and-temporary]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -299,7 +299,7 @@
                  (thread-map
                   (fn [new-list [store order]]
                     (let [[store id remainder]
-                          (update-add-entity-with-order-and-temporary
+                          (update-add-element-with-order-and-temporary
                            store target-id new-list
                            order :before :false)]
                       [id [store remainder]]))

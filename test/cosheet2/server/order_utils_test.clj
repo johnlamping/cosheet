@@ -128,8 +128,8 @@
     (is (check (reporter-value copy-of-ordered-R)
                (map :item-id [joe-39 joe-male joe-married joe-45])))))
 
-(deftest update-add-entity-with-order-test
-  (let [[s id order] (update-add-entity-with-order-and-temporary
+(deftest update-add-element-with-order-test
+  (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before true)
         joe (id->entity joe-id s)
@@ -139,7 +139,7 @@
            `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-entity-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before false)
         joe (id->entity joe-id s)
@@ -149,7 +149,7 @@
            `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))    
-  (let [[s id order] (update-add-entity-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :after true)
         joe (id->entity joe-id s)
@@ -159,7 +159,7 @@
            `(6 (~o6 :order))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-entity-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id '(6 ("height" :label))
                       unused-orderable :before true)
         joe (id->entity joe-id s)
@@ -176,7 +176,7 @@
   ;; :order values.
   ;; Also check and that non-semantic elements don't get order information
   ;; and that the entity is marked temporary, if requested.
-  (let [[s id order] (update-add-entity-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id '(6 ("height" :label)
                                        ("" :label)
                                        :temporary

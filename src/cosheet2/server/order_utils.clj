@@ -26,9 +26,9 @@
 ;;; matching a condition. We call the elements that do matter the
 ;;; semantic elements.
 ;;; Logically, semantic-entity? would make more sense in model-utils,
-;;; but our update-add-entity-adjacent-to needs semantic-entity?, to
+;;; but our update-add-element-adjacent-to needs semantic-entity?, to
 ;;; know what parts need order information. And model-utils imports
-;;; update-add-entity-adjacent-to. So semantic-entity? has to go here,
+;;; update-add-element-adjacent-to. So semantic-entity? has to go here,
 ;;; or in what would be its own file, practically.
 (defn semantic-entity?
   "Return true if an item counts as semantic information."
@@ -193,7 +193,7 @@
   [entity]
   (and (semantic-entity? entity) (not (keyword? (content entity)))))
 
-(defn update-add-entity-with-order-and-temporary
+(defn update-add-element-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given
   target.  Add ordering information to the entity and each part of it,
   except for :label or :category specifiers and non-semantic elements,
@@ -231,7 +231,7 @@
             smaller-order (split-order (- 1 bigger-index))
             [s2 _ bigger-order]
             (reduce (fn [[store _ order] element]
-                      (update-add-entity-with-order-and-temporary
+                      (update-add-element-with-order-and-temporary
                        store id element order position false))
                     [s1 nil bigger-order]
                     (case position ;; Make the order match
@@ -275,29 +275,18 @@
       (first (matching-items '(nil :unused-orderable) store))))
 
 ;;; TODO: !!! Make this private.
-(defn update-add-entity-adjacent-to
+(defn update-add-element-adjacent-to
   "Add an entity with the given target id and contents,
    taking its order from the given item, in the given position,
    and giving the entity the bigger piece if use-bigger is true.
    Return the updated store and the id of the entity."
-  [store target-id entity adjacent-to position use-bigger]
+  [store target-id element adjacent-to position use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
-        [store id remainder] (update-add-entity-with-order-and-temporary
-                              store target-id entity
+        [store id remainder] (update-add-element-with-order-and-temporary
+                              store target-id element
                               order position use-bigger)]
     [(update-source store (:item-id order-element) remainder) id]))
-
-(defn update-add-element-adjacent-to
-  "Add an element with the given contents,
-   taking its order from the given item, in the given position,
-   and giving the entity the bigger piece if use-bigger is true.
-   Return the updated store and the id of the entity."
-  [store target-id element adjacent-to position use-bigger]
-  (assert (not (object? element)))
-  ; (assert (not (nil? target-id))) ;; TODO: !!! Add this back.
-  (update-add-entity-adjacent-to
-   store target-id element adjacent-to position use-bigger))
 
 (defn update-add-object-adjacent-to
   "Add an object with the given contents,
@@ -306,7 +295,7 @@
    Return the updated store and the id of the entity."
   [store object adjacent-to position use-bigger]
   (assert (object? object))
-  (update-add-entity-adjacent-to nil object adjacent-to position use-bigger))
+  (update-add-element-adjacent-to nil object adjacent-to position use-bigger))
 
 (defn add-order-elements-internal
   "This form uses the specified order to order the elements,

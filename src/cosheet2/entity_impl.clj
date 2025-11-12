@@ -1,6 +1,6 @@
 (ns cosheet2.entity-impl
-  (:require (cosheet2 [store :refer [target-label->ids
-                                     target->ids
+  (:require (cosheet2 [store :refer [target-label->ids source-label->ids
+                                     target->ids source->ids
                                      target-source->ids
                                      id->source id->target
                                      item-id? link-id? object-id?
@@ -102,8 +102,15 @@
         (endpoint->entity (id->source store item-id) store))))
 
   (elements [this]
-    (seq (for [element-id (target->ids store item-id)]
-           (id->element element-id store))))
+    (let [forward-elements (seq (for [element-id (target->ids store item-id)]
+                                  (id->element element-id store)))]
+      (if (object-id? item-id)
+        (concat forward-elements
+                (seq (for [element-id (filter
+                                       #(object-id? (id->target store %))
+                                       (source->ids store item-id))]
+                       (id->element element-id :target store))))
+        forward-elements)))
 
   (orientation [this]
     orientation)
@@ -173,8 +180,19 @@
 
   (elements [this]
     (expr-let [element-ids (target->ids store item-id)]
-      (seq (for [element-id element-ids]
-             (id->element element-id store)))))
+      (let [forward-elements (seq (for [element-id element-ids]
+                                    (id->element element-id store)))]
+        (if (object-id? item-id)
+          (expr-let [element-ids (source->ids store item-id)
+                     targets (expr-seq map #(id->target store %) element-ids)]
+            (concat
+             forward-elements
+             (seq (for [element-id (keep (fn [[element-id target]]
+                                           (when (object-id? target)
+                                             element-id))
+                                         (map vector element-ids targets))]
+                    (id->element element-id :target store)))))
+          forward-elements))))
 
   (orientation [this]
     orientation)

@@ -44,10 +44,13 @@
 ;;; the source can't be a link restricts the possible elements. In
 ;;; addition, for now, a link can only be reversed if both its source
 ;;; and target are objects. In other words, only relationships between
-;;; objects are reversible. The case where the target can be a link
-;;; may be supported later. But that means that content of an element
-;;; could be another element, which is viewed from neither its link's
-;;; source or target, but from one of the links to it.
+;;; objects are reversible.
+
+;;; The case where the target can be a link may be supported
+;;; later. That is a pretty big change because it means that content
+;;; of an element could be another element, which is viewed from
+;;; neither its link's source or target, but from one of the links to
+;;; it.
 
 ;;; This, in turn, means that the elements of an object correspond to
 ;;; all links that have it as a target, and all links that have it as
@@ -151,7 +154,8 @@
     "Return the content of the entity.")
 
   (elements [this]
-    "Return a seq of items for all our elements.")
+    "Return a seq of items for all our elements, including reversed links
+    between objects.")
 
   (orientation [this]
     "The orientation of an element entity.")
@@ -171,7 +175,12 @@
     "Return the key of this entity. For stored entities, it is their
     item-id. For all other entities it is the entity, itself.
     Matching of named objects is based on their key, so that it
-    will be independent of any particular store.")
+    will be independent of any particular store.
+
+    Note that the key ignores the orientation of elements. Both query
+    matching and to-list rely on that to avoid infinite loops. The
+    only other place the key is used is to compare objects, which have
+    no orientation.")
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
@@ -289,26 +298,40 @@
   (into [:object] elements))
 
 (defn immutable-to-list-generator [object-to-list]
-  "Internal function that takes an object to list function and returns
-  an immutable entity to list function, handling objects with the object
-  to list function."
+  "Internal function that takes an object to list function and returns a
+  function from immutable entity and element to skip to a list,
+  handling objects with the object to list function. The
+  object-to-list function must also take an object and an element to
+  skip.
+  The element to skip only has an effect when converting an anonymous
+  object. In that case, an element of the object with the same key
+  will not be shown. This avoids an infinite loop when an anonymous
+  object has a relation to another anonymous object, and showing all
+  elements of both objects would bounce back and forth between them
+  forever."
   ;; Note: We tried using a letfn here, so we didn't have to pass in
   ;; the object-transformer each time we called ourselves
   ;; recursively. But that resulted in a compile error, where the
   ;; letfn definition was not available deep inside.
-  (fn [entity]
+  (fn [entity skipped-element]
     (let [recurse (immutable-to-list-generator object-to-list)]
       (cond
         (primitive? entity) entity
-        (object? entity) (object-to-list entity)
+        (object? entity) (object-to-list entity skipped-element)
         true (make-element-list (orientation entity)
-                                (recurse (content entity))
-                                (map recurse (elements entity)))))))
+                                (recurse (content entity) entity)
+                                (map #(recurse % nil) (elements entity)))))))
 
-(defn immutable-object-to-list [object]
+(defn immutable-object-to-list [object skipped-element]
   (if (anonymous-object? object)
     (let [recurse (immutable-to-list-generator immutable-object-to-list)]
-      (make-object-list (map recurse (elements object))))
+      (make-object-list (map #(recurse % nil)
+                             ;; We rely on entity-key ignoring
+                             ;; orientation, so that the two
+                             ;; orientations of a relation will match.
+                             (remove #(= (entity-key %)
+                                         (entity-key skipped-element))
+                                     (elements object)))))
     object))
 
 (defn to-list [entity]
@@ -319,12 +342,12 @@
     ;; corresponding object from the mutable store.
     (expr-let [immutable (updating-immutable entity)]
       ((immutable-to-list-generator
-        (fn [object] (if (satisfies? StoredEntity object)
-                         (in-different-store object entity)
-                         object)))
-       immutable))
+        (fn [object skipped-element] (if (satisfies? StoredEntity object)
+                                       (in-different-store object entity)
+                                       object)))
+       immutable nil))
     ((immutable-to-list-generator immutable-object-to-list)
-     entity)))
+     entity nil)))
 
 (defn label->element
   "Return the element with the given label.

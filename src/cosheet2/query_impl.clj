@@ -258,7 +258,7 @@
   "Return a seq of environments for which the variable matches the entity.
   Each environment will a binding for this variable, if it has a name,
   plus bindings for any other variables in the qualifier."
-  [var env entity]
+  [var variable-element-filter env entity entity-element-filter]
   (let [name (variable-name var)
         qualifier (variable-qualifier var)
         reference (variable-reference var)]
@@ -268,7 +268,9 @@
                    (or (not reference) (satisfies? StoredEntity entity)))
           (let [envs (if (nil? qualifier)
                        [env]
-                       (matching-extensions qualifier env entity))]
+                       (matching-extensions
+                        qualifier variable-element-filter env
+                        entity entity-element-filter))]
             (if (nil? name)
               envs
               (seq (map #(assoc % name entity) envs)))))
@@ -279,23 +281,34 @@
                    (canonicalize entity))
             [env]))))))
 
+(defn make-element-filter
+  "Given an element, return a function that removes elements elements
+  with the same item id from a list of elements." 
+  [element]
+  (let [key (entity-key element)]
+    (fn [elements]
+      (remove #(= key (entity-key %)) elements))))
+
 (defn element-match-map
-  "Return a map from environment to seq of elements of the entity that match
-  the term in the environment. The term must be an element."
-  [term env entity]
+  "Return a map from environment to seq of elements of the entity,
+  except the disallowed element, that match the term in the
+  environment. The term must be an element."
+  [term env entity entity-element-filter]
   (assert (not (object? term)))
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels) (nil? (content labels)))
-      (let [candidates (candidate-elements
-                        labels (orientation term) entity)
-            match-envs (map #(matching-extensions term env %) candidates)]
+      (let [candidates (entity-element-filter
+                        (candidate-elements labels (orientation term) entity))
+            match-envs (map #(matching-extensions term identity env % identity)
+                            candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
                             (update result env #(conj (or % []) candidate)))
                           result matching-envs))
                 {} (map vector candidates match-envs)))
       ;; The special case of looking for any element with one specific label.
-      (let [matching-elements (label->elements entity labels)]
+      (let [matching-elements (entity-element-filter
+                               (label->elements entity labels))]
         (cond (empty? matching-elements)
               {}
               (variable-query? term)
@@ -307,8 +320,8 @@
               true
               {env matching-elements})))))
 
-(defn element-matches [term env entity]
-  (keys (element-match-map term env entity)))
+(defn element-matches [term env entity entity-element-filter]
+  (keys (element-match-map term env entity entity-element-filter)))
 
 (defn concat-maps
   "Given a sequence of maps from key to sequence of values, return a single
@@ -333,31 +346,33 @@
    {} match-map))
 
 (defn multiple-element-matches
-  "Given a sequence of terms, a map from environments to sequences
-  of disallowed elements, and a entity, return a sequence of environments
-  where each term matches a different element in the entity,
-  and not a disallowed element."
-  [terms env-map entity]
+  "Given a sequence of terms, a map from environments to sequences of
+  disallowed elements, and a entity, return a sequence of environments
+  where each term matches a different element in the entity that
+  passes the filter, and is not a disallowed element from the map."
+  [terms env-map entity entity-element-filter]
   (if (empty? terms)
     (keys env-map)
-    (let [matching-maps (map #(element-match-map (first terms) % entity)
+    (let [matching-maps (map #(element-match-map
+                               (first terms) % entity entity-element-filter)
                              (keys env-map))
           disjoint-map (concat-maps
                         (map conj-disjoint-maps
                              (vals env-map) matching-maps))]
       (multiple-element-matches
-       (rest terms) disjoint-map entity))))
+       (rest terms) disjoint-map entity entity-element-filter))))
 
 (defn no-element-matches
-  "Return true if none of the queries are matched
-   by any elements of the entity, given the environment."
-  [queries env entity]
+  "Return true if none of the queries are matched, given the environment,
+   by any elements of the entity that pass the filter."
+  [queries env entity entity-element-filter]
   (if (empty? queries)
     true
-    (when (empty? (element-matches (first queries) env entity))
-      (no-element-matches (rest queries) env entity))))
+    (when (empty? (element-matches
+                   (first queries) env entity entity-element-filter))
+      (no-element-matches (rest queries) env entity entity-element-filter))))
 
-(defn item-matches [item env entity]
+(defn item-matches [item item-element-filter env entity entity-element-filter]
   (let [content-match-envs
         (if (object? item)
           (when (object? entity)
@@ -365,10 +380,22 @@
           (when (and (not (object? entity))
                      (= (orientation item) (orientation entity)))
             (if-let [item-content (content item)]
-              (matching-extensions item-content env (content entity))
+              ;; When matching content that is an object, the item we
+              ;; got must have been an element, and there'll be a
+              ;; corresponding element on the content, just in the
+              ;; reverse orientation. If we checked that that element
+              ;; matched we could go into an infinite loop, bouncing
+              ;; back and forth between objects. And there is no
+              ;; point, because we know the element is going to be
+              ;; there, by virtue of our element being present. So we
+              ;; tell subsequent checks to filter out that element
+              ;; before checking.
+              (matching-extensions
+               item-content (make-element-filter item) env
+               (content entity) (make-element-filter entity))
               [env])))]
     (when (seq content-match-envs)
-      (let [item-elements (elements item)]
+      (let [item-elements (item-element-filter (elements item))]
         (if (empty? item-elements)
           content-match-envs
           (let [[positive negative] (separate-negations item-elements)]
@@ -377,42 +404,45 @@
                     (empty? positive)
                     content-match-envs
                     (empty? (rest positive))
-                    (-> (map #(element-matches (first positive) % entity)
+                    (-> (map #(element-matches
+                               (first positive) % entity entity-element-filter)
                              content-match-envs)
                         distinct-concat)
                     true
                     (multiple-element-matches
                      positive
                      (zipmap content-match-envs (repeat [[]]))
-                     entity))]
+                     entity
+                     identity))]
               (if (empty? negative)
                 envs
-                (filter #(no-element-matches negative % entity) envs)))))))))
+                (filter #(no-element-matches
+                          negative % entity entity-element-filter)
+                        envs)))))))))
 
-(defn matching-extensions [term env entity]
+(defn matching-extensions [term term-element-filter env
+                           entity entity-element-filter]
   (assert (not (mutable-entity? term)))
   (if (primitive? term)
     (when (extended-by? term entity) [env])
     (if (variable-query? term)
-      (variable-matches term env entity)
-      (item-matches term env entity))))
+      (variable-matches term term-element-filter env
+                        entity entity-element-filter)
+      (item-matches
+       term term-element-filter env entity entity-element-filter))))
 
 (defmethod matching-extensions-m true [term env entity]
-  (matching-extensions term env entity))
-
-(defn matching-elements
-  [term entity]
-  (if (or (nil? term) (= term '()))
-    (elements entity)
-    (let [match-map (element-match-map term {} entity)]
-      (distinct-concat (vals match-map)))))
+  (matching-extensions term identity env entity identity))
 
 (defmethod matching-elements-m true [term entity]
-  (matching-elements term entity))
+  (if (or (nil? term) (= term '()))
+    (elements entity)
+    (let [match-map (element-match-map term {} entity identity)]
+      (distinct-concat (vals match-map)))))
 
 (defn matching-items [term store]
   (filter
-   #(not (empty? (matching-extensions term {} %)))
+   #(not (empty? (matching-extensions term identity {} % identity)))
    ;; TODO: Make this use precise information.
    (let [[template precise] (closest-template term {})]
      (map #(id->entity % store)
@@ -432,7 +462,7 @@
             ;; TODO: Make this use precise information.
             candidate-ids (first (candidate-matching-ids store template))
             matches (map #(variable-matches
-                           var env (id->entity % store))
+                           var identity env (id->entity % store) identity)
                          candidate-ids)]
         (distinct-concat matches))
       (when (seq (query-matches value env store)) [env]))))
@@ -497,7 +527,8 @@
     (if (and template-exact precise)
       (when (seq candidates)
         [env])
-      (let [matches (seq (map (partial matching-extensions item env)
+      (let [matches (seq (map #(matching-extensions
+                                item identity env % identity)
                               candidates))]
         (distinct-concat matches)))))
 

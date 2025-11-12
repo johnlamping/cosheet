@@ -7,8 +7,9 @@
                       [store-utils :refer [add-element]]
                       [entity :refer [to-list id->element id->object content
                                       elements label->elements mutable-entity?
-                                      primitive?
-                                      make-object-list make-element-list]]
+                                      primitive? entity-key
+                                      make-object-list make-element-list
+                                      immutable-object-to-list]]
                       entity-impl
                       [query :refer :all]
                       [query-impl :refer [closest-template]]
@@ -428,7 +429,7 @@
         [s3 id3] (add-element s2 ib '(1 ("a" 4)))
         [s4 id4] (add-element s3 ic '(2 ("C" :label) ("C" :label)))
         [s5 id5] (add-element s4 ia (make-element-list
-                                    :target (id->object ib s4) '("reversed")))
+                                     :target (id->object ib s4) '("reversed")))
         [s id6] (add-element s5 ia `(~(make-object-list '(1)) 3))]
     (let [matches (matching-elements '(nil ("A"))
                                      (id->object ia s))]
@@ -439,26 +440,32 @@
       (is (check (map to-list matches)
                  (as-set ['(1 ("a" 3))
                           '(3 (4 5))
-                          `(~(make-object-list '(1)) 3)]))))
+                          `(~(make-object-list '(1)) 3)
+                          (make-element-list
+                           :target (id->object ib s) '("reversed"))]))))
     ;; Test elements of an element.
     (let [matches (matching-elements "A" (id->element id1 s))]
       (is (= (map to-list matches)
              ['("a" 3)])))
-    ;; Test matching an object.
+    ;; Test matching an element with an object as content.
     (let [matches (matching-elements `(~(make-object-list '(1)))
                                      (id->object ia s))]
-      (is (= (map to-list matches)
-             [`(~(make-object-list '(1)) 3)])))
+      (is (= matches
+             [(id->element id6 s)])))
     ;; Test matching the link that was put in backwards.
-    (let [matches (matching-elements (make-element-list
-                                      :source (id->object ia s) nil)
-                                     (id->object ib s))]
-      (is (= (map to-list matches)
-             [`(~(to-list (id->object ia s)) "reversed")])))
-    
-    ;; TODO: !!! Once (elements ...) returns reversed elements of objects,
-    ;;           Test matching reversed orientation
-    
+    (let [term (make-element-list :source (id->object ia s) nil)]
+      (is (= (matching-elements term (id->object ib s))
+             [(id->element id5 s)])))
+    (let [term (make-element-list :source (id->object ib s) nil)]
+      (is (= (matching-elements term (id->object ia s))
+             nil)))
+    ;; Test matching elements in reversed orientation
+    (let [term (make-element-list :target (id->object ib s) nil)]
+      (is (= (matching-elements term (id->object ia s))
+             [(id->element id5 :target s)])))
+    (let [term (make-element-list :target (id->object ia s) nil)]
+      (is (= (matching-elements term (id->object ib s))
+             nil)))
     ;; Test a complex term that can match the element more than one
     ;; way.  (There had been a bug where this would return the same
     ;; element multiple times.)
@@ -474,7 +481,7 @@
         [s-more ids] (add-element s2 (make-item-id "c") '(:c 1 (1 2) (1 3) 2))
         [s-relationship idr] (add-element
                               s2 (make-item-id "a")
-                              `(~(id->object (make-item-id "b") nil)))]
+                              `(~(id->object (make-item-id "d") nil)))]
     ;; primitives
     (is (= (query-matches :a s2)
            [{}]))
@@ -486,8 +493,21 @@
     (is (= (query-matches '(nil (1)) s2) [{}]))
     (is (= (query-matches '(:a) s2) [{}]))
     (is (= (query-matches '(:x) s2) nil))
-    ;; TODO: !!! When reversed elements are returned from objects,
-    ;;           check for those, too.
+    ;; reversed elements
+    (let [item-a (id->object (make-item-id "a") s-relationship)
+          item-d (id->object (make-item-id "d") s-relationship)]
+      (is (= (query-matches (make-element-list :target item-a nil)
+                            s-relationship)
+             [{}]))
+      (is (= (query-matches (make-element-list :target item-d nil)
+                            s-relationship)
+             nil))
+      (is (= (query-matches (make-element-list :source item-a nil)
+                            s-relationship)
+             nil))
+      (is (= (query-matches (make-element-list :source item-d nil)
+                            s-relationship)
+             [{}])))
     ;; objects
     (is (= (query-matches (make-object-list '(nil)) s2) [{}]))
     (is (= (query-matches (make-object-list '((:a))) s2) [{}]))

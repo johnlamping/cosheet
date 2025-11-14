@@ -19,6 +19,8 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
+(declare anonymous-object-id?)
+(declare has-link-to-anonymous-object?)
 (declare add-link-from-triple)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
@@ -197,7 +199,22 @@
 
   (add-link [this target source]
     ;; TODO: !!! Once we are using objects at top level, assert that
-    ;; neither target nor source are nil.
+    ;;       neither target nor source are nil.
+    
+    ;; Disallow links between two anonymous objects that both already
+    ;; have links to anonymous objects. This ensures that the
+    ;; relationships between anonymous objects will not have any
+    ;; loops. Both queries and Entity/to-list rely on that.
+    ;; We can't put this test in add-link-from-triple because that is
+    ;; called to read in a store, where, depending on the order links
+    ;; are read, this condition might be violated, even though there
+    ;; are no loops throuch anonymous objects.
+    (when (and (object-id? target) ;; Redundant, but fast.
+               (object-id? source) ;; Redundant, but fast.
+               (anonymous-object-id? this target)
+               (anonymous-object-id? this source))
+      (assert (not (and (has-link-to-anonymous-object? this target)
+                        (has-link-to-anonymous-object? this source)))))
     (let [item-id (->ItemId (:next-number this))]
       [(-> this
            (update-in [:next-number] inc)
@@ -471,6 +488,34 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
+;;; Note: This must be kept in synch with Entity/anonymous-object?
+;;; TODO: !!! This needs to change when the definition of name label
+;;;           changes to be a specific object id.
+(defn anonymous-object-id?
+  "Return true if the item id represents an anonymous object."
+  [store item-id]
+  (and (object-id? item-id)
+       ;; Doesn't have a special id.
+       (not (string? (:id item-id)))
+       ;; Doesn't have a name.
+       (not (when-let [name-ids (target-label->ids store item-id "name")]
+              (some #(and (not (nil? %)) (not= 'anything %))
+                    (map #(id->source store %) name-ids))))))
+
+(defn has-link-to-anonymous-object?
+  "Return true if the item id has a link to an id representing an
+  anonymous object."
+  [store item-id]
+  (let [anonymous-id? #(anonymous-object-id? store %)]
+    (or (some anonymous-id? (map #(id->source store %)
+                                 (target->ids store item-id)))
+        (some anonymous-id? (map #(id->target store %)
+                                 (source->ids store item-id))))))
+
+(defn has-name-link?
+  "Return true if the item id has a link that gives it a non-trivial name."
+  [store item-id])
+
 (defn add-link-from-triple
   "Add a link to the store, given its target, source, and id. And do all
   necessary indexing."
@@ -483,6 +528,7 @@
   (assert (and (not (nil? source))
                (not (link-id? source)))
           [item-id target source])
+  (assert (not= target source))
   (when (number? (:id item-id))
     (assert (< (:id item-id) (:next-number store)) [item-id target source])
     (when (number? (:id target))

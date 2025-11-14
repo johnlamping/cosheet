@@ -239,24 +239,31 @@
 ;;; TODO: !!! These need to change when the definition of name label
 ;;; changes to be a specific object id.
 (defn anonymous-object?
-  "Return true if the entity is a generic object."
+  "Return true if the entity is a generic object.
+  Note: This must be kept in synch with store-impl/anonymous-object-id?"
   [entity]
   (and (object? entity)
+       (not (and (satisfies? StoredEntity entity)
+                 (or (string? (:id (:item-id entity)))
+                     ;; All mutable objects count as named, because
+                     ;; they have unique identities.
+                     (mutable-entity? entity))))
        (not (when-let [names (label->elements entity "name")]
               (some #(and (not (nil? %)) (not= 'anything %))
-                    (map content names))))
-       (not (and (satisfies? StoredEntity entity)
-                 (string? (:id (:item-id entity)))))))
+                    (map content names))))))
 
 (defn named-object?
   "Return true if the entity is a non-generic object."
   [entity]
   (and (object? entity)
-       (or (when-let [names (label->elements entity "name")]
+       (or (and (satisfies? StoredEntity entity)
+                (or (string? (:id (:item-id entity)))
+                    ;; All mutable objects count as named, because
+                    ;; they have unique identities.
+                    (mutable-entity? entity)))
+           (when-let [names (label->elements entity "name")]
              (some #(and (not (nil? %)) (not= 'anything %))
-                   (map content names)))
-           (and (satisfies? StoredEntity entity)
-                (string? (:id (:item-id entity)))))))
+                   (map content names))))))
 
 (defn minimal-label?
   "Given a label, Return true if it is as small as it can be

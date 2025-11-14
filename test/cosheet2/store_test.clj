@@ -24,7 +24,6 @@
   (assert (> n 0))
   (->ItemId n))
 
-;;; TODO: once the store accepts objects, put some of them in here.
 ;;; This store holds two top level items:
 ;;; <id:4>5
 ;;; (object-1
@@ -236,6 +235,49 @@
     (is (= (:id id) (- (:next-number test-store))))
     (is (= (:next-number store) (+ 1 (:next-number test-store))))))
 
+(def unindexed-object-store
+  (map->ElementStoreImpl
+   {:id->target
+    {(make-link-id 1) (make-object-id -1)
+     (make-link-id 2) (make-object-id -3)
+     (make-link-id 3) (make-object-id -3)
+     (make-link-id 4) (make-link-id 3)
+     (make-link-id 5) (make-link-id 4)
+     (make-link-id 6) (make-object-id -5)
+     (make-link-id 7) (make-object-id -7)}
+    :id->source
+    {(make-link-id 1) (make-object-id -2)
+     (make-link-id 2) (make-object-id -4)
+     (make-link-id 3) "Joe"
+     (make-link-id 4) "name"
+     (make-link-id 5) :label
+     (make-link-id 6) (make-object-id "object")
+     (make-link-id 7) (make-object-id -8)}
+    :temporary-ids  #{}
+    :marked-as-type #{}
+    :next-number 1001
+    :modified-ids nil
+    :equivalent-undo-point false}))
+
+(def object-store
+  (reduce #(index-all %1 empty-store %2)
+          unindexed-object-store
+          (keys (:id->source unindexed-object-store))))
+
+(deftest anonymous-object-id?-test
+  (is (anonymous-object-id? object-store (make-object-id -1)))
+  (is (not (anonymous-object-id? object-store (make-object-id "special"))))
+  (is (not (anonymous-object-id? object-store (make-object-id -3))))
+  (is (not (anonymous-object-id? object-store (make-link-id 2)))))
+
+(deftest has-link-to-anonymous-object?-test
+  (is (has-link-to-anonymous-object? object-store (make-object-id -1)))
+  (is (has-link-to-anonymous-object? object-store (make-object-id -2)))
+  (is (has-link-to-anonymous-object? object-store (make-object-id -3)))
+  (is (has-link-to-anonymous-object? object-store (make-object-id "object")))
+  (is (not (has-link-to-anonymous-object? object-store (make-object-id -4))))
+  (is (not (has-link-to-anonymous-object? object-store (make-object-id -5)))))
+
 (deftest add-link-test
   (let [[added-store id]
         (add-link test-store (make-link-id 1) "test")]
@@ -248,7 +290,20 @@
   (let [[added-store id]
         (add-link
          (track-modified-ids test-store) (make-link-id 1) "test")]
-    (is (= (:modified-ids added-store) #{id}))))
+    (is (= (:modified-ids added-store) #{id})))
+  ;; Test illegal links.
+  (is (thrown? java.lang.AssertionError
+               (add-link object-store (make-object-id 99) (make-object-id 99))))
+  (is (thrown? java.lang.AssertionError
+               (add-link object-store (make-object-id -2) (make-object-id -7))))
+  ;; OK because one side is not anonymous.
+  (add-link object-store (make-object-id -2) (make-object-id -3))
+  (add-link object-store (make-object-id -3) (make-object-id -2))
+  ;; OK because one side's linked to objects are not anonymous.
+  (add-link object-store (make-object-id -2) (make-object-id -4))
+  (add-link object-store (make-object-id -4) (make-object-id -2))
+  (add-link object-store (make-object-id -2) (make-object-id -5))
+  (add-link object-store (make-object-id -5) (make-object-id -2)))
 
 (deftest remove-link-test
   (let [[added-store id]

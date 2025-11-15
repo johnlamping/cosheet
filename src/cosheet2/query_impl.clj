@@ -67,7 +67,7 @@
 
 (defn combine-exact-matches
   "Given two exact match indicators from different parts of a term,
-  returning their joint indicator.
+  return their joint indicator.
   The possible input values are:
                        false: not an exact match
                         true: an exact match
@@ -95,12 +95,12 @@
     (let [var-name (variable-name term)
           value (env var-name)]
       (if value
-        ;; We are not an exact match if the query is looking for a
-        ;; particular entity, because the callers of this function
-        ;; aren't aware of entity identities.
-        ;; TODO: !!! Is this right? If the environment is looking for a
-        ;;           named object, we should be exact.
-        [value (not (variable-reference term))]
+        ;; We are not an exact match if we are looking for a
+        ;; particular entity for this variable, unless it is a named
+        ;; object, because for anything else we'll just return a
+        ;; pattern, not the object.
+        [value (or (not (variable-reference term))
+                   (named-object? value))]
         (let [[contextual exact]
               (contextualize-variable (variable-qualifier term) env)]
           [contextual (combine-exact-matches exact #{var-name})])))

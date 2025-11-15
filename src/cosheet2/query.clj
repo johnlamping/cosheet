@@ -46,9 +46,9 @@
 ;;;   * A variable with ::reference binds to an item in the
 ;;;     store, rather than to an abstract pattern.
 ;;;     If more than one instance of a reference variable with a given
-;;;     name occurs in a query, it can only match atoms or constants,
-;;;     since those are the only things that can be identical at
-;;;     different sites.
+;;;     name occurs in a query, it can only match named objects or
+;;;     constants, since those are the only things that can be
+;;;     identical at different sites.
 
 ;;; A not matches if its sub-query does not match.
 ;;;   (::special-form (:not ::type) (<sub-query> &[::sub-query]))

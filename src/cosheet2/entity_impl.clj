@@ -102,34 +102,33 @@
         (endpoint->entity (id->source store item-id) store))))
 
   (elements [this]
-    (let [forward-elements (seq (for [element-id (target->ids store item-id)]
-                                  (id->element element-id store)))]
-      (if (object-id? item-id)
-        (concat forward-elements
-                (seq (for [element-id (filter
-                                       #(object-id? (id->target store %))
-                                       (source->ids store item-id))]
-                       (id->element element-id :target store))))
-        forward-elements)))
+    (seq (cond->> (->> (target->ids store item-id)
+                       (map #(id->element % store)))
+           (object-id? item-id)
+           (concat (->> (source->ids store item-id)
+                        (filter #(object-id? (id->target store %)))
+                        (map #(id->element % :target store)))))))
 
   (orientation [this]
     orientation)
 
   (content->elements [this content-value]
     (let [content-key (entity-key content-value)]
-      (seq (concat
-            (for [element-id (target-source->ids
-                              store item-id content-key)]
-              (id->element element-id store))
-            (when (and (object-id? item-id)
-                       (object-id? content-key))
-              (for [element-id (target-source->ids
-                                store content-key item-id)]
-                (id->element element-id :target store)))))))
+      (seq (cond-> (->> (target-source->ids store item-id content-key)
+                        (map #(id->element % store)))
+             (and (object-id? item-id) (object-id? content-key))
+             (concat
+              (->> (target-source->ids store content-key item-id)
+                   (map #(id->element % :target store))))))))
 
   (label->elements [this label]
-    (seq (for [element-id (target-label->ids store item-id (entity-key label))]
-           (id->element element-id store))))
+    (let [label-key (entity-key label)]
+      (seq (cond-> (->> (target-label->ids store item-id label-key)
+                        (map #(id->element % store)))
+             (object-id? item-id)
+             (concat (->> (source-label->ids store item-id label-key)
+                          (filter #(object-id? (id->target store %)))
+                          (map #(id->element % :target store))))))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))
@@ -185,13 +184,13 @@
         (if (object-id? item-id)
           (expr-let [element-ids (source->ids store item-id)
                      targets (expr-seq map #(id->target store %) element-ids)]
-            (concat
-             forward-elements
-             (seq (for [element-id (keep (fn [[element-id target]]
-                                           (when (object-id? target)
-                                             element-id))
-                                         (map vector element-ids targets))]
-                    (id->element element-id :target store)))))
+            (seq (concat
+                  forward-elements
+                  (->> (map vector element-ids targets)
+                       (keep (fn [[element-id target]]
+                               (when (object-id? target)
+                                 element-id)))
+                       (map #(id->element % :target store))))))
           forward-elements))))
 
   (orientation [this]
@@ -211,9 +210,21 @@
                        (id->element element-id :target store)))))))
 
   (label->elements [this label]
-    (expr-let [element-ids (target-label->ids store item-id (entity-key label))]
-      (seq (for [element-id element-ids]
-             (id->element element-id store)))))
+    (let [label-key (entity-key label)]
+      (expr-let [element-ids (target-label->ids store item-id label-key)]
+        (let [forward-elements (seq (for [element-id element-ids]
+                                      (id->element element-id store)))]
+          (if (object-id? item-id)
+            (expr-let [element-ids (source-label->ids store item-id label-key)
+                       targets (expr-seq map #(id->target store %) element-ids)]
+              (seq (concat
+                   forward-elements
+                   (->> (map vector element-ids targets)
+                        (keep (fn [[element-id target]]
+                                (when (object-id? target)
+                                  element-id)))
+                        (map #(id->element % :target store))))))
+            forward-elements)))))
 
   (marked-as-type? [this]
     (id->marked-as-type? store item-id))

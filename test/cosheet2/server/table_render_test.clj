@@ -486,33 +486,25 @@
          column-descriptions
          [{:column-id c1-id
            :width 0.75
-           :query '(nil ("single" :label)
-                        (:cosheet2.query/special-form
-                         (:not :cosheet2.query/type)
-                         (:label :cosheet2.query/sub-query))
+           :query `(nil ("single" :label)
+                        ~(not-query :label)
                         (nil :order))}
           {:column-id c2-id
            :competing-ids [c3-id]
            :disqualifications `(~(as-set
-                                  '(nil ("name" :label)
+                                  `(nil ("name" :label)
                                         ("other" :label)
-                                        (:cosheet2.query/special-form
-                                         (:not :cosheet2.query/type)
-                                         (:label :cosheet2.query/sub-query))
+                                        ~(not-query :label)
                                         (nil :order))))
            :width 0.75
-           :query (as-set '(nil ("name" :label)
-                                (:cosheet2.query/special-form
-                                 (:not :cosheet2.query/type)
-                                 (:label :cosheet2.query/sub-query))
+           :query (as-set `(nil ("name" :label)
+                                ~(not-query :label)
                                 (nil :order)))}
           {:column-id c3-id
            :width 0.75
-           :query (as-set '(nil ("name" :label)
+           :query (as-set `(nil ("name" :label)
                                 ("other" :label)
-                                (:cosheet2.query/special-form
-                                 (:not :cosheet2.query/type)
-                                 (:label :cosheet2.query/sub-query))
+                                ~(not-query :label)
                                 (nil :order)))}
           (any) (any) (any) (any) (any)]))
 
@@ -560,10 +552,8 @@
                        :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
-                       :query '(nil ("single" :label)
-                                    (:cosheet2.query/special-form
-                                     (:not :cosheet2.query/type)
-                                     (:label :cosheet2.query/sub-query))
+                       :query `(nil ("single" :label)
+                                    ~(not-query :label)
                                     (nil :order))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
@@ -573,19 +563,14 @@
                        :class "table-cell"
                        :relative-id c2-id
                        :row-id joe-id
-                       :query (as-set '(nil ("name" :label)
-                                            (:cosheet2.query/special-form
-                                             (:not :cosheet2.query/type)
-                                             (:label :cosheet2.query/sub-query))
+                       :query (as-set `(nil ("name" :label)
+                                            ~(not-query :label)
                                             (nil :order)))
                        :competing-ids [c3-id]
                        :disqualifications `(~(as-set
-                                              '(nil ("name" :label)
+                                              `(nil ("name" :label)
                                                     ("other" :label)
-                                                    (:cosheet2.query/special-form
-                                                     (:not :cosheet2.query/type)
-                                                     (:label
-                                                      :cosheet2.query/sub-query))
+                                                    ~(not-query :label)
                                                     (nil :order))))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
@@ -595,11 +580,9 @@
                        :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
-                       :query (as-set '(nil ("name" :label)
+                       :query (as-set `(nil ("name" :label)
                                             ("other" :label)
-                                            (:cosheet2.query/special-form
-                                             (:not :cosheet2.query/type)
-                                             (:label :cosheet2.query/sub-query))
+                                            ~(not-query :label)
                                             (nil :order)))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)

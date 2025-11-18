@@ -10,8 +10,9 @@
                                       primitive? entity-key
                                       make-object-list make-element-list
                                       immutable-object-to-list]]
+                      [utils :refer [add-elements-to-entity-list]]
                       entity-impl
-                      [query :refer :all]
+                      [query :as query :refer :all]
                       [query-impl :refer [closest-template]]
                       [test-utils :refer [check as-set]]
                      )
@@ -58,6 +59,12 @@
                            '(3 ("foo" (4 true))))))
     (is (not (extended-by? '(3 2 2)
                            '(3 2))))
+    (is (not (extended-by? (make-element-list :source 1 '(2))
+                           (make-element-list :target 1 '((2 3))))))
+    (is (not (extended-by? (make-element-list :target 1 '(2))
+                           (make-element-list :source 1 '((2 3))))))
+    (is (extended-by? (make-element-list :target 1 '(2))
+                      (make-element-list :target 1 '((2 3)))))
     (is (extended-by? 3 element0))
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
@@ -121,6 +128,47 @@
    (variable-query name
                    :qualifier qualifier
                    :reference reference)))
+
+(deftest special-forms-test
+  (let [query (variable-query "foo" :qualifier '(1 2) :reference true)]
+    (is (special-form? query))
+    (is (variable-query? query))
+    (is (= (variable-name query) "foo"))
+    (is (= (variable-qualifier query) '(1 2)))
+    (is (= (variable-reference query) true)))
+  (let [query (variable-query
+             "foo" :qualifier (make-element-list :target 2 '(1)))]
+    (is (special-form? query))
+    (is (variable-query? query))
+    (is (= (variable-name query) "foo"))
+    (is (= (variable-qualifier query) (make-element-list :target 2 '(1))))
+    (is (= (variable-reference query) nil)))
+  (let [query (not-query 1)]
+    (is (special-form? query))
+    (is (= (special-form-type query) :not))
+    (is (= (sub-query query) 1)))
+  (let [query (not-query (make-element-list :target 2 '(1)))]
+    (is (special-form? query))
+    (is (= (special-form-type query) :not))
+    (is (= (sub-query query) (make-element-list :target 2 '(1)))))
+  (let [query (and-query 1 (make-element-list :target 2 '(1)))]
+    (is (special-form? query))
+    (is (= (special-form-type query) :and))
+    (is (= (sub-queries query) [1 (make-element-list :target 2 '(1))])))
+  (let [query (forall-query "foo" 1 (make-element-list :target 2 '(1)))]
+    (is (special-form? query))
+    (is (= (special-form-type query) :forall))
+    (is (= (quantifier-variable query)
+           (add-elements-to-entity-list (variable-query "foo" :qualifier 1)
+                                        '(::query/variable))))
+    (is (= (sub-query query) (make-element-list :target 2 '(1)))))
+  (let [query (exists-query "foo" 1 (make-element-list :target 2 '(1)))]
+    (is (special-form? query))
+    (is (= (special-form-type query) :exists))
+    (is (= (quantifier-variable query)
+           (add-elements-to-entity-list (variable-query "foo" :qualifier 1)
+                                        '(::query/variable))))
+    (is (= (sub-query query) (make-element-list :target 2 '(1))))))
 
 (deftest closest-template-test
   (is (= (closest-template '(1 2 (3 4))
@@ -370,6 +418,30 @@
   (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
                               '(1 (2 :foo)))
          [{:a :b, "foo" 2}]))
+  (is (= (matching-extensions
+          (make-object-list `(~(variable
+                                "foo" (make-element-list :source 2 nil))))
+          {:a :b}
+          (make-object-list `(~(make-element-list :source 2 '(:foo)))))
+         [{:a :b, "foo" (make-element-list :source 2 '(:foo))}]))
+  (is (= (matching-extensions
+          (make-object-list `(~(variable
+                                "foo" (make-element-list :target 2 nil))))
+          {:a :b}
+          (make-object-list `(~(make-element-list :target 2 '(:foo)))))
+         [{:a :b, "foo" (make-element-list :target 2 '(:foo))}]))
+  (is (= (matching-extensions
+          (make-object-list `(~(variable
+                                "foo" (make-element-list :target 2 nil))))
+          {:a :b}
+          (make-object-list `(~(make-element-list :source 2 '(:foo)))))
+         nil))
+  (is (= (matching-extensions
+          (make-object-list `(~(variable
+                                "foo" (make-element-list :source 2 nil))))
+          {:a :b}
+          (make-object-list `(~(make-element-list :target 2 '(:foo)))))
+         nil))
   (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
                               '(1 (3 :foo)))
          nil))

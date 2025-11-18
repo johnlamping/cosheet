@@ -1,6 +1,8 @@
 (ns cosheet2.query
-  (:require (cosheet2 [entity :refer [content label->elements label->content
-                                      to-list object? primitive?]]
+  (:require (cosheet2 [entity :refer [content elements
+                                      label->elements label->content
+                                      to-list object? primitive? orientation
+                                      make-element-list]]
                       [utils :refer [add-elements-to-entity-list]])))
 
 ;;; Querying involves looking for entities that are extensions of a
@@ -30,19 +32,32 @@
 ;;; know these details, as there are functions to construct each of
 ;;; the special forms.
 
+;;; All special forms can have sub-queries. These are encoded by
+;;; elements with a label of ::sub-query. But they need to be able to
+;;; encode primitives, objects, or elements. And for elements, they
+;;; need to be able to encode either orientation. These cases are
+;;; indicated by a few additional labels on the sub-query.
+;;;   * If the sub-query is a primitive or an object, it is
+;;;     represented by an element with the sub-query as its content
+;;;     and with the ::content and :sub-query keywords.
+;;;   * Otherwise, the sub-query is an element.
+;;;       * If it has orientation :source, it is represented by
+;;;         itself, plus the ::sub-query keyword.
+;;;       * if it has orientation :target, it is represented by the
+;;;         equivalent element, but with orientation :source, plus the
+;;;         keywords ::reversed and ::sub-query.
+
 ;;; A variable can match anything, and what it matches is recorded.
 ;;;   (::special-form (:variable ::type)
 ;;;                   (<name> ::name)
-;;;                   (<qualifier> ?::content ::sub-query)
+;;;                   <qualifier> encoded as a sub-query
 ;;;                   (true ::reference))
+;;;
 ;;; Each of the elements except for the type is optional.
 ;;;   * A variable with a name of nil is considered distinct from any
 ;;;     other variable.
 ;;;   * A variable with a qualifier can only match entities satisfying
-;;;     the qualifier. If ::content is present on the qualifier, then
-;;;     the variable must match the content of the
-;;;     qualifier. Otherwise, it much match the entire element, except
-;;;     for the ::sub-query
+;;;     the qualifier.
 ;;;   * A variable with ::reference binds to an item in the
 ;;;     store, rather than to an abstract pattern.
 ;;;     If more than one instance of a reference variable with a given
@@ -51,25 +66,27 @@
 ;;;     identical at different sites.
 
 ;;; A not matches if its sub-query does not match.
-;;;   (::special-form (:not ::type) (<sub-query> &[::sub-query]))
+;;;   (::special-form (:not ::type) <sub-query>)
 
 ;;; An and matches if both its sub-queries match, with consistent
 ;;; variable bidings.
 ;;;   (::special-form (:and ::type)
-;;;                   (<sub-query (::sub-query :first)>)
-;;;                   (<sub-query (::sub-query :second)>))
+;;;                   <sub-query> also tagged with ::first
+;;;                   <sub-query> also tagged with ::second)
 
 ;;; A forall matches if its query matches for every way its variable
 ;;; can be bound.
 ;;;   (::special-form (:forall ::type)
+;;;                   Note: appends ::variable as an element of the variable.
 ;;;                   <variable ::variable>
-;;;                   <sub-query ::sub-query>)
+;;;                   <sub-query>)
 
 ;;; An exists matches if its query matches for some way its variable
 ;;; can be bound.
 ;;;   (::special-form (:exists ::type)
+;;;                   Note: appends ::variable as an element of the variable.
 ;;;                   <variable ::variable>
-;;;                   <sub-query ::sub-query>)
+;;;                   <sub-query>)
 
 ;;; There are several querying operations, that differ in how
 ;;; elaborate a kind of query they take and in whether they operate on
@@ -97,6 +114,31 @@
 ;;; that return whether an item matches a query. Change
 ;;; query-calculator to use them, rather than requiring terms.
 
+(defn encode-sub-query
+  "Encode a sub-query as an element, as described above."
+  [sub-query]
+  (concat (if (or (primitive? sub-query) (object? sub-query))
+            (make-element-list :source sub-query '(::content))
+            (if (= (orientation sub-query) :target)
+              (make-element-list :source
+                                 (content sub-query)
+                                 (concat (elements sub-query)
+                                         '(::reversed)))
+              sub-query))
+          '(::sub-query)))
+
+(defn decode-sub-query
+  [encoded]
+  "Decode a sub-query that was encoded as an element, as described above."
+  (when encoded
+    (if (some #(= ::content %) (elements encoded))
+      (content encoded)
+      (let [cleaned (remove #{::sub-query ::first ::second ::reversed}
+                            encoded)]
+        (if (some #(= ::reversed %) (elements encoded))
+          (make-element-list :target (content cleaned) (elements cleaned))
+          cleaned)))))
+
 (defn variable-query
   [name & {:keys [qualifier reference]
            :as keywords}]
@@ -105,25 +147,21 @@
   (apply list
          (cond-> [::special-form '(:variable ::type)]
            name (conj `(~name ::name))
-           qualifier (conj (concat (if (or (primitive? qualifier)
-                                           (object? qualifier))
-                                     `(~qualifier ::content)
-                                     qualifier)
-                                   '(::sub-query)))
+           qualifier (conj (encode-sub-query qualifier))
            reference (conj '(true ::reference)))))
 
 (defn not-query
   [query]
   `(::special-form
     (:not ::type)
-    ~(add-elements-to-entity-list query [::sub-query])))
+    ~(encode-sub-query query)))
 
 (defn and-query
   [query1 query2]
   `(::special-form
     (:and ::type)
-    ~(add-elements-to-entity-list query1 ['(::sub-query :first)])
-    ~(add-elements-to-entity-list query2 ['(::sub-query :second)])))
+    ~(add-elements-to-entity-list (encode-sub-query query1) '(::first))
+    ~(add-elements-to-entity-list (encode-sub-query query2) '(::second))))
 
 (defn forall-query
   [variable-name variable-qualifier query]
@@ -131,7 +169,7 @@
     (:forall ::type)
     ~(add-elements-to-entity-list
       (variable-query variable-name :qualifier variable-qualifier) [::variable])
-    ~(add-elements-to-entity-list query [::sub-query])))
+    ~(encode-sub-query query)))
 
 (defn exists-query
   [variable-name variable-qualifier query]
@@ -139,7 +177,7 @@
     (:exists ::type)
     ~(add-elements-to-entity-list
       (variable-query variable-name :qualifier variable-qualifier) [::variable])
-    ~(add-elements-to-entity-list query [::sub-query])))
+    ~(encode-sub-query query)))
 
 (defn special-form?
   [query]
@@ -158,16 +196,29 @@
 
 (defn variable-qualifier [variable]
   (let [qualifier (first (label->elements variable ::sub-query))]
-    (if (some #(= ::content %) qualifier)
-      (content qualifier)
-      qualifier)))
+    (decode-sub-query qualifier)))
 
 (defn variable-reference [variable]
   (label->content variable ::reference))
 
 (defn sub-query
+  "Return the unique sub-query of the query"
   [query]
-  (first (label->elements query ::sub-query)))
+  (decode-sub-query (first (label->elements query ::sub-query))))
+
+(defn sub-queries
+  "The query must have two sub-queries. Return them in order." 
+  [query]
+  (let [queries (label->elements query ::sub-query) ]
+    (map decode-sub-query
+         (if (label->content (second queries) ::first)
+           (reverse queries)
+           queries))))
+
+(defn quantifier-variable
+  "Return the variable that a quantifier quantifies over."
+  [quantifier-query]
+  (first (label->elements quantifier-query ::variable)))
 
 ;;; We want to declare functions here, and implement them in
 ;;; query-impl.  But there doesn't seem to be a way to declare a

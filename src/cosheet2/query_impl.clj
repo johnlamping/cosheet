@@ -10,8 +10,7 @@
                                       label->content
                                       to-list
                                       label? minimal-label?]]
-                      [query :as query
-                       :refer [extended-by-m?
+                      [query :refer [extended-by-m?
                                matching-extensions-m
                                matching-elements-m
                                matching-items-m
@@ -22,12 +21,15 @@
                                variable-name
                                variable-qualifier
                                variable-reference
-                               sub-query]]
+                               sub-queries
+                               sub-query
+                               quantifier-variable]]
                       [canonical :refer [equivalent-primitives?
                                          canonicalize]]
                       [utils :refer [prewalk-seqs unzip
                                      conj-disjoint-combinations
                                      disjoint-combinations]])))
+
 ;;; TODO: !!! Do checking for non-generic objects, not moving into them.
 
 ;;; TODO:
@@ -47,18 +49,13 @@
 
 (defn separate-negations
   "Given a seq of terms, return two seqs, one of positive terms,
-   and one of negated terms. Discard any terms whose content
-   is ::query/sub-query, as those are tags that identify sub-querys,
-   not a condition to be matched."
+   and one of negated terms."
   [terms]
   (let [grouped (group-by
                  (fn [term]
-                   (cond (and (special-form? term)
-                              (= (special-form-type term) :not))
+                   (if (and (special-form? term)
+                            (= (special-form-type term) :not))
                          :negation
-                         (= (content term) ::query/sub-query)
-                         :ignore
-                         true
                          :positive))
                  terms)]
     [(:positive grouped) (map sub-query (:negation grouped))]))
@@ -84,6 +81,20 @@
          (clojure.set/union m1 m2)
          false)))
    false))
+
+(defn term-orientation
+  "Return the orientation required to match a term. Return nil if either
+  orientation will match."
+  [term env]
+  (if (variable-query? term)
+    (let [var-name (variable-name term)
+          qualifier (variable-qualifier term)
+          value (env var-name)]
+      (cond
+        value (orientation value)
+        qualifier (orientation qualifier)
+        true nil))
+    (orientation term)))
 
 (defn contextualize-variable
   "If the term is a variable, replace it by it's value in the environment,
@@ -129,39 +140,41 @@
              (empty? (rest positive))
              (minimal-label? (first candidates)))
       (content (first candidates))
-      (mapcat #(let [label (content %)]
-                 (when (and (not (nil? label))
-                            (not= label ::query/special-form))
-                   [label]))
+      (keep #(let [label (content %)]
+               (when (not (nil? label))
+                 label))
               candidates))))
 
 (defn candidate-elements
   "Given a entity whose elements we are searching over, and labels that
   all the elements we are looking for will have, return a set of
   candidate elements that is guaranteed to include all the possible
-  matches."
+  matches and to all have the correct orientations."
   [labels required-orientation entity]
-  (if (empty? labels)
-    (filter #(= (orientation %) required-orientation)
-            (elements entity))
-    (let [candidateses (->> labels
-                            (map #(label->elements entity %))
-                            (filter #(= (orientation %)
-                                        required-orientation)))]
-      (loop [best nil
-             candidateses candidateses]
-        (if (empty? candidateses)
-          best
-          (let [candidates (first candidateses)]
-            (if (empty? candidates)
-              nil
+  (let [filter-orientation
+        (if (nil? required-orientation)
+          identity
+          (fn [elements] (filter #(= (orientation %) required-orientation)
+                                 elements)))]
+    (if (empty? labels)
+      (filter-orientation (elements entity))
+      (let [candidateses (->> labels
+                              (map #(label->elements entity %))
+                              (map filter-orientation))]
+        (loop [best nil
+               candidateses candidateses]
+          (if (empty? candidateses)
+            best
+            (let [candidates (first candidateses)]
+              (if (empty? candidates)
+                nil
               ;;; TODO: When there are several labels, and their
               ;;; lengths are not that different, intersect their
               ;;; candidates, like what store does.
-              (recur (if (or (nil? best) (< (count candidates) (count best)))
-                       candidates
-                       best)
-                     (rest candidateses)))))))))
+                (recur (if (or (nil? best) (< (count candidates) (count best)))
+                         candidates
+                         best)
+                       (rest candidateses))))))))))
 
 (defn elements-satisfying [fixed-term entity]
   "Return a list of the entity's elements satisfying the given
@@ -187,7 +200,8 @@
         true
         (and (= (object? fixed-term) (object? entity))
              (or (object? fixed-term)
-                 (extended-by? (content fixed-term) (content entity)))
+                 (and (extended-by? (content fixed-term) (content entity))
+                      (= (orientation fixed-term) (orientation entity))))
              (or (empty? (elements fixed-term))
                  (let [[positive negative] (separate-negations
                                             (elements fixed-term))]
@@ -208,16 +222,14 @@
   "Return true if the term is a special form that fixed terms can
   have."
   [term]
-  (or (= (content term) ::query/sub-query)
-      (and (special-form? term)
-           (= (special-form-type term) :not))))
+  (and (special-form? term)
+       (= (special-form-type term) :not)))
 
 (defn closest-template
   "Given a term, return a template that the store can use to find
   candidate ids, and that is as close to the term as possible:
      Remove variables, replacing them with their value in the environment,
      or their qualifier.
-     Remove any ::query/sub-query annotations.
      Remove any other special forms (to eliminate any not-query terms).
   Also return whether matching the template is exactly equal to matching
   the term, using the format of combine-exact-matches."
@@ -291,14 +303,15 @@
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the entity,
-  except the disallowed element, that match the term in the
+  that pass the element filter and that match the term in the
   environment. The term must be an element."
   [term env entity entity-element-filter]
   (assert (not (object? term)))
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels) (nil? (content labels)))
       (let [candidates (entity-element-filter
-                        (candidate-elements labels (orientation term) entity))
+                        (candidate-elements
+                         labels (term-orientation term env) entity))
             match-envs (map #(matching-extensions term identity env % identity)
                             candidates)]
         (reduce (fn [result [candidate matching-envs]]
@@ -468,7 +481,7 @@
       (when (seq (query-matches value env store)) [env]))))
 
 (defn exists-matches-in-store [exists env store]
-  (let [var (first (label->elements exists ::query/variable))
+  (let [var (quantifier-variable exists)
         name (variable-name var)
         qualifier (variable-qualifier var)
         body (sub-query exists)]
@@ -479,7 +492,7 @@
       (seq (distinct (map #(dissoc % name) matches))))))
 
 (defn forall-matches-in-store [forall env store]
-  (let [var (first (label->elements forall ::query/variable))
+  (let [var (quantifier-variable forall)
         name (variable-name var)
         qualifier (variable-qualifier var)
         body (sub-query forall)]
@@ -511,10 +524,7 @@
               binding-groups))))))
 
 (defn and-matches-in-store [and env store]
-  (let [queries (label->elements and ::query/sub-query)
-        [first-q second-q] (if (label->content (second queries) :first)
-                             (reverse queries)
-                             queries)]
+  (let [[first-q second-q] (sub-queries and)]
     (let [first-matches (query-matches first-q env store)
           both-matches (map #(query-matches second-q % store)
                             first-matches)]

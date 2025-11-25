@@ -70,19 +70,23 @@
     (is (not (extended-by? element1 3)))
     (is (extended-by? `(1 ~(not-query :x))
                       1))
-
     (is (extended-by? `(1 :a :b ~(not-query :x) ~(not-query :u))
                       '(1 :a (:b :c))))
     (is (not (extended-by? `(1 :a :b :c ~(not-query :x) ~(not-query :u))
                            '(1 :a (:b :c)))))
     (is (not (extended-by?
+              `(1 :a ~(not-query :b))
+              '(1 :a (:b :c)))))
+    (is (not (extended-by?
               `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
               '(1 :a (:b :c)))))
     (is (extended-by?
-         `(1 :a (:b ~(not-query :x))  ~(not-query `(:b ~(not-query :c))))
+         `(1 :a (:b ~(not-query :x)) ~(not-query `(:b ~(not-query :c))))
          '(1 :a (:b :c))))
     (is (not (extended-by? `(1 :a (:b ~(not-query :c)))
                            '(1 :a (:b :c)))))
+    (is (extended-by? `(1 :a (:b ~(not-query :d)))
+                      '(1 :a (:b :c))))
     (is (not (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
                            '(1 :a (:b :c)))))
     (is (extended-by? (make-object-list '(1 2))
@@ -177,6 +181,9 @@
   (is (= (closest-template '((:target 1) 2 (3 4))
                            {"bar" 7})
          ['((:target 1) 2 (3 4)) true]))
+  (is (= (closest-template `(nil (2 3 ~(not-query 5)))
+                           {"bar" '(7 6)})
+         ['(nil (2 3)) false]))
   (is (= (closest-template `(1 2 (3 ~(variable "foo" 5)))
                            {"bar" 7})
          ['(1 2 (3 5)) #{"foo"}]))
@@ -746,7 +753,7 @@
                ;; Shouldn't have {"v" '(1 2)}, because of the not.
                (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" 3}])))
     ;; Shouldn't match because we require variables to be bound to
-    ;; exact entities, not to be bound to something that that be
+    ;; exact entities, not to be bound to something that can be
     ;; extended to match.
     (is (empty? (query-matches `(nil ~(variable "v")  ~(variable "v"))
                                s-more)))))
@@ -758,11 +765,22 @@
         [s1 id1] (add-element s0 ia '(1 (2 3)))
         [s2 id2] (add-element s1 ia '(3 (4 5)))
         [s3 id3] (add-element s2 ib '(1 (2 4)))]
+    ;; elements
     (let [matches (matching-items '(nil (2)) s3)]
-      (= (map :item-id matches) [ia ib]))
+      (is (= (set (map :item-id matches)) #{id1 id3})))
     (let [matches (matching-items '(nil (3)) s3)]
-      (= (map :item-id matches) [ia]))
+      (is (= matches [(first (elements (id->element id1 s3)))])))
     (let [matches (matching-items '(nil (2 3)) s3)]
-      (= (map :item-id matches) [ia]))
-    (let [matches (matching-items '(nil (2 (not-query 3))) s3)]
-      (= (map :item-id matches) [ib]))))
+      (is (= (map :item-id matches) [id1])))
+    (let [matches (matching-items `(nil (2 ~(not-query 3))) s3)]
+      (is (= (map :item-id matches) [id3])))
+    ;; objects
+    (let [matches (matching-items (make-object-list ['(nil (2))]) s3)]
+      (is (= (set (map :item-id matches)) #{ia ib})))
+    (let [matches (matching-items (make-object-list ['(nil (3))]) s3)]
+      (is (= matches [])))
+    (let [matches (matching-items (make-object-list ['(nil (nil (3)))]) s3)]
+      (is (= (map :item-id matches) [ia])))
+    (let [matches (matching-items
+                   (make-object-list [`(nil (2 ~(not-query 3)))]) s3)]
+      (is (= (map :item-id matches) [ib])))))

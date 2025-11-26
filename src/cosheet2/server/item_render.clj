@@ -24,7 +24,7 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
-             [order-utils :refer [ordered-entities semantic-entity?]]
+             [order-utils :refer [ordered-entities]]
              [render-utils
               :refer [make-component
                                         ;item-stack-DOM nest-if-multiple-DOM

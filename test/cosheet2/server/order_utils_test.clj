@@ -4,7 +4,8 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2
              [entity :as entity :refer [id->entity to-list
-                                        label->elements elements]]
+                                        label->elements elements
+                                        make-element-list make-object-list]]
              [orderable :as orderable]
              [reporter :refer [reporter-value new-reporter invalid
                                set-value!]]
@@ -69,9 +70,21 @@
                          ("married" (~o3 :order))
                          ("male" (~o2 :order))))
 
+(deftest semantic-element?-test
+  (is (semantic-element? (make-element-list :source 1 [2])))
+  (is (semantic-element? (make-element-list :source "1" [2])))
+  (is (semantic-element? (make-element-list :source 'anything [2])))
+  (is (semantic-element? (make-element-list :source :label [2])))
+  (is (semantic-element? (make-element-list :source :name [2])))
+  (is (semantic-element? (make-element-list
+                          :source (make-object-list [3]) [2])))
+  (is (semantic-element? (make-element-list
+                          :target (make-object-list [3]) [2])))
+  (is (not (semantic-element? (make-element-list :source :foo [2])))))
+
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
-  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
     (is (= (ordered-ids (map :item-id joe-semantic-elements) store)
            (map :item-id joe-ordered-semantic-elements)))
@@ -83,7 +96,7 @@
            (map :item-id joe-ordered-semantic-elements)))))
 
 (deftest ordered-entities-test
-  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
     (is (= (ordered-entities joe-semantic-elements)
            joe-ordered-semantic-elements))
@@ -95,7 +108,7 @@
              (semantic-to-list joe-list))))
 
 (deftest ordered-ids-R-test
-  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (elements joe))
         joe-semantic-element-ids (map :item-id joe-semantic-elements)
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]
         joe-ordered-semantic-element-ids (map :item-id

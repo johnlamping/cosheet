@@ -16,7 +16,6 @@
                        :refer [into-attributes add-attributes]]
                       [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet2.server
-             [order-utils :refer [semantic-entity?]]
              [model-utils :refer [semantic-elements semantic-elements
                                   entity->fixed-term
                                   entity->fixed-term-with-negations

@@ -11,7 +11,7 @@
                       [map-state :refer [map-state-get]]
                       [hiccup-utils :refer [add-attributes into-attributes]])
             (cosheet2.server
-             [order-utils :refer [semantic-entity?]]
+             [order-utils :refer [semantic-element?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
@@ -331,7 +331,7 @@
                                   (or subject-ref
                                       (when-let [target (target-entity item)]
                                         (when (current-value
-                                               (semantic-entity? target))
+                                               (semantic-element? target))
                                           (item-referent target))))))
                 inherited (cond-> inherited
                             subject-ref

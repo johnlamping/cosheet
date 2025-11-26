@@ -1,8 +1,12 @@
 (ns cosheet2.server.model-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [orderable :refer [split initial]]
-                      [entity :refer [in-different-store]]
-                      [store :refer [new-element-store update-source]]
+                      [entity :refer [in-different-store
+                                      make-object-list
+                                      make-element-list
+                                      id->object]]
+                      [store :refer [new-element-store update-source
+                                     make-item-id]]
                       [store-utils :refer [add-element remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
@@ -85,7 +89,24 @@
   (let [removed (remove-semantic-elements store joe-id)
         removed-joe (id->entity joe-id removed)]
     (is (check (to-list removed-joe)
-               `("Joe" (~(any) :order))))))
+               `("Joe" (~(any) :order)))))
+  (is (= (semantic-to-list '(1 (2 (:foo))))
+         '(1 2)))
+  (is (= (semantic-to-list (make-element-list :target 1 '(2 (:foo))))
+         (make-element-list :target 1 '(2))))
+  (is (= (semantic-to-list `(~(make-object-list [3 :name :bar]) (2 (:foo))))
+         `(~(make-object-list [3 :name]) 2)))
+  (let [named (id->object (make-item-id "A") (new-element-store))]
+    (is (= (semantic-to-list `(~named (2 (:foo))))
+           `(~named 2))))
+  (is (= (semantic-to-list `(1 (~(make-object-list [3 :bar]) (:foo))))
+         `(1 (~(make-object-list [3])))))
+  (is (= (ordered-semantic-to-list
+          `(~(make-object-list [3 :name :bar]) (2 (:foo))))
+         `(~(make-object-list [3 :name]) 2)))
+  (is (= (ordered-semantic-to-list
+          `(1 (~(make-object-list [3 :bar]) (:foo))))
+         `(1 (~(make-object-list [3]))))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))

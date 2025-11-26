@@ -7,17 +7,20 @@
                       [canonical :refer [canonicalize]]
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
-                      [entity :refer [primitive? label? id->entity
-                                      content elements content->elements
+                      [entity :refer [primitive? object? anonymous-object?
+                                      label? id->entity
+                                      content elements orientation
+                                      content->elements
                                       label->elements label->element
-                                      target-entity]]
+                                      target-entity entity-key
+                                      make-element-list make-object-list]]
                       [store-utils :refer [add-object add-element
                                            remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
                       [query-calculator :refer [matching-item-ids-R]])
             (cosheet2.server
-             [order-utils :refer [semantic-entity?
+             [order-utils :refer [semantic-element?
                                   ordered-ids-R ordered-entities
                                   order-element-for-item
                                   update-add-element-adjacent-to
@@ -89,7 +92,7 @@
 (defn semantic-elements
   "Return the elements of an entity that are semantic."
   [immutable-entity]
-  (filter semantic-entity? (elements immutable-entity)))
+  (filter semantic-element? (elements immutable-entity)))
 
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
@@ -99,34 +102,52 @@
             immutable-store
             (map :item-id (semantic-elements item)))))
 
+(def internal-semantic-to-list)
+
+(defn internal-object-semantic-to-list
+  "The skipped element lets semantic-to-list avoid going back up a link
+  it just traversed to this object."
+  [object use-order skipped-element]
+  (if (anonymous-object? object)
+    (->> (cond-> (semantic-elements object)
+           use-order (ordered-entities))
+         (remove #(= (entity-key %) (entity-key skipped-element)))
+         (map #(internal-semantic-to-list % use-order))
+         (make-object-list))
+    object))
+
+(defn internal-semantic-to-list
+  [immutable-entity use-order]
+  (cond (primitive? immutable-entity)
+        immutable-entity
+        (object? immutable-entity)
+        (internal-object-semantic-to-list immutable-entity use-order nil)
+        true
+        (let [content (content immutable-entity)
+              elements (cond-> (semantic-elements immutable-entity)
+                         use-order (ordered-entities))
+              content-semantic (if (object? content)
+                                 (internal-object-semantic-to-list
+                                  content use-order immutable-entity)
+                                 (internal-semantic-to-list content use-order))
+              element-semantics (map #(internal-semantic-to-list % use-order)
+                                     elements)]
+          (make-element-list (orientation immutable-entity)
+                             content-semantic
+                             element-semantics))))
+
 (defn semantic-to-list
   "Given an immutable entity, make a list representation of the
   semantic information of the entity."
   [immutable-entity]
-  (if (primitive? immutable-entity)
-    (content immutable-entity)
-    (let [content (content immutable-entity)
-          elements (semantic-elements immutable-entity)
-          content-semantic (semantic-to-list content)
-          element-semantics (map semantic-to-list elements)]
-      (if (empty? element-semantics)
-        content-semantic
-        (apply list (into [content-semantic] element-semantics))))))
+  (internal-semantic-to-list immutable-entity false))
 
 (defn ordered-semantic-to-list
   "Given an immutable entity, make a list representation of the
   semantic information of the entity, putting elements in the order that the
   :order information calls for."
   [immutable-entity]
-  (if (primitive? immutable-entity)
-    (content immutable-entity)
-    (let [content (content immutable-entity)
-          elements (ordered-entities (semantic-elements immutable-entity))
-          content-semantic (semantic-to-list content)
-          element-semantics (map ordered-semantic-to-list elements)]
-      (if (empty? element-semantics)
-        content-semantic
-        (apply list (into [content-semantic] element-semantics))))))
+  (internal-semantic-to-list immutable-entity true))
 
 (defn entity->canonical-semantic
   "Return the canonical form of the semantic information for the entity.
@@ -137,12 +158,12 @@
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
-  (filter #(and (label? %) (semantic-entity? %)) (elements entity)))
+  (filter #(and (label? %) (semantic-element? %)) (elements entity)))
 
 (defn semantic-non-label-elements
   "Return the semantic elements of an entity that are not labels."
   [entity]
-  (filter #(and (not (label? %)) (semantic-entity? %)) (elements entity)))
+  (filter #(and (not (label? %)) (semantic-element? %)) (elements entity)))
 
 (defn selector?
   "Return whether the entity is (or is part of) a selector."

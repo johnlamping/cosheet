@@ -25,18 +25,19 @@
 ;;; about how to display the elements, is considered irrelevant for
 ;;; matching a condition. We call the elements that do matter the
 ;;; semantic elements.
-;;; Logically, semantic-entity? would make more sense in model-utils,
-;;; but our update-add-element-adjacent-to needs semantic-entity?, to
+;;; Logically, semantic-element? would make more sense in model-utils,
+;;; but our update-add-element-adjacent-to needs semantic-element?, to
 ;;; know what parts need order information. And model-utils imports
-;;; update-add-element-adjacent-to. So semantic-entity? has to go here,
+;;; update-add-element-adjacent-to. So semantic-element? has to go here,
 ;;; or in what would be its own file, practically.
-(defn semantic-entity?
+(defn semantic-element?
   "Return true if an item counts as semantic information."
   [immutable-entity]
    (let [cont (content immutable-entity)]
      (or (string? cont)
          (number? cont)
-         (#{:label :category 'anything} cont))))
+         (object? cont)
+         (#{:label :category :name 'anything} cont))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -191,7 +192,7 @@
 (defn orderable-entity?
   "Return whether this entity should get an order position."
   [entity]
-  (and (semantic-entity? entity) (not (keyword? (content entity)))))
+  (and (semantic-element? entity) (not (keyword? (content entity)))))
 
 (defn update-add-element-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given

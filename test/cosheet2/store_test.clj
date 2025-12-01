@@ -242,15 +242,13 @@
      (make-link-id 2) (make-object-id -3)
      (make-link-id 3) (make-object-id -3)
      (make-link-id 4) (make-link-id 3)
-     (make-link-id 5) (make-link-id 4)
      (make-link-id 6) (make-object-id -5)
      (make-link-id 7) (make-object-id -7)}
     :id->source
     {(make-link-id 1) (make-object-id -2)
      (make-link-id 2) (make-object-id -4)
      (make-link-id 3) "Joe"
-     (make-link-id 4) "name"
-     (make-link-id 5) :label
+     (make-link-id 4) (make-item-id "name")
      (make-link-id 6) (make-object-id "object")
      (make-link-id 7) (make-object-id -8)}
     :temporary-ids  #{}

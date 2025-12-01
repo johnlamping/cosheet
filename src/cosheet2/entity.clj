@@ -229,15 +229,23 @@
 
 ;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
 (defn label? [entity]
-  "Return whether the entity counts as a label (either has content that
-  is a keyword and is not :label, or has an element whose content
-  is :label)."
+  "Return whether the entity counts as a label. A label is a link under
+  which its target should be indexed, starting from either of the
+  target's endpoints.
+  A link is a label if:
+     * It's source is either
+        * a keyword that is not :label
+        * an object that has an element whose content has an item-id of
+         'element-type' or 'object-type'.
+     * Has an element whose content either
+        * is :label
+        * has an item-id of 'name'."
   (or (let [content (content entity)]
-        (and (keyword? content) (not= content :label)))
+        (or (and (keyword? content) (not= content :label))
+            (and (object? content)
+                 (= (entity-key content) (make-item-id "name")))))
       (marked-as-type? entity)))
 
-;;; TODO: !!! These need to change when the definition of name label
-;;; changes to be a specific object id.
 (defn anonymous-object?
   "Return true if the entity is a generic object.
   Note: This must be kept in synch with store-impl/anonymous-object-id?"
@@ -248,8 +256,9 @@
                      ;; All mutable objects count as named, because
                      ;; they have unique identities.
                      (mutable-entity? entity))))
-       (not (when-let [names (label->elements entity "name")]
-              (some #(and (not (nil? %)) (not= 'anything %))
+       (not (when-let [names (label->elements
+                              entity (id->entity (make-item-id "name") nil))]
+              (some #(not (contains? #{nil "" 'anything} %))
                     (map content names))))))
 
 (defn named-object?
@@ -261,8 +270,9 @@
                     ;; All mutable objects count as named, because
                     ;; they have unique identities.
                     (mutable-entity? entity)))
-           (when-let [names (label->elements entity "name")]
-             (some #(and (not (nil? %)) (not= 'anything %))
+           (when-let [names (label->elements
+                             entity (id->entity (make-item-id "name") nil))]
+             (some #(not (contains? #{nil "" 'anything} %))
                    (map content names))))))
 
 (defn minimal-label?

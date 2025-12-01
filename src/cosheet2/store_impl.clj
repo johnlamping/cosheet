@@ -406,13 +406,22 @@
 
 ;; NOTE: This definition must be kept in synch with entity/label?
 (defn id-is-label?
-  "Return whether the given link counts as a label (either has source
-  that is a keyword and is not :label, or has an element whose source
-  is :label).
-  Requires that :marked-as-type is correct."
+  "Return whether the id counts as a label. A label is a link under
+  which its target should be indexed, starting from either of the
+  target's endpoints.
+  A link is a label if:
+     * It's source is either
+        * a keyword that is not :label
+        * an object that has an element whose content has an item-id of
+         'element-type' or 'object-type'.
+     * Has an element whose content either
+        * is :label
+        * has an item-id of 'name'.
+  Requires that :marked-as-type is up to date."
   [store id]
   (or (let [source (id->source store id)]
-        (and (keyword? source) (not= source :label)))
+        (or (and (keyword? source) (not= source :label))
+            (= source (make-item-id "name"))))
       (contains? (:marked-as-type store) id)))
 
 (defn index-endpoint->label->label-ids-from-label
@@ -489,8 +498,6 @@
     store))
 
 ;;; Note: This must be kept in synch with Entity/anonymous-object?
-;;; TODO: !!! This needs to change when the definition of name label
-;;;           changes to be a specific object id.
 (defn anonymous-object-id?
   "Return true if the item id represents an anonymous object."
   [store item-id]
@@ -498,8 +505,9 @@
        ;; Doesn't have a special id.
        (not (string? (:id item-id)))
        ;; Doesn't have a name.
-       (not (when-let [name-ids (target-label->ids store item-id "name")]
-              (some #(and (not (nil? %)) (not= 'anything %))
+       (not (when-let [name-ids (target-label->ids
+                                 store item-id (make-item-id "name"))]
+              (some #(not (contains? #{nil "" 'anything} %))
                     (map #(id->source store %) name-ids))))))
 
 (defn has-link-to-anonymous-object?

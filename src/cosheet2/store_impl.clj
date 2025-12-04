@@ -1,6 +1,7 @@
 (ns cosheet2.store-impl
   (:require (cosheet2 [store :refer :all :as store]
-                      [entity :as entity]
+                      [entity :refer [StoredEntity]
+                              :as entity]
                       [utils :refer [pseudo-set-set
                                      pseudo-set-seq
                                      pseudo-set-set-membership
@@ -404,7 +405,9 @@
         (and marks-as-type target)
         (update-in [:marked-as-type] #(conj % target))))))
 
-;; NOTE: This definition must be kept in synch with entity/label?
+;;; NOTE: This definition must be kept in synch with entity/label?
+;;; TODO: !!! Get rid of the :marked-as-type test (and the whole index),
+;;;       which gets rid of :label marking labels
 (defn id-is-label?
   "Return whether the id counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
@@ -413,15 +416,22 @@
      * It's source is either
         * a keyword that is not :label
         * an object that has an element whose content has an item-id of
-         'element-type' or 'object-type'.
+         'link-type' or 'object-type'.
      * Has an element whose content either
         * is :label
         * has an item-id of 'name'.
-  Requires that :marked-as-type is up to date."
+  Requires that :marked-as-type is up to date.
+  Requires that :target->ids and :source->ids are up to date."
   [store id]
   (or (let [source (id->source store id)]
-        (or (and (keyword? source) (not= source :label))
-            (= source (make-item-id "name"))))
+        (cond (object-id? source)
+              (or (= source (make-item-id "name"))
+                  (seq (target-source->ids
+                        store source (make-item-id "link-type")))
+                  (seq (target-source->ids
+                        store source (make-item-id "object-type"))))
+              (keyword? source)
+              (not= source :label)))
       (contains? (:marked-as-type store) id)))
 
 (defn index-endpoint->label->label-ids-from-label
@@ -455,9 +465,9 @@
 
 (defn index-endpoint->label->label-ids
   "Reflect the effects of this link in the endpoint->label->label-ids index.
-  The target->ids index and the marked-as-type index must be valid when
-  this is called. (This function uses id-is-label?, which uses
-  marked-as-type.)"
+  The indices :target->ids, Lsource->ids, and :marked-as-type
+  index must be valid when this is called. (This function uses
+  id-is-label?, which uses all of those indices.)"
   [store old-store endpoint id]
   (as-> store store
       ;; Handle when id is a label.
@@ -549,8 +559,14 @@
       (add-modified-id item-id)))
 
 (defn descendant-ids [store id]
-  "Return a seq of the id and ids of all its descendant elements."
-  (cons id (mapcat #(descendant-ids store %) (target->ids store id))))
+  "Given a link id, return a seq of the id and the ids of all its
+   descendant elements, including elements of its content if that is
+   an anonymous object."
+  (concat [id]
+          (mapcat #(descendant-ids store %) (target->ids store id))
+          (let [content (id->source store id)]
+            (when (anonymous-object-id? store content)
+              (descendant-ids store content)))))
 
 (defn all-temporary-ids [store]
   "Return a set of all declared temporary ids and their descendant elements."
@@ -616,7 +632,9 @@
          (and (= (count elements) (count candidates))
               (every? (fn [[estimate ids precise]] precise) candidates)
               (let [contents (map entity/content elements)]
-                (and (not-any? #(or (nil? %) (entity/anonymous-object? %))
+                (and (not-any? #(or (nil? %)
+                                    (and (entity/object? %)
+                                         (not (satisfies? StoredEntity %))))
                                contents)
                      (apply distinct? contents))))]))))
 
@@ -630,17 +648,23 @@
         (subsuming-ids-and-estimates-from-elements store template)
         content (entity/content template)]
     (cond
-      (nil? content) [element-matches element-matches-precise]
+      (nil? content)
+      [element-matches element-matches-precise]
+      
       ;; TODO: When the content is an anonymous object, get candidate
       ;;       ids for it, then use those as if they were content?
-      (entity/anonymous-object? content) [element-matches false]
-      true (let [content-index (if (= (entity/orientation template) :target)
-                                 target->ids
-                                 source->ids)
-                 content-ids (content-index store (entity/entity-key content))]
-             [(concat [[(count content-ids) content-ids]]
-                      element-matches)
-              element-matches-precise]))))
+      (and (entity/object? content)
+           (not (satisfies? StoredEntity content)))
+      [element-matches false]
+      
+      true
+      (let [content-index (if (= (entity/orientation template) :target)
+                            target->ids
+                            source->ids)
+            content-ids (content-index store (entity/entity-key content))]
+        [(concat [[(count content-ids) content-ids]]
+                 element-matches)
+         element-matches-precise]))))
 
 ;;; TODO: Instead using an estimate of the number of final candidates,
 ;;; the estimate should use the number of candidates that need to be
@@ -659,12 +683,14 @@
 ;;; too large. Likewise, if the template is tagged :label, filter with
 ;;; marked-as-type
 (defn candidate-matching-ids-and-estimate
-  "Return a triple consisting of:
+  "Given a template that is valid as a query to the store, Return
+   a triple consisting of:
      * an estimate of number of candidates,
      * a lazy seq of the candidate matching ids,
      * a boolean that is true if an id that is in the candidates
        is always a match.
-  But if the template provides no information, return nil."
+  But if the template provides no information, return nil.
+  If the template has any StoredEntity objects, they must match exactly."
   [store template]
   (let [[possibilities precise] (subsuming-ids-and-estimates store template)]
     (when (not (empty? possibilities))

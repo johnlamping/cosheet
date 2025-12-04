@@ -24,10 +24,11 @@
   (assert (> n 0))
   (->ItemId n))
 
+(def oid-2 (make-object-id -2))
 ;;; This store holds two top level items:
 ;;; <id:4>5
 ;;; (object-1
-;;;    <id:1>(44 <id:2>("Foo" <id:3>("Baz" :baz :label)
+;;;    <id:1>(44 <id:2>("Foo" <id:3>(oid-2 :baz)
 ;;;                           <id:5>("bar" :label)
 ;;;                           <id:11>("bar" :label)
 ;;;              <id:9>("Bar" :order)))
@@ -39,7 +40,9 @@
      (make-link-id 3) (make-link-id 2)
      (make-link-id 5) (make-link-id 2)
      (make-link-id 6) (make-link-id 3)
-     (make-link-id 7) (make-link-id 3)
+     (make-link-id 7) oid-2
+     (make-link-id 71) oid-2
+     (make-link-id 72) (make-link-id 71)
      (make-link-id 8) (make-link-id 5)
      (make-link-id 9) (make-link-id 1)
      (make-link-id 10) (make-link-id 9)
@@ -48,11 +51,13 @@
     :id->source
     {(make-link-id 1) 44
      (make-link-id 2) "Foo"
-     (make-link-id 3) "Baz"
+     (make-link-id 3) oid-2
      (make-link-id 4) 5
      (make-link-id 5) "bar"
      (make-link-id 6) :baz
-     (make-link-id 7) :label
+     (make-link-id 7) (make-object-id "link-type")
+     (make-link-id 71) "baz"
+     (make-link-id 72) (make-object-id "name")
      (make-link-id 8) :label
      (make-link-id 9) "Bar"
      (make-link-id 10) :order
@@ -119,38 +124,44 @@
         unindexed (reduce #(index-marked-as-type %1 store %2)
                           empty-indexed ids)]
     (is (check (:marked-as-type store)
-               #{(make-link-id 3) (make-link-id 5) (make-link-id 11)}))
+               #{(make-link-id 5) (make-link-id 11)}))
     (is (empty? (:marked-as-type unindexed)))))
 
 (deftest index-endpoint->label->label-ids-test
-  (doseq [endpoint [:target :source]]
-    (let [ids (keys (:id->source unindexed-test-store))
-          targets-indexed (reduce #(index-endpoint->ids
-                                    %1 empty-store :target %2)
-                                  unindexed-test-store ids)
-          marks-indexed (reduce #(index-marked-as-type %1 empty-store %2)
+  (let [ids (keys (:id->source unindexed-test-store))
+        targets-indexed (reduce #(index-endpoint->ids
+                                  %1 empty-store :target %2)
+                                unindexed-test-store ids)
+        sources-indexed (reduce #(index-endpoint->ids
+                                  %1 empty-store :source %2)
                                 targets-indexed ids)
-          store (reduce #(index-endpoint->label->label-ids
-                          %1 empty-store endpoint %2)
-                        marks-indexed ids)
-          empty-indexed (clear-store-leaving-indices store)
-          unindexed (reduce #(index-endpoint->label->label-ids
-                              %1 store endpoint %2)
-                            empty-indexed ids)
-          index-key (endpoint-label-index-key endpoint)]
-      (is (check (index-key store)
-                 (case endpoint
-                   :target {(make-link-id 1) {"baz" (make-link-id 3)
-                                              "bar" #{(make-link-id 5)
-                                                      (make-link-id 11)}
-                                              :order (make-link-id 10)}
-                            (make-link-id 2) {:baz (make-link-id 6)}}
-                   :source {"bar" {:order (make-link-id 10)}
-                            "foo" {"baz" (make-link-id 3)
-                                   "bar" #{(make-link-id 5)
-                                           (make-link-id 11)}}
-                            "baz" {:baz (make-link-id 6)}})))
-      (is (empty? (index-key unindexed))))))
+        marks-indexed (reduce #(index-marked-as-type %1 empty-store %2)
+                              sources-indexed ids)]
+    (doseq [endpoint [:target :source]]
+      (let [store (reduce #(index-endpoint->label->label-ids
+                            %1 empty-store endpoint %2)
+                          marks-indexed ids)
+            empty-indexed (clear-store-leaving-indices store)
+            unindexed (reduce #(index-endpoint->label->label-ids
+                                   %1 store endpoint %2)
+                                 empty-indexed ids)
+            index-key (endpoint-label-index-key endpoint)]
+        (is (check (index-key store)
+                   (case endpoint
+                     :target {(make-link-id 1) {oid-2 (make-link-id 3)
+                                                "bar" #{(make-link-id 5)
+                                                        (make-link-id 11)}
+                                                :order (make-link-id 10)}
+                              (make-link-id 2) {:baz (make-link-id 6)}
+                              oid-2 {(make-object-id "name") (make-link-id 72)}}
+                     :source {"bar" {:order (make-link-id 10)}
+                              "foo" {oid-2 (make-link-id 3)
+                                     "bar" #{(make-link-id 5)
+                                             (make-link-id 11)}}
+                              oid-2 {:baz (make-link-id 6)}
+                              "baz" {(make-object-id "name") (make-link-id 72)}}
+                     )))
+        (is (empty? (index-key unindexed)))))))
 
 (def test-store
   (reduce #(index-all %1 empty-store %2)
@@ -181,15 +192,15 @@
 (deftest source->ids-test
   (is (= (source->ids test-store "Foo") [(make-link-id 2)]))
   (is (check (source->ids test-store :label)
-             (as-set [(make-link-id 7) (make-link-id 8) (make-link-id 12)])))
+             (as-set [(make-link-id 8) (make-link-id 12)])))
   (is (= (source->ids test-store 123) nil)))
 
 (deftest target-source->ids-test
   ;; Both target and source -ids are sets
-  (is (= (target-source->ids test-store (make-link-id 3) :label)
-         [(make-link-id 7)]))
+  (is (= (target-source->ids test-store (make-link-id 3) :baz)
+         [(make-link-id 6)]))
   ;; Only target-ids is a set
-  (is (= (target-source->ids test-store (make-link-id 2) "baz")
+  (is (= (target-source->ids test-store (make-link-id 2) oid-2)
          [(make-link-id 3)]))
   ;; Only source-ids is a set
   (is (= (target-source->ids test-store (make-link-id 5) :label)
@@ -201,7 +212,7 @@
 (deftest target-label->ids-test
   (is (= (target-label->ids test-store (make-link-id 1) "Bar")
          [(make-link-id 2)]))
-  (is (= (target-label->ids test-store (make-link-id 1) "Baz")
+  (is (= (target-label->ids test-store (make-link-id 1) oid-2)
          [(make-link-id 2)]))
   (is (= (target-label->ids test-store (make-link-id 0.5) "bar") nil))
   (is (= (target-label->ids test-store (make-link-id 999) "bar") nil))
@@ -215,7 +226,7 @@
          [(make-link-id 2)]))
   (is (= (source-label->ids test-store "foo" "bar")
          [(make-link-id 2)]))
-  (is (= (source-label->ids test-store "foo" "Baz")
+  (is (= (source-label->ids test-store "foo" oid-2)
          [(make-link-id 2)]))
   (is (= (source-label->ids test-store "foo" :order) nil))
   (is (= (source-label->ids test-store (make-link-id 1) "bar") nil))
@@ -225,7 +236,6 @@
          nil)))
 
 (deftest id->marked-as-type?-test
-  (is (id->marked-as-type? test-store (make-link-id 3)))
   (is (id->marked-as-type? test-store (make-link-id 5)))
   (is (not (id->marked-as-type? test-store (make-link-id 7))))
   (is (not (id->marked-as-type? test-store (make-link-id 1)))))
@@ -490,97 +500,111 @@
                    m)))))))
 
 (deftest candidate-matching-ids-test
-  (is (check (candidate-matching-ids-and-estimate test-store 5)
-             [1 [(make-link-id 4)] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(5))
-             [1 [(make-link-id 4)] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
-             [1 [(make-link-id 1)] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '("Baz" :baz))
-             [1 [(make-link-id 3)] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
-             [0 [] false]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(nil "baz" "bar"))
-             [1 [(make-link-id 2)] true]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
-             [3 [(make-link-id 2) (make-link-id 1)] false]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->object (make-object-id "object") nil) nil))
-             [1 [(make-link-id 1)] true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->object (make-object-id "object") nil) '("Foo")))
-             [1 [(make-link-id 1)] true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->element (make-link-id 1) test-store) nil))
-             [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->element (make-link-id 1) test-store) '("Baz")))
-             [1 (as-set [(make-link-id 2)]) true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->element (make-link-id 1) test-store) '(5)))
-             [1 () true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store
-              (make-element-list
-               :target (id->element (make-link-id 1) test-store) nil))
-             [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
-  (is (check (candidate-matching-ids-and-estimate
-              test-store (make-element-list :target 5 nil))
-             [0 () true]))
-  (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
-  (is (check (candidate-matching-ids test-store nil)
-             [(as-set [(make-object-id "object") (make-link-id 1)
-                       (make-link-id 2) (make-link-id 3)
-                       (make-link-id 4) (make-link-id 5)
-                       (make-link-id 6) (make-link-id 7)
-                       (make-link-id 8) (make-link-id 9)
-                       (make-link-id 10) (make-link-id 11)
-                       (make-link-id 12)])
-              false]))
-  (is (check (candidate-matching-ids test-store '(nil))
-             [(as-set [(make-link-id 1)
-                       (make-link-id 2) (make-link-id 3)
-                       (make-link-id 4) (make-link-id 5)
-                       (make-link-id 6) (make-link-id 7)
-                       (make-link-id 8) (make-link-id 9)
-                       (make-link-id 10) (make-link-id 11)
-                       (make-link-id 12)])
-              false]))
-  (is (check (candidate-matching-ids test-store (make-object-list nil))
-             [(as-set  [(make-object-id "object")])
-              false]))
-  (is (check (candidate-matching-ids test-store '(nil nil))
-             [(as-set  [(make-link-id 1)
-                        (make-link-id 2) (make-link-id 3)
-                        (make-link-id 5) (make-link-id 9)
-                        (make-link-id 11)])
-              false]))
-  (is (check (candidate-matching-ids test-store '("Foo"))
-             [[(make-link-id 2)] true]))
-  (is (check (candidate-matching-ids test-store 5)
-             [[(make-link-id 4)] true]))
-  (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
-             [[(make-link-id 1)] false]))
-  (is (check (candidate-matching-ids test-store '(5 nil))
-             [[(make-link-id 4)] false]))
-  (is (check (candidate-matching-ids test-store (make-object-list '((44))))
-             [[(->ItemId "object")] true]))
-  (is (check (candidate-matching-ids test-store (make-object-list '((nil))))
-             [[(->ItemId "object")] false]))
-  (is (check (candidate-matching-ids test-store (make-object-list '((44) (44))))
-             [[(->ItemId "object")] false]))
-  (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
-             [nil true])))
+  (let [obj-2 (id->object oid-2 nil)]
+    (is (check (candidate-matching-ids-and-estimate test-store 5)
+               [1 [(make-link-id 4)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store '(5))
+               [1 [(make-link-id 4)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
+               [1 [(make-link-id 1)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store `(~obj-2 :baz))
+               [1 [(make-link-id 3)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
+               [0 [] false]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store `(nil (~obj-2) "bar"))
+               [1 [(make-link-id 2)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
+               [3 [(make-link-id 2) (make-link-id 1)] false]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->object (make-object-id "object") nil) nil))
+               [1 [(make-link-id 1)] true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->object (make-object-id "object") nil) '("Foo")))
+               [1 [(make-link-id 1)] true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->element (make-link-id 1) test-store) nil))
+               [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->element (make-link-id 1) test-store) `((~obj-2))))
+               [1 (as-set [(make-link-id 2)]) true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->element (make-link-id 1) test-store) '(5)))
+               [1 () true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store
+                (make-element-list
+                 :target (id->element (make-link-id 1) test-store) nil))
+               [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store (make-element-list :target 5 nil))
+               [0 () true]))
+    (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
+    (is (check (candidate-matching-ids test-store nil)
+               [(as-set [(make-object-id "object")
+                         (make-object-id "link-type")
+                         (make-object-id "name")
+                         (make-object-id -2)
+                         (make-link-id 1)
+                         (make-link-id 2) (make-link-id 3)
+                         (make-link-id 4) (make-link-id 5)
+                         (make-link-id 6) (make-link-id 7)
+                         (make-link-id 71) (make-link-id 72)
+                         (make-link-id 8) (make-link-id 9)
+                         (make-link-id 10) (make-link-id 11)
+                         (make-link-id 12)])
+                false]))
+    (is (check (candidate-matching-ids test-store '(nil))
+               [(as-set [(make-link-id 1)
+                         (make-link-id 2) (make-link-id 3)
+                         (make-link-id 4) (make-link-id 5)
+                         (make-link-id 6) (make-link-id 7)
+                         (make-link-id 71) (make-link-id 72)
+                         (make-link-id 8) (make-link-id 9)
+                         (make-link-id 10) (make-link-id 11)
+                         (make-link-id 12)])
+                false]))
+    (is (check (candidate-matching-ids test-store (make-object-list nil))
+               [(as-set  [(make-object-id "object")
+                          (make-object-id "link-type")
+                          (make-object-id "name")
+                          (make-object-id -2)])
+                false]))
+    (is (check (candidate-matching-ids test-store '(nil nil))
+               [(as-set  [(make-link-id 1)
+                          (make-link-id 2) (make-link-id 3)
+                          (make-link-id 71)
+                          (make-link-id 5) (make-link-id 9)
+                          (make-link-id 11)])
+                false]))
+    (is (check (candidate-matching-ids test-store '("Foo"))
+               [[(make-link-id 2)] true]))
+    (is (check (candidate-matching-ids test-store 5)
+               [[(make-link-id 4)] true]))
+    (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
+               [[(make-link-id 1)] false]))
+    (is (check (candidate-matching-ids test-store '(5 nil))
+               [[(make-link-id 4)] false]))
+    (is (check (candidate-matching-ids test-store (make-object-list '((44))))
+               [[(make-object-id "object")] true]))
+    (is (check (candidate-matching-ids test-store (make-object-list '((nil))))
+               [(as-set [(make-object-id "object") (make-object-id -2)])
+                false]))
+    (is (check (candidate-matching-ids
+                test-store (make-object-list '((44) (44))))
+               [[(make-object-id "object")] false]))
+    (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
+               [nil true]))))
 
 (deftest declare-temporary-id-test
   (is (= (:temporary-ids test-store) #{}))
@@ -592,8 +616,7 @@
     (is (= (:temporary-ids temporary-store)
            #{(make-link-id 3) (make-link-id 8)}))
     (is (= (all-temporary-ids temporary-store)
-           #{(make-link-id 3) (make-link-id 6) (make-link-id 7)
-             (make-link-id 8)}))))
+           #{(make-link-id 3) (make-link-id 6) (make-link-id 8)}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
@@ -609,9 +632,25 @@
                             (declare-temporary-id (make-link-id 8)))
         smaller-store (-> test-store
                           (remove-link (make-link-id 8))
-                          (remove-link (make-link-id 7)) ; Points to id 3
                           (remove-link (make-link-id 6)) ; Points to id 3
                           (remove-link (make-link-id 3)))]
+    (is (check (into {} smaller-store)
+               (into {} (data-to-store (new-element-store)
+                                       (store-to-data temporary-store))))))
+  ;; Try with obj-2 being anonymous.
+  (let [temporary-store (-> test-store
+                            (declare-temporary-id (make-link-id 3))
+                            (declare-temporary-id (make-link-id 8))
+                            ;; Make id -2 anonymous
+                            (remove-link (make-link-id 72)))
+        smaller-store (-> test-store
+                          (remove-link (make-link-id 8))
+                          (remove-link (make-link-id 6)) ; Points to id 3
+                          (remove-link (make-link-id 3))
+                          (remove-link (make-link-id 72))
+                          (remove-link (make-link-id 71)) ; Points to id -2
+                          (remove-link (make-link-id 7)) ; Points to id -2
+                          )]
     (is (check (into {} smaller-store)
                (into {} (data-to-store (new-element-store)
                                        (store-to-data temporary-store)))))))

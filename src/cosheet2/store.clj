@@ -253,8 +253,9 @@
 
   (declare-temporary-id [this id]
     "Declare the id to be temporary. It and all its descendant elements
-     will not be written when the store is written out. Returns the
-     new store.")
+     will not be written when the store is written out. And neither will
+     anonymous objects that it leads to.
+     Returns the new store.")
 
   (store-fetch-and-clear-further-actions [this]
     "Return the store with any pending further actions eliminated, plus

@@ -9,7 +9,7 @@
                                       label->elements
                                       label->content
                                       to-list
-                                      label? minimal-label?]]
+                                      label?]]
                       [query :refer [extended-by-m?
                                matching-extensions-m
                                matching-elements-m
@@ -116,6 +116,16 @@
               (contextualize-variable (variable-qualifier term) env)]
           [contextual (combine-exact-matches exact #{var-name})])))
     [term true]))
+
+(defn minimal-label?
+  "Given a part of a query that is a label, return true if it is as
+  small as it can be while still being a label. The query must be in
+  list form."
+  [entity]
+  (and (let [elements (elements entity)]
+         (or (empty? elements) (= elements '(:label))))
+       (let [content (content entity)]
+         (or (primitive? content) (satisfies? StoredEntity content)))))
 
 (defn labels-for-element
   "Given an element of a term, find primitives that can serve as labels

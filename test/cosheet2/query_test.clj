@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
             (cosheet2 [store :refer [new-element-store make-item-id
-                                     get-new-object-id]]
+                                     get-new-object-id ->ItemId]]
                       store-impl
                       [store-utils :refer [add-element]]
                       [entity :refer [to-list id->element id->object content
@@ -13,7 +13,7 @@
                       [utils :refer [add-elements-to-entity-list]]
                       entity-impl
                       [query :as query :refer :all]
-                      [query-impl :refer [closest-template]]
+                      [query-impl :refer [closest-template minimal-label?]]
                       [test-utils :refer [check as-set]]
                      )
             ; :reload
@@ -247,6 +247,15 @@
                (closest-template `(~(and-query (variable "foo" 5)
                                                (variable "bar" 6)))
                                  {"bar" 7}))))
+
+(deftest minimal-label?-test
+  (is (minimal-label? :foo))
+  (is (not (minimal-label? '(:foo "foo"))))
+  (is (minimal-label? '("foo" :label)))
+  (is (not (minimal-label? '("foo" :label "bar"))))
+  (is (minimal-label? `(~(id->object (->ItemId -2) nil))))
+  (is (not (minimal-label? `(~(id->object (->ItemId -2) nil) "bar"))))
+  (is (not (minimal-label? `(~(make-object-list '()))))))
 
 (deftest matching-extensions-test
   (is (= (matching-extensions 1 {} 1) [{}]))

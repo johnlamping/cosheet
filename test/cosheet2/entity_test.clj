@@ -448,16 +448,28 @@
   )
 
 (deftest label?-test
-  (is (label? :foo))
-  (is (label? '(:foo "foo")))
-  (is (label? '("foo" :label)))
-  (is (label? '("foo" :label "bar")))
-  (is (not (label? :label)))
-  (is (not (label? "foo")))
-  (is (minimal-label? :foo))
-  (is (not (minimal-label? '(:foo "foo"))))
-  (is (minimal-label? '("foo" :label)))
-  (is (not (minimal-label? '("foo" :label "bar")))))
+  (let [special-object (fn [id] (id->object (make-item-id id) nil))]
+    (is (label? :foo))
+    (is (label? '(:foo "foo")))
+    (is (label? '("foo" :label)))
+    (is (label? '("foo" :label "bar")))
+    (is (label? `(~(special-object "name"))))
+    (is (not (label? `("foo" ~(special-object "name")))))
+    (is (not (label? :label)))
+    (is (not (label? "foo")))
+    (is (not (label? `("foo" ~(special-object "name-type")))))
+    (is (not (label? `("foo" ~(special-object "link-type")))))
+    (is (label? `(~(make-object-list
+                    `((~(special-object "link-type")))))))
+    (is (label? `(~(make-object-list
+                    `((~(special-object "object-type")))))))
+    (is (label? `(~(make-object-list
+                    `(("fred" ~(special-object "name"))
+                      (~(special-object "link-type")))))))
+    (is (not (label? `(~(make-object-list
+                         `((~(special-object "name"))))))))
+    (is (not (label? `(~(make-object-list
+                         `(("fred" ~(special-object "name"))))))))))
 
 (deftest make-element-list-test
   (is (= (make-element-list :source 1 nil)

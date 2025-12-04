@@ -227,7 +227,9 @@
 
 ;;; Utility functions that work on entities
 
-;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
+;;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
+;;; TODO: !!! Get rid of the marked-as-type? condition,
+;;;       which gets rid of :label marking labels
 (defn label? [entity]
   "Return whether the entity counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
@@ -236,14 +238,19 @@
      * It's source is either
         * a keyword that is not :label
         * an object that has an element whose content has an item-id of
-         'element-type' or 'object-type'.
+         'link-type' or 'object-type'.
      * Has an element whose content either
         * is :label
         * has an item-id of 'name'."
   (or (let [content (content entity)]
-        (or (and (keyword? content) (not= content :label))
-            (and (object? content)
-                 (= (entity-key content) (make-item-id "name")))))
+        (cond (object? content)
+              (or (= (entity-key content) (make-item-id "name"))
+                  (seq (content->elements
+                        content (id->object (make-item-id "link-type") nil)))
+                  (seq (content->elements
+                        content (id->object (make-item-id "object-type") nil))))
+              (keyword? content)
+              (not= content :label)))
       (marked-as-type? entity)))
 
 (defn anonymous-object?
@@ -257,7 +264,7 @@
                      ;; they have unique identities.
                      (mutable-entity? entity))))
        (not (when-let [names (label->elements
-                              entity (id->entity (make-item-id "name") nil))]
+                              entity (id->object (make-item-id "name") nil))]
               (some #(not (contains? #{nil "" 'anything} %))
                     (map content names))))))
 
@@ -274,15 +281,6 @@
                              entity (id->entity (make-item-id "name") nil))]
              (some #(not (contains? #{nil "" 'anything} %))
                    (map content names))))))
-
-(defn minimal-label?
-  "Given a label, Return true if it is as small as it can be
-   while still being a label."
-  [entity]
-  (if (keyword? (content entity))
-    (empty? (elements entity))
-    (and (empty? (rest (elements entity)))
-         (not (anonymous-object? (content entity))))))
 
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it

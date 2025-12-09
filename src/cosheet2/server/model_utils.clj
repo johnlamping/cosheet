@@ -1,7 +1,8 @@
 (ns cosheet2.server.model-utils
   (:require (cosheet2 [debug :refer [simplify-for-print]]
                       [utils :refer [thread-map prewalk-seqs replace-in-seqs
-                                     add-elements-to-entity-list]]
+                                     add-elements-to-entity-list
+                                     extract-first]]
                       [orderable :refer [initial]]
                       [expression :refer [expr expr-let expr-seq expr-filter]]
                       [canonical :refer [canonicalize]]
@@ -13,11 +14,14 @@
                                       content->elements
                                       label->elements label->element
                                       target-entity entity-key
-                                      make-element-list make-object-list]]
+                                      make-element-list make-object-list
+                                      entity-complexity]]
                       [store-utils :refer [add-object add-element
                                            remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
-                                     not-query special-form?]]
+                                     not-query special-form?
+                                     extended-by?]]
+                      [query-impl :refer [separate-negations]]
                       [query-calculator :refer [matching-item-ids-R]])
             (cosheet2.server
              [order-utils :refer [semantic-element?
@@ -306,6 +310,40 @@
          [id store]))
      (map vector targets adjacents)
      store)))
+
+;;; Adding a fixed-term to an object.
+
+(defn elements-to-add-fixed-term-to-object
+  "Given a fixed-term over objects, and an object, return the set of
+  elements that need to be added to the object, if any, in order to
+  make it satisfy the positive elements of the fixed term."
+  [fixed-term object]
+  (assert (object? fixed-term))
+  (assert (object? object))
+  (let [[positive _] (separate-negations (semantic-elements fixed-term))
+        ;; We order the term elements starting from highest complexity
+        ;; (hardest to find an extension for), the object elements
+        ;; starting from lowest complexity (hardest to be an
+        ;; extension). This way, when we start choosing matches, and
+        ;; there is a choice, we take ones that are least likely to
+        ;; preclude subsequent matches.
+        sorted-term-elements (->> positive
+                                  (sort-by entity-complexity)
+                                  reverse)
+        sorted-object-elements (->> (semantic-elements object)
+                                    (sort-by entity-complexity))
+        [needed _] (reduce
+                    (fn [[must-add available] fixed-element]
+                      (let [[match remaining]
+                            (extract-first #(extended-by? fixed-element %)
+                                           available)]
+                        (if match
+                          [must-add remaining]
+                          [(conj must-add (fixed-term-to-template fixed-element))
+                           remaining])))
+                    [[] sorted-object-elements]
+                    sorted-term-elements)]
+    needed))
 
 ;;; Creating new tabs and tables.
 

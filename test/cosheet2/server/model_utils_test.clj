@@ -153,6 +153,28 @@
     (is (not (selector? non-selector-child)))
     (is (not (selector? non-selector-grandchild)))))
 
+(deftest elements-to-add-fixed-term-to-object-test
+  (is (= (elements-to-add-fixed-term-to-object
+          (make-object-list '(1 (1 2) 2))
+          (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+         '(2)))
+  (is (= (elements-to-add-fixed-term-to-object
+          (make-object-list '(1 (1 2)))
+          (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+         []))
+  (is (check (elements-to-add-fixed-term-to-object
+              (make-object-list '(1 (1 2) 2))
+              (make-object-list '(3 4)))
+             (as-set '(1 (1 2) 2))))
+  (is (check (elements-to-add-fixed-term-to-object
+              (make-object-list '(1 (1 2) (1 2 3) 3 3 3))
+              (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+             (as-set '((1 2) 3 3))))
+  (is (check (elements-to-add-fixed-term-to-object
+              (make-object-list '((1 2 3) (1 2) 1 3 3 3))
+              (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+             (as-set '((1 2) 3 3)))))
+
 (deftest starting-store-test
   (let [s (starting-store "hi")
         tabs (matching-items '(nil "hi" :tab

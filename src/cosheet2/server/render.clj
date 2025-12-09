@@ -507,21 +507,22 @@
                     [tabs-DOM-R holder nil
                      (assoc starting-inherited :key-prefix [:tab])])]))))))))
 
-(defn label-datalist-DOM-R
-  "Return dom for a datalist of the content of all labels."
-  [store]
-  ;; TODO: This reruns anytime anything changes. Put support for gathering all
-  ;;       values in the store, so it can be more efficient by looking at
-  ;;       the changed items. (The store needs a way to tell a reporter
-  ;;       about which items changed, not just that something it cared about
-  ;;       changed.
-  (expr-let [labels (matching-items '(nil :tag) store)
-             contents (expr-seq map content labels)]
-    (let [content-names (map str contents)
-          sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
-                                                   content-names)
-                                              content-names)))]
-      (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
+(comment
+  (defn label-datalist-DOM-R
+    "Return dom for a datalist of the content of all labels."
+    [store]
+    ;; TODO: This reruns anytime anything changes. Put support for gathering all
+    ;;       values in the store, so it can be more efficient by looking at
+    ;;       the changed items. (The store needs a way to tell a reporter
+    ;;       about which items changed, not just that something it cared about
+    ;;       changed.
+    (expr-let [labels (matching-items '(nil :tag) store)
+               contents (expr-seq map content labels)]
+      (let [content-names (map str contents)
+            sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
+                                                     content-names)
+                                                content-names)))]
+        (into [:datalist] (map (fn [name] [:option name]) sorted-contents))))))
 
 (comment
   (defn spec-for-client-R

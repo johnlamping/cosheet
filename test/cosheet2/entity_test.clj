@@ -435,6 +435,13 @@
   (is (= (entity-key orderable/initial) orderable/initial))
   (is (to-list 3) 3))
 
+(deftest entity-complexity-test
+  (is (= (entity-complexity "a") 1.0))
+  (is (= (entity-complexity nil) 0.1))
+  (is (= (entity-complexity '(1 2 "" nil)) 1.65))
+  (is (= (entity-complexity '(1 (2 "a"))) 1.75))
+  (is (= (entity-complexity `(~(make-object-list '(1 2)) (2 "a"))) 2.75)))
+
 (deftest marked-as-type?-test
   (is (marked-as-type? '("foo" :label)))
   (is (marked-as-type? '("foo" :label "bar")))
@@ -444,8 +451,7 @@
   (is (not (marked-as-type? "foo")))
   (is (not (marked-as-type? '("foo"))))
   (is (not (marked-as-type? '("foo" "bar"))))
-  (is (not (marked-as-type? '(("foo" ("bar" :label))))))
-  )
+  (is (not (marked-as-type? '(("foo" ("bar" :label)))))))
 
 (deftest label?-test
   (let [special-object (fn [id] (id->object (make-item-id id) nil))]

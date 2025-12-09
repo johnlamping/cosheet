@@ -6,7 +6,7 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [item-id? id->target id->source]]
                       [entity :refer [elements content label->elements
-                                      id->entity]]
+                                      id->entity entity-complexity]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
@@ -117,14 +117,6 @@
   [v ^java.io.Writer w]
   (.write w "id-AD"))
 
-(defn item-complexity
-  "Return the complexity of the item, which is the total number of
-   elements, sub-elements, etc, with sub-elements counting less."
-  [item]
-  (+ (get {nil 0.1   'anything 0.1   "" 0.2}
-          (content item) 1.0)
-     (* 0.5 (apply + (map item-complexity (elements item))))))
-
 (defn best-match
   "Given an immutable template, and a seq of items
    that match it, return the best matching item."
@@ -160,8 +152,8 @@
                                    matches)))]
       ;; In case of ties, go with the lowest complexity match.
       (first (or (seq perfect-matches)
-                 (seq (sort-by item-complexity good-matches))
-                 (seq (sort-by item-complexity matches)))))))
+                 (seq (sort-by entity-complexity good-matches))
+                 (seq (sort-by entity-complexity matches)))))))
 
 (defn best-matching-element-id
   "Find the element of the subject that best matches the exemplar id's item.

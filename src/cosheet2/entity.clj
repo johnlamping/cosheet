@@ -364,6 +364,17 @@
     ((immutable-to-list-generator immutable-object-to-list)
      entity nil)))
 
+(defn entity-complexity
+  "Return the complexity of the element, which is the total number of
+   elements, sub-elements, etc, with sub-elements counting less."
+  [item]
+  (let [content (content item)
+        elements (cond-> (elements item)
+                      (anonymous-object? content) (concat (elements content)))]
+    (+ (get {nil 0.1   'anything 0.1   "" 0.2}
+            content 1.0)
+       (* 0.5 (apply + (map entity-complexity elements))))))
+
 (defn label->element
   "Return the element with the given label.
   There must be at most one such element."

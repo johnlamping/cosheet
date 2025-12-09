@@ -215,6 +215,9 @@
              (or (empty? (elements fixed-term))
                  (let [[positive negative] (separate-negations
                                             (elements fixed-term))]
+		   ;; Our disjoint-combinations doesn't work right
+		   ;; if the entity has repeated elements.
+		   (assert (distinct? (elements entity)))
                    (let [positive-satisfying
                          (seq (map #(elements-satisfying % entity) positive))
                          negative-satisfying

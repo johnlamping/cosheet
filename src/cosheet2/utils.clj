@@ -136,7 +136,10 @@
 
 (defn disjoint-combinations
   "Given a sequence of sequences of elements,
-   return all disjoint combinations of one element from each sequence."
+   return all disjoint combinations of one element from each sequence.
+   If a sequence has a repeated element, a matching element from an
+   earlier sequence will take out both; it's generally best to avoid
+   repetitions in sequences."
   [sequences]
   (cond (empty? sequences)
         [[]]
@@ -349,6 +352,14 @@
           xs
           (cons x (inner xs))))))
    coll))
+
+(defn extract-first [pred coll]
+  "Return the first item of the seq that matches the pred,
+   plus the sequence with that item removed."
+  (let [[before remaining] (split-with (complement pred) coll)]
+    (if (seq remaining)
+      [(first remaining) (concat before (rest remaining))]
+      [nil coll])))
 
 (defn truncate-at-value
   "Given a seq, return its prefix before the first occurrence of the

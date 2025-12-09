@@ -26,7 +26,7 @@
                                   horizontal-label-hierarchy-node-DOM
                                   virtual-DOM-component
                                   virtual-label-DOM-component]]
-             [action-data :refer [item-complexity best-match
+             [action-data :refer [best-match
                                   get-pass-through-action-data]])))
 
 (defn match-count-R

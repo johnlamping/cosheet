@@ -77,6 +77,32 @@
   (is (= (remove-first even? [1 2 3 2 4])
          [1 3 2 4])))
 
+(deftest extract-first-test
+  (is (= [4 '(1 3 5)] 
+         (extract-first even? [1 3 4 5]))
+      "Should extract element from the middle")
+
+  (is (= [2 '(3 5)] 
+         (extract-first even? [2 3 5]))
+      "Should extract element from the start")
+
+  (is (= [6 '(1 3 5)] 
+         (extract-first even? [1 3 5 6]))
+      "Should extract element from the end")
+
+  (is (= [nil [1 3 5]] 
+         (extract-first even? [1 3 5]))
+      "Should return nil and original collection if no match found")
+
+  (is (= [nil []] 
+         (extract-first even? []))
+      "Should handle empty collections gracefully")
+
+  (is (= [4 '(1 5 4)] 
+         (extract-first even? [1 4 5 4]))
+      "Should only remove the *first* matching instance,
+       leaving subsequent matches"))
+
 (deftest truncate-at-value-test
   (is (= (truncate-at-value nil :a) nil))
   (is (= (truncate-at-value [:a] :a) nil))

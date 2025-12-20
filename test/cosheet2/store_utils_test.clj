@@ -22,7 +22,9 @@
                                          (id->object id1 s2)
                                          '(("by" :label))))
         [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
-        [s id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))]
+        [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
+        [s id6] (add-element s5 (make-item-id "George")
+                             `(1 (~(id->object (make-item-id "name") nil))))]
     (is (= (id->target s id)) (make-item-id "0"))
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
@@ -38,7 +40,9 @@
                           ("Fred" ("by" :label))
                           (~(id->object (make-item-id "a") s)))))))
     (is (check (to-list (id->element id3 s))
-               `(~(make-object-list '(1)) 3)))))
+               `(~(make-object-list '(1)) 3)))
+    (is (check (to-list (id->element id6 s))
+               `(1 (~(id->object (make-item-id "name") s)))))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]

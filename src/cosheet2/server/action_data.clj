@@ -38,6 +38,7 @@
 ;;;                   store) the action getter creates the implied
 ;;;                   items.
 ;;;      :subject-ids  A seq of the ids that should be acted upon
+
 ;;; These three give information about the cell's position in a table,
 ;;; if any.  They are copied over from the specification, even before
 ;;; the action data getter is run. So action data getters don't have
@@ -49,11 +50,13 @@
 ;;;                   a hierarchy of column headers, cells can span
 ;;;                   multiple columns, in which case this lists them
 ;;;                   from left to right.
+
 ;;; This gives the tab id if the component is part of the display of a
 ;;; single tab (not whatever the tab brings up, just the tab
 ;;; description, itself)
 ;;;          :tab-id  The tab that this component belongs to.
 ;;;                   For a virtual tab, the value is :virtual.
+
 ;;; If the action is do-batch-edit, the previous items are not present.
 ;;; The first two following ones will be present, and the later ones may be.
 ;;;          :query-ids  ids whose list forms make up the query

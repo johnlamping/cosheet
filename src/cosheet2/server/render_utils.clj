@@ -113,7 +113,7 @@
       ;; The matching list includes the entity, so there is an identical
       ;; candidate if there is more than one element.
       (not (empty? (rest matching)))
-      ;; We only need one matching candidate. If the entitiess are
+      ;; We only need one matching candidate. If the entities are
       ;; distinguishable, choose one different from the entity we
       ;; started with.
       (conj (or (first (remove #(= % entity) matching)) (first matching))))))

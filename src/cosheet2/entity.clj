@@ -2,7 +2,11 @@
   (:require (cosheet2 [calculator :refer [current-value]]
                       [expression :refer [expr-let]]
                       [store :refer [make-item-id item-id?
-                                     link-id? object-id?]])))
+                                     link-id? object-id?
+                                     ;; These are used by entity_impl.clj
+                                     ;; when it is working in our namespace. 
+                                     name-label-id
+                                     link-type-id object-type-id]])))
 
 ;;; An entity is either
 ;;;    a primitive
@@ -205,11 +209,11 @@
   ([id store]
    (id->element id :source store))
   ([id orientation store]
-   (assert (link-id? id))
+   (assert (link-id? id) id)
    (id->entity-m id orientation store)))
 
 (defn id->object [id store]
-  (assert (object-id? id))
+  (assert (object-id? id) id)
   (id->entity-m id nil store))
 
 (defn id->entity
@@ -227,6 +231,14 @@
 
 ;;; Utility functions that work on entities
 
+;;; These are entities for the corresponding object ids. We can't give
+;;; their definitions yet, because that requires id->object, which
+;;; isn't implemented until entity_impl.clj. We declare them here, and
+;;; entity_impl.clj will give them bindings.
+(def name-label)
+(def link-type)
+(def object-type)
+
 ;;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
 ;;; TODO: !!! Get rid of the marked-as-type? condition,
 ;;;       which gets rid of :label marking labels
@@ -237,18 +249,15 @@
   A link is a label if:
      * It's source is either
         * a keyword that is not :label
+        * the object with item-id 'name'.
         * an object that has an element whose content has an item-id of
          'link-type' or 'object-type'.
-     * Has an element whose content either
-        * is :label
-        * has an item-id of 'name'."
+     * Has an element whose content is :label (obsolete)"
   (or (let [content (content entity)]
         (cond (object? content)
-              (or (= (entity-key content) (make-item-id "name"))
-                  (seq (content->elements
-                        content (id->object (make-item-id "link-type") nil)))
-                  (seq (content->elements
-                        content (id->object (make-item-id "object-type") nil))))
+              (or (= (entity-key content) name-label-id)
+                  (seq (content->elements content link-type))
+                  (seq (content->elements content object-type)))
               (keyword? content)
               (not= content :label)))
       (marked-as-type? entity)))
@@ -263,8 +272,7 @@
                      ;; All mutable objects count as named, because
                      ;; they have unique identities.
                      (mutable-entity? entity))))
-       (not (when-let [names (label->elements
-                              entity (id->object (make-item-id "name") nil))]
+       (not (when-let [names (label->elements entity name-label)]
               (some #(not (contains? #{nil "" 'anything} %))
                     (map content names))))))
 
@@ -277,8 +285,7 @@
                     ;; All mutable objects count as named, because
                     ;; they have unique identities.
                     (mutable-entity? entity)))
-           (when-let [names (label->elements
-                             entity (id->entity (make-item-id "name") nil))]
+           (when-let [names (label->elements entity name-label)]
              (some #(not (contains? #{nil "" 'anything} %))
                    (map content names))))))
 

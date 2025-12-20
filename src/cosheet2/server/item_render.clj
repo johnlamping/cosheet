@@ -1,8 +1,11 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
+                      [store :refer [make-item-id]]
                       [entity :refer [label? id->entity
                                       id->updating-entity-R
-                                      content label? primitive?]]
+                                      content label? primitive? named-object?
+                                      label->elements content->elements
+                                      name-label link-type object-type]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
                                      map-with-first-last
@@ -27,7 +30,6 @@
              [order-utils :refer [ordered-entities]]
              [render-utils
               :refer [make-component
-                                        ;item-stack-DOM nest-if-multiple-DOM
                       nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -603,27 +605,55 @@
            inner-dom labels specification)))
       (add-attributes {:class "item"})))
 
+(defn css-class-for-name
+  "Return the class to use in formatting the name of this entity."
+  [entity]
+  (cond (seq (content->elements entity link-type)) "label"
+        (seq (content->elements entity object-type)) "class"
+        true "name"))
+
+(defn named-object-DOM
+  [entity specification]
+  (let [names (-> (label->elements entity name-label)
+                  ordered-entities)
+        num-names (count names)
+        specification (-> specification
+                          (assoc :template :reference)
+                          (into-attributes
+                           {:class (css-class-for-name entity)}))]
+    (assert (> num-names 0))
+    (if (= num-names 1)
+      (item-component (first names)
+                      (into-attributes specification {:class "named-object"}))
+      (into [:div {:class "named-object vertical-stack"}]
+            (map #(item-component % specification) names)))))
+
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items). This is the default renderer."
-  [{:keys [relative-id item-id must-show-label excluded-element-ids]
+  [{:keys [relative-id must-show-label excluded-element-ids]
     :as specification}
    store]
   (println "Generating DOM for" (simplify-for-print relative-id))
   (assert (:width specification)
           [specification
            (semantic-to-list (id->entity relative-id store))])
+  (assert (not (:item-id specification))
+          [specification
+           (semantic-to-list (id->entity relative-id store))])
   (expr-let [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
-    (let [elements (remove
-                    (set (map #(id->entity % (:store entity))
-                              excluded-element-ids))
-                    (semantic-elements entity))
-          [labels non-labels] (separate-by label? elements)]
-      (cond-> (item-content-labels-and-non-label-elements-DOM
-               entity labels non-labels (dissoc specification :class))
-        (:class specification)
-        (add-attributes {:class (:class specification)})))))
+    (if (named-object? entity)
+      (named-object-DOM entity)
+      (let [elements (remove
+                      (set (map #(id->entity % (:store entity))
+                                excluded-element-ids))
+                      (semantic-elements entity))
+            [labels non-labels] (separate-by label? elements)]
+        (cond-> (item-content-labels-and-non-label-elements-DOM
+                 entity labels non-labels (dissoc specification :class))
+          (:class specification)
+          (add-attributes {:class (:class specification)}))))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM

@@ -443,3 +443,9 @@
       (mutable-store? store) (->MutableStoredEntity store this orientation)
       true (->ImmutableStoredEntity store this orientation))))
 
+;;; Now that id->object has been implemented, we go back to the entity
+;;; namespace and provide the definitions of these constants.
+(in-ns 'cosheet2.entity)
+(def name-label (id->object name-label-id nil))
+(def link-type (id->object link-type-id nil))
+(def object-type (id->object object-type-id nil))

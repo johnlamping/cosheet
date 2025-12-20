@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
                                      link-id?]]
-                      [entity :refer [StoredEntity element?
+                      [entity :refer [StoredEntity element? named-object?
                                       content orientation elements]])))
 
 ;;; These are utilities for adding and removing element and object
@@ -31,20 +31,23 @@
   [store container-id template]
   (assert (not (instance? clojure.lang.PersistentVector template)))
   (assert (not (element? (content template))))
-  (let [[store content-endpoint]
-        (let [element-content (content template)]
-          ;; If we have an expanded object, we need to make an instance of it.
-          (if (instance? clojure.lang.PersistentVector element-content)
-            (add-object store element-content)
-            [store (if (satisfies? StoredEntity element-content)
-                     (:item-id element-content)
-                     element-content)]))
-        [store entity-link] (apply add-link store
-                                   (if (= (orientation template) :target)
-                                     [content-endpoint container-id]
-                                     [container-id content-endpoint]))
-        store (add-elements store entity-link (elements template))]
-    [store entity-link]))
+  (if (and (named-object? template)
+           (satisfies? StoredEntity template))
+    (add-link store container-id (:item-id template))
+    (let [[store content-endpoint]
+          (let [element-content (content template)]
+            ;; If we have an expanded object, we need to make an instance of it.
+            (if (instance? clojure.lang.PersistentVector element-content)
+              (add-object store element-content)
+              [store (if (satisfies? StoredEntity element-content)
+                       (:item-id element-content)
+                       element-content)]))
+          [store entity-link] (apply add-link store
+                                     (if (= (orientation template) :target)
+                                       [content-endpoint container-id]
+                                       [container-id content-endpoint]))
+          store (add-elements store entity-link (elements template))]
+      [store entity-link])))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the

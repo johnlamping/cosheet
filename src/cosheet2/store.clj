@@ -141,6 +141,24 @@
   "A printable name for the item id, indicating it is an id."
   (clojure.string/join ["Id:" (id->string this)]))
 
+
+;;; A few item ids can turn elements or objects into labels.  Since
+;;; the store does more indexing of labels, it needs to know what
+;;; counts as one. We record those ids here.
+
+;; An element whose source is the id "name" needs to count as a label,
+;; because we want to index names so we can find objects with that a
+;; given name.
+(def name-label-id
+  (make-item-id "name"))
+
+;;; An object tagged with either of these ids counts as a label,
+;;; because we want to index them, so we can find items tagged
+;;; with any of those objects.
+(def link-type-id (make-item-id "link-type"))
+(def object-type-id (make-item-id "object-type"))
+
+
 (defprotocol Store
   "The methods that all stores support for accessing their data.
    Mutable stores may return reporter objects as their answer

@@ -5,9 +5,9 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
-             [entity :refer [id->entity]]
+             [entity :refer [id->entity name-label link-type object-type]]
              entity-impl
-             [store :refer [new-element-store]]
+             [store :refer [new-element-store get-new-object-id]]
              store-impl
              mutable-store-impl
              [calculator :refer [new-calculator-data computation-value]]
@@ -339,6 +339,54 @@
                            :position :before
                            :render-dom (virt-DOM)
                            :get-action-data (virt-AD)}]])))
+
+(deftest named-object-DOM-test
+  (let[[s1 oid] (get-new-object-id (new-element-store))
+       [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+       [two-name-store friedrich-id] (add-element store oid
+                                                  `("Friedrich" ~name-label))
+       [label-store _] (add-element store oid link-type)
+       [class-store _] (add-element store oid object-type)]
+    (is (check (named-object-DOM (id->entity oid store)
+                                 basic-dom-specification)
+               [:component {:width 1.5,
+                            :template :reference,
+                            :class "name named-object",
+                            :relative-id fred-id
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))
+    (is (check (named-object-DOM (id->entity oid two-name-store)
+                                 basic-dom-specification)
+               (as-set
+                [:div {:class "named-object vertical-stack"}
+                 [:component {:width 1.5,
+                              :template :reference,
+                              :class "name",
+                              :relative-id fred-id
+                              :render-dom render-item-DOM
+                              :get-action-data (default-AD)}]
+                 [:component {:width 1.5,
+                              :template :reference,
+                              :class "name",
+                              :relative-id friedrich-id
+                              :render-dom render-item-DOM
+                              :get-action-data (default-AD)}]])))
+    (is (check (named-object-DOM (id->entity oid label-store)
+                                 basic-dom-specification)
+               [:component {:width 1.5,
+                            :template :reference,
+                            :class "label named-object",
+                            :relative-id fred-id
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))
+    (is (check (named-object-DOM (id->entity oid class-store)
+                                 basic-dom-specification)
+               [:component {:width 1.5,
+                            :template :reference,
+                            :class "class named-object",
+                            :relative-id fred-id
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))))
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell

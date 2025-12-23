@@ -1,5 +1,6 @@
 (ns cosheet2.server.action-data
   (:require (cosheet2 [utils :refer [multiset replace-in-seqs
+                                     assoc-if-non-empty
                                      map-map thread-map thread-recursive-map
                                      add-elements-to-entity-list
                                      call-pseudo-closure]]
@@ -37,7 +38,11 @@
 ;;;                   there is not yet any corresponding item in the
 ;;;                   store) the action getter creates the implied
 ;;;                   items.
-;;;      :subject-ids  A seq of the ids that should be acted upon
+;;;     :subject-ids  A seq of the ids that should be acted upon
+;;; :past-subject-ids A stack of previous subject-ids, as long as they
+;;;                   were used in the calculation of the current
+;;;                   subject ids, and their lengths match the length
+;;;                   of the current :subject-ids.
 
 ;;; These three give information about the cell's position in a table,
 ;;; if any.  They are copied over from the specification, even before
@@ -197,9 +202,15 @@
   context that makes them refer to several items."
   [specification inherited-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
-        subject-ids (:subject-ids inherited-action-data)]
-    (assoc inherited-action-data :subject-ids
-           (get-item-or-exemplars-for-id subject-ids immutable-store id))))
+        {:keys [:subject-ids :past-subject-ids]} inherited-action-data
+        new-subject-ids (get-item-or-exemplars-for-id
+                         subject-ids immutable-store id)]
+    (-> inherited-action-data
+        (assoc :subject-ids new-subject-ids)
+        (assoc-if-non-empty 
+         :past-subject-ids (when (= (count subject-ids)
+                                    (count new-subject-ids))
+                             (cons subject-ids past-subject-ids))))))
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_or_exemplar_action_data
@@ -212,17 +223,18 @@
   to be the union of the subject-ids of each of the results."
   [{:keys [parallel-ids] :as specification}
    inherited-action-data action immutable-store getter]
-  (assoc
-   inherited-action-data :subject-ids
-   (distinct
-    (mapcat (fn [id] (:subject-ids
-                      (run-action-data-getter
-                       getter
-                       (-> specification
-                           (assoc :item-id id)
-                           (dissoc :parallel-ids))
-                       inherited-action-data action immutable-store)))
-            parallel-ids))))
+  (letfn [(get-action-data-for-id [id]
+            (:subject-ids
+             (run-action-data-getter
+              getter
+              (-> specification
+                  (assoc :item-id id)
+                  (dissoc :parallel-ids))
+              inherited-action-data action immutable-store)))]
+    (let [new-subject-ids (mapcat get-action-data-for-id parallel-ids)]
+      (-> inherited-action-data
+          (assoc :subject-ids (distinct new-subject-ids))
+          (dissoc :past-subject-ids)))))
 
 (defmethod print-method
   cosheet2.server.action_data$parallel_items_get_action_data
@@ -407,20 +419,22 @@
                     incoming-ids
                     (find-virtual-adjacents
                      targets specification immutable-store))
-        [ids _ store] (reduce
-                       (fn [[targets adjacents store] template]
-                         (let [[ids store]
-                               (create-possible-selector-elements
-                                template targets adjacents
-                                (or position :after) use-bigger store)]
-                           [ids ids store]))
-                       [targets adjacents immutable-store]
-                       (if (vector? template) template [template]))]
+        [ids _ new-store] (reduce
+                           (fn [[targets adjacents store] template]
+                             (let [[ids store]
+                                   (create-possible-selector-elements
+                                    template targets adjacents
+                                    (or position :after) use-bigger store)]
+                               [ids ids store]))
+                           [targets adjacents immutable-store]
+                           (if (vector? template) template [template]))]
     (println "Made items"
              template
              (simplify-for-print targets)
              (simplify-for-print adjacents))
-    (assoc inherited-action-data :subject-ids ids :store store)))
+    (-> inherited-action-data
+        (assoc :subject-ids ids :store new-store)
+        (update-in [:past-subject-ids] #(cons incoming-ids %)))))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_action_data

@@ -116,12 +116,14 @@
           :subject-ids [joe-id]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id joe-age)}
-          {:subject-ids [joe-id]} nil store)
-         {:subject-ids [(:item-id joe-age)]}))
+          {:subject-ids [joe-id] :past-subject-ids [["x"]]} nil store)
+         {:subject-ids [(:item-id joe-age)]
+          :past-subject-ids [[joe-id] ["x"]]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id jane-age)}
           {:subject-ids [joe-id jane-id]} nil store)
-         {:subject-ids [(:item-id joe-age) (:item-id jane-age)]}))
+         {:subject-ids [(:item-id joe-age) (:item-id jane-age)]
+          :past-subject-ids [[joe-id jane-id]]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id dup-female-2)}
           {:subject-ids [joe-id jane-id dup-id]} nil store)
@@ -135,6 +137,7 @@
   (let [data (get-virtual-action-data
               {:template 'anything} {:subject-ids [joe-id]} nil store)]
     (is (check data {:subject-ids [(any)]
+                     :past-subject-ids [[joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
@@ -150,6 +153,7 @@
               {:template ['anything '(2 ("name" :label))]}
               {:subject-ids [jane-id joe-id]} nil store)]
     (is (check data {:subject-ids [(any) (any)]
+                     :past-subject-ids [[jane-id joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
@@ -173,6 +177,7 @@
                :position :before}
               {:subject-ids [(:item-id joe-age)]} nil store)]
     (is (check data {:subject-ids [(any)]
+                     :past-subject-ids [[(:item-id joe-age)]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
@@ -191,6 +196,7 @@
                :position :before}
               {:subject-ids [jane-id joe-id]} nil store)]
     (is (check data {:subject-ids [(any) (any)]
+                     :past-subject-ids [[jane-id joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data

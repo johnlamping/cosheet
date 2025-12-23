@@ -287,10 +287,13 @@
                 @manager client3 nil (reporter-value ms))]
         ;; The containing component should refer its actions to its contained.
         (is (check ad1 {:component c2
-                       :subject-ids [id2 id2]}))
+                        :subject-ids [id2 id2]
+                        :past-subject-ids [[id1 id1]]}))
         (is (= c3 ((:id->subcomponent @c2) id3)))
         (is (check ad3 {:component c3
-                        :subject-ids [id3 id3]}))
+                        :subject-ids [id3 id3]
+                        :past-subject-ids [[id2 id2]
+                                           [id1 id1]]}))
         ;; The elided dom should not need to go to the manager.
         (is (check (:components-to-send @manager)
                    {c1 1 c3 3}))))))

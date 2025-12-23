@@ -618,13 +618,14 @@
                   ordered-entities)
         num-names (count names)
         specification (-> specification
+                          (dissoc :relative-id)
                           (assoc :template :reference)
                           (into-attributes
                            {:class (css-class-for-name entity)}))]
     (assert (> num-names 0))
     (if (= num-names 1)
       (item-component (first names)
-                      (into-attributes specification {:class "named-object"}))
+                      (into-attributes specification{:class "named-object"}))
       (into [:div {:class "named-object vertical-stack"}]
             (map #(item-component % specification) names)))))
 
@@ -644,7 +645,7 @@
   (expr-let [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
     (if (named-object? entity)
-      (named-object-DOM entity)
+      (named-object-DOM entity specification)
       (let [elements (remove
                       (set (map #(id->entity % (:store entity))
                                 excluded-element-ids))

@@ -341,12 +341,12 @@
                            :get-action-data (virt-AD)}]])))
 
 (deftest named-object-DOM-test
-  (let[[s1 oid] (get-new-object-id (new-element-store))
-       [store fred-id] (add-element s1 oid `("Fred" ~name-label))
-       [two-name-store friedrich-id] (add-element store oid
-                                                  `("Friedrich" ~name-label))
-       [label-store _] (add-element store oid link-type)
-       [class-store _] (add-element store oid object-type)]
+  (let [[s1 oid] (get-new-object-id (new-element-store))
+        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+        [two-name-store friedrich-id] (add-element store oid
+                                                   `("Friedrich" ~name-label))
+        [label-store _] (add-element store oid link-type)
+        [class-store _] (add-element store oid object-type)]
     (is (check (named-object-DOM (id->entity oid store)
                                  basic-dom-specification)
                [:component {:width 1.5,
@@ -391,10 +391,10 @@
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
      (let [[store fred-id] (add-element (new-element-store) nil "Fred")
-           dom (run-renderer
-                render-item-DOM
-                (assoc basic-dom-specification :relative-id fred-id)
-                store)]
+           dom (run-renderer render-item-DOM
+                             (assoc basic-dom-specification
+                                    :relative-id fred-id)
+                             store)]
        (is (check dom
                   [:div {:class "content-text editable item"} "Fred"])))
      ;; Test a cell with a couple of labels, one excluded.
@@ -407,12 +407,11 @@
            id2 (:item-id (first (matching-elements 2 fred)))
            id-tag2 (:item-id (first (matching-elements
                                      :label (id->entity id2 store))))
-           dom (run-renderer
-                render-item-DOM
-                (assoc basic-dom-specification
-                       :relative-id fred-id
-                       :excluded-element-ids [id1])
-                store)]
+           dom (run-renderer render-item-DOM
+                             (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :excluded-element-ids [id1])
+                             store)]
        (is (check dom
                   [:div {:class "wrapped-element label item"}
                    [:component {:template '(anything :label)
@@ -432,12 +431,11 @@
      ;; Test must-show-label.
      (let [[store fred-id] (add-element (new-element-store) nil
                                        "Fred")
-           dom (run-renderer
-                render-item-DOM
-                (assoc basic-dom-specification
-                       :relative-id fred-id
-                       :must-show-label true)
-                store)]
+           dom (run-renderer render-item-DOM
+                             (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :must-show-label true)
+                             store)]
        (is (check
             dom
             [:div
@@ -455,7 +453,20 @@
                           :item-id fred-id
                           :render-dom render-content-only-DOM
                           :get-action-data (pass-AD)
-                          :width 1.5}]]))))
+                          :width 1.5}]])))
+  ;; Test a named object
+  (let [[s1 oid] (get-new-object-id (new-element-store))
+        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification :relative-id oid)
+                          store)]
+    (is (check dom
+               [:component {:width 1.5,
+                            :template :reference,
+                            :class "name named-object",
+                            :relative-id fred-id
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels

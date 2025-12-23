@@ -386,6 +386,25 @@ body {
                     hsla(0, 0%, 100%, 0));
 }
 
+/* --- named objects --- */
+
+.named-object {
+    border-radius: 7px;
+    border-width: 2px;
+}
+
+/* --- names --- */
+
+.name {
+    background-color: hsl(140, 100%, 88%);
+}
+
+/* --- classes -- */
+    
+.class {
+    background-color: hsl(80, 100%, 88%);
+}
+
 /* --- labels --- */
 
 .label {

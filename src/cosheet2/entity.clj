@@ -113,6 +113,10 @@
 ;;; they return themselves for their content, :souce for their
 ;;; orientation, nil for their elements.
 
+;;; We can't use the same trick for the list form of an element
+;;; consisting of nothing but an object, because objects are defined
+;;; to not have any content.
+
 ;;; If it turns out that list forms of links are also necessary, they
 ;;; should be
 ;;;    [:link source target element element ...]
@@ -239,29 +243,6 @@
 (def link-type)
 (def object-type)
 
-;;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
-;;; TODO: !!! Get rid of the marked-as-type? condition,
-;;;       which gets rid of :label marking labels
-(defn label? [entity]
-  "Return whether the entity counts as a label. A label is a link under
-  which its target should be indexed, starting from either of the
-  target's endpoints.
-  A link is a label if:
-     * It's source is either
-        * a keyword that is not :label
-        * the object with item-id 'name'.
-        * an object that has an element whose content has an item-id of
-         'link-type' or 'object-type'.
-     * Has an element whose content is :label (obsolete)"
-  (or (let [content (content entity)]
-        (cond (object? content)
-              (or (= (entity-key content) name-label-id)
-                  (seq (content->elements content link-type))
-                  (seq (content->elements content object-type)))
-              (keyword? content)
-              (not= content :label)))
-      (marked-as-type? entity)))
-
 (defn anonymous-object?
   "Return true if the entity is a generic object.
   Note: This must be kept in synch with store-impl/anonymous-object-id?"
@@ -288,6 +269,48 @@
            (when-let [names (label->elements entity name-label)]
              (some #(not (contains? #{nil "" 'anything} %))
                    (map content names))))))
+
+(defn link-type-object?
+  "Return true if the entity is an object that is a link type."
+  [entity]
+  (and (object? entity)
+       (seq (content->elements entity link-type))))
+
+(defn object-type-object?
+  "Return true if the entity is an object that is an object type."
+  [entity]
+  (and (object? entity)
+       (seq (content->elements entity object-type))))
+
+(defn non-type-object?
+  "Return true if the entity is an object, but not link-type or object-type."
+  [entity]
+  (and (object? entity)
+       (not (or (link-type-object? entity)
+                (object-type-object? entity)))))
+
+;;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
+;;; TODO: !!! Get rid of the marked-as-type? condition,
+;;;       which gets rid of :label marking labels
+(defn label? [entity]
+  "Return whether the entity counts as a label. A label is a link under
+  which its target should be indexed, starting from either of the
+  target's endpoints.
+  A link is a label if:
+     * It's source is either
+        * a keyword that is not :label
+        * the object with item-id 'name'.
+        * an object that has an element whose content has an item-id of
+         'link-type' or 'object-type'.
+     * Has an element whose content is :label (obsolete)"
+  (or (let [content (content entity)]
+        (cond (object? content)
+              (or (= (entity-key content) name-label-id)
+                  (link-type-object? content)
+                  (object-type-object? content))
+              (keyword? content)
+              (not= content :label)))
+      (marked-as-type? entity)))
 
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it

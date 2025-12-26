@@ -7,9 +7,13 @@
              [orderable :refer [initial split earlier?]]
              [map-state :refer [new-map-state map-state-get-current
                                 map-state-reset!]]
-             [entity :as entity :refer [id->entity to-list
+             [entity :as entity :refer [id->entity id->object to-list
                                         content elements label->element
-                                        label->elements label->content]]
+                                        label->elements label->content
+                                        name-label link-type object-type
+                                        make-object-list make-element-list
+                                        named-object?
+                                        in-different-store]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
@@ -18,7 +22,7 @@
              [store :refer [new-element-store new-mutable-store
                             target-label->ids
                             current-store id-valid-link? id->source]]
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element add-object]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
@@ -42,11 +46,12 @@
                           (vec (concat (pop os)
                                        (split (peek os) :after))))
                         [initial]
-                        (range 4)))
+                        (range 5)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
+(def o5 (nth orderables 4))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
                 (~o2 :order)
@@ -57,7 +62,8 @@
                 ("married" (~o2 :order))
                 (45 (~o4 :order)
                     ("age" :label))))
-(def jane-list `("Jane" (~o1 :order)
+(def jane-list `("Jane"
+                 (~o1 :order)
                  (:selector)
                  ("female" (~o2 :order))
                  (45 (~o3 :order)
@@ -98,6 +104,54 @@
                     :store (new-mutable-store store)
                     :client-state (new-map-state {})})
 
+;;; TODO: !!! This is the new format for table cells, where each is an object.
+;;;       The store needs to convert to this.
+(def new-joe-object-list (make-object-list
+                          `(("Joe" (~name-label) (~o5 :order))
+                            (~o2 :order)
+                            ("male" (~o1 :order))
+                            (39 (~o3 :order)
+                                ("age" :label)
+                                ("doubtful" "confidence"))
+                            ("married" (~o2 :order))
+                            (45 (~o4 :order)
+                                ("age" :label)))))
+(def new-jane-object-list (make-object-list
+                           `(("Jane" (~name-label) (~o5 :order))
+                             (~o1 :order)
+                             (:selector)
+                             ("female" (~o2 :order))
+                             (45 (~o3 :order)
+                                 ("age" :label)))))
+(def new-t0 (add-element (new-element-store) nil table-list))
+(def new-table-id (second new-t0))
+(def new-t1 (add-object (first new-t0) new-joe-object-list))
+(def new-joe-id (second new-t1))
+(def new-t2 (add-object (first new-t1) new-jane-object-list))
+(def new-jane-id (second new-t2))
+(def new-t3 (update-add-session-temporary-element (first new-t2)))
+(def new-temporary-id (second new-t3))
+(def new-store (first new-t3))
+(def new-headers-id (first (target-label->ids
+                       new-store new-table-id :column-headers)))
+(def new-header-ids (map :item-id (semantic-elements
+                               (id->entity new-headers-id new-store))))       
+(def new-joe (id->entity new-joe-id new-store))
+(def new-joe-age (first (matching-elements 45 new-joe)))
+(def new-joe-bogus-age (first (matching-elements 39 new-joe)))
+(def new-joe-age-tag (first (matching-elements "age" new-joe-age)))
+(def new-joe-male (first (matching-elements "male" new-joe)))
+(def new-joe-married (first (matching-elements "married" new-joe)))
+(def new-jane (id->entity new-jane-id new-store))
+(def new-jane-female (first (matching-elements "female" new-jane)))
+(def new-jane-age (first (matching-elements 45 new-jane)))
+(def new-jane-age-tag (first (matching-elements "age" new-jane-age)))
+
+(def new-session-state {:session-temporary-id new-temporary-id
+                        :store (new-mutable-store new-store)
+                        :client-state (new-map-state {})})
+
+
 (deftest selected-test
   (let [client-id1 "root_1"
         client-id2 "root_2"
@@ -108,6 +162,38 @@
         recovered-id2 (get-selected store2 temporary-id)] 
     (is (= client-id1 recovered-id1))
     (is (= client-id2 recovered-id2))))
+
+(deftest get-or-make-object-by-name-test
+  (let [[s id] (get-or-make-object-by-name
+                new-store "Joe" (make-object-list []))]
+    (is (= s new-store))
+    (is (= new-joe-id id)))
+  (let [[s id] (get-or-make-object-by-name
+                new-store "Joey" (make-object-list []))
+        joey (id->entity id s)]
+    (is (named-object? joey))
+    (is (= (map semantic-to-list (elements joey))
+           `(("Joey" (~(in-different-store name-label s)))))))
+  (let [[s id] (get-or-make-object-by-name
+                new-store "Joe" (make-object-list ['(3 4)]))]
+    (is (= s new-store))
+    (is (= new-joe-id id)))
+  (let [[s id] (get-or-make-object-by-name
+                new-store "Joe" (make-object-list [`(~link-type) '(3 4)]))
+        joe (id->entity id s)]
+    (is (named-object? joe))
+    (is (check (map semantic-to-list (elements joe))
+               (as-set `(("Joe" (~(in-different-store name-label s)))
+                         (~(in-different-store link-type s))
+                         (3 4))))))
+  (let [[s id] (get-or-make-object-by-name
+                new-store "Joe" (make-object-list [`(~object-type) '(3 4)]))
+        joe (id->entity id s)]
+    (is (named-object? joe))
+    (is (check (map semantic-to-list (elements joe))
+               (as-set `(("Joe" (~(in-different-store name-label s)))
+                         (~(in-different-store object-type s))
+                         (3 4)))))))
 
 (deftest do-set-content-test
   (let [result (do-set-content store
@@ -299,6 +385,7 @@
       (is (check (client-id->relative-ids (:select client-data))
                  [table-id jane-id new-id])))))
 
+()
 (deftest do-delete-row-test
   (let [result (do-delete-row store
                               {:target-key ["jane" "jane-age"]
@@ -364,41 +451,39 @@
                                               "female")))))
     (is (= (:select-store-ids updated)
            [(:item-id (first 
-                        (matching-elements
-                         45 (first (matching-elements
-                                    "Jane" stack-item)))))]))
+                       (matching-elements
+                        45 (first (matching-elements
+                                   "Jane" stack-item)))))]))
     ;; Now try an update to the new store, with no stack selector.
     (let [reupdated (do-batch-edit
                      (:store updated)
                      {:query-ids [jane-id joe-id]
                       :stack-ids []
                       :session-state session-state})
-          session-temporary (id->entity temporary-id
-                                                 (:store reupdated))
+          session-temporary (id->entity temporary-id (:store reupdated))
           query-item (label->element session-temporary :batch-query)
           stack-item (label->element session-temporary :batch-stack)]
       (is (check (semantic-to-list stack-item)
                  'anything))
       (is (check (canonicalize (semantic-to-list query-item))
-               (canonicalize '(anything ("Joe"
-                                              "male"
-                                              "married"
-                                              (39 ("age" :label)
-                                                  ("doubtful" "confidence"))
-                                              (45 ("age" :label)))
-                                             ("Jane"
-                                              (45 ("age" :label))
-                                              "female")))))
+                 (canonicalize '(anything ("Joe"
+                                           "male"
+                                           "married"
+                                           (39 ("age" :label)
+                                               ("doubtful" "confidence"))
+                                           (45 ("age" :label)))
+                                          ("Jane"
+                                           (45 ("age" :label))
+                                           "female")))))
       (is (earlier? (label->content
-                      (first (matching-elements "Jane" query-item)) :order)
+                     (first (matching-elements "Jane" query-item)) :order)
                     (label->content
-                      (first (matching-elements "Joe" query-item)) :order)))
+                     (first (matching-elements "Joe" query-item)) :order)))
       ;; Now try with no batch edit information in the target
       (let [rereupdated (do-batch-edit
-                        (:store reupdated)
-                        {:session-state session-state})
-            new-session-temporary (id->entity temporary-id
-                                                   (:store reupdated))
+                         (:store reupdated)
+                         {:session-state session-state})
+            new-session-temporary (id->entity temporary-id (:store reupdated))
             new-query-item (first (label->elements session-temporary
                                                    :batch-query))]
         (is (= new-query-item query-item))))))

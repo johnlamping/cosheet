@@ -29,7 +29,8 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [ordered-entities]]
              [render-utils
-              :refer [make-component
+              :refer [make-object-reference-template
+                      make-component
                       nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -619,7 +620,8 @@
         num-names (count names)
         specification (-> specification
                           (dissoc :relative-id)
-                          (assoc :template :reference)
+                          (assoc :template (make-object-reference-template
+                                            (:template specification)))
                           (into-attributes
                            {:class (css-class-for-name entity)}))]
     (assert (> num-names 0))

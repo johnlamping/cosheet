@@ -284,13 +284,15 @@
 ;;;                         created, and the item may not be deleted
 ;;;                         with a simple delete action.
 ;;;                         Or the value of :template may instead be
-;;;                         :reference. That means that this cell
-;;;                         holds the name of an object, and the cell
-;;;                         refers to that object. Editing the cell
-;;;                         should not change the name of the object,
-;;;                         but should make the enclosing element
-;;;                         refer to the object with the name the user
-;;;                         entered.
+;;;                         an ObjectReferenceTemplate. That means
+;;;                         that this cell holds the name of an
+;;;                         object, and the cell refers to that
+;;;                         object. Editing the cell should not change
+;;;                         the name of the object, but should make
+;;;                         the enclosing element refer to the object
+;;;                         with the name the user entered. The
+;;;                         reference object holds the template that
+;;;                         the object referred to must satisfy.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before

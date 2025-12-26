@@ -17,7 +17,11 @@
                    current-store
                    id->string string->id id->source
                    Store]]
-    [store-utils :refer [remove-entity-by-id]]
+    [store-utils :refer [remove-entity-by-id add-object]]
+    [entity :refer [make-object-list elements content->elements
+                    name-label object?
+                    link-type-object? object-type-object? non-type-object?]]
+    [query :refer [matching-items]]
     mutable-store-impl
     [entity :refer [id->entity to-list label->element
                     content elements label->elements label->content]]
@@ -124,6 +128,31 @@
         current-selection (get-selected (:store response) temporary-id)]
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
+
+(defn get-or-make-object-by-name
+  "Find an object with the given name, and the same kind as the template,
+   or make one. Return the new store and the id of the matching object.
+   (If an existing object is returned, it won't necessarily match the
+  entire template, just its type"
+  [store name template]
+  (assert object? template)
+  (let [query (make-object-list [`(~name (~name-label))])
+        matches (matching-items query store)
+        filtered (filter
+                  (cond (link-type-object? template) link-type-object?
+                        (object-type-object? template) object-type-object?
+                        true non-type-object?)
+                  matches)]
+    (if (seq filtered)
+      (do (assert (= (count filtered) 1))
+          [store (:item-id (first filtered))])
+      ;; Remove any existing name in the template, replacing it with
+      ;; the name we are looking for.
+      (let [pattern (-> (remove #(seq (content->elements % name-label))
+                                (elements template))
+                        (conj `(~name ~name-label))
+                        make-object-list)]
+        (add-object store pattern)))))
 
 (defn do-set-content
   [store {:keys [subject-ids from to session-state]}]

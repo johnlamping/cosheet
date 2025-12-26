@@ -2,7 +2,8 @@
   (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
                                      link-id?]]
-                      [entity :refer [StoredEntity element? named-object?
+                      [entity :refer [StoredEntity
+                                      element? object? named-object?
                                       content orientation elements]])))
 
 ;;; These are utilities for adding and removing element and object
@@ -20,6 +21,7 @@
   "Add an object, given in vector form, to the store.
   Return the new store and the id of the new object."
   [store template]
+  (assert object? template)
   (let [[store object-id] (get-new-object-id store)
         store (add-elements store object-id (elements template))]
     [store object-id]))

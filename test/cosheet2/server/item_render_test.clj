@@ -19,6 +19,7 @@
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
+             [render-utils :refer [make-object-reference-template]]
              [action-data :refer [default-get-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data
@@ -348,42 +349,46 @@
         [label-store _] (add-element store oid link-type)
         [class-store _] (add-element store oid object-type)]
     (is (check (named-object-DOM (id->entity oid store)
-                                 basic-dom-specification)
-               [:component {:width 1.5,
-                            :template :reference,
-                            :class "name named-object",
+                                 (assoc basic-dom-specification
+                                        :template "foo"))
+               [:component {:width 1.5
+                            :template (make-object-reference-template "foo")
+                            :class "name named-object"
                             :relative-id fred-id
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid two-name-store)
-                                 basic-dom-specification)
+                                 (assoc basic-dom-specification
+                                        :template "foo"))
                (as-set
                 [:div {:class "named-object vertical-stack"}
-                 [:component {:width 1.5,
-                              :template :reference,
-                              :class "name",
+                 [:component {:width 1.5
+                              :template (make-object-reference-template "foo")
+                              :class "name"
                               :relative-id fred-id
                               :render-dom render-item-DOM
                               :get-action-data (default-AD)}]
-                 [:component {:width 1.5,
-                              :template :reference,
-                              :class "name",
+                 [:component {:width 1.5
+                              :template (make-object-reference-template "foo")
+                              :class "name"
                               :relative-id friedrich-id
                               :render-dom render-item-DOM
                               :get-action-data (default-AD)}]])))
     (is (check (named-object-DOM (id->entity oid label-store)
-                                 basic-dom-specification)
-               [:component {:width 1.5,
-                            :template :reference,
-                            :class "label named-object",
+                                 (assoc basic-dom-specification
+                                        :template "foo"))
+               [:component {:width 1.5
+                            :template (make-object-reference-template "foo")
+                            :class "label named-object"
                             :relative-id fred-id
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid class-store)
-                                 basic-dom-specification)
-               [:component {:width 1.5,
-                            :template :reference,
-                            :class "class named-object",
+                                 (assoc basic-dom-specification
+                                        :template "foo"))
+               [:component {:width 1.5
+                            :template (make-object-reference-template "foo")
+                            :class "class named-object"
                             :relative-id fred-id
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))))
@@ -458,12 +463,14 @@
   (let [[s1 oid] (get-new-object-id (new-element-store))
         [store fred-id] (add-element s1 oid `("Fred" ~name-label))
         dom (run-renderer render-item-DOM
-                          (assoc basic-dom-specification :relative-id oid)
+                          (assoc basic-dom-specification
+                                 :relative-id oid
+                                 :template '(nil 5))
                           store)]
     (is (check dom
-               [:component {:width 1.5,
-                            :template :reference,
-                            :class "name named-object",
+               [:component {:width 1.5
+                            :template (make-object-reference-template '(nil 5))
+                            :class "name named-object"
                             :relative-id fred-id
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))))

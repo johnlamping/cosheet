@@ -22,6 +22,26 @@
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
+(defrecord
+    ^{:doc
+      "This is a template for a location that holds the name of an object
+       that must satisfy the template recorded here."}
+    ObjectReferenceTemplate
+    [template]  ; The template that the object must satisfy
+  )
+
+(defmethod print-method ObjectReferenceTemplate [s ^java.io.Writer w]
+  (.write w (str "ObjRefTemplate " (:template s))))
+
+(defn make-object-reference-template
+  [template]
+  (->ObjectReferenceTemplate template))
+
+(defn object-reference-template?
+  [template]
+  (instance? ObjectReferenceTemplate template))
+
+
 (defn specification-item-id
   [specification]
   (or (:item-id specification) (:relative-id specification)))

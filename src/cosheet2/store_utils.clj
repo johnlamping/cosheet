@@ -1,10 +1,13 @@
 (ns cosheet2.store-utils
   (:require (cosheet2 [store :refer [add-link remove-link get-new-object-id
                                      id->source target->ids
-                                     link-id?]]
+                                     link-id?
+                                     name-label-id link-type-id object-type-id]]
                       [entity :refer [StoredEntity
                                       element? object? named-object?
-                                      content orientation elements]])))
+                                      anonymous-object?
+                                      content orientation elements
+                                      name-label link-type object-type]])))
 
 ;;; These are utilities for adding and removing element and object
 ;;; entities from the store.
@@ -32,7 +35,8 @@
   Return the new store and the id of the new element."
   [store container-id template]
   (assert (not (instance? clojure.lang.PersistentVector template)))
-  (assert (not (element? (content template))))
+  (assert (not (element? (content template))) template)
+  (assert (not (anonymous-object? template)) template)
   (if (and (named-object? template)
            (satisfies? StoredEntity template))
     (add-link store container-id (:item-id template))
@@ -50,6 +54,18 @@
                                        [container-id content-endpoint]))
           store (add-elements store entity-link (elements template))]
       [store entity-link])))
+
+(defn add-universal-objects
+  "Add the 'name', 'link-type', and 'object-type' objects to the store,
+  includding their names."
+  [store]
+  (let [[s1 _] (add-element store name-label-id `("name" (~name-label)))
+        [s2 _] (add-element s1 name-label-id `(~link-type))
+        [s3 _] (add-element s2 link-type-id `("label" (~name-label)))
+        [s4 _] (add-element s3 link-type-id `(~object-type))
+        [s5 _] (add-element s4 object-type-id `("class" (~name-label)))
+        [s6 _] (add-element s5 object-type-id `(~object-type))]
+    s6))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the

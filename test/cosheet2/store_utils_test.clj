@@ -5,7 +5,9 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-list id->object id->element
-                             make-element-list make-object-list]]
+                             make-element-list make-object-list
+                             elements forward-elements in-different-store
+                             name-label link-type object-type]]
              entity-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
@@ -59,4 +61,22 @@
            '("foo" ("test" :label))))
     (is (= (assoc removed-store :next-number (:next-number added-store))
            added-store))))
+
+(deftest add-universal-objects-test
+  (let [s (add-universal-objects (new-element-store))
+        name-label-in-s (in-different-store name-label s)
+        link-type-in-s (in-different-store link-type s)
+        object-type-in-s (in-different-store object-type s)]
+    (is (check
+         (map to-list (forward-elements name-label-in-s))
+         (as-set [`(~link-type-in-s)
+                  `("name" (~name-label-in-s))])))
+    (is (check
+         (map to-list (forward-elements link-type-in-s))
+         [`(~object-type-in-s)
+          `("label" (~name-label-in-s))]))
+    (is (check
+         (map to-list (forward-elements object-type-in-s))
+         [`(~object-type-in-s)
+          `("class" (~name-label-in-s))]))))
 

@@ -543,7 +543,10 @@
   (assert (and (not (nil? source))
                (not (link-id? source)))
           [item-id target source])
-  (assert (not= target source))
+  (assert (or (not= target source)
+              ;; The one circularity we allow is that the type of
+              ;; object class is an object class.
+              (= target object-type-id)))
   (when (number? (:id item-id))
     (assert (< (:id item-id) (:next-number store)) [item-id target source])
     (when (number? (:id target))

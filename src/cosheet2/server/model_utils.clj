@@ -17,7 +17,8 @@
                                       make-element-list make-object-list
                                       entity-complexity]]
                       [store-utils :refer [add-object add-element
-                                           remove-entity-by-id]]
+                                           remove-entity-by-id
+                                           add-universal-objects]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?
                                      extended-by?]]
@@ -449,7 +450,8 @@
   "Return an initial immutable store. If a tab name is provided, the store
   will have a single tab with that name and a table with that name."
   [tab-name]
-  (let [[store _] (add-element (new-element-store) nil
+  (let [store (add-universal-objects (new-element-store))
+        [store _] (add-element store nil
                                (list current-format :format))
         [store orderable-id] (add-element store nil
                                           (list initial :unused-orderable))

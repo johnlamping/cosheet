@@ -165,6 +165,10 @@
     "Return a seq of items for all our elements, including reversed links
     between objects.")
 
+  (forward-elements [this]
+    "Return a seq of items for all our elements, not including reversed
+    links between objects.")
+
   (orientation [this]
     "The orientation of an element entity.")
 

@@ -13,7 +13,9 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->target target-label->ids id-valid-link? undo! redo!
+                   id->target target-label->ids id-valid-link?
+                   object-id? link-id?
+                   undo! redo!
                    current-store
                    id->string string->id id->source
                    Store]]
@@ -40,8 +42,10 @@
                          exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
                          unspecified-column-header-template]]
+    [render-utils]
     [order-utils :refer [furthest-item
-                         update-add-element-with-order-and-temporary]])))
+                         update-add-element-with-order-and-temporary]]))
+  (:import [cosheet2.server.render_utils ObjectReferenceTemplate]))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -155,18 +159,40 @@
         (add-object store pattern)))))
 
 (defn do-set-content
-  [store {:keys [subject-ids from to session-state]}]
-  (when (and from to (seq subject-ids))
-    (let [to (parse-string-as-number (clojure.string/trim to))]
-      (println "Setting " (count subject-ids) "items from" from "to" to)
-      (->
-       (reduce
-        (fn [store id]
-          (update-set-source store id from to))
-        store subject-ids)
-       ;; We might have set the source on a virtual item.
-       ;; This will make sure any newly created item is selected.
-       (add-select-store-ids-request subject-ids session-state)))))
+  [store {:keys [subject-ids past-subject-ids template from to session-state]}]
+  (when (and from to (seq subject-ids) (not (equivalent-primitives? from to)))
+    (if (instance? ObjectReferenceTemplate template)
+      ;; We are getting a new name at an object reference position.
+      ;; First, get the object corresponding to the name. Then go two
+      ;; steps back in the subject id history, to the object
+      ;; containing the name, then to the link containing it, and
+      ;; change that link to point to the new object.
+      ;; TODO: !!! We need to handle reversed links, which we can do
+      ;;       by checking which end matches the old object.
+      (let [name (clojure.string/trim to)
+            [store object] (get-or-make-object-by-name
+                            store name (:template template))
+            containing-objects (first past-subject-ids)
+            containing-object (first containing-objects)
+            containing-elements (second past-subject-ids)]
+        (when (and (= (count subject-ids) (count containing-elements))
+                   (every? object-id? containing-objects)
+                   (every? #(= % containing-object) containing-objects)
+                   (every? link-id? containing-elements))
+          (reduce
+           (fn [store id]
+             (update-set-source store id containing-object object))
+          store containing-elements)))
+      (let [to (parse-string-as-number (clojure.string/trim to))]
+        (println "Setting " (count subject-ids) "items from" from "to" to)
+        (->
+         (reduce
+          (fn [store id]
+            (update-set-source store id from to))
+          store subject-ids)
+         ;; We might have set the source on a virtual item.
+         ;; This will make sure any newly created item is selected.
+         (add-select-store-ids-request subject-ids session-state))))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template session-state]}]

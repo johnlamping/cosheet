@@ -3,7 +3,8 @@
                       [store :refer [make-item-id]]
                       [entity :refer [label? id->entity
                                       id->updating-entity-R
-                                      content label? primitive? named-object?
+                                      content label? primitive?
+                                      named-object? universal-object?
                                       label->elements content->elements
                                       name-label link-type object-type]]
                       [query :refer [matching-elements]]
@@ -497,6 +498,7 @@
   virtual-dom, if present, will appear after the elements.
   elements-must-show-labels determines whether the elements must show labels.
   The specifications should be appropriate for each of the elements."
+  ;; This function is only called from outside item-render.
   [elements virtual-dom must-show-label elements-must-show-labels
    orientation specification]
   (assert (not (:relative-id specification))
@@ -528,34 +530,46 @@
 
 ;;; The next functions handle the parts of the dom for an entity.
 
+(defn item-primitive-content-DOM
+  "Make dom for a primitive that is the content part of an item."
+  [item primitive {:keys [class] :as specification}]
+  (assert (primitive? primitive) primitive)
+  (let [anything (= 'anything primitive)]
+    [:div (cond-> (into-attributes
+                   {:class class}
+                   {:class (cond-> "content-text"
+                             anything (str " placeholder"))})
+            (label? item)
+            (into-attributes (:class "label"))
+            anything
+            (into-attributes (:class "placeholder")))
+     (if anything "\u00A0..." (str primitive))]))
+
 (defn item-content-DOM
   "Make dom for the content part of an item."
-  [item specification]
-  ;; We don't currently handle content that is itself a non-trivial
-  ;; entity. That would need more interaction and UI design work to
-  ;; deal with the distinction between elements of an item and
-  ;; elements on its content.
-  (let [contents (content item)]
-    (assert (primitive? contents) contents)
-    (let [anything (= 'anything contents)
-          editable (not (:immutable specification))]
-      [:div (cond-> (-> (select-keys specification [:class])
-                        (into-attributes
-                         {:class (cond-> "content-text"
-                                   editable (str " editable")
-                                   anything (str " placeholder"))}))
-              (label? item)
-              (into-attributes (:class "label"))
-              anything
-              (into-attributes (:class "placeholder")))
-       (if anything "\u00A0..." (str contents))])))
+  [item {:keys [immutable template] :as specification}]
+  (let [contents (content item)
+        editable (not immutable)
+        specification (cond-> (-> (select-keys specification [:class :width])
+                                  (assoc :template (content template)))
+                        editable (into-attributes {:class "editable"}))]
+    (cond (primitive? contents)
+          (item-primitive-content-DOM item contents specification)
+          (named-object? contents)
+          (item-component contents specification)
+          true
+          ;; TODO: !!! We don't currently handle content that is
+          ;; itself a structured entity. We will need that for
+          ;; anonymous objects.
+          (assert false contents))))
 
 (defn render-content-only-DOM
   "Render a dom spec for only the content of an item."
-  [{:keys [relative-id item-id class]} store]
+  [{:keys [relative-id item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
   (expr-let [item (id->updating-entity-R item-id store)]
-    (item-content-DOM item (if class {:class class} {}))))
+    (item-content-DOM
+     item (select-keys specification [:class :width :immutable :template]))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_content_only_DOM
@@ -619,7 +633,7 @@
                   ordered-entities)
         num-names (count names)
         specification (-> specification
-                          (dissoc :relative-id)
+                          (dissoc :relative-id :render-dom :get-action-data)
                           (assoc :template (make-object-reference-template
                                             (:template specification)))
                           (into-attributes
@@ -652,9 +666,13 @@
                       (set (map #(id->entity % (:store entity))
                                 excluded-element-ids))
                       (semantic-elements entity))
-            [labels non-labels] (separate-by label? elements)]
+            [labels non-labels] (separate-by label? elements)
+            labels (cond->> labels
+                     (:omit-universal-elements specification)
+                     (remove #(universal-object? (content %))))]
         (cond-> (item-content-labels-and-non-label-elements-DOM
-                 entity labels non-labels (dissoc specification :class))
+                 entity labels non-labels
+                 (dissoc specification :class :omit-universal-elements))
           (:class specification)
           (add-attributes {:class (:class specification)}))))))
 

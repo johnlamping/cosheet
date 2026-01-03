@@ -12,7 +12,7 @@
                                         label->elements label->content
                                         name-label link-type object-type
                                         make-object-list make-element-list
-                                        named-object?
+                                        named-object? anonymous-object?
                                         in-different-store]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
@@ -21,7 +21,8 @@
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             target-label->ids
-                            current-store id-valid-link? id->source]]
+                            current-store id-valid-link? id->source
+                            get-new-object-id]]
              [store-utils :refer [add-element add-object]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
@@ -38,7 +39,8 @@
                                   semantic-elements
                                   semantic-to-list selector?
                                   pattern-to-fixed-term]]
-             [session-state :refer [update-add-session-temporary-element]])
+             [session-state :refer [update-add-session-temporary-element]]
+             [item-render :refer [render-item-DOM]])
             ; :reload
             ))
 
@@ -151,7 +153,6 @@
                         :store (new-mutable-store new-store)
                         :client-state (new-map-state {})})
 
-
 (deftest selected-test
   (let [client-id1 "root_1"
         client-id2 "root_2"
@@ -248,6 +249,29 @@
                                    :session-state session-state})]
     (is (= (id->source (:store result) (:item-id name-header))
            "name"))))
+
+(deftest do-set-content-named-object-test
+  ;; This tests the whole path from rendering dom, getting its action data,
+  ;; and doing a set content to a new object.
+  (let [[s1 fred-oid] (get-new-object-id (new-element-store))
+        [s2 fred-name-id] (add-element s1 fred-oid `("Fred" ~name-label))
+        [s3 fred-holder-id] (add-element s2 nil (id->object fred-oid s2))
+        [s4 sally-oid] (get-new-object-id s3)
+        [store sally-name-id] (add-element s4 sally-oid `("Sally" ~name-label))
+        holder-dom (render-item-DOM {:relative-id fred-holder-id :width 2.0}
+                                    store)]
+    ;;; TODO: !!! Code from here. Run action data through all three
+    ;;; components, then do set-content.
+    (println holder-dom)
+    (comment (check (named-object-DOM (id->entity oid store)
+                                 (assoc basic-dom-specification
+                                        :template "foo"))
+               [:component {:width 1.5
+                            :template (make-object-reference-template "foo")
+                            :class "name named-object"
+                            :relative-id fred-id
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))))
 
 (deftest do-add-twin-test
   (let [store (update-selected store temporary-id "old selection")

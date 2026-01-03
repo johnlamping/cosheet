@@ -24,8 +24,8 @@
 
 (defrecord
     ^{:doc
-      "This is a template for a location that holds the name of an object
-       that must satisfy the template recorded here."}
+      "This is a template for a location that holds the name of an object.
+       That object must satisfy the template recorded here."}
     ObjectReferenceTemplate
     [template]  ; The template that the object must satisfy
   )
@@ -80,7 +80,8 @@
 (defn transform-specification-for-labels
   [specification]
   (assoc (select-keys specification [:width :immutable])
-         :template '(anything :label)))
+         :template '(anything :label)
+         :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
   [specification]

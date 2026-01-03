@@ -5,14 +5,16 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
-             [entity :refer [id->entity name-label link-type object-type]]
+             [entity :refer [id->entity name-label link-type object-type
+                             make-object-list]]
              entity-impl
              [store :refer [new-element-store get-new-object-id]]
              store-impl
              mutable-store-impl
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element add-object
+                                  add-universal-objects]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
              [model-utils :refer [semantic-label-elements]]
@@ -394,71 +396,104 @@
                             :get-action-data (default-AD)}]))))
 
 (deftest render-item-DOM-test-simple
-     ;; Test a simple cell
-     (let [[store fred-id] (add-element (new-element-store) nil "Fred")
-           dom (run-renderer render-item-DOM
-                             (assoc basic-dom-specification
-                                    :relative-id fred-id)
-                             store)]
-       (is (check dom
-                  [:div {:class "content-text editable item"} "Fred"])))
-     ;; Test a cell with a couple of labels, one excluded.
-     (let [[store fred-id] (add-element (new-element-store) nil
-                                       `("Fred"
-                                         (1 :label (~o1 :order))
-                                         (2 :label (~o2 :order))))
-           fred (id->entity fred-id store)
-           id1 (:item-id (first (matching-elements 1 fred)))
-           id2 (:item-id (first (matching-elements 2 fred)))
-           id-tag2 (:item-id (first (matching-elements
-                                     :label (id->entity id2 store))))
-           dom (run-renderer render-item-DOM
-                             (assoc basic-dom-specification
-                                    :relative-id fred-id
-                                    :excluded-element-ids [id1])
-                             store)]
-       (is (check dom
-                  [:div {:class "wrapped-element label item"}
-                   [:component {:template '(anything :label)
-                                :relative-id id2
-                                :render-dom render-item-DOM
-                                :get-action-data (default-AD)
-                                :excluded-element-ids [id-tag2]
-                                :class "label"
-                                :width 1.5}]
-                   [:div {:class "indent-wrapper"}
-                    [:component {:template (as-set '("" (1 :label) (2 :label)))
-                                 :relative-id :content
-                                 :item-id fred-id
-                                 :render-dom render-content-only-DOM
-                                 :get-action-data (pass-AD)
-                                 :width 1.5}]]])))
-     ;; Test must-show-label.
-     (let [[store fred-id] (add-element (new-element-store) nil
-                                       "Fred")
-           dom (run-renderer render-item-DOM
-                             (assoc basic-dom-specification
-                                    :relative-id fred-id
-                                    :must-show-label true)
-                             store)]
-       (is (check
-            dom
-            [:div
-             {:class
-              "horizontal-labels-element virtual-wrapper narrow item"}
-             [:component {:template '(anything :label)
-                          :position :after
-                          :relative-id :virtual-label
-                          :class "label"
-                          :render-dom (virt-DOM)
-                          :get-action-data (virt-AD)
-                          :width 1.5}]
-             [:component {:template ""
-                          :relative-id :content
-                          :item-id fred-id
-                          :render-dom render-content-only-DOM
-                          :get-action-data (pass-AD)
-                          :width 1.5}]])))
+  ;; Test a simple cell
+  (let [[store fred-id] (add-element (new-element-store) nil "Fred")
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification
+                                 :relative-id fred-id)
+                          store)]
+    (is (check dom
+               [:div {:class "editable content-text item"} "Fred"])))
+  ;; Test an entity holding a named object
+  (let [[s1 fred-id] (-> (new-element-store)
+                         (add-universal-objects)
+                         (get-new-object-id))
+        [s2 fred-name-id] (add-element s1 fred-id `("Fred" (~name-label)))
+        [store fred-holder-id] (add-element s2 nil `(~(id->entity fred-id nil)))
+        dom (run-renderer render-item-DOM
+                           (assoc basic-dom-specification
+                                  :relative-id fred-holder-id
+                                  :template '("foo"))
+                           store)
+        ;; We expect a component, which we also run, to make sure it is right.
+        [_ spec] dom
+        inner-dom (run-renderer render-item-DOM spec store)]
+    (is (check dom
+               [:component {:width 1.5
+                            :class "editable item"
+                            :relative-id fred-id,
+                            :template "foo"
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))
+    (is (check inner-dom
+               [:component {:width 1.5
+                            :class "editable item name named-object"
+                            :template (make-object-reference-template
+                                       "foo")
+                            :relative-id fred-name-id,
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}]))
+    ;; !!! TODO: Code here
+    (println inner-dom)
+    );; Test a cell with a couple of labels, one excluded.
+  (let [[store fred-id] (add-element (new-element-store) nil
+                                     `("Fred"
+                                       (1 :label (~o1 :order))
+                                       (2 :label (~o2 :order))))
+        fred (id->entity fred-id store)
+        id1 (:item-id (first (matching-elements 1 fred)))
+        id2 (:item-id (first (matching-elements 2 fred)))
+        id-tag2 (:item-id (first (matching-elements
+                                  :label (id->entity id2 store))))
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification
+                                 :relative-id fred-id
+                                 :excluded-element-ids [id1])
+                          store)]
+    (is (check dom
+               [:div {:class "wrapped-element label item"}
+                [:component {:template '(anything :label)
+                             :relative-id id2
+                             :omit-universal-elements true
+                             :render-dom render-item-DOM
+                             :get-action-data (default-AD)
+                             :excluded-element-ids [id-tag2]
+                             :class "label"
+                             :width 1.5}]
+                [:div {:class "indent-wrapper"}
+                 [:component {:template (as-set '("" (1 :label) (2 :label)))
+                              :relative-id :content
+                              :item-id fred-id
+                              :render-dom render-content-only-DOM
+                              :get-action-data (pass-AD)
+                              :width 1.5}]]])))
+  ;; Test must-show-label.
+  (let [[store fred-id] (add-element (new-element-store) nil
+                                     "Fred")
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification
+                                 :relative-id fred-id
+                                 :must-show-label true)
+                          store)]
+    (is (check
+         dom
+         [:div
+          {:class
+           "horizontal-labels-element virtual-wrapper narrow item"}
+          [:component {:template '(anything :label)
+                       :position :after
+                       :relative-id :virtual-label
+                       :omit-universal-elements true
+                       :class "label"
+                       :render-dom (virt-DOM)
+                       :get-action-data (virt-AD)
+                       :width 1.5}]
+          [:component {:template ""
+                       :relative-id :content
+                       :item-id fred-id
+                       :render-dom render-content-only-DOM
+                       :get-action-data (pass-AD)
+                       :width 1.5}]])))
   ;; Test a named object
   (let [[s1 oid] (get-new-object-id (new-element-store))
         [store fred-id] (add-element s1 oid `("Fred" ~name-label))
@@ -754,6 +789,7 @@
            {:width 1.5
             :template '(anything :label)
             :relative-id :virtual-label
+            :omit-universal-elements true
             :position :after
             :class "label"
             :render-dom (virt-DOM)

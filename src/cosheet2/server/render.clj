@@ -228,6 +228,15 @@
 ;;;                         may be a keyword, or an ItemId, or a vec of those.
 ;;;                 :class  Optional. A subset of the CSS classes the DOM
 ;;;                         will have. The dom may have additional classes.
+;;; :omit-universal-elements If true, don't show elements of the objects
+;;;                          whose contents are one of the universal
+;;;                          objects: name-label, link-type, and
+;;;                          object-type. This is used for items that
+;;;                          are formatted as labels, types, etc, so
+;;;                          that showing the universal element is
+;;;                          redundant. It is not present for items
+;;;                          that are formatted normally, as
+;;;                          independent items.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.

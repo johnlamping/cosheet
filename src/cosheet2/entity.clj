@@ -247,6 +247,14 @@
 (def link-type)
 (def object-type)
 
+(defn universal-object?
+  "Return true if the object is one of the universal objects:
+  name-label, link-type, and object-type. The object can be in any
+  store."
+  [entity]
+  (and (satisfies? StoredEntity entity)
+       (#{name-label-id link-type-id object-type-id} (:item-id entity))))
+
 (defn anonymous-object?
   "Return true if the entity is a generic object.
   Note: This must be kept in synch with store-impl/anonymous-object-id?"

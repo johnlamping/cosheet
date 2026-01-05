@@ -354,9 +354,11 @@
                                  (assoc basic-dom-specification
                                         :template "foo"))
                [:component {:width 1.5
-                            :template (make-object-reference-template "foo")
+                            :template `(~(make-object-reference-template
+                                          "foo"))
                             :class "name named-object"
                             :relative-id fred-id
+                            :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid two-name-store)
@@ -365,33 +367,41 @@
                (as-set
                 [:div {:class "named-object vertical-stack"}
                  [:component {:width 1.5
-                              :template (make-object-reference-template "foo")
+                              :template `(~(make-object-reference-template
+                                            "foo"))
                               :class "name"
                               :relative-id fred-id
+                              :omit-universal-elements true
                               :render-dom render-item-DOM
                               :get-action-data (default-AD)}]
                  [:component {:width 1.5
-                              :template (make-object-reference-template "foo")
+                              :template `(~(make-object-reference-template
+                                            "foo"))
                               :class "name"
                               :relative-id friedrich-id
+                              :omit-universal-elements true
                               :render-dom render-item-DOM
                               :get-action-data (default-AD)}]])))
     (is (check (named-object-DOM (id->entity oid label-store)
                                  (assoc basic-dom-specification
                                         :template "foo"))
                [:component {:width 1.5
-                            :template (make-object-reference-template "foo")
+                            :template `(~(make-object-reference-template
+                                          "foo"))
                             :class "label named-object"
                             :relative-id fred-id
+                            :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid class-store)
                                  (assoc basic-dom-specification
                                         :template "foo"))
                [:component {:width 1.5
-                            :template (make-object-reference-template "foo")
+                            :template `(~(make-object-reference-template
+                                          "foo"))
                             :class "class named-object"
                             :relative-id fred-id
+                            :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))))
 
@@ -404,6 +414,25 @@
                           store)]
     (is (check dom
                [:div {:class "editable content-text item"} "Fred"])))
+  
+  ;; Test a named object
+  (let [[s1 oid] (get-new-object-id (new-element-store))
+        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification
+                                 :relative-id oid
+                                 :template '(nil 5))
+                          store)]
+    (is (check dom
+               [:component {:width 1.5
+                            :template `(~(make-object-reference-template
+                                          '(nil 5)))
+                            :class "name named-object"
+                            :relative-id fred-id
+                            :omit-universal-elements true
+                            :render-dom render-item-DOM
+                            :get-action-data (default-AD)}])))
+
   ;; Test an entity holding a named object
   (let [[s1 fred-id] (-> (new-element-store)
                          (add-universal-objects)
@@ -428,14 +457,14 @@
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
-                            :template (make-object-reference-template
-                                       "foo")
-                            :relative-id fred-name-id,
+                            :template `(~(make-object-reference-template
+                                          "foo"))
+                            :relative-id fred-name-id
+                            :omit-universal-elements true
                             :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))
-    ;; !!! TODO: Code here
-    (println inner-dom)
-    );; Test a cell with a couple of labels, one excluded.
+                            :get-action-data (default-AD)}])))
+  
+  ;; Test a cell with a couple of labels, one excluded.
   (let [[store fred-id] (add-element (new-element-store) nil
                                      `("Fred"
                                        (1 :label (~o1 :order))
@@ -467,6 +496,7 @@
                               :render-dom render-content-only-DOM
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
+  
   ;; Test must-show-label.
   (let [[store fred-id] (add-element (new-element-store) nil
                                      "Fred")
@@ -493,22 +523,7 @@
                        :item-id fred-id
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)
-                       :width 1.5}]])))
-  ;; Test a named object
-  (let [[s1 oid] (get-new-object-id (new-element-store))
-        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
-        dom (run-renderer render-item-DOM
-                          (assoc basic-dom-specification
-                                 :relative-id oid
-                                 :template '(nil 5))
-                          store)]
-    (is (check dom
-               [:component {:width 1.5
-                            :template (make-object-reference-template '(nil 5))
-                            :class "name named-object"
-                            :relative-id fred-id
-                            :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))))
+                       :width 1.5}]]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels

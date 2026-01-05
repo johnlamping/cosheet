@@ -14,8 +14,9 @@
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
                    id->target target-label->ids id-valid-link?
-                   object-id? link-id?
+                   object-id? link-id? item-id?
                    undo! redo!
+                   name-label-id
                    current-store
                    id->string string->id id->source
                    Store]]
@@ -90,24 +91,25 @@
   ;; a wild card, and we could have anything.
   (let [from (parse-string-as-number from)
         source (id->source store id)]
-    (println "Old source" source)
-    (if (and
-         (or (equivalent-primitives? from source)
-             ;; Wildcard text matches anything,
-             ;; because it has to match instances too
-             (= from "\u00A0...")
-             ;; Setting a new selector.
-             (and (= from "") (= source 'anything)))
-         ;; When the user edits a heading whose value was filled in
-         ;; automatically, the UI clears the text to blank. Don't match
-         ;; in that case, as we don't want to remove the original heading
-         ;; if the user didn't type anything.
-         (not (and (string? from)
-                   (= (first from) \u00A0)
-                   (not= from "\u00A0...")
-                   (= to ""))))
+    (if (if (or (item-id? source) (item-id? from))
+          (= source from)
+          (and
+           (or (equivalent-primitives? from source)
+               ;; Wildcard text matches anything,
+               ;; because it has to match instances too
+               (= from "\u00A0...")
+               ;; Setting a new selector.
+               (and (= from "") (= source 'anything)))
+           ;; When the user edits a heading whose value was filled in
+           ;; automatically, the UI clears the text to blank. Don't match
+           ;; in that case, as we don't want to remove the original heading
+           ;; if the user didn't type anything.
+           (not (and (string? from)
+                     (= (first from) \u00A0)
+                     (not= from "\u00A0...")
+                     (= to "")))))
       (update-source store id (parse-string-as-number to))
-      (do (println "source doesn't match" from source)
+      (do (println "Old source doesn't match" from source)
           store))))
 
 (defn update-set-source
@@ -161,38 +163,49 @@
 (defn do-set-content
   [store {:keys [subject-ids past-subject-ids template from to session-state]}]
   (when (and from to (seq subject-ids) (not (equivalent-primitives? from to)))
-    (if (instance? ObjectReferenceTemplate template)
-      ;; We are getting a new name at an object reference position.
-      ;; First, get the object corresponding to the name. Then go two
-      ;; steps back in the subject id history, to the object
-      ;; containing the name, then to the link containing it, and
-      ;; change that link to point to the new object.
-      ;; TODO: !!! We need to handle reversed links, which we can do
-      ;;       by checking which end matches the old object.
-      (let [name (clojure.string/trim to)
-            [store object] (get-or-make-object-by-name
-                            store name (:template template))
-            containing-objects (first past-subject-ids)
-            containing-object (first containing-objects)
-            containing-elements (second past-subject-ids)]
-        (when (and (= (count subject-ids) (count containing-elements))
-                   (every? object-id? containing-objects)
-                   (every? #(= % containing-object) containing-objects)
-                   (every? link-id? containing-elements))
-          (reduce
-           (fn [store id]
-             (update-set-source store id containing-object object))
-          store containing-elements)))
-      (let [to (parse-string-as-number (clojure.string/trim to))]
-        (println "Setting " (count subject-ids) "items from" from "to" to)
-        (->
-         (reduce
-          (fn [store id]
-            (update-set-source store id from to))
-          store subject-ids)
-         ;; We might have set the source on a virtual item.
-         ;; This will make sure any newly created item is selected.
-         (add-select-store-ids-request subject-ids session-state))))))
+    (let [template (content template)]  ; The incoming template is for the
+                                        ; whole element. We want its content.
+      (if (instance? ObjectReferenceTemplate template)
+        ;; We are getting a new name at an object reference position.
+        ;; First, get the object corresponding to the name. Then go two
+        ;; steps back in the subject id history, to the object
+        ;; containing the name, then to the link containing it, and
+        ;; change that link to point to the new object.
+        ;; TODO: !!! We need to handle reversed links, which we can do
+        ;;       by checking which end matches the old object.
+        (let [name (clojure.string/trim to)
+              [store object-id] (get-or-make-object-by-name
+                                 store name (:template template))
+              containing-object-ids (first past-subject-ids)
+              containing-element-ids (second past-subject-ids)
+              original-object-id (first containing-object-ids) ]
+          (when (and (= (count subject-ids) (count containing-element-ids))
+                     (every? object-id? containing-object-ids)
+                     (every? #(= % original-object-id) containing-object-ids)
+                     (every? link-id? containing-element-ids))
+            (let [store (reduce
+                         (fn [store element-id]
+                           ;; TODO: !!! This needs to handle orientation.
+                           (update-set-source
+                            store element-id original-object-id object-id))
+                         store containing-element-ids)]
+              ;; TODO: !!! This needs to handle orientation.
+              (if-let [name-element-id
+                       (first (target-label->ids
+                               store object-id name-label-id))]
+                (add-select-store-ids-request
+                 {:store store} [name-element-id] session-state)
+                store))))
+        (let [to (parse-string-as-number (clojure.string/trim to))]
+          (println "Setting " (count subject-ids) "items from" from "to" to)
+          (->
+           (reduce
+            (fn [store id]
+              (update-set-source store id from to))
+            store subject-ids)
+           ;; We might have set the source on a virtual item.
+           ;; This will make sure any newly created item is selected.
+           (add-select-store-ids-request subject-ids session-state)))))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template session-state]}]

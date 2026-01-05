@@ -231,12 +231,16 @@
 ;;; :omit-universal-elements If true, don't show elements of the objects
 ;;;                          whose contents are one of the universal
 ;;;                          objects: name-label, link-type, and
-;;;                          object-type. This is used for items that
-;;;                          are formatted as labels, types, etc, so
-;;;                          that showing the universal element is
-;;;                          redundant. It is not present for items
-;;;                          that are formatted normally, as
-;;;                          independent items.
+;;;                          object-type. This is used when showing
+;;;                          just the name of a named object, because
+;;;                          we don't also want to show that it is
+;;;                          labeled as a name. That's clear from
+;;;                          context, and would lead to infinite
+;;;                          recursion, since the name label also has
+;;;                          name "name". In contrast, when showing
+;;;                          all of a named object, we want to show
+;;;                          the label of the name, so then we don't
+;;;                          use this.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.

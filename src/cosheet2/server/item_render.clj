@@ -634,14 +634,16 @@
         num-names (count names)
         specification (-> specification
                           (dissoc :relative-id :render-dom :get-action-data)
-                          (assoc :template (make-object-reference-template
-                                            (:template specification)))
+                          (assoc :template `(~(make-object-reference-template
+                                               (:template specification))))
+                          (assoc :omit-universal-elements true)
                           (into-attributes
                            {:class (css-class-for-name entity)}))]
     (assert (> num-names 0))
     (if (= num-names 1)
       (item-component (first names)
-                      (into-attributes specification{:class "named-object"}))
+                      (into-attributes specification
+                                       {:class "named-object"}))
       (into [:div {:class "named-object vertical-stack"}]
             (map #(item-component % specification) names)))))
 

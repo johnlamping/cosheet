@@ -21,9 +21,12 @@
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             target-label->ids
-                            current-store id-valid-link? id->source
-                            get-new-object-id]]
-             [store-utils :refer [add-element add-object]]
+                            current-store id-valid-link?
+                            id->source id->target
+                            get-new-object-id
+                            update-source]]
+             [store-utils :refer [add-element add-object
+                                  add-universal-objects]]
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
@@ -33,7 +36,7 @@
                                   relative-ids->client-id
                                   client-id->relative-ids]]
              [actions :refer :all]
-             [action-data :refer [get-id-action-data]]
+             [action-data :refer [get-id-action-data default-get-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
@@ -253,25 +256,71 @@
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,
   ;; and doing a set content to a new object.
-  (let [[s1 fred-oid] (get-new-object-id (new-element-store))
+  
+  (let [;; First, set up a store with two objects, Fred and Sally, and with
+        ;; an element holding Fred.
+        [s1 fred-oid] (-> (new-element-store)
+                          (add-universal-objects)
+                          (get-new-object-id))
         [s2 fred-name-id] (add-element s1 fred-oid `("Fred" ~name-label))
-        [s3 fred-holder-id] (add-element s2 nil (id->object fred-oid s2))
-        [s4 sally-oid] (get-new-object-id s3)
-        [store sally-name-id] (add-element s4 sally-oid `("Sally" ~name-label))
-        holder-dom (render-item-DOM {:relative-id fred-holder-id :width 2.0}
-                                    store)]
-    ;;; TODO: !!! Code from here. Run action data through all three
-    ;;; components, then do set-content.
-    (println holder-dom)
-    (comment (check (named-object-DOM (id->entity oid store)
-                                 (assoc basic-dom-specification
-                                        :template "foo"))
-               [:component {:width 1.5
-                            :template (make-object-reference-template "foo")
-                            :class "name named-object"
-                            :relative-id fred-id
-                            :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))))
+        [s3 fred-foo-id] (add-element s2 fred-oid "foo")
+        [s4 fred-holder-id] (add-element s3 nil (id->object fred-oid s2))
+        [s5 sally-oid] (get-new-object-id s4)
+        [store sally-name-id] (add-element s5 sally-oid `("Sally" ~name-label))
+        ;; Now, render the nesting doms: the holding element, the
+        ;; object inside, and its name.
+        holder-dom-spec {:relative-id fred-holder-id
+                         :width 2.0
+                         :template `(~(make-object-list ["foo"]))}
+        holder-dom (render-item-DOM holder-dom-spec store)
+        [_ object-dom-spec] holder-dom
+        object-dom (render-item-DOM object-dom-spec store)
+        [_ name-dom-spec] object-dom
+        name-dom (render-item-DOM name-dom-spec store)
+        ;; Now, walk the nested doms to get the action data. 
+        holder-action-data (default-get-action-data
+                            holder-dom-spec {} :set-content
+                            store)
+        object-action-data (default-get-action-data
+                            object-dom-spec holder-action-data :set-content
+                            store)
+        name-action-data (default-get-action-data
+                            name-dom-spec object-action-data :set-content
+                            store)
+        ;; And set up a function to run setting the name.
+        run-set-name (fn [from to]
+                       (let [action-data
+                             (assoc name-action-data
+                                    :template (:template name-dom-spec)
+                                    :from from
+                                    :to to
+                                    :session-state session-state)]
+                         (-> (do-set-content store action-data)
+                             (normalize-handler-response store))))]
+    
+    ;; Test changing Fred to Sally.
+    (let [[new-store for-client] (run-set-name "Fred" "Sally")]
+      (is (= new-store (update-source store fred-holder-id sally-oid)))
+      (is (= (:select-store-ids for-client) [sally-name-id])))
+
+    ;; Test changing Fred to Fred.
+    (let [[new-store for-client] (run-set-name "Fred" "Fred")]
+      (is (= new-store store)))
+
+    ;; Test changing Fred to fred.
+    (let [[new-store for-client] (run-set-name "Fred" "fred")]
+      (is (= new-store store)))
+    
+    ;; Test changing to an object that had to be created.
+    (let [[new-store for-client] (run-set-name "Fred" "Bob")
+          new-name-id (first (:select-store-ids for-client))
+          new-object-id (id->target new-store new-name-id)
+          new-object (id->entity new-object-id new-store)]
+      (is (= (id->source new-store new-name-id) "Bob"))
+      (is (= (id->source new-store fred-holder-id) new-object-id))
+      (is (check (map to-list (elements new-object))
+                 (as-set [`("Bob" (~(in-different-store name-label new-store)))
+                          "foo"]))))))
 
 (deftest do-add-twin-test
   (let [store (update-selected store temporary-id "old selection")

@@ -627,7 +627,25 @@
         (seq (content->elements entity object-type)) "class"
         true "name"))
 
+(defn entity-DOM
+  [entity {:keys [excluded-element-ids] :as specification}]
+  "Produce dom for an entity that is not a named object"
+  (let [elements (remove
+                  (set (map #(id->entity % (:store entity))
+                            excluded-element-ids))
+                  (semantic-elements entity))
+        [labels non-labels] (separate-by label? elements)
+        labels (cond->> labels
+                 (:omit-universal-elements specification)
+                 (remove #(universal-object? (content %))))]
+    (cond-> (item-content-labels-and-non-label-elements-DOM
+             entity labels non-labels
+             (dissoc specification :class :omit-universal-elements))
+      (:class specification)
+      (add-attributes {:class (:class specification)}))))
+
 (defn named-object-DOM
+  "Produce dom for a named object."
   [entity specification]
   (let [names (-> (label->elements entity name-label)
                   ordered-entities)
@@ -650,9 +668,7 @@
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items). This is the default renderer."
-  [{:keys [relative-id must-show-label excluded-element-ids]
-    :as specification}
-   store]
+  [{:keys [relative-id] :as specification}  store]
   (println "Generating DOM for" (simplify-for-print relative-id))
   (assert (:width specification)
           [specification
@@ -664,19 +680,7 @@
                      (specification-item-id specification) store)]
     (if (named-object? entity)
       (named-object-DOM entity specification)
-      (let [elements (remove
-                      (set (map #(id->entity % (:store entity))
-                                excluded-element-ids))
-                      (semantic-elements entity))
-            [labels non-labels] (separate-by label? elements)
-            labels (cond->> labels
-                     (:omit-universal-elements specification)
-                     (remove #(universal-object? (content %))))]
-        (cond-> (item-content-labels-and-non-label-elements-DOM
-                 entity labels non-labels
-                 (dissoc specification :class :omit-universal-elements))
-          (:class specification)
-          (add-attributes {:class (:class specification)}))))))
+      (entity-DOM entity specification))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM

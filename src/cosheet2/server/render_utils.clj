@@ -41,6 +41,25 @@
   [template]
   (instance? ObjectReferenceTemplate template))
 
+(defrecord
+    ^{:doc
+      "This is a template for a location that holds a placeholder for
+       virtual object. When action-data is made, no object needs to be
+       created, because its only subsidiary will be an object
+       reference, which will make or find the objects on its own."}
+    PlaceholderObjectTemplate
+    [])
+
+(defmethod print-method PlaceholderObjectTemplate [s ^java.io.Writer w]
+  (.write w (str "PlaceholderObjTemplatej")))
+
+(defn make-placejholder-object-template
+  []
+  (->PlaceholderObjectTemplate))
+
+(defn placeholder-object-template?
+  [template]
+  (instance? PlaceholderObjectTemplate template))
 
 (defn specification-item-id
   [specification]

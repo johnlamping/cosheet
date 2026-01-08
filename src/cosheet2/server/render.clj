@@ -74,11 +74,11 @@
 ;;; component to it are concatenated together to become the
 ;;; component identifier the client sees.
 
-;;; By breaking the dom into components, we able to reuse subsidiary
-;;; parts of the dom that the client already has, even if a containing
-;;; level of the dom changes. For example, if the containing dom node
-;;; adds a new child, we don't need to re-compute or re-transmit its
-;;; other children.
+;;; By breaking the dom into components, we are able to reuse
+;;; subsidiary parts of the dom that the client already has, even if a
+;;; containing level of the dom changes. For example, if the
+;;; containing dom node adds a new child, we don't need to re-compute
+;;; or re-transmit its other children.
 
 ;;; We use attributes, as supported by hiccup, to store information
 ;;; about components. A sub-component looks like hiccup with this
@@ -111,46 +111,44 @@
 ;;; store the rendering of each component depends on. But dom
 ;;; specifications may be removed from memory once their dom has been
 ;;; generated. If they are needed later, for example because the store
-;;; has changed for something they show, they can be recreated, using the
-;;; the dom specification of their parent. In general, this requires
-;;; walking up the containment tree to the root dom specification,
-;;; which is always kept, and then walking back down, creating dom
-;;; specifications on the way. Fortunately the containment depth is
-;;; usually not very deep, so this is fast. This is not currently
-;;; being done, but there is a todo to do it.
+;;; has changed for something they show, they can be recreated, using
+;;; the the dom specification of their parent. In general, this
+;;; requires walking up the containment tree to the root dom
+;;; specification, which is always kept, and then walking back down,
+;;; creating dom specifications on the way. Fortunately the
+;;; containment depth is usually not very deep, so this is fast. This
+;;; is not currently being done, but there is a todo to do it.
 
-;;; To ask to render a dom, the dom manager uses two functions, stored
-;;; in the spec map under :get-rendering-data and :render-dom. The
-;;; :get-rendering-data function takes the specification and the
-;;; mutable store and returns a seq of <reporter, categories> pairs.
-;;; Each reporter holds some of the information that the rendering
-;;; requires. And its corresponding categories indicate categories of
-;;; changes to that reporter that the rendering is sensitive to. The
-;;; manager then registers for updates to those categories for those
-;;; reporters, gets the current values of the reporters, and calls the
-;;; :render-dom function with the dom specification and those values.
+;;; To ask to render a component, the dom manager calls its
+;;; specification's rendering function, which is stored in
+;;; :render-dom, giving it the specification and the mutable store.
+;;; That function returns a reporter whose value is the current dom
+;;; for the specification.
 
-;;; By doing it this way, the dom manager will learn of any changes
-;;; that require recomputing the dom, and will have registered for
-;;; those changes before getting the data the renderer will use. By
-;;; default :get-rendering-data will just return the mutable store as
-;;; the reporter, and the ids there that the rendering depends on. But
-;;; occasionally, the render wants more processed information, like a
-;;; hierarchy or the result of a query on the store. This protocol
-;;; supports both, without having to re-run for every change to the
-;;; store.
+;;; As a rule, rendering functions get the information they need our
+;;; of the store, with an expr-let, and then run with the immutable
+;;; information it retrieved. This lets their subsidiary functions
+;;; work on immutable data. In the case they the need to generate dom
+;;; that further depends on the store, they can create components,
+;;; which get their own chance to access the store when the dom
+;;; manager calls their renderers.
 
-;;; When a component's dom changes, the manager only needs to
-;;; re-render sub-components with new ids, ones for which it didn't
-;;; already have subcomponents. It can assume that any pre-existing
-;;; sub-components and their renderings haven't changed. (This means
-;;; that a component that is one of several siblings either has to be
-;;; rendered identically to one that is by itself, or needs to have
-;;; different ids for the two cases. For items in table cells, which
-;;; need different formatting if they are an entire cell vs part of an
-;;; item stack, inherited CSS can handle the formatting. In other
-;;; cases, the sub-component's id may need to change between the two
-;;; different rendering situations.)
+;;; The dom manager registers for the reporter it gets back from the
+;;; renderer, so whenever the dom changes, the manager can send the
+;;; updated dom to the client. The dom manager also has to note any
+;;; changes to what sub-components are needed, based on their ids. It
+;;; deactivates no longer needed ones, and activates new ones, while
+;;; subcomponents common to both the old and new doms don't need to be
+;;; changed.
+
+;;; (This means that if a component's appearance needs to change based
+;;; on its context, the change must either be handled by css, or the
+;;; component needs to have different ids for the different
+;;; appearances. For items in table cells, which need different
+;;; formatting if they are an entire cell vs part of an item stack,
+;;; inherited CSS can handle the formatting. In other cases, the
+;;; sub-component's id may need to change between the two different
+;;; rendering situations.)
 
 ;;; TODO: Optionally, a dom specification can have a
 ;;; :sub-dom-specification method, which gives the specification of a

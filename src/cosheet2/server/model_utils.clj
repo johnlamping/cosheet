@@ -9,7 +9,7 @@
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
                       [entity :refer [primitive? object? anonymous-object?
-                                      label? id->entity
+                                      label-element? id->entity
                                       content elements orientation
                                       content->elements
                                       label->elements label->element
@@ -163,12 +163,12 @@
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
-  (filter #(and (label? %) (semantic-element? %)) (elements entity)))
+  (filter #(and (label-element? %) (semantic-element? %)) (elements entity)))
 
 (defn semantic-non-label-elements
   "Return the semantic elements of an entity that are not labels."
   [entity]
-  (filter #(and (not (label? %)) (semantic-element? %)) (elements entity)))
+  (filter #(and (not (label-element? %)) (semantic-element? %)) (elements entity)))
 
 (defn selector?
   "Return whether the entity is (or is part of) a selector."
@@ -193,7 +193,7 @@
                                     :require-orders require-orders)
                                   (elements pattern))
                        (and require-not-labels
-                            (not (label? pattern))
+                            (not (label-element? pattern))
                             (or (nil? new-content)
                                 (string? new-content)
                                 (number? new-content)))

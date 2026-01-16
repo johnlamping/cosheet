@@ -9,6 +9,7 @@
              [store :refer [new-element-store new-mutable-store store-reset!
                             id->target]]
              store-impl
+             mutable-store-impl
              [store-utils :refer [add-element]]
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
@@ -29,6 +30,11 @@
                                   parallel-items-get-action-data
                                   get-item-or-exemplar-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
+             [render-utils :refer [ensure-label-object
+                                   make-virtual-label-template
+                                   make-sequential-template
+                                   make-placeholder-object-template
+                                   make-object-reference-template]]
              [batch-edit-render :refer :all])
              ; :reload
             ))
@@ -46,6 +52,9 @@
 (def o6 (nth orderables 5))
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
+
+(def label-template (ensure-label-object 'anything))
+(def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -98,7 +107,6 @@
                                     '(anything (anything ("c1" :label))))))
 (def stk1 (second t6))
 (def s (first t6))
-
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -155,7 +163,7 @@
                        :width 0.75}]
           [:div {:class "wrapped-element label"}
            [:component
-            {:template '(anything :label)
+            {:template label-template
              :query-id q2
              :stack-id stk1
              :parallel-ids [q2-c1]
@@ -252,6 +260,13 @@
   (let [stk1-entity (id->entity stk1 s)
         stk1-element (first (matching-elements '(nil "c1") stk1-entity))
         dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
+    (let [template (-> dom (nth 4) (nth 2) (nth 1) :template)
+          template-sequence (:template-sequence template)
+          inner-template (:template (nth template-sequence 1))
+          inner-template-sequence (:template-sequence inner-template)]
+      (println "XXXX" template-sequence
+               "YYYY" inner-template
+               "ZZZZ" inner-template-sequence))
     (is (check
          dom
          [:div {:class "horizontal-labeled-element-list batch-stack"}
@@ -271,7 +286,16 @@
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 
                                           (virt-AD)]
-                        :template ['anything '(anything :label)]
+                        ;; TODO: !!! The first template of the
+                        ;; sequence should be an actual object, not a
+                        ;; placeholder. The object reference template
+                        ;; shouldn't have a sequence inside.
+                        :template (make-sequential-template
+                                   [(make-placeholder-object-template)
+                                    (make-object-reference-template
+                                     (make-sequential-template
+                                      ['anything
+                                       (ensure-label-object 'anything)]))])
                         :position :after
                         :do-not-match-query true}]
            [:component {:relative-id :stack-virtual

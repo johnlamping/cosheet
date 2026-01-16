@@ -292,7 +292,7 @@
 
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (label? %)
+                   (some #(and (label-element? %)
                                (equivalent-entities? label (content %)))
                          (elements element)))
                  (elements this))))
@@ -336,7 +336,7 @@
 
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (label? %)
+                   (some #(and (label-element? %)
                                (equivalent-entities? label (content %)))
                          (elements element)))
                  (elements this))))

@@ -15,6 +15,9 @@
                                      extended-by?]
                       :as query])
             (cosheet2.server
+             [render-utils :refer [sequential-template?
+                                   object-reference-template?
+                                   placeholder-object-template?]]
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
@@ -406,34 +409,43 @@
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger] ; adjacent-query also used.
+  [{:keys [template sibling position use-bigger past-subject-ids]
+           ; adjacent-query also used.
     :as specification}
    inherited-action-data action immutable-store]
   (assert template template)
-  (let [incoming-ids (:subject-ids inherited-action-data)
+  (let [subject-ids (:subject-ids inherited-action-data)
         targets (if sibling
-                  (map #(id->target immutable-store %) incoming-ids)
-                  incoming-ids)
+                  (map #(id->target immutable-store %) subject-ids)
+                  subject-ids)
         adjacents (if sibling
-                    incoming-ids
+                    subject-ids
                     (find-virtual-adjacents
                      targets specification immutable-store))
-        [ids _ new-store] (reduce
-                           (fn [[targets adjacents store] template]
-                             (let [[ids store]
-                                   (create-possible-selector-elements
-                                    template targets adjacents
-                                    (or position :after) use-bigger store)]
-                               [ids ids store]))
-                           [targets adjacents immutable-store]
-                           (if (vector? template) template [template]))]
+        [targets _ past-ids new-store]
+        (reduce
+         (fn [[targets adjacents past-ids store] template]
+           (let [[ids store]
+                 (if (or (object-reference-template? template)
+                         (placeholder-object-template? template))
+                   [(repeat (count targets) :placeholder) store]
+                   (create-possible-selector-elements
+                    template targets adjacents
+                    (or position :after) use-bigger store))
+                 past-ids (cons targets past-ids)]
+             [ids ids past-ids store]))
+         [targets adjacents past-subject-ids immutable-store]
+         (if (sequential-template? template)
+           (:template-sequence template)
+           [template]))]
     (println "Made items"
              template
              (simplify-for-print targets)
              (simplify-for-print adjacents))
-    (-> inherited-action-data
-        (assoc :subject-ids ids :store new-store)
-        (update-in [:past-subject-ids] #(cons incoming-ids %)))))
+    (assoc inherited-action-data
+           :subject-ids targets
+           :past-subject-ids past-ids
+           :store new-store)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_action_data

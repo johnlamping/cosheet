@@ -43,7 +43,7 @@
                          exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
                          unspecified-column-header-template]]
-    [render-utils]
+    [render-utils :refer [object-reference-template? sequential-template?]]
     [order-utils :refer [furthest-item
                          update-add-element-with-order-and-temporary]]))
   (:import [cosheet2.server.render_utils ObjectReferenceTemplate]))
@@ -98,6 +98,8 @@
                ;; Wildcard text matches anything,
                ;; because it has to match instances too
                (= from "\u00A0...")
+               ;; We are adding an object where there wasn't one.
+               (= from :placeholder)
                ;; Setting a new selector.
                (and (= from "") (= source 'anything)))
            ;; When the user edits a heading whose value was filled in
@@ -163,24 +165,30 @@
 (defn do-set-content
   [store {:keys [subject-ids past-subject-ids template from to session-state]}]
   (when (and from to (seq subject-ids) (not (equivalent-primitives? from to)))
-    (let [template (content template)]  ; The incoming template is for the
-                                        ; whole element. We want its content.
-      (if (instance? ObjectReferenceTemplate template)
+    (let [template (if (sequential-template? template)
+                     ;; We need to get to the final template, which
+                     ;; should be an object reference.
+                     (last (:template-sequence template))
+                     ;; The incoming template is for the whole element. We want
+                     ;; its content.
+                     (content template))] 
+      (if (object-reference-template? template)
         ;; We are getting a new name at an object reference position.
-        ;; First, get the object corresponding to the name. Then go two
-        ;; steps back in the subject id history, to the object
-        ;; containing the name, then to the link containing it, and
-        ;; change that link to point to the new object.
-        ;; TODO: !!! We need to handle reversed links, which we can do
-        ;;       by checking which end matches the old object.
+        ;; First, get an object corresponding to the name. Then go two
+        ;; steps back in the subject id history, first to the object
+        ;; we're possibly replacing, then to the link containing it,
+        ;; and change that link to point to the new object.
+        ;; TODO: !!!  We need to handle reversed links, which we can
+        ;; do by checking which end matches the old object.
         (let [name (clojure.string/trim to)
               [store object-id] (get-or-make-object-by-name
                                  store name (:template template))
               containing-object-ids (first past-subject-ids)
               containing-element-ids (second past-subject-ids)
-              original-object-id (first containing-object-ids) ]
+              original-object-id (first containing-object-ids)]
           (when (and (= (count subject-ids) (count containing-element-ids))
-                     (every? object-id? containing-object-ids)
+                     (or (= original-object-id :placeholder)
+                         (object-id? original-object-id))
                      (every? #(= % original-object-id) containing-object-ids)
                      (every? link-id? containing-element-ids))
             (let [store (reduce

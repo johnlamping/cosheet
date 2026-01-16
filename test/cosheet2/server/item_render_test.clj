@@ -21,7 +21,9 @@
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
-             [render-utils :refer [make-object-reference-template]]
+             [render-utils :refer [make-object-reference-template
+                                   make-virtual-label-template
+                                   ensure-label-object]]
              [action-data :refer [default-get-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data
@@ -46,6 +48,9 @@
 (def o5 (nth orderables 4))
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
+
+(def label-object-template (ensure-label-object 'anything))
+(def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -106,7 +111,7 @@
     (is (check
          (horizontal-label-hierarchy-node-DOM node {:width 0.75})
          [:component
-          {:template '(anything :label)
+          {:template label-object-template
            :width 1.5
            :parallel-ids [joe-id jane-id]
            :relative-id joe-test-id
@@ -129,12 +134,13 @@
                                               {:width 0.75})
          [:div {:class
                 "label wrapped-element virtual-wrapper merge-with-parent"}
-          [:component {:template '(anything :label)
+          [:component {:template virtual-label-template
                        :width 0.75
                        :parallel-ids [jane-id]
                        :get-action-data [(comp-AD)
                                          [(parallel-AD) (item-AD)]
                                          (virt-AD)]
+                       :position :after
                        :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
                        :render-dom (virt-DOM)}]
@@ -169,7 +175,7 @@
           [joe jane] nil false false :vertical
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
-          [:component {:width 0.8, :template '(anything :label)
+          [:component {:width 0.8, :template label-object-template
                        :parallel-ids [joe-id jane-id]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
@@ -179,7 +185,7 @@
           [:div {:class "indent-wrapper"}
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element label"}
-             [:component {:width 0.8, :template '(anything :label)
+             [:component {:width 0.8, :template label-object-template
                           :parallel-ids [joe-id]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
@@ -208,7 +214,7 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8
-                       :template '(anything :label)
+                       :template label-object-template
                        :parallel-ids [joe-id jane-id]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
@@ -219,7 +225,7 @@
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8
-                          :template '(anything :label)
+                          :template label-object-template
                           :parallel-ids [joe-id]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
@@ -247,14 +253,14 @@
                     [joe-test joe-foo] nil false false :vertical
           {:template ' anything :width 0.8})
          [:div {:class "vertical-stack"}
-          [:component {:template '(anything :label)
+          [:component {:template label-object-template
                        :width 0.8
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
-          [:component {:template '(anything :label)
+          [:component {:template label-object-template
                        :width 0.8
                        :class "label"
                        :excluded-element-ids [joe-foo-label-id]
@@ -267,7 +273,7 @@
           [sally joe-test] nil false false :vertical
           {:template ' anything :width 0.8})
          [:div {:class "wrapped-element label"}
-          [:component {:template '(anything :label)
+          [:component {:template label-object-template
                        :width 0.8
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
@@ -286,7 +292,7 @@
           [sally] nil true true :vertical
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
-          [:component {:template '(anything :label)
+          [:component {:template virtual-label-template
                        :width 0.8
                        :relative-id :virtual-label
                        :class "label"
@@ -297,7 +303,7 @@
            [:div {:class
                   "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
-                         :template '(anything :label)
+                         :template virtual-label-template
                          :relative-id [sally-id :virtual-label]
                          :parallel-ids [sally-id]
                          :get-action-data [(comp-AD)
@@ -325,19 +331,20 @@
 
 (deftest virtual-entry-and-label-DOM-test
   (is (check (virtual-entity-and-label-DOM
-              {:template "foo"
+              {:template (make-object-list ["foo"])
                :relative-id :bar
                :position :before}
               :horizontal)
              [:div {:class "horizontal-labels-element"}
               [:component
                {:relative-id :virtual-label
-                :template ["foo" '(anything :label)]
-                :position :before
+                :template (make-virtual-label-template
+                           (make-object-list ["foo"]))
+                :position :after
                 :get-action-data (virt-AD)
                 :class "label"
                 :render-dom (virt-DOM)}]
-              [:component {:template "foo"
+              [:component {:template (make-object-list ["foo"])
                            :relative-id :bar
                            :position :before
                            :render-dom (virt-DOM)
@@ -481,7 +488,7 @@
                           store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                [:component {:template '(anything :label)
+                [:component {:template label-object-template
                              :relative-id id2
                              :omit-universal-elements true
                              :render-dom render-item-DOM
@@ -510,7 +517,7 @@
          [:div
           {:class
            "horizontal-labels-element virtual-wrapper narrow item"}
-          [:component {:template '(anything :label)
+          [:component {:template virtual-label-template
                        :position :after
                        :relative-id :virtual-label
                        :omit-universal-elements true
@@ -551,7 +558,7 @@
                         "horizontal-labels-element virtual-wrapper narrow"}
                   [:component
                    {:width 0.9
-                    :template '(anything :label)
+                    :template virtual-label-template
                     :relative-id [id1 :virtual-label]
                     :render-dom (virt-DOM)
                     :parallel-ids [id1]
@@ -568,7 +575,7 @@
                         "horizontal-labels-element virtual-wrapper narrow"}
                   [:component
                    {:width 0.9
-                    :template '(anything :label)
+                    :template virtual-label-template
                     :relative-id [id2 :virtual-label]
                     :render-dom (virt-DOM)
                     :parallel-ids [id2]
@@ -614,7 +621,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template '(anything :label)
+                               :template label-object-template
                                :parallel-ids [id1]
                                :class "label"
                                :excluded-element-ids [id-tag1]
@@ -630,7 +637,7 @@
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template '(anything :label)
+                               :template label-object-template
                                :parallel-ids [id2]
                                :class "label"
                                :excluded-element-ids [id-tag2]
@@ -700,7 +707,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template '(anything :label)
+                               :template label-object-template
                                :parallel-ids [id0]
                                :class "label"
                                :excluded-element-ids [id-tag0]
@@ -716,7 +723,7 @@
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template '(anything :label)
+                               :template label-object-template
                                :parallel-ids [id1 id2]
                                :class "label"
                                :excluded-element-ids [id-tag1both]
@@ -727,7 +734,7 @@
                    [:div {:class "vertical-stack"}
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :template '(anything :label)
+                                  :template label-object-template
                                   :parallel-ids[id1]
                                   :class "label"
                                   :excluded-element-ids [id-tag1one]
@@ -745,7 +752,7 @@
                                    :get-action-data (default-AD)}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :template '(anything :label)
+                                  :template label-object-template
                                   :parallel-ids [id2]
                                   :class "label"
                                   :excluded-element-ids [id-tag2two]
@@ -764,7 +771,7 @@
                 [:div {:class (str "horizontal-labels-element"
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
-                              :template '(anything :label)
+                              :template virtual-label-template
                               :parallel-ids [id3]
                               :get-action-data [(comp-AD)
                                                 [(parallel-AD) (item-AD)]
@@ -802,7 +809,7 @@
           {:class "horizontal-labels-element virtual-wrapper narrow item"}
           [:component
            {:width 1.5
-            :template '(anything :label)
+            :template virtual-label-template
             :relative-id :virtual-label
             :omit-universal-elements true
             :position :after
@@ -820,7 +827,7 @@
             [:div {:class "horizontal-labels-element label wide"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template '(anything :label)
+                           :template virtual-label-template
                            :relative-id [id1 :virtual-label]
                            :parallel-ids [id1]
                            :get-action-data [(comp-AD)
@@ -836,7 +843,7 @@
             [:div {:class "horizontal-labels-element label wide"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template '(anything :label)
+                           :template virtual-label-template
                            :relative-id [id2 :virtual-label]
                            :parallel-ids [id2]
                            :get-action-data [(comp-AD)
@@ -884,7 +891,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :template '(anything :label)
+             [:component {:width 0.375, :template label-object-template
                           :parallel-ids [id1]
                           :class "label"
                           :excluded-element-ids [id-tag1]
@@ -900,7 +907,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :template '(anything :label)
+             [:component {:width 0.375, :template label-object-template
                           :parallel-ids [id2]
                           :class "label"
                           :excluded-element-ids [id-tag2]
@@ -971,7 +978,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :template '(anything :label)
+                          :template label-object-template
                           :parallel-ids [id0]
                           :class "label"
                           :excluded-element-ids [id-tag0]
@@ -987,7 +994,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
-                          :template '(anything :label)
+                          :template label-object-template
                           :parallel-ids [id1 id2]
                           :class "label"
                           :excluded-element-ids [id-tag1both]
@@ -1005,7 +1012,7 @@
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template '(anything :label)
+                           :template label-object-template
                            :parallel-ids [id1]
                            :class "label"
                            :excluded-element-ids [id-tag1one]
@@ -1024,7 +1031,7 @@
             [:div {:class "label horizontal-header indent bottom-border"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template '(anything :label)
+                           :template label-object-template
                            :parallel-ids [id2]
                            :class "label"
                            :excluded-element-ids [id-tag2two]
@@ -1042,7 +1049,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :template '(anything :label)
+                          :template virtual-label-template
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
                           :parallel-ids [id3]

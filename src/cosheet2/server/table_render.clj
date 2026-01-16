@@ -6,7 +6,7 @@
                       [entity :refer [content elements label->elements
                                       id->entity
                                       id->updating-entity-R
-                                      label? label->element]]
+                                      label-element? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -163,7 +163,8 @@
     (let [condition-elements (semantic-elements row-condition)
           spec-down {:template 'anything
                      :width 0.75}
-          last-item (last (ordered-entities (remove label? condition-elements)))
+          last-item (last (ordered-entities
+                           (remove label-element? condition-elements)))
           virtual-dom
           (add-attributes
            (virtual-entity-and-label-DOM

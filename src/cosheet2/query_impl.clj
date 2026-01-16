@@ -9,7 +9,7 @@
                                       label->elements
                                       label->content
                                       to-list
-                                      label?]]
+                                      label-element?]]
                       [query :refer [extended-by-m?
                                matching-extensions-m
                                matching-elements-m
@@ -139,7 +139,7 @@
         elems (map #(first (contextualize-variable % env))
                    (elements contextualized))
         [positive negative] (separate-negations elems)
-        candidates (filter label? positive)]
+        candidates (filter label-element? positive)]
     ;; Test for the special case of looking for nothing but an element
     ;; with a primitive value. That is the case where we can return a
     ;; single label which is a perfect fit.

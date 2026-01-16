@@ -405,9 +405,17 @@
         (and marks-as-type target)
         (update-in [:marked-as-type] #(conj % target))))))
 
-;;; NOTE: This definition must be kept in synch with entity/label?
-;;; TODO: !!! Get rid of the :marked-as-type test (and its index),
-;;;       which gets rid of :label marking labels
+;;; NOTE: The next two definitions must be kept in synch with entity/label?
+
+(defn id-is-label-object?
+  "Return whether the id is an object that makes a link with it as
+  source count be a label."
+  [store id]
+  (and (object-id? id)
+       (or (= id name-label-id)
+           (seq (target-source->ids store id link-type-id))
+           (seq (target-source->ids store id object-type-id)))))
+
 (defn id-is-label?
   "Return whether the id counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
@@ -423,12 +431,10 @@
   Requires that :target->ids and :source->ids are up to date."
   [store id]
   (or (let [source (id->source store id)]
-        (cond (object-id? source)
-              (or (= source name-label-id)
-                  (seq (target-source->ids store source link-type-id))
-                  (seq (target-source->ids store source object-type-id)))
-              (keyword? source)
-              (not= source :label)))
+        (cond (object-id? source) (id-is-label-object? store source)
+              (keyword? source) (not= source :label)))
+      ;; TODO: !!! Get rid of the :marked-as-type test (and its index),
+      ;;       once :label no longer marks labels.
       (contains? (:marked-as-type store) id)))
 
 (defn index-endpoint->label->label-ids-from-label

@@ -19,18 +19,22 @@
     (combine-maps map-combiner v1 v2)
     v2))
 
+(defn merge-classes
+  [c1 c2]
+  (cond (empty? c2) c1
+        (empty? c1) c2
+        true (let [c1s (string/split c1 #" ")
+                   c2s (string/split c2 #" ")]
+               (string/join
+                " " (concat c1s (remove (set c1s) c2s))))))
+
 (defn into-attributes
   "Add attributes to an attribute map,
    correctly handling multiple classes or styles, or commands."
   [accumulator attributes]
   (combine-maps (fn [key v1 v2]
                   (case key
-                    :class (if (empty? v2)
-                             v1
-                             (let [v1s (string/split v1 #" ")
-                                   v2s (string/split v2 #" ")]
-                               (string/join
-                                " " (concat v1s (remove (set v1s) v2s)))))
+                    :class (merge-classes v1 v2)
                     (map-combiner key v1 v2)))
                 accumulator attributes))
 

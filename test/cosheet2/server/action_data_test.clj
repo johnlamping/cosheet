@@ -18,7 +18,8 @@
                                                   ordered-entities
                                                   order-recursively]]
                              [model-utils :refer [semantic-to-list
-                                                  semantic-elements]])
+                                                  semantic-elements]]
+                             [render-utils :refer [make-sequential-template]])
             ; :reload
             ))
 
@@ -150,10 +151,12 @@
   ;; Try several initial targets, one a selector and one not, and a
   ;; vector as the template.
   (let [data (get-virtual-action-data
-              {:template ['anything '(2 ("name" :label))]}
+              {:template (make-sequential-template
+                          ['anything '(2 ("name" :label))])}
               {:subject-ids [jane-id joe-id]} nil store)]
+    (println jane-id joe-id)
     (is (check data {:subject-ids [(any) (any)]
-                     :past-subject-ids [[jane-id joe-id]]
+                     :past-subject-ids [[(any) (any)] [jane-id joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
@@ -177,7 +180,7 @@
                :position :before}
               {:subject-ids [(:item-id joe-age)]} nil store)]
     (is (check data {:subject-ids [(any)]
-                     :past-subject-ids [[(:item-id joe-age)]]
+                     :past-subject-ids [[(:item-id joe)]]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data

@@ -8,7 +8,8 @@
              [store-utils :refer [add-element]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->entity
-                                         label->elements elements to-list]]
+                                         label->elements elements to-list
+                                         make-object-list link-type]]
              [expression :refer [expr expr-let expr-seq]]
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
@@ -29,7 +30,10 @@
                                   parallel-items-get-do-batch-edit-action-data
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels
-                                replace-hierarchy-leaves-by-nodes] :as hierarchy]
+                                replace-hierarchy-leaves-by-nodes]
+                        :as hierarchy]
+             [render-utils :refer [make-virtual-label-template
+                                   ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list semantic-elements]]
              [table-render :refer :all])
@@ -49,6 +53,9 @@
 (def o6 (nth orderables 5))
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
+
+(def label-object-template (ensure-label-object 'anything))
+(def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -267,8 +274,8 @@
          (run-renderer
           render-table-condition-DOM {:relative-id row-condition-id} store)
          [:div {:class "horizontal-labels-element query-condition"}
-          ;; A virtual label for the condition
-          [:component {:template '(anything :label)
+          ;; A virtual label for the condition.
+          [:component {:template virtual-label-template
                        :position :after
                        :relative-id :virtual-label
                        :width 0.75
@@ -278,7 +285,7 @@
            ;; The condition element.
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
-             [:component {:template '(anything :label)
+             [:component {:template label-object-template
                           :width 0.75
                           :parallel-ids [rc1-id]
                           :class "label"
@@ -299,7 +306,8 @@
                           :item-id rc1-id
                           :width 0.75
                           :sibling true
-                          :template ['anything '(anything :label)]
+                          :template virtual-label-template
+                          :position :after
                           :get-action-data [composed-get-action-data
                                             (item-AD)
                                             (virt-AD)]
@@ -335,7 +343,7 @@
            ;; The label for the three columns
            [:component {:column-ids [c2-id c3-id c4-id]
                         :width 2.25
-                        :template '(anything :label)
+                        :template label-object-template
                         :parallel-ids [c2-id c3-id c4-id]
                         :get-do-batch-edit-action-data
                         [(comp-AD)
@@ -355,7 +363,8 @@
               {:column-ids [c2-id]
                :competing-ids [c3-id]
                :width 0.75
-               :template '(anything :label)
+               :template virtual-label-template
+               :position :after
                :parallel-ids [c2-id]
                :get-action-data [(comp-AD)
                                  [(parallel-AD) (item-AD)]
@@ -392,7 +401,8 @@
               {:column-ids [c4-id]
                :competing-ids [c3-id]
                :width 0.75
-               :template '(anything :label)
+               :template virtual-label-template
+               :position :after
                :parallel-ids [c4-id]
                :get-action-data [(comp-AD)
                                  [(parallel-AD) (item-AD)]
@@ -425,7 +435,8 @@
                              " column-header leaf")}
            [:component {:column-ids [c6-id]
                         :width 0.75
-                        :template '(anything :label)
+                        :template virtual-label-template
+                        :position :after
                         :parallel-ids [c6-id]
                         :get-action-data [(comp-AD)
                                           [(parallel-AD) (item-AD)]
@@ -446,7 +457,8 @@
                              " column-header leaf")}
            [:component {:column-ids [c7-id]
                         :width 0.75
-                        :template '(anything :label)
+                        :template virtual-label-template
+                        :position :after
                         :parallel-ids [c7-id]
                         :get-action-data [(comp-AD)
                                           [(parallel-AD) (item-AD)]
@@ -465,7 +477,8 @@
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
-                        :template ['anything '(anything :label)]
+                        :template virtual-label-template
+                        :position :after
                         :sibling true
                         :width 0.75
                         :item-id c7-id
@@ -616,7 +629,7 @@
                              " narrow")}
            [:component
             {:width 0.75
-             :template '(anything :label)
+             :template virtual-label-template
              :relative-id [(any) :virtual-label]
              :parallel-ids [joe-joe-id]
              :get-action-data [(comp-AD)
@@ -637,7 +650,7 @@
              (table-cell-item-do-batch-AD)}]]
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
-                        :template '(anything :label)
+                        :template label-object-template
                         :parallel-ids [joe-joseph-id]
                         :render-dom render-item-DOM
                         :get-action-data (default-AD)

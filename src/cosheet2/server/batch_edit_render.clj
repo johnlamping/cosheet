@@ -1,7 +1,7 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [id->entity updating-immutable
-                                      elements to-list label? label->elements
+                                      elements to-list label-element? label->elements
                                       target-entity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
@@ -16,7 +16,8 @@
                                 hierarchy-node-descendants
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels]]
-             [render-utils :refer [hierarchy-node-DOM make-component]]
+             [render-utils :refer [hierarchy-node-DOM make-component
+                                   make-sequential-template]]
              [model-utils :refer [semantic-elements semantic-non-label-elements
                                   semantic-to-list entity->canonical-semantic
                                   pattern-to-fixed-term]]
@@ -187,7 +188,11 @@
           label-dom (virtual-label-DOM-component
                      (assoc
                       specification
-                      :template ['anything '(anything :label)]
+                      :template (make-sequential-template
+                                 ;; virtual-label-DOM-component will
+                                 ;; turn the second 'anything into a
+                                 ;; label template.
+                                 ['anything 'anything])
                       :relative-id :stack-virtual-label
                       :get-action-data
                       get-batch-edit-stack-virtual-element-subject-action-data
@@ -209,10 +214,12 @@
                        :stack-id stack-id}
         query-entity (id->entity query-id store)
         query-elements (ordered-entities (semantic-elements query-entity))
-        [query-labels query-non-labels] (separate-by label? query-elements)
+        [query-labels query-non-labels] (separate-by label-element?
+                                                     query-elements)
         stack-entity (id->entity stack-id store)
         stack-elements (ordered-entities (semantic-elements stack-entity))
-        [stack-labels stack-non-labels] (separate-by label? stack-elements)
+        [stack-labels stack-non-labels] (separate-by label-element?
+                                                     stack-elements)
         ;; TODO: If there are no labels, add a virtual one,
         ;; if the stack entity says to.
         labels-dom (label-stack-DOM

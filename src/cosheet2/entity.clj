@@ -301,10 +301,18 @@
        (not (or (link-type-object? entity)
                 (object-type-object? entity)))))
 
-;;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
-;;; TODO: !!! Get rid of the marked-as-type? condition,
-;;;       which gets rid of :label marking labels
-(defn label? [entity]
+;;; NOTE: The next two definitions must be kept in synch with
+;;; store-impl/id-is-label?
+
+(defn label-object? [entity]
+  "Return whether the entity is an object that makes an element that
+   has the entity as content be a label."
+  (and (object? entity)
+       (or (= (entity-key entity) name-label-id)
+           (link-type-object? entity)
+           (object-type-object? entity))))
+
+(defn label-element? [entity]
   "Return whether the entity counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
   target's endpoints.
@@ -316,12 +324,10 @@
          'link-type' or 'object-type'.
      * Has an element whose content is :label (obsolete)"
   (or (let [content (content entity)]
-        (cond (object? content)
-              (or (= (entity-key content) name-label-id)
-                  (link-type-object? content)
-                  (object-type-object? content))
-              (keyword? content)
-              (not= content :label)))
+        (cond (object? content) (label-object? content)
+              (keyword? content) (not= content :label)))
+      ;; TODO: !!! Get rid of this marked-as-type? condition once
+      ;; :label no longer marks labels.
       (marked-as-type? entity)))
 
 (defn make-element-list

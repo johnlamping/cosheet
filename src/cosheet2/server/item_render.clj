@@ -1,12 +1,15 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
                       [store :refer [make-item-id]]
-                      [entity :refer [label? id->entity
+                      [entity :refer [id->entity
                                       id->updating-entity-R
-                                      content label? primitive?
+                                      content label-element? primitive? object?
                                       named-object? universal-object?
+                                      label-object?
+                                      elements
                                       label->elements content->elements
-                                      name-label link-type object-type]]
+                                      name-label link-type object-type
+                                      make-object-list]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
                                      map-with-first-last
@@ -14,7 +17,8 @@
                                      separate-by]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils
-                       :refer [dom-attributes into-attributes add-attributes]]
+                       :refer [dom-attributes into-attributes add-attributes
+                               merge-classes]]
                       [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet2.server
              [model-utils :refer [semantic-elements
@@ -31,6 +35,8 @@
              [order-utils :refer [ordered-entities]]
              [render-utils
               :refer [make-object-reference-template
+                      ensure-label-object
+                      make-virtual-label-template
                       make-component
                       nest-if-multiple-DOM
                       condition-satisfiers
@@ -54,18 +60,6 @@
     (case orientation
       :horizontal :vertical
       :vertical :horizontal))
-
-(defn ensure-label
-  "Give the list form of an entity, add a :label keyword if it doesn't
-   already have one."
-  [template]
-  (cond
-    ;; The template for a virtual entity can be a vector. The last
-    ;; element is the one that must be a label.
-    (vector? template) (vec (concat (butlast template)
-                                    [(ensure-label (last template))]))
-    (label? template) template
-    true (add-elements-to-entity-list template [:label])))
 
 (def render-item-DOM)
 
@@ -166,16 +160,17 @@
 
 (defn virtual-label-DOM-component
   "Return a dom for a virtual label. The label must occur inside an
-  overall component for its element. The specification should be for
-  elements of the item."
-  [specification]
-  (assert (:template specification) specification)
-  (virtual-DOM-component
-   (-> specification
-       (assoc :relative-id (or (:relative-id specification) :virtual-label)
-              :position :after)       
-       (update :template ensure-label)
-       (into-attributes {:class "label"}))))
+  overall component for the item it modifies. The specification should
+  be for elements of the item."
+  [{:keys [relative-id template] :as specification}]
+  (assert template specification)
+  (let [template (make-virtual-label-template template)]
+    (virtual-DOM-component
+     (-> specification
+         (assoc :relative-id (or relative-id :virtual-label)
+                :position :after
+                :template template)
+         (into-attributes {:class "label"})))))
 
 (defn virtual-entity-and-label-DOM
   "Return the dom for a virtual entity and a virtual label for it.
@@ -183,11 +178,8 @@
   [specification orientation]
   (let [dom (virtual-DOM-component specification)
         template (:template specification)
-        labels-dom (virtual-DOM-component
-                    (assoc specification
-                           :relative-id :virtual-label
-                           :class "label"
-                           :template [template '(anything :label)]))]
+        labels-dom (virtual-label-DOM-component
+                    (dissoc specification :relative-id))]
     (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
       (:class specification)
       (add-attributes {:class (:class specification)}))))
@@ -208,7 +200,7 @@
 
 (defn add-parallel-item-ids-for-label
   "Add :parallel-ids and the appropriate action-data getters for a
-  label that covers a DOM that refers to several items. The
+  label that covers a DOM that refers to several items. The incoming
   specification should be what is expected for the items the label is
   about."
   [specification item-ids]
@@ -230,11 +222,14 @@
   "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
   (let [ordered-labels (ordered-entities label-elements)
+        ;; TODO: !!! Get rid of this once it's clear it's not
+        ;; needed. (Once the :label tags are removed from the tests
+        ;; and elsewhere.)
         label-tags (map #(condition-satisfiers % '(nil :label))
-                       ordered-labels)]
+                        ordered-labels)]
     (item-stack-DOM ordered-labels label-tags :vertical
                     (-> specification
-                        (update :template ensure-label)
+                        (update :template ensure-label-object)
                         (into-attributes {:class "label"})))))
 
 (defn non-empty-labels-wrapper-DOM
@@ -274,14 +269,17 @@
         labels-spec (transform-specification-for-non-contained-labels
                      specification)]
     (let [dom (if (empty? (:properties hierarchy-node))
-                (virtual-DOM-component
-                 ;; TODO: Track hierarchy depth in the spec, and use
-                 ;; it to uniquify virtual labels.
-                 (-> labels-spec
-                     (assoc :relative-id [example-descendant-id
-                                          :virtual-label])
-                     (add-parallel-item-ids descendant-ids)
-                     (update :template ensure-label)))
+                (do
+                  (assert (label-object? (:template labels-spec)) labels-spec)
+                  (virtual-DOM-component
+                   ;; TODO: Track hierarchy depth in the spec, and use
+                   ;; it to uniquify virtual labels.
+                   (-> labels-spec
+                       (assoc :relative-id [example-descendant-id
+                                            :virtual-label]
+                              :template (make-virtual-label-template
+                                         (:template labels-spec)))
+                       (add-parallel-item-ids descendant-ids))))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (add-parallel-item-ids-for-label labels-spec descendant-ids)))]
@@ -409,7 +407,6 @@
    hierarchy labeled-items-properties-DOM horizontal-label-wrapper
    (-> specification
        transform-specification-for-non-contained-labels
-       (update :template ensure-label)
        (update :width #(* % 0.25)))))
 
 (defn labeled-items-for-two-column-DOMs
@@ -503,7 +500,7 @@
    orientation specification]
   (assert (not (:relative-id specification))
           (:relative-id specification))
-  (let [[labels non-labels] (separate-by label? elements)
+  (let [[labels non-labels] (separate-by label-element? elements)
         elements-dom
         (when (or non-labels virtual-dom)
           (let [elements-dom
@@ -539,7 +536,7 @@
                    {:class class}
                    {:class (cond-> "content-text"
                              anything (str " placeholder"))})
-            (label? item)
+            (label-element? item)
             (into-attributes (:class "label"))
             anything
             (into-attributes (:class "placeholder")))
@@ -587,7 +584,7 @@
                             :item-id (:item-id item)
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
-           (label? item)
+           (label-element? item)
            (into-attributes {:class "label"})))]
       (if (empty? elements)
         content-dom
@@ -597,8 +594,8 @@
                             (or (:must-show-label specification) true)
                             :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
-                          (label? item)
-                          (str " label"))}
+                          (label-element? item)
+                          (merge-classes "label"))}
            content-dom elements-dom]))))
 
 (defn item-content-labels-and-non-label-elements-DOM
@@ -634,7 +631,7 @@
                   (set (map #(id->entity % (:store entity))
                             excluded-element-ids))
                   (semantic-elements entity))
-        [labels non-labels] (separate-by label? elements)
+        [labels non-labels] (separate-by label-element? elements)
         labels (cond->> labels
                  (:omit-universal-elements specification)
                  (remove #(universal-object? (content %))))]
@@ -712,14 +709,15 @@
                               (assoc :excluded-element-ids ancestor-ids)))))
         descendant-ids (map #(-> % :item :item-id)
                             (hierarchy-node-descendants node)) ]
-    (if (empty? (:properties node))
+    (cond
+      (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
-      (let [label-dom (cond-> (virtual-DOM-component
+      (let [label-dom (cond-> (virtual-label-DOM-component
                                (assoc (add-parallel-item-ids specification
                                                              descendant-ids)
-                                      :class "label"
-                                      :template '(anything :label)
+                                      :class ""
+                                      :template 'anything
                                       :relative-id [(:item-id leaf) :nested]))
                         (not top-level)
                         (add-attributes {:class "merge-with-parent"}))]
@@ -729,15 +727,18 @@
                         (str " merge-with-parent"))}
          label-dom
          [:div {:class "indent-wrapper label"} leaf-component]])
-      (if (empty? (:child-nodes node))
-        leaf-component
-        (do
-          ;; Since the node has children, our input condition implies
-          ;; that it must not have a leaf.
-          (assert (not leaf) node)
-          (label-stack-DOM
-           example-elements
-           (-> (add-parallel-item-ids-for-label specification descendant-ids)
-               (assoc :template '(anything :label)
-                      :width (* 0.75 (count (hierarchy-node-descendants
-                                             node)))))))))))
+      
+      (empty? (:child-nodes node))
+      leaf-component
+      
+      true
+      (do
+        ;; Since the node has children, our input condition implies
+        ;; that it must not have a leaf.
+        (assert (not leaf) node)
+        (label-stack-DOM
+         example-elements
+         (-> (add-parallel-item-ids-for-label specification descendant-ids)
+             (assoc :template 'anything
+                    :width (* 0.75 (count (hierarchy-node-descendants
+                                           node))))))))))

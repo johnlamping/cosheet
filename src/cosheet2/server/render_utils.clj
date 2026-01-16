@@ -1,5 +1,7 @@
 (ns cosheet2.server.render-utils
-  (:require (cosheet2 [entity :refer [target-entity elements label?]]
+  (:require (cosheet2 [entity :refer [target-entity elements
+                                      label-element? object? label-object?
+                                      link-type make-object-list]]
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
@@ -21,6 +23,28 @@
                                   entity->fixed-term-with-negations
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
+
+(defrecord
+    ^{:doc
+      "This is a template for a location that holds a virtual object that
+       requires creating a sequence of items. An item matching the
+       first template of the template-sequence must be created, with
+       that item used as the target for creating the item matching the
+       next template the sequence, etc. The reference of the whole
+       sequence is the item created for the final template."}
+    SequentialTemplate
+    [template-sequence])
+
+(defmethod print-method SequentialTemplate [s ^java.io.Writer w]
+  (.write w (str "SequentialTemplate " (:template-sequence s))))
+
+(defn make-sequential-template
+  [template]
+  (->SequentialTemplate template))
+
+(defn sequential-template?
+  [template]
+  (instance? SequentialTemplate template))
 
 (defrecord
     ^{:doc
@@ -51,15 +75,48 @@
     [])
 
 (defmethod print-method PlaceholderObjectTemplate [s ^java.io.Writer w]
-  (.write w (str "PlaceholderObjTemplatej")))
+  (.write w (str "PlaceholderObjTemplate")))
 
-(defn make-placejholder-object-template
+(defn make-placeholder-object-template
   []
   (->PlaceholderObjectTemplate))
 
 (defn placeholder-object-template?
   [template]
   (instance? PlaceholderObjectTemplate template))
+
+(defn ensure-label-object
+  "Give the list form of an object template, make it be a label it isn't
+  already."
+  [template]
+  (assert (not (placeholder-object-template? template)))
+  (assert (not (object-reference-template? template)))
+  (assert (or (object? template) (not (vector? template))) template)
+  (cond
+    (sequential-template? template)
+    (let [templates (:template-sequence template)]
+      (make-sequential-template
+       (concat (butlast templates) [(ensure-label-object (last templates))])))
+    (label-object? template)
+    template
+    true
+    (let [current-elements (if (object? template)
+                             (elements template)
+                             (do (assert (or (= template 'anything)
+                                             (= template nil))
+                                         template)
+                                 []))]
+      (assert (empty? (filter #(= `(~link-type) %) current-elements))
+              current-elements)
+      (make-object-list (conj current-elements `(~link-type))))))
+
+(defn make-virtual-label-template
+  [template]
+  (make-sequential-template
+   ['("")                              ; the element that is the label.
+    (make-placeholder-object-template) ; the object holding its value.
+    (make-object-reference-template    ; the name of that object.
+     (ensure-label-object template))]))
 
 (defn specification-item-id
   [specification]
@@ -99,7 +156,7 @@
 (defn transform-specification-for-labels
   [specification]
   (assoc (select-keys specification [:width :immutable])
-         :template '(anything :label)
+         :template (ensure-label-object 'anything)
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
@@ -113,7 +170,7 @@
                                      :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template '(anything :label)))
+         :template (ensure-label-object 'anything)))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -132,7 +189,7 @@
   [entity]
   (let [entity-canonical (entity->canonical-term entity)
         siblings (semantic-elements (target-entity entity))
-        [labels non-labels] (separate-by label? siblings)
+        [labels non-labels] (separate-by label-element? siblings)
         candidates (if ((set labels) entity) labels non-labels)
         matching (filter #(= entity-canonical (entity->canonical-term %))
                          candidates)]

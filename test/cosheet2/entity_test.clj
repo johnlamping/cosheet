@@ -489,28 +489,43 @@
   (is (not (marked-as-type? '("foo" "bar"))))
   (is (not (marked-as-type? '(("foo" ("bar" :label)))))))
 
-(deftest label?-test
+(deftest label-object?-test
   (let [special-object (fn [id] (id->object (make-item-id id) nil))]
-    (is (label? :foo))
-    (is (label? '(:foo "foo")))
-    (is (label? '("foo" :label)))
-    (is (label? '("foo" :label "bar")))
-    (is (label? `(~(special-object "name"))))
-    (is (not (label? `("foo" ~(special-object "name")))))
-    (is (not (label? :label)))
-    (is (not (label? "foo")))
-    (is (not (label? `("foo" ~(special-object "name-type")))))
-    (is (not (label? `("foo" ~(special-object "link-type")))))
-    (is (label? `(~(make-object-list
+    (is (label-object? (special-object "name")))
+    (is (label-object? (make-object-list
+                        `((~(special-object "link-type"))))))
+    (is (label-object? (make-object-list
+                        `((~(special-object "object-type"))))))
+    (is (label-object? (make-object-list
+                        `(("fred" ~(special-object "name"))
+                          (~(special-object "link-type"))))))
+    (is (not (label-object? (make-object-list
+                             `((~(special-object "name")))))))
+    (is (not (label-object? (make-object-list
+                             `(("fred" ~(special-object "name")))))))))
+
+(deftest label-element?-test
+  (let [special-object (fn [id] (id->object (make-item-id id) nil))]
+    (is (label-element? :foo))
+    (is (label-element? '(:foo "foo")))
+    (is (label-element? '("foo" :label)))
+    (is (label-element? '("foo" :label "bar")))
+    (is (label-element? `(~(special-object "name"))))
+    (is (not (label-element? `("foo" ~(special-object "name")))))
+    (is (not (label-element? :label)))
+    (is (not (label-element? "foo")))
+    (is (not (label-element? `("foo" ~(special-object "name-type")))))
+    (is (not (label-element? `("foo" ~(special-object "link-type")))))
+    (is (label-element? `(~(make-object-list
                     `((~(special-object "link-type")))))))
-    (is (label? `(~(make-object-list
+    (is (label-element? `(~(make-object-list
                     `((~(special-object "object-type")))))))
-    (is (label? `(~(make-object-list
+    (is (label-element? `(~(make-object-list
                     `(("fred" ~(special-object "name"))
                       (~(special-object "link-type")))))))
-    (is (not (label? `(~(make-object-list
+    (is (not (label-element? `(~(make-object-list
                          `((~(special-object "name"))))))))
-    (is (not (label? `(~(make-object-list
+    (is (not (label-element? `(~(make-object-list
                          `(("fred" ~(special-object "name"))))))))))
 
 (deftest make-element-list-test

@@ -53,7 +53,8 @@
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
 
-(def label-template (ensure-label-object 'anything))
+(def label-object-template (ensure-label-object 'anything))
+(def label-template `(~label-object-template))
 (def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
@@ -170,6 +171,7 @@
              :render-dom render-item-DOM
              :get-action-data (default-AD)
              :class "label"
+             :omit-universal-elements true
              :excluded-element-ids [(any)]
              :relative-id q2-c1-l
              :immutable true

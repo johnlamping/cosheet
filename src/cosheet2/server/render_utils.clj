@@ -1,7 +1,8 @@
 (ns cosheet2.server.render-utils
   (:require (cosheet2 [entity :refer [target-entity elements
                                       label-element? object? label-object?
-                                      link-type make-object-list]]
+                                      link-type make-object-list
+                                      make-element-list content orientation]]
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
@@ -110,13 +111,23 @@
               current-elements)
       (make-object-list (conj current-elements `(~link-type))))))
 
+(defn ensure-label-object-content
+  "Given the list form of an element, make its content be a label if it
+  isn't already."
+  [template]
+  (if (or (= template 'anything) (= template nil))
+    `(ensure-label-object template))
+  (make-element-list (orientation template)
+                     (ensure-label-object (content template))
+                     (elements template)))
+
 (defn make-virtual-label-template
   [template]
   (make-sequential-template
    ['("")                              ; the element that is the label.
     (make-placeholder-object-template) ; the object holding its value.
     (make-object-reference-template    ; the name of that object.
-     (ensure-label-object template))]))
+     (ensure-label-object (content template)))]))
 
 (defn specification-item-id
   [specification]
@@ -156,7 +167,7 @@
 (defn transform-specification-for-labels
   [specification]
   (assoc (select-keys specification [:width :immutable])
-         :template (ensure-label-object 'anything)
+         :template (ensure-label-object-content 'anything)
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
@@ -170,7 +181,8 @@
                                      :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template (ensure-label-object 'anything)))
+         :template (ensure-label-object-content 'anything)
+         :omit-universal-elements true))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,

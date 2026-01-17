@@ -50,6 +50,7 @@
 (def unused-orderable (nth orderables 6))
 
 (def label-object-template (ensure-label-object 'anything))
+(def label-template `(~label-object-template))
 (def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
@@ -90,16 +91,25 @@
                           :render-dom (virt-DOM)
                           :get-action-data (virt-AD)}])))
 
-
 (deftest horizontal-label-hierarchy-node-DOM-test
-  (let [[s4 joe-id] (add-element (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-element s4 joe-id "test")
-        [s6 joe-test-label-id] (add-element s5 joe-test-id :label)
-        [s7 joe-foo-id] (add-element s6 joe-id "foo")
-        [s8 joe-foo-label-id] (add-element s7 joe-foo-id :label)
-        [s9 jane-id] (add-element s8 nil "Jane")
-        [s10 jane-test-id] (add-element s9 jane-id "test")
-        [store jane-test-label-id] (add-element s10 jane-test-id :label)
+  (let [s (add-universal-objects (new-element-store))
+        [s1 test-label-oid] (get-new-object-id s)
+        [s1a test-label-name-id] (add-element s1 test-label-oid "test")
+        [s1b test-label-name-tag-id] (add-element
+                                      s1a test-label-name-id name-label)
+        [s1c test-label-label-id] (add-element s1b test-label-oid link-type)
+        test-label-object (id->entity test-label-oid s1c)
+        [s2 foo-label-oid] (get-new-object-id s1c)
+        [s2a foo-label-name-id] (add-element s2 foo-label-oid "foo")
+        [s2b foo-label-name-tag-id] (add-element
+                                     s2a foo-label-name-id name-label)
+        [s2c foo-label-label-id] (add-element s2b foo-label-oid link-type)
+        foo-label-object (id->entity foo-label-oid s2c)
+        [s4 joe-id] (add-element s2c nil "Joe")
+        [s5 joe-test-id] (add-element s4 joe-id test-label-object)
+        [s7 joe-foo-id] (add-element s5 joe-id foo-label-object)
+        [s9 jane-id] (add-element s7 nil "Jane")
+        [store jane-test-id] (add-element s9 jane-id test-label-object)
         joe (id->entity joe-id store)
         jane (id->entity jane-id store)
         ordered-entities [joe jane]
@@ -111,14 +121,13 @@
     (is (check
          (horizontal-label-hierarchy-node-DOM node {:width 0.75})
          [:component
-          {:template label-object-template
+          {:template label-template
            :width 1.5
            :parallel-ids [joe-id jane-id]
            :relative-id joe-test-id
            :render-dom render-item-DOM
            :get-action-data (default-AD)
-           :class "label"
-           :excluded-element-ids [joe-test-label-id]}]))
+           :class "label"}]))
     ;; A node with a leaf,  properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (first (:child-nodes node))
@@ -152,56 +161,69 @@
                         :excluded-element-ids [jane-test-id]}]]]))))
 
 (deftest labels-and-elements-DOM-test
-  (let [[s4 joe-id] (add-element (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-element s4 joe-id "test")
-        [s6 joe-test-label-id] (add-element s5 joe-test-id :label)
-        [s6p _] (add-element s6 joe-test-id `(~o1 :order))
-        [s7 joe-foo-id] (add-element s6p joe-id "foo")
-        [s8 joe-foo-label-id] (add-element s7 joe-foo-id :label)
-        [s8p _] (add-element s8 joe-foo-id `(~o2 :order))
-        [s9 jane-id] (add-element s8p nil "Jane")
-        [s10 jane-test-id] (add-element s9 jane-id "test")
-        [s11 jane-test-label-id] (add-element s10 jane-test-id :label)
-        [store sally-id] (add-element s11 nil "Sally")
+  (let [s (add-universal-objects (new-element-store))
+        [s1 test-label-oid] (get-new-object-id s)
+        [s1a test-label-name-id] (add-element s1 test-label-oid "test")
+        [s1b test-label-name-tag-id] (add-element
+                                      s1a test-label-name-id name-label)
+        [s1c test-label-label-id] (add-element s1b test-label-oid link-type)
+        temp-test-label-object (id->entity test-label-oid s1c)
+        [s2 foo-label-oid] (get-new-object-id s1c)
+        [s2a foo-label-name-id] (add-element s2 foo-label-oid "foo")
+        [s2b foo-label-name-tag-id] (add-element
+                                     s2a foo-label-name-id name-label)
+        [s2c foo-label-label-id] (add-element s2b foo-label-oid link-type)
+        temp-foo-label-object (id->entity foo-label-oid s2c)
+        [s4 joe-id] (add-element s2c nil "Joe")
+        [s5 joe-test-id] (add-element s4 joe-id temp-test-label-object)
+        [s7 joe-foo-id] (add-element s5 joe-id temp-foo-label-object)
+        [s9 jane-id] (add-element s7 nil "Jane")
+        [s10 jane-test-id] (add-element s9 jane-id temp-test-label-object)
+        [store sally-id] (add-element s10 nil "Sally")
         joe (id->entity joe-id store)
         joe-test (id->entity joe-test-id store)
         joe-foo (id->entity joe-foo-id store)
         jane (id->entity jane-id store)
         jane-test (id->entity jane-test-id store)
-        sally (id->entity sally-id store)]
+        sally (id->entity sally-id store)
+        test-label-object (id->entity test-label-oid store)
+        foo-label-object (id->entity foo-label-oid store)]
     ;; Test two non-labels.
     (is (check
          (labels-and-elements-DOM
           [joe jane] nil false false :vertical
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
-          [:component {:width 0.8, :template label-object-template
+          [:component {:width 0.8, :template label-template
                        :parallel-ids [joe-id jane-id]
                        :class "label"
-                       :excluded-element-ids [joe-test-label-id]
+                       :omit-universal-elements true
                        :relative-id joe-test-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element label"}
-             [:component {:width 0.8, :template label-object-template
+             [:component {:width 0.8, :template label-template
                           :parallel-ids [joe-id]
                           :class "label"
-                          :excluded-element-ids [joe-foo-label-id]
+                          :omit-universal-elements true
                           :relative-id joe-foo-id
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
-              [:component {:template (as-set '(anything ("test" :label)
-                                                        ("foo" :label)))
+              ;; TODO: !!! Should these objects be in parens, like
+              ;;       object elements should be?
+              [:component {:template (as-set `(~'anything
+                                               ~test-label-object
+                                               ~foo-label-object))
                            :width 0.8
                            :excluded-element-ids (as-set [joe-test-id
                                                           joe-foo-id])
                            :relative-id joe-id
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
-            [:component {:template '(anything ("test" :label))
+            [:component {:template `(~'anything ~test-label-object)
                          :width 0.8
                          :excluded-element-ids [jane-test-id]
                          :relative-id jane-id
@@ -214,10 +236,10 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8
-                       :template label-object-template
+                       :template label-template
                        :parallel-ids [joe-id jane-id]
                        :class "label"
-                       :excluded-element-ids [joe-test-label-id]
+                       :omit-universal-elements true
                        :relative-id joe-test-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
@@ -225,23 +247,24 @@
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8
-                          :template label-object-template
+                          :template label-template
                           :parallel-ids [joe-id]
                           :class "label"
-                          :excluded-element-ids [joe-foo-label-id]
+                          :omit-universal-elements true
                           :relative-id joe-foo-id
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
-              [:component {:template (as-set '(anything ("test" :label)
-                                                        ("foo" :label)))
+              [:component {:template (as-set `(~'anything
+                                               ~test-label-object
+                                               ~foo-label-object))
                            :width 0.8
                            :excluded-element-ids (as-set [joe-test-id
                                                           joe-foo-id])
                            :relative-id joe-id
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
-            [:component {:template '(anything ("test" :label))
+            [:component {:template `(~'anything ~test-label-object)
                          :width 0.8
                          :excluded-element-ids [jane-test-id]
                          :relative-id jane-id
@@ -253,17 +276,15 @@
                     [joe-test joe-foo] nil false false :vertical
           {:template ' anything :width 0.8})
          [:div {:class "vertical-stack"}
-          [:component {:template label-object-template
+          [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
-          [:component {:template label-object-template
+          [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :excluded-element-ids [joe-foo-label-id]
                        :relative-id joe-foo-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]]))
@@ -273,10 +294,9 @@
           [sally joe-test] nil false false :vertical
           {:template ' anything :width 0.8})
          [:div {:class "wrapped-element label"}
-          [:component {:template label-object-template
+          [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
@@ -310,7 +330,8 @@
                                            [(parallel-AD) (item-AD)]
                                            (virt-AD)]
                          :render-dom (virt-DOM)
-                         :class "label"}]
+                         :class "label"
+                         :omit-universal-elements true}]
             [:component {:template 'anything
                          :width 0.8
                          :relative-id sally-id
@@ -488,7 +509,7 @@
                           store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                [:component {:template label-object-template
+                [:component {:template label-template
                              :relative-id id2
                              :omit-universal-elements true
                              :render-dom render-item-DOM
@@ -565,7 +586,8 @@
                     :get-action-data [(comp-AD)
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
-                    :class "label"}]
+                    :class "label"
+                    :omit-universal-elements true}]
                   [:component {:width 0.9
                                :template 'anything
                                :relative-id id1
@@ -582,7 +604,8 @@
                     :get-action-data [(comp-AD)
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
-                    :class "label"}]
+                    :class "label"
+                    :omit-universal-elements true}]
                   [:component {:width 0.9
                                :template 'anything
                                :relative-id id2
@@ -621,9 +644,10 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template label-object-template
+                               :template label-template
                                :parallel-ids [id1]
                                :class "label"
+                               :omit-universal-elements true
                                :excluded-element-ids [id-tag1]
                                :relative-id id-label1
                                :render-dom render-item-DOM
@@ -637,9 +661,10 @@
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template label-object-template
+                               :template label-template
                                :parallel-ids [id2]
                                :class "label"
+                               :omit-universal-elements true
                                :excluded-element-ids [id-tag2]
                                :relative-id id-label2
                                :render-dom render-item-DOM
@@ -707,9 +732,10 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template label-object-template
+                               :template label-template
                                :parallel-ids [id0]
                                :class "label"
+                               :omit-universal-elements true
                                :excluded-element-ids [id-tag0]
                                :relative-id id-label0
                                :render-dom render-item-DOM
@@ -723,9 +749,10 @@
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :template label-object-template
+                               :template label-template
                                :parallel-ids [id1 id2]
                                :class "label"
+                               :omit-universal-elements true
                                :excluded-element-ids [id-tag1both]
                                :relative-id id-label1both
                                :render-dom render-item-DOM
@@ -734,9 +761,10 @@
                    [:div {:class "vertical-stack"}
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :template label-object-template
+                                  :template label-template
                                   :parallel-ids[id1]
                                   :class "label"
+                                  :omit-universal-elements true
                                   :excluded-element-ids [id-tag1one]
                                   :relative-id id-label1one
                                   :render-dom render-item-DOM
@@ -752,9 +780,10 @@
                                    :get-action-data (default-AD)}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :template label-object-template
+                                  :template label-template
                                   :parallel-ids [id2]
                                   :class "label"
+                                  :omit-universal-elements true
                                   :excluded-element-ids [id-tag2two]
                                   :relative-id id-label2two
                                   :render-dom render-item-DOM
@@ -778,7 +807,8 @@
                                                 (virt-AD)]
                               :relative-id [id3 :virtual-label]
                               :render-dom (virt-DOM)
-                              :class "label"}]
+                              :class "label"
+                              :omit-universal-elements true}]
                  [:component {:width 0.9
                               :template 'anything
                               :relative-id id3
@@ -834,7 +864,8 @@
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
                            :render-dom (virt-DOM)
-                           :class "label"}]]
+                           :class "label"
+                           :omit-universal-elements true}]]
              [:component {:width 1.03125
                           :template 'anything
                           :relative-id id1
@@ -850,7 +881,8 @@
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
                            :render-dom (virt-DOM)
-                           :class "label"}]]
+                           :class "label"
+                           :omit-universal-elements true}]]
              [:component {:width 1.03125
                           :template 'anything
                           :relative-id id2
@@ -891,9 +923,10 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :template label-object-template
+             [:component {:width 0.375, :template label-template
                           :parallel-ids [id1]
                           :class "label"
+                          :omit-universal-elements true
                           :excluded-element-ids [id-tag1]
                           :relative-id id-label1
                           :render-dom render-item-DOM
@@ -907,9 +940,10 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :template label-object-template
+             [:component {:width 0.375, :template label-template
                           :parallel-ids [id2]
                           :class "label"
+                          :omit-universal-elements true
                           :excluded-element-ids [id-tag2]
                           :relative-id id-label2
                           :render-dom render-item-DOM
@@ -978,9 +1012,10 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :template label-object-template
+                          :template label-template
                           :parallel-ids [id0]
                           :class "label"
+                          :omit-universal-elements true
                           :excluded-element-ids [id-tag0]
                           :relative-id id-label0
                           :render-dom render-item-DOM
@@ -994,9 +1029,10 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
-                          :template label-object-template
+                          :template label-template
                           :parallel-ids [id1 id2]
                           :class "label"
+                          :omit-universal-elements true
                           :excluded-element-ids [id-tag1both]
                           :relative-id id-label1both
                           :render-dom render-item-DOM
@@ -1012,9 +1048,10 @@
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template label-object-template
+                           :template label-template
                            :parallel-ids [id1]
                            :class "label"
+                           :omit-universal-elements true
                            :excluded-element-ids [id-tag1one]
                            :relative-id id-label1one
                            :render-dom render-item-DOM
@@ -1031,9 +1068,10 @@
             [:div {:class "label horizontal-header indent bottom-border"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :template label-object-template
+                           :template label-template
                            :parallel-ids [id2]
                            :class "label"
+                           :omit-universal-elements true
                            :excluded-element-ids [id-tag2two]
                            :relative-id id-label2two
                            :render-dom render-item-DOM
@@ -1057,7 +1095,8 @@
                           :get-action-data [(comp-AD)
                                             [(parallel-AD) (item-AD)]
                                             (virt-AD)]
-                          :class "label"}]]
+                          :class "label"
+                          :omit-universal-elements true}]]
             [:component {:width 1.03125
                          :template 'anything
                          :relative-id id3

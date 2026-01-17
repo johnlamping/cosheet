@@ -55,6 +55,7 @@
 (def o8 (nth orderables 7))
 
 (def label-object-template (ensure-label-object 'anything))
+(def label-template `(~label-object-template))
 (def virtual-label-template (make-virtual-label-template 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
@@ -285,10 +286,11 @@
            ;; The condition element.
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
-             [:component {:template label-object-template
+             [:component {:template label-template
                           :width 0.75
                           :parallel-ids [rc1-id]
                           :class "label"
+                          :omit-universal-elements true
                           :excluded-element-ids [(any)]
                           :relative-id (any)
                           :render-dom render-item-DOM
@@ -343,7 +345,7 @@
            ;; The label for the three columns
            [:component {:column-ids [c2-id c3-id c4-id]
                         :width 2.25
-                        :template label-object-template
+                        :template label-template
                         :parallel-ids [c2-id c3-id c4-id]
                         :get-do-batch-edit-action-data
                         [(comp-AD)
@@ -636,7 +638,8 @@
                                [(parallel-AD) (item-AD)]
                                (virt-AD)]
              :render-dom (virt-DOM)
-             :class "label"}]
+             :class "label"
+             :omit-universal-elements true}]
            [:component
             {:relative-id joe-joe-id
              :render-dom render-item-DOM
@@ -650,7 +653,7 @@
              (table-cell-item-do-batch-AD)}]]
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
-                        :template label-object-template
+                        :template label-template
                         :parallel-ids [joe-joseph-id]
                         :render-dom render-item-DOM
                         :get-action-data (default-AD)
@@ -660,6 +663,7 @@
                           (table-cell-item-do-batch-AD)]
                          (item-do-batch-AD)]
                         :class "label"
+                        :omit-universal-elements true
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]
             [:div {:class "indent-wrapper"}

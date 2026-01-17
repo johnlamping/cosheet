@@ -35,7 +35,7 @@
              [order-utils :refer [ordered-entities]]
              [render-utils
               :refer [make-object-reference-template
-                      ensure-label-object
+                      ensure-label-object-content
                       make-virtual-label-template
                       make-component
                       nest-if-multiple-DOM
@@ -229,7 +229,7 @@
                         ordered-labels)]
     (item-stack-DOM ordered-labels label-tags :vertical
                     (-> specification
-                        (update :template ensure-label-object)
+                        (update :template ensure-label-object-content)
                         (into-attributes {:class "label"})))))
 
 (defn non-empty-labels-wrapper-DOM
@@ -270,7 +270,8 @@
                      specification)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (do
-                  (assert (label-object? (:template labels-spec)) labels-spec)
+                  (assert (label-object? (content (:template labels-spec)))
+                          labels-spec)
                   (virtual-DOM-component
                    ;; TODO: Track hierarchy depth in the spec, and use
                    ;; it to uniquify virtual labels.
@@ -278,7 +279,7 @@
                        (assoc :relative-id [example-descendant-id
                                             :virtual-label]
                               :template (make-virtual-label-template
-                                         (:template labels-spec)))
+                                         (content (:template labels-spec))))
                        (add-parallel-item-ids descendant-ids))))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)

@@ -35,6 +35,7 @@
              [order-utils :refer [ordered-entities]]
              [render-utils
               :refer [make-object-reference-template
+                      make-sequential-template
                       ensure-label-object-content
                       make-virtual-label-template
                       make-component
@@ -164,25 +165,26 @@
   be for elements of the item."
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
-  (let [template (make-virtual-label-template template)]
-    (virtual-DOM-component
-     (-> specification
-         (assoc :relative-id (or relative-id :virtual-label)
-                :position :after
-                :template template)
-         (into-attributes {:class "label"})))))
+  (virtual-DOM-component
+   (-> specification
+       (assoc :relative-id (or relative-id :virtual-label)
+              :position :after
+              :template (make-virtual-label-template template))
+       (into-attributes {:class "label"}))))
 
 (defn virtual-entity-and-label-DOM
   "Return the dom for a virtual entity and a virtual label for it.
    The arguments are the same as for virtual-DOM-component."
-  [specification orientation]
+  [{:keys [template class] :as specification} orientation]
   (let [dom (virtual-DOM-component specification)
-        template (:template specification)
         labels-dom (virtual-label-DOM-component
-                    (dissoc specification :relative-id))]
+                    (-> specification
+                        (dissoc :relative-id)
+                        (assoc :template (make-sequential-template
+                                          [template 'anything]))))]
     (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
-      (:class specification)
-      (add-attributes {:class (:class specification)}))))
+      class
+      (add-attributes {:class class}))))
 
 (defn add-parallel-item-ids
   "Add :parallel-ids and the appropriate action-data getters for a DOM
@@ -279,7 +281,7 @@
                        (assoc :relative-id [example-descendant-id
                                             :virtual-label]
                               :template (make-virtual-label-template
-                                         (content (:template labels-spec))))
+                                         (:template labels-spec)))
                        (add-parallel-item-ids descendant-ids))))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)

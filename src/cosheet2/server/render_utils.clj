@@ -25,6 +25,8 @@
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
+;;; The following records hold definitions for templates for virtual items.
+
 (defrecord
     ^{:doc
       "This is a template for a location that holds a virtual object that
@@ -60,6 +62,7 @@
 
 (defn make-object-reference-template
   [template]
+  (assert (object? template) template)
   (->ObjectReferenceTemplate template))
 
 (defn object-reference-template?
@@ -86,29 +89,23 @@
   [template]
   (instance? PlaceholderObjectTemplate template))
 
-(defn ensure-label-object
-  "Give the list form of an object template, make it be a label it isn't
-  already."
+(defn virtual-template?
+  "Return true if the template is one of the virtual templates."
   [template]
-  (assert (not (placeholder-object-template? template)))
-  (assert (not (object-reference-template? template)))
-  (assert (or (object? template) (not (vector? template))) template)
-  (cond
-    (sequential-template? template)
-    (let [templates (:template-sequence template)]
-      (make-sequential-template
-       (concat (butlast templates) [(ensure-label-object (last templates))])))
-    (label-object? template)
+  (or (sequential-template? template)
+      (object-reference-template? template)
+      (placeholder-object-template? template)))
+
+(defn ensure-label-object
+  "Give the list form that matches an object, make it be a label if it isn't."
+  [template]
+  (assert (not (virtual-template? template)))
+  (if (label-object? template)
     template
-    true
-    (let [current-elements (if (object? template)
-                             (elements template)
-                             (do (assert (or (= template 'anything)
-                                             (= template nil))
-                                         template)
-                                 []))]
-      (assert (empty? (filter #(= `(~link-type) %) current-elements))
-              current-elements)
+    (let [current-elements (if (or (= template 'anything) (= template nil))
+                                []
+                                (do (assert (object? template))
+                                    (elements template)))]
       (make-object-list (conj current-elements `(~link-type))))))
 
 (defn ensure-label-object-content
@@ -116,18 +113,29 @@
   isn't already."
   [template]
   (if (or (= template 'anything) (= template nil))
-    `(ensure-label-object template))
+    `(~(ensure-label-object template)))
   (make-element-list (orientation template)
                      (ensure-label-object (content template))
                      (elements template)))
 
 (defn make-virtual-label-template
+  "Turn a template into one for a virtual label. The incoming template
+  must either be an element holding a label object or a sequential
+  template, whose last template is an element holding a label object."
   [template]
-  (make-sequential-template
-   ['("")                              ; the element that is the label.
-    (make-placeholder-object-template) ; the object holding its value.
-    (make-object-reference-template    ; the name of that object.
-     (ensure-label-object (content template)))]))
+  (let [[prefix-templates last-template]
+        (if (sequential-template? template)
+          (let [template-sequence (:template-sequence template)]
+            [(butlast template-sequence) (last template-sequence)])
+          [[] template])]
+    (make-sequential-template
+     (concat
+      prefix-templates
+      ['("")                              ; the element that is the label.
+       (make-placeholder-object-template) ; the object holding its value.
+       (make-object-reference-template    ; the name of that object.
+        ;; The ensure-label-object-content handles an 'anything template.
+        (content (ensure-label-object-content last-template)))]))))
 
 (defn specification-item-id
   [specification]

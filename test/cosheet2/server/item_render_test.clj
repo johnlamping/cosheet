@@ -21,7 +21,9 @@
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
-             [render-utils :refer [make-object-reference-template
+             [render-utils :refer [make-sequential-template
+                                   make-placeholder-object-template
+                                   make-object-reference-template
                                    make-virtual-label-template
                                    ensure-label-object]]
              [action-data :refer [default-get-action-data
@@ -350,22 +352,26 @@
                        :get-action-data (default-AD)}]
           [:div "virtual"]]))))
 
-(deftest virtual-entry-and-label-DOM-test
+(deftest virtual-entity-and-label-DOM-test
   (is (check (virtual-entity-and-label-DOM
-              {:template (make-object-list ["foo"])
+              {:template `(~(make-object-list ["foo"]))
                :relative-id :bar
                :position :before}
               :horizontal)
              [:div {:class "horizontal-labels-element"}
               [:component
                {:relative-id :virtual-label
-                :template (make-virtual-label-template
-                           (make-object-list ["foo"]))
+                :template (make-sequential-template
+                           [`(~(make-object-list ["foo"]))
+                            '("")
+                            (make-placeholder-object-template)
+                            (make-object-reference-template
+                             (make-object-list [`(~link-type)]))])
                 :position :after
                 :get-action-data (virt-AD)
                 :class "label"
                 :render-dom (virt-DOM)}]
-              [:component {:template (make-object-list ["foo"])
+              [:component {:template `(~(make-object-list ["foo"]))
                            :relative-id :bar
                            :position :before
                            :render-dom (virt-DOM)
@@ -380,10 +386,10 @@
         [class-store _] (add-element store oid object-type)]
     (is (check (named-object-DOM (id->entity oid store)
                                  (assoc basic-dom-specification
-                                        :template "foo"))
+                                        :template (make-object-list [5])))
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          "foo"))
+                                          (make-object-list [5])))
                             :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
@@ -391,12 +397,12 @@
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid two-name-store)
                                  (assoc basic-dom-specification
-                                        :template "foo"))
+                                        :template (make-object-list [5])))
                (as-set
                 [:div {:class "named-object vertical-stack"}
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
-                                            "foo"))
+                                            (make-object-list [5])))
                               :class "name"
                               :relative-id fred-id
                               :omit-universal-elements true
@@ -404,7 +410,7 @@
                               :get-action-data (default-AD)}]
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
-                                            "foo"))
+                                            (make-object-list [5])))
                               :class "name"
                               :relative-id friedrich-id
                               :omit-universal-elements true
@@ -412,10 +418,10 @@
                               :get-action-data (default-AD)}]])))
     (is (check (named-object-DOM (id->entity oid label-store)
                                  (assoc basic-dom-specification
-                                        :template "foo"))
+                                        :template (make-object-list [5])))
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          "foo"))
+                                          (make-object-list [5])))
                             :class "label named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
@@ -423,10 +429,10 @@
                             :get-action-data (default-AD)}]))
     (is (check (named-object-DOM (id->entity oid class-store)
                                  (assoc basic-dom-specification
-                                        :template "foo"))
+                                        :template (make-object-list [5])))
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          "foo"))
+                                          (make-object-list [5])))
                             :class "class named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
@@ -449,12 +455,12 @@
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
                                  :relative-id oid
-                                 :template '(nil 5))
+                                 :template (make-object-list [5]))
                           store)]
     (is (check dom
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          '(nil 5)))
+                                          (make-object-list [5])))
                             :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
@@ -470,7 +476,7 @@
         dom (run-renderer render-item-DOM
                            (assoc basic-dom-specification
                                   :relative-id fred-holder-id
-                                  :template '("foo"))
+                                  :template `(~(make-object-list [5])))
                            store)
         ;; We expect a component, which we also run, to make sure it is right.
         [_ spec] dom
@@ -479,14 +485,14 @@
                [:component {:width 1.5
                             :class "editable item"
                             :relative-id fred-id,
-                            :template "foo"
+                            :template (make-object-list [5])
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
                             :template `(~(make-object-reference-template
-                                          "foo"))
+                                          (make-object-list [5])))
                             :relative-id fred-name-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM

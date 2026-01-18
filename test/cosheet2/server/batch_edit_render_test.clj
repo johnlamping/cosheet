@@ -14,7 +14,8 @@
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
              [entity :as entity  :refer [id->entity
-                                         label->elements elements]]
+                                         label->elements elements
+                                         make-object-list link-type]]
              [expression :refer [expr-let]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -262,13 +263,6 @@
   (let [stk1-entity (id->entity stk1 s)
         stk1-element (first (matching-elements '(nil "c1") stk1-entity))
         dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
-    (let [template (-> dom (nth 4) (nth 2) (nth 1) :template)
-          template-sequence (:template-sequence template)
-          inner-template (:template (nth template-sequence 1))
-          inner-template-sequence (:template-sequence inner-template)]
-      (println "XXXX" template-sequence
-               "YYYY" inner-template
-               "ZZZZ" inner-template-sequence))
     (is (check
          dom
          [:div {:class "horizontal-labeled-element-list batch-stack"}
@@ -288,16 +282,12 @@
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 
                                           (virt-AD)]
-                        ;; TODO: !!! The first template of the
-                        ;; sequence should be an actual object, not a
-                        ;; placeholder. The object reference template
-                        ;; shouldn't have a sequence inside.
                         :template (make-sequential-template
-                                   [(make-placeholder-object-template)
+                                   ['anything
+                                    '("")
+                                    (make-placeholder-object-template)
                                     (make-object-reference-template
-                                     (make-sequential-template
-                                      ['anything
-                                       (ensure-label-object 'anything)]))])
+                                     (make-object-list [`(~link-type)]))])
                         :position :after
                         :do-not-match-query true}]
            [:component {:relative-id :stack-virtual

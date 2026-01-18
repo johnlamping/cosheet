@@ -33,6 +33,9 @@
                                 replace-hierarchy-leaves-by-nodes]
                         :as hierarchy]
              [render-utils :refer [make-virtual-label-template
+                                   make-sequential-template
+                                   make-object-reference-template
+                                   make-placeholder-object-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list semantic-elements]]
@@ -308,7 +311,12 @@
                           :item-id rc1-id
                           :width 0.75
                           :sibling true
-                          :template virtual-label-template
+                          :template (make-sequential-template
+                                     ['anything
+                                      '("")
+                                      (make-placeholder-object-template)
+                                      (make-object-reference-template
+                                       (make-object-list [`(~link-type)]))])
                           :position :after
                           :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -479,7 +487,12 @@
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
-                        :template virtual-label-template
+                        :template (make-sequential-template
+                                   ['anything
+                                    '("")
+                                    (make-placeholder-object-template)
+                                    (make-object-reference-template
+                                     (make-object-list [`(~link-type)]))])
                         :position :after
                         :sibling true
                         :width 0.75

@@ -93,28 +93,44 @@
                           :render-dom (virt-DOM)
                           :get-action-data (virt-AD)}])))
 
-(deftest horizontal-label-hierarchy-node-DOM-test
+(defn add-label-object-to-store
+  "Add a label object with the given name to the store.
+   Return the updated store and the id of the label object."
+  [store name]
+  (let [[s1 label-oid] (get-new-object-id store)
+        [s2 _] (add-element s1 label-oid link-type)
+        [s3 label-name-id] (add-element s2 label-oid name)
+        [s4 _] (add-element s3 label-name-id name-label)]
+    [s4 label-oid]))
+
+(defn make-joe-and-jane-store
+  "Make a store with labels test-label and foo-label and with
+    [:object 'Joe' test-label foo-label
+    [:object 'Jane' test-label
+  Return the store and a map from names of objects and elements to their ids."
+  []
   (let [s (add-universal-objects (new-element-store))
-        [s1 test-label-oid] (get-new-object-id s)
-        [s1a test-label-name-id] (add-element s1 test-label-oid "test")
-        [s1b test-label-name-tag-id] (add-element
-                                      s1a test-label-name-id name-label)
-        [s1c test-label-label-id] (add-element s1b test-label-oid link-type)
-        test-label-object (id->entity test-label-oid s1c)
-        [s2 foo-label-oid] (get-new-object-id s1c)
-        [s2a foo-label-name-id] (add-element s2 foo-label-oid "foo")
-        [s2b foo-label-name-tag-id] (add-element
-                                     s2a foo-label-name-id name-label)
-        [s2c foo-label-label-id] (add-element s2b foo-label-oid link-type)
-        foo-label-object (id->entity foo-label-oid s2c)
-        [s4 joe-id] (add-element s2c nil "Joe")
+        [s1 test-label-oid] (add-label-object-to-store s "test")
+        test-label-object (id->entity test-label-oid s1)
+        [s2 foo-label-oid] (add-label-object-to-store s1 "foo")
+        foo-label-object (id->entity foo-label-oid s2)
+        [s4 joe-id] (add-element s2 nil "Joe")
         [s5 joe-test-id] (add-element s4 joe-id test-label-object)
         [s7 joe-foo-id] (add-element s5 joe-id foo-label-object)
         [s9 jane-id] (add-element s7 nil "Jane")
-        [store jane-test-id] (add-element s9 jane-id test-label-object)
-        joe (id->entity joe-id store)
-        jane (id->entity jane-id store)
-        ordered-entities [joe jane]
+        [store jane-test-id] (add-element s9 jane-id test-label-object)]
+    [store {:test-label-oid test-label-oid
+            :foo-label-oid foo-label-oid
+            :joe-id joe-id
+            :joe-test-id joe-test-id
+            :joe-foo-id joe-foo-id
+            :jane-id jane-id
+            :jane-test-id jane-test-id}]))
+
+(deftest horizontal-label-hierarchy-node-DOM-test
+  (let [[store ids] (make-joe-and-jane-store)
+        ordered-entities [(id->entity (:joe-id ids) store)
+                          (id->entity (:jane-id ids) store)]
         labelses (map semantic-label-elements ordered-entities)
         item-maps (item-maps-by-elements ordered-entities labelses)
         hierarchy (hierarchy-by-canonical-info item-maps)
@@ -125,8 +141,8 @@
          [:component
           {:template label-template
            :width 1.5
-           :parallel-ids [joe-id jane-id]
-           :relative-id joe-test-id
+           :parallel-ids [(:joe-id ids) (:jane-id ids)]
+           :relative-id (:joe-test-id ids)
            :render-dom render-item-DOM
            :get-action-data (default-AD)
            :class "label"}]))
@@ -134,9 +150,9 @@
     (is (check
          (horizontal-label-hierarchy-node-DOM (first (:child-nodes node))
                                               {:width 0.75})
-         [:component {:relative-id joe-id
+         [:component {:relative-id (:joe-id ids)
                       :width 0.75
-                      :excluded-element-ids [joe-test-id]
+                      :excluded-element-ids [(:joe-test-id ids)]
                       :render-dom render-item-DOM
                       :get-action-data (default-AD)}]))
     ;; A node with leaves, no properties, and no children
@@ -147,49 +163,32 @@
                 "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template virtual-label-template
                        :width 0.75
-                       :parallel-ids [jane-id]
+                       :parallel-ids [(:jane-id ids)]
                        :get-action-data [(comp-AD)
                                          [(parallel-AD) (item-AD)]
                                          (virt-AD)]
                        :position :after
-                       :relative-id [jane-id :nested]
+                       :relative-id [(:jane-id ids) :nested]
                        :class "label merge-with-parent"
                        :render-dom (virt-DOM)}]
           [:div {:class "indent-wrapper label"}
-           [:component {:relative-id jane-id
+           [:component {:relative-id (:jane-id ids)
                         :render-dom render-item-DOM
                         :get-action-data (default-AD)
                         :width 0.75
-                        :excluded-element-ids [jane-test-id]}]]]))))
+                        :excluded-element-ids [(:jane-test-id ids)]}]]]))))
 
 (deftest labels-and-elements-DOM-test
-  (let [s (add-universal-objects (new-element-store))
-        [s1 test-label-oid] (get-new-object-id s)
-        [s1a test-label-name-id] (add-element s1 test-label-oid "test")
-        [s1b test-label-name-tag-id] (add-element
-                                      s1a test-label-name-id name-label)
-        [s1c test-label-label-id] (add-element s1b test-label-oid link-type)
-        temp-test-label-object (id->entity test-label-oid s1c)
-        [s2 foo-label-oid] (get-new-object-id s1c)
-        [s2a foo-label-name-id] (add-element s2 foo-label-oid "foo")
-        [s2b foo-label-name-tag-id] (add-element
-                                     s2a foo-label-name-id name-label)
-        [s2c foo-label-label-id] (add-element s2b foo-label-oid link-type)
-        temp-foo-label-object (id->entity foo-label-oid s2c)
-        [s4 joe-id] (add-element s2c nil "Joe")
-        [s5 joe-test-id] (add-element s4 joe-id temp-test-label-object)
-        [s7 joe-foo-id] (add-element s5 joe-id temp-foo-label-object)
-        [s9 jane-id] (add-element s7 nil "Jane")
-        [s10 jane-test-id] (add-element s9 jane-id temp-test-label-object)
-        [store sally-id] (add-element s10 nil "Sally")
-        joe (id->entity joe-id store)
-        joe-test (id->entity joe-test-id store)
-        joe-foo (id->entity joe-foo-id store)
-        jane (id->entity jane-id store)
-        jane-test (id->entity jane-test-id store)
+  (let [[s ids] (make-joe-and-jane-store)
+        [store sally-id] (add-element s nil "Sally")
+        joe (id->entity (:joe-id ids) store)
+        joe-test (id->entity (:joe-test-id ids) store)
+        joe-foo (id->entity (:joe-foo-id ids) store)
+        jane (id->entity (:jane-id ids) store)
+        jane-test (id->entity (:jane-test-id ids) store)
         sally (id->entity sally-id store)
-        test-label-object (id->entity test-label-oid store)
-        foo-label-object (id->entity foo-label-oid store)]
+        test-label-object (id->entity (:test-label-oid ids) store)
+        foo-label-object (id->entity (:foo-label-oid ids) store)]
     ;; Test two non-labels.
     (is (check
          (labels-and-elements-DOM
@@ -197,20 +196,20 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8, :template label-template
-                       :parallel-ids [joe-id jane-id]
+                       :parallel-ids [(:joe-id ids) (:jane-id ids)]
                        :class "label"
                        :omit-universal-elements true
-                       :relative-id joe-test-id
+                       :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8, :template label-template
-                          :parallel-ids [joe-id]
+                          :parallel-ids [(:joe-id ids)]
                           :class "label"
                           :omit-universal-elements true
-                          :relative-id joe-foo-id
+                          :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
@@ -220,15 +219,15 @@
                                                ~test-label-object
                                                ~foo-label-object))
                            :width 0.8
-                           :excluded-element-ids (as-set [joe-test-id
-                                                          joe-foo-id])
-                           :relative-id joe-id
+                           :excluded-element-ids (as-set [(:joe-test-id ids)
+                                                          (:joe-foo-id ids)])
+                           :relative-id (:joe-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
             [:component {:template `(~'anything ~test-label-object)
                          :width 0.8
-                         :excluded-element-ids [jane-test-id]
-                         :relative-id jane-id
+                         :excluded-element-ids [(:jane-test-id ids)]
+                         :relative-id (:jane-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]]]))
     ;; Test two non-labels, laid out horizontally
@@ -239,10 +238,10 @@
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8
                        :template label-template
-                       :parallel-ids [joe-id jane-id]
+                       :parallel-ids [(:joe-id ids) (:jane-id ids)]
                        :class "label"
                        :omit-universal-elements true
-                       :relative-id joe-test-id
+                       :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}
@@ -250,10 +249,10 @@
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8
                           :template label-template
-                          :parallel-ids [joe-id]
+                          :parallel-ids [(:joe-id ids)]
                           :class "label"
                           :omit-universal-elements true
-                          :relative-id joe-foo-id
+                          :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
@@ -261,15 +260,15 @@
                                                ~test-label-object
                                                ~foo-label-object))
                            :width 0.8
-                           :excluded-element-ids (as-set [joe-test-id
-                                                          joe-foo-id])
-                           :relative-id joe-id
+                           :excluded-element-ids (as-set [(:joe-test-id ids)
+                                                          (:joe-foo-id ids)])
+                           :relative-id (:joe-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
             [:component {:template `(~'anything ~test-label-object)
                          :width 0.8
-                         :excluded-element-ids [jane-test-id]
-                         :relative-id jane-id
+                         :excluded-element-ids [(:jane-test-id ids)]
+                         :relative-id (:jane-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]]]))
     ;; Test two labels.
@@ -281,13 +280,13 @@
           [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :relative-id joe-test-id
+                       :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
           [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :relative-id joe-foo-id
+                       :relative-id (:joe-foo-id ids)
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]]))
     ;; Test a label and a non-label
@@ -299,7 +298,7 @@
           [:component {:template label-template
                        :width 0.8
                        :class "label"
-                       :relative-id joe-test-id
+                       :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}

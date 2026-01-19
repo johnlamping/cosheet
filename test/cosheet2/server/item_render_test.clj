@@ -6,9 +6,11 @@
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
              [entity :refer [id->entity name-label link-type object-type
-                             make-object-list]]
+                             make-object-list
+                             to-list]]
              entity-impl
-             [store :refer [new-element-store get-new-object-id]]
+             [store :refer [new-element-store get-new-object-id
+                            ->ItemId]]
              store-impl
              mutable-store-impl
              [calculator :refer [new-calculator-data computation-value]]
@@ -104,9 +106,9 @@
     [s4 label-oid]))
 
 (defn make-joe-and-jane-store
-  "Make a store with labels test-label and foo-label and with
-    [:object 'Joe' test-label foo-label
-    [:object 'Jane' test-label
+  "Make a store with labels test-object and foo-object and with
+    [:object 'Joe' test-object foo-object]
+    [:object 'Jane' test-object]
   Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
@@ -126,6 +128,99 @@
             :joe-foo-id joe-foo-id
             :jane-id jane-id
             :jane-test-id jane-test-id}]))
+
+(defn make-fred-one-two-store
+   "Make a store with labels one-object and two-object and with
+      [:object 'Fred' one-object two-object]
+    and with the elements in that order.
+    Return the store and a map from names of objects and elements to their ids."
+  []
+  (let [s (add-universal-objects (new-element-store))
+        [s1 one-oid] (add-label-object-to-store s "one")
+        [s2 two-oid] (add-label-object-to-store s1 "two")
+        [s3 fred-id] (add-element s2 nil "Fred")
+        [s4 label-one-id] (add-element s3 fred-id `(~(id->entity one-oid s3)
+                                                   (~o1 :order)))
+        [store label-two-id] (add-element s4 fred-id `(~(id->entity two-oid s4)
+                                                      (~o2 :order)))]
+    [store {:fred-id fred-id
+            :one-oid one-oid
+            :two-oid two-oid
+            :label-one-id label-one-id
+            :label-two-id label-two-id}]))
+
+(defn make-fred-1-one-2-two-store
+   "Make a store with label objects one-object and two-object and with
+      [:object 'Fred' (1 one-object) (2 two-object)]
+    and with the elements in that order.
+    Return the store and a map from names of objects and elements to their ids."
+  []
+  (let [s (add-universal-objects (new-element-store))
+        [s1 one-oid] (add-label-object-to-store s "one")
+        [s2 two-oid] (add-label-object-to-store s1 "two")
+        [s3 fred-id] (add-element s2 nil "Fred")
+        [s4 element-1-id] (add-element s3 fred-id `(1 (~o1 :order)))
+        [s5 label-one-id] (add-element s4 element-1-id
+                                       `(~(id->entity one-oid s4)))
+        [s6 element-2-id] (add-element s5 fred-id `(2 (~o2 :order)))
+        [store label-two-id] (add-element s6 element-2-id
+                                          `(~(id->entity two-oid s6)))]
+    [store {:fred-id fred-id
+            :one-oid one-oid
+            :two-oid two-oid
+            :element-1-id element-1-id
+            :element-2-id element-2-id
+            :label-one-id label-one-id
+            :label-two-id label-two-id}]))
+
+(defn make-fred-4-elements-store
+  "Make a store with label objects one-object two-object, zero-object
+   and both-object and with
+     [:object 'Fred' (0 zero-object)
+                     (1 one-object both-object)
+                     (2 two-object both-object)
+                     3)]
+    and with the elements in that order.
+    Return the store and a map from names of objects and elements to their ids."
+  []
+  (let [s (add-universal-objects (new-element-store))
+        [s1 one-oid] (add-label-object-to-store s "one")
+        [s2 two-oid] (add-label-object-to-store s1 "two")
+        [s3 zero-oid] (add-label-object-to-store s2 "zero")
+        [s4 both-oid] (add-label-object-to-store s3 "both")
+        [s5 fred-id] (add-element s4 nil "Fred")
+        [s6 element-0-id] (add-element s5 fred-id `(0 (~o1 :order)))
+        [s7 label-zero-id] (add-element s6 element-0-id
+                                        `(~(id->entity zero-oid s6)))
+        [s8 element-2-id] (add-element s7 fred-id `(2 (~o3 :order)))
+        [s9 label-two-id] (add-element s8 element-2-id
+                                       `(~(id->entity two-oid s8)
+                                         (~o1 :order)))
+        [s10 label-2-both-id] (add-element s9 element-2-id
+                                           `(~(id->entity both-oid s9)
+                                             (~o2 :order)))
+        [s11 element-1-id] (add-element s10 fred-id `(1 (~o2 :order)))
+        [s12 label-one-id] (add-element s11 element-1-id
+                                       `(~(id->entity one-oid s11)
+                                         (~o1 :order)))
+        [s13 label-1-both-id] (add-element s12 element-1-id
+                                           `(~(id->entity both-oid s12)
+                                             (~o2 :order)))
+        [store element-3-id] (add-element s13 fred-id `(3 (~o4 :order)))]
+    [store {:fred-id fred-id
+            :one-oid one-oid
+            :two-oid two-oid
+            :zero-oid zero-oid
+            :both-oid both-oid
+            :element-0-id element-0-id
+            :label-zero-id label-zero-id
+            :element-1-id element-1-id
+            :label-one-id label-one-id
+            :label-1-both-id label-1-both-id
+            :element-2-id element-2-id
+            :label-two-id label-two-id
+            :label-2-both-id label-2-both-id
+            :element-3-id element-3-id}]))
 
 (deftest horizontal-label-hierarchy-node-DOM-test
   (let [[store ids] (make-joe-and-jane-store)
@@ -450,7 +545,7 @@
   
   ;; Test a named object
   (let [[s1 oid] (get-new-object-id (new-element-store))
-        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+        [store fred-name-id] (add-element s1 oid `("Fred" ~name-label))
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
                                  :relative-id oid
@@ -461,17 +556,17 @@
                             :template `(~(make-object-reference-template
                                           (make-object-list [5])))
                             :class "name named-object"
-                            :relative-id fred-id
+                            :relative-id fred-name-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}])))
 
   ;; Test an entity holding a named object
-  (let [[s1 fred-id] (-> (new-element-store)
+  (let [[s1 fred-oid] (-> (new-element-store)
                          (add-universal-objects)
                          (get-new-object-id))
-        [s2 fred-name-id] (add-element s1 fred-id `("Fred" (~name-label)))
-        [store fred-holder-id] (add-element s2 nil `(~(id->entity fred-id nil)))
+        [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
+        [store fred-holder-id] (add-element s2 nil `(~(id->entity fred-oid nil)))
         dom (run-renderer render-item-DOM
                            (assoc basic-dom-specification
                                   :relative-id fred-holder-id
@@ -483,7 +578,7 @@
     (is (check dom
                [:component {:width 1.5
                             :class "editable item"
-                            :relative-id fred-id,
+                            :relative-id fred-oid,
                             :template (make-object-list [5])
                             :render-dom render-item-DOM
                             :get-action-data (default-AD)}]))
@@ -498,34 +593,29 @@
                             :get-action-data (default-AD)}])))
   
   ;; Test a cell with a couple of labels, one excluded.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                     `("Fred"
-                                       (1 :label (~o1 :order))
-                                       (2 :label (~o2 :order))))
-        fred (id->entity fred-id store)
-        id1 (:item-id (first (matching-elements 1 fred)))
-        id2 (:item-id (first (matching-elements 2 fred)))
-        id-tag2 (:item-id (first (matching-elements
-                                  :label (id->entity id2 store))))
+  (let [[store ids] (make-fred-one-two-store)
+        one-object (id->entity (:one-oid ids) store)
+        two-object (id->entity (:two-oid ids) store)
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
-                                 :relative-id fred-id
-                                 :excluded-element-ids [id1])
+                                 :relative-id (:fred-id ids)
+                                 :excluded-element-ids [(:label-one-id ids)])
                           store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
                 [:component {:template label-template
-                             :relative-id id2
+                             :relative-id (:label-two-id ids)
                              :omit-universal-elements true
                              :render-dom render-item-DOM
                              :get-action-data (default-AD)
-                             :excluded-element-ids [id-tag2]
                              :class "label"
                              :width 1.5}]
                 [:div {:class "indent-wrapper"}
-                 [:component {:template (as-set '("" (1 :label) (2 :label)))
+                 [:component {:template (as-set `(""
+                                                  (~one-object)
+                                                  (~two-object)))
                               :relative-id :content
-                              :item-id fred-id
+                              :item-id (:fred-id ids)
                               :render-dom render-content-only-DOM
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
@@ -617,25 +707,11 @@
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]]]])))
   ;; Test an item with two elements, each with one distinct label.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (2 ("two" :label) (~o2 :order))
-                                      (1 ("one" :label) (~o1 :order))))
-        fred (id->entity fred-id store)
-        item1 (first (matching-elements 1 fred))
-        label1 (first (matching-elements "one" item1))
-        tag1 (first (matching-elements :label label1))
-        id1 (:item-id item1)
-        id-label1 (:item-id label1)
-        id-tag1 (:item-id tag1)
-        item2 (first (matching-elements 2 fred))
-        label2 (first (matching-elements "two" item2))
-        tag2 (first (matching-elements :label label2))
-        id2 (:item-id item2)
-        id-label2 (:item-id label2)
-        id-tag2 (:item-id tag2)
+  (let [[store ids] (make-fred-1-one-2-two-store)
+        one-object (id->entity (:one-oid ids) store)
+        two-object (id->entity (:two-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
-                                    :relative-id fred-id
+                                    :relative-id (:fred-id ids)
                                     :width 0.9)
                              store)]
     (is (check dom
@@ -643,87 +719,50 @@
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
-                             :item-id fred-id
+                             :item-id (:fred-id ids)
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template label-template
-                               :parallel-ids [id1]
+                               :parallel-ids [(:element-1-id ids)]
                                :class "label"
                                :omit-universal-elements true
-                               :excluded-element-ids [id-tag1]
-                               :relative-id id-label1
+                               :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template '(anything ("one" :label))
-                                :excluded-element-ids [id-label1]
-                                :relative-id id1
+                                :template `(~'anything ~one-object)
+                                :relative-id (:element-1-id ids)
+                                :excluded-element-ids [(:label-one-id ids)]
                                 :render-dom render-item-DOM
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template label-template
-                               :parallel-ids [id2]
+                               :parallel-ids [(:element-2-id ids)]
                                :class "label"
                                :omit-universal-elements true
-                               :excluded-element-ids [id-tag2]
-                               :relative-id id-label2
+                               :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template '(anything ("two" :label))
-                                :excluded-element-ids [id-label2]
-                                :relative-id id2
+                                :template `(~'anything ~two-object)
+                                :relative-id (:element-2-id ids)
+                                :excluded-element-ids [(:label-two-id ids)]
                                 :render-dom render-item-DOM
                                 :get-action-data (default-AD)}]]]]])))
   ;; Test an item with four elements, with label sharing among them.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (0 ("zero" :label)
-                                         (~o1 :order))
-                                      (2 ("two" :label (~o1 :order))
-                                         ("both" :label (~o2 :order))
-                                         (~o3 :order))
-                                      (1 ("one" :label (~o1 :order))
-                                         ("both" :label (~o2 :order))
-                                         (~o2 :order))
-                                      (3 (~o4 :order))))
-        fred (id->entity fred-id store)
-        item0 (first (matching-elements 0 fred))
-        label0 (first (matching-elements "zero" item0))
-        tag0 (first (matching-elements :label label0))
-        id0 (:item-id item0)
-        id-label0 (:item-id label0)
-        id-tag0 (:item-id tag0)
-        item1 (first (matching-elements 1 fred))
-        label1one (first (matching-elements "one" item1))
-        tag1one (first (matching-elements :label label1one))
-        label1both (first (matching-elements "both" item1))
-        tag1both (first (matching-elements :label label1both))
-        id1 (:item-id item1)
-        id-label1one (:item-id label1one)
-        id-tag1one (:item-id tag1one)
-        id-label1both (:item-id label1both)
-        id-tag1both (:item-id tag1both)
-        item2 (first (matching-elements 2 fred))
-        label2two (first (matching-elements "two" item2))
-        tag2two (first (matching-elements :label label2two))
-        label2both (first (matching-elements "both" item2))
-        tag2both (first (matching-elements :label label2both))
-        id2 (:item-id item2)
-        id-label2two (:item-id label2two)
-        id-tag2two (:item-id tag2two)
-        id-label2both (:item-id label2both)
-        id-tag2both (:item-id tag2both)
-        item3 (first (matching-elements 3 fred))
-        id3 (:item-id item3)
+  (let [[store ids] (make-fred-4-elements-store)
+        zero-object (id->entity (:zero-oid ids) store)
+        one-object (id->entity (:one-oid ids) store)
+        two-object (id->entity (:two-oid ids) store)
+        both-object (id->entity (:both-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
-                                    :relative-id fred-id
+                                    :relative-id (:fred-id ids)
                                     :width 0.9)
                              store)]
     (is (check dom
@@ -731,35 +770,34 @@
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
-                             :item-id fred-id
+                             :item-id (:fred-id ids)
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template label-template
-                               :parallel-ids [id0]
+                               :parallel-ids [(:element-0-id ids)]
                                :class "label"
                                :omit-universal-elements true
-                               :excluded-element-ids [id-tag0]
-                               :relative-id id-label0
+                               :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template '(anything ("zero" :label))
-                                :excluded-element-ids [id-label0]
-                                :relative-id id0
+                                :template `(~'anything ~zero-object)
+                                :excluded-element-ids [(:label-zero-id ids)]
+                                :relative-id (:element-0-id ids)
                                 :render-dom render-item-DOM
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template label-template
-                               :parallel-ids [id1 id2]
+                               :parallel-ids (as-set [(:element-1-id ids)
+                                                      (:element-2-id ids)])
                                :class "label"
                                :omit-universal-elements true
-                               :excluded-element-ids [id-tag1both]
-                               :relative-id id-label1both
+                               :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
@@ -767,56 +805,58 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template label-template
-                                  :parallel-ids[id1]
+                                  :parallel-ids[(:element-1-id ids)]
                                   :class "label"
                                   :omit-universal-elements true
-                                  :excluded-element-ids [id-tag1one]
-                                  :relative-id id-label1one
+                                  :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM
                                   :get-action-data (default-AD)}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :template (as-set '(anything ("both" :label)
-                                                               ("one" :label)))
-                                   :excluded-element-ids (as-set [id-label1both
-                                                                  id-label1one])
-                                   :relative-id id1
+                                   :template (as-set `(~'anything
+                                                       ~one-object
+                                                       ~both-object))
+                                   :excluded-element-ids
+                                   (as-set [(:label-1-both-id ids)
+                                            (:label-one-id ids)])
+                                   :relative-id (:element-1-id ids)
                                    :render-dom render-item-DOM
                                    :get-action-data (default-AD)}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template label-template
-                                  :parallel-ids [id2]
+                                  :parallel-ids [(:element-2-id ids)]
                                   :class "label"
                                   :omit-universal-elements true
-                                  :excluded-element-ids [id-tag2two]
-                                  :relative-id id-label2two
+                                  :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM
                                   :get-action-data (default-AD)}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :template (as-set '(anything ("both" :label)
-                                                                ("two" :label)))
-                                   :excluded-element-ids (as-set [id-label2both
-                                                                  id-label2two])
-                                   :relative-id id2
+                                   :template (as-set `(~'anything
+                                                       ~two-object
+                                                       ~both-object))
+                                   :excluded-element-ids
+                                   (as-set [(:label-2-both-id ids)
+                                            (:label-two-id ids)])
+                                   :relative-id (:element-2-id ids)
                                    :render-dom render-item-DOM
                                    :get-action-data (default-AD)}]]]]]]
                 [:div {:class (str "horizontal-labels-element"
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :template virtual-label-template
-                              :parallel-ids [id3]
+                              :parallel-ids [(:element-3-id ids)]
                               :get-action-data [(comp-AD)
                                                 [(parallel-AD) (item-AD)]
                                                 (virt-AD)]
-                              :relative-id [id3 :virtual-label]
+                              :relative-id [(:element-3-id ids) :virtual-label]
                               :render-dom (virt-DOM)
                               :class "label"
                               :omit-universal-elements true}]
                  [:component {:width 0.9
                               :template 'anything
-                              :relative-id id3
+                              :relative-id (:element-3-id ids)
                               :render-dom render-item-DOM
                               :get-action-data (default-AD)}]]]]))))
 

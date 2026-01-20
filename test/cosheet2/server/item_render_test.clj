@@ -877,7 +877,6 @@
                                     :must-show-label :wide
                                     :excluded-element-ids [id3])
                              store)]
-    ;; Test an item with two elements, neither with a label.
     (is (check
          dom
          [:div
@@ -934,25 +933,11 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (2 ("two" :label) (~o2 :order))
-                                      (1 ("one" :label) (~o1 :order))))
-        fred (id->entity fred-id store)
-        item1 (first (matching-elements 1 fred))
-        label1 (first (matching-elements "one" item1))
-        tag1 (first (matching-elements :label label1))
-        id1 (:item-id item1)
-        id-label1 (:item-id label1)
-        id-tag1 (:item-id tag1)
-        item2 (first (matching-elements 2 fred))
-        label2 (first (matching-elements "two" item2))
-        tag2 (first (matching-elements :label label2))
-        id2 (:item-id item2)
-        id-label2 (:item-id label2)
-        id-tag2 (:item-id tag2)
+  (let [[store ids] (make-fred-1-one-2-two-store)
+        one-object (id->entity (:one-oid ids) store)
+        two-object (id->entity (:two-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
-                                    :relative-id fred-id
+                                    :relative-id (:fred-id ids)
                                     :width 1.5)
                              store)]
     (is (check
@@ -961,7 +946,7 @@
           [:component {:template ""
                        :width 1.5
                        :relative-id :content
-                       :item-id fred-id
+                       :item-id (:fred-id ids)
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
@@ -969,79 +954,42 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template label-template
-                          :parallel-ids [id1]
+                          :parallel-ids [(:element-1-id ids)]
                           :class "label"
                           :omit-universal-elements true
-                          :excluded-element-ids [id-tag1]
-                          :relative-id id-label1
+                          :relative-id (:label-one-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template '(anything ("one" :label))
-                         :excluded-element-ids [id-label1]
-                         :relative-id id1
+                         :template `(~'anything ~one-object)
+                         :excluded-element-ids [(:label-one-id ids)]
+                         :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template label-template
-                          :parallel-ids [id2]
+                          :parallel-ids [(:element-2-id ids)]
                           :class "label"
                           :omit-universal-elements true
-                          :excluded-element-ids [id-tag2]
-                          :relative-id id-label2
+                          :relative-id (:label-two-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template '(anything ("two" :label))
-                         :excluded-element-ids [id-label2]
-                         :relative-id id2
+                         :template `(~'anything ~two-object)
+                         :excluded-element-ids [(:label-two-id ids)]
+                         :relative-id (:element-2-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]]])))
   ;; Test an item with four elements, with label sharing among them.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (0 ("zero" :label)
-                                         (~o1 :order))
-                                      (2 ("two" :label (~o1 :order))
-                                         ("both" :label (~o2 :order))
-                                         (~o3 :order))
-                                      (1 ("one" :label (~o1 :order))
-                                         ("both" :label (~o2 :order))
-                                         (~o2 :order))
-                                      (3 (~o4 :order))))
-        fred (id->entity fred-id store)
-        item0 (first (matching-elements 0 fred))
-        label0 (first (matching-elements "zero" item0))
-        tag0 (first (matching-elements :label label0))
-        id0 (:item-id item0)
-        id-label0 (:item-id label0)
-        id-tag0 (:item-id tag0)
-        item1 (first (matching-elements 1 fred))
-        label1one (first (matching-elements "one" item1))
-        tag1one (first (matching-elements :label label1one))
-        label1both (first (matching-elements "both" item1))
-        tag1both (first (matching-elements :label label1both))
-        id1 (:item-id item1)
-        id-label1one (:item-id label1one)
-        id-tag1one (:item-id tag1one)
-        id-label1both (:item-id label1both)
-        id-tag1both (:item-id tag1both)
-        item2 (first (matching-elements 2 fred))
-        label2two (first (matching-elements "two" item2))
-        tag2two (first (matching-elements :label label2two))
-        label2both (first (matching-elements "both" item2))
-        tag2both (first (matching-elements :label label2both))
-        id2 (:item-id item2)
-        id-label2two (:item-id label2two)
-        id-tag2two (:item-id tag2two)
-        id-label2both (:item-id label2both)
-        id-tag2both (:item-id tag2both)
-        item3 (first (matching-elements 3 fred))
-        id3 (:item-id item3)
+  (let [[store ids] (make-fred-4-elements-store)
+        zero-object (id->entity (:zero-oid ids) store)
+        one-object (id->entity (:one-oid ids) store)
+        two-object (id->entity (:two-oid ids) store)
+        both-object (id->entity (:both-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
-                                    :relative-id fred-id
+                                    :relative-id (:fred-id ids)
                                     :width 1.5)
                              store)]
     (is (check
@@ -1050,7 +998,7 @@
           [:component {:template ""
                        :width 1.5
                        :relative-id :content
-                       :item-id fred-id
+                       :item-id (:fred-id ids)
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
@@ -1058,32 +1006,31 @@
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template label-template
-                          :parallel-ids [id0]
+                          :parallel-ids [(:element-0-id ids)]
                           :class "label"
                           :omit-universal-elements true
-                          :excluded-element-ids [id-tag0]
-                          :relative-id id-label0
+                          :relative-id (:label-zero-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template '(anything ("zero" :label))
-                         :excluded-element-ids [id-label0]
-                         :relative-id id0
+                         :template `(~'anything ~zero-object)
+                         :excluded-element-ids [(:label-zero-id ids)]
+                         :relative-id (:element-0-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
                           :template label-template
-                          :parallel-ids [id1 id2]
+                          :parallel-ids (as-set [(:element-1-id ids)
+                                                 (:element-2-id ids)])
                           :class "label"
                           :omit-universal-elements true
-                          :excluded-element-ids [id-tag1both]
-                          :relative-id id-label1both
+                          :relative-id (:label-1-both-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template '(anything ("both" :label))
+                         :template `(~'anything ~both-object)
                          :relative-id :virtual
                          :position :after
                          :sibling true
@@ -1094,19 +1041,19 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template label-template
-                           :parallel-ids [id1]
+                           :parallel-ids [(:element-1-id ids)]
                            :class "label"
                            :omit-universal-elements true
-                           :excluded-element-ids [id-tag1one]
-                           :relative-id id-label1one
+                           :relative-id (:label-one-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
             [:component {:width 1.03125
-                         :template (as-set '(anything ("both" :label)
-                                                      ("one" :label)))
-                         :excluded-element-ids (as-set [id-label1both
-                                                        id-label1one])
-                         :relative-id id1
+                         :template (as-set `(~'anything
+                                             ~both-object
+                                             ~one-object))
+                         :excluded-element-ids (as-set [(:label-1-both-id ids)
+                                                        (:label-one-id ids)])
+                         :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]
            [:div {:class "horizontal-labels-element label wide"}
@@ -1114,19 +1061,20 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template label-template
-                           :parallel-ids [id2]
+                           :parallel-ids [(:element-2-id ids)]
                            :class "label"
                            :omit-universal-elements true
-                           :excluded-element-ids [id-tag2two]
-                           :relative-id id-label2two
+                           :relative-id (:label-two-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
-                          :template '(anything ("both" :label) ("two" :label))
-                          :excluded-element-ids (as-set [id-label2both
-                                                         id-label2two])
-                          :relative-id id2
+                          :template (as-set `(~'anything
+                                              ~both-object
+                                              ~two-object))
+                          :excluded-element-ids (as-set [(:label-2-both-id ids)
+                                                         (:label-two-id ids)])
+                          :relative-id (:element-2-id ids)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]]
            [:div {:class "horizontal-labels-element label wide"}
@@ -1134,8 +1082,8 @@
              [:component {:width 0.375
                           :template virtual-label-template
                           ;; TODO: This breaks the relative id convention.
-                          :relative-id [id3 :virtual-label]
-                          :parallel-ids [id3]
+                          :relative-id [(:element-3-id ids) :virtual-label]
+                          :parallel-ids [(:element-3-id ids)]
                           :render-dom (virt-DOM)
                           :get-action-data [(comp-AD)
                                             [(parallel-AD) (item-AD)]
@@ -1144,7 +1092,7 @@
                           :omit-universal-elements true}]]
             [:component {:width 1.03125
                          :template 'anything
-                         :relative-id id3
+                         :relative-id (:element-3-id ids)
                          :render-dom render-item-DOM
                          :get-action-data (default-AD)}]]]]))))
 
@@ -1152,158 +1100,3 @@
   (is (check (render-virtual-DOM {:class "foo"} new-element-store)
              [:div {:class "foo editable virtual"}])))
 
-(comment
-
-;;; Test an item that needs to be wrapped in labels.
-  (deftest item-DOM-R-test-labels
-    ;; First, test when there is a label.
-    (let [element-as-list `(39
-                            ("age" :tag (~o1 :order))
-                            ("Ke"
-                             ("according-to" :tag (~o1 :order))
-                             (~o1 :order)))
-          inherited  (assoc base-inherited :width 1.0)
-          [dom element] (let-mutated [element element-as-list]
-                          (expr-let [dom (item-DOM-R element [] inherited)]
-                            [dom element]))]
-      (let [element-key [:root (:item-id element)]
-            age (first (current-value (matching-elements "age" element)))
-            age-tag (first (current-value (matching-elements :tag age)))
-            age-key [:root (:item-id age)]]
-        (is (check dom
-                   [:div {:class "wrapped-element tag"}
-                    [:div
-                     {:key (conj age-key :content)
-                      :class "content-text editable item tag"
-                      :target {:template '(anything :tag)
-                               :referent (item-referent age)}
-                      :expand {:referent (item-referent element)}}
-                     "age"]
-                    [:div {:class "indent-wrapper"}
-                     [:div {:class "item with-elements"}
-                      [:div {:class "content-text editable"
-                             :target {:referent (item-referent element)
-                                      :template ""}
-                             :key (conj element-key :content)}
-                       "39"]
-                      [:div {:class "horizontal-tags-element tag wide"}
-                       (any)
-                       [:div (any) "Ke"]]]]]))))
-    ;; Then test when there is no label, but labels must be shown.
-    (let [item-as-list `(39 ("Ke"
-                             ("according-to" :tag (~o1 :order))
-                             (~o1 :order)))
-          inherited  (assoc base-inherited :width 1.0)
-          [dom item] (let-mutated [item item-as-list]
-                       (expr-let [dom (item-DOM-R
-                                       item [] inherited :must-show-label true)]
-                         [dom item]))]
-      (let [item-key [:root (:item-id item)]]
-        (is (check dom
-                   [:div {:class
-                          "horizontal-tags-element tag virtual-wrapper narrow"}
-                    [:div {:class "editable tag"
-                           :key (conj item-key :tags :virtual)
-                           :expand {:referent (item-referent item)}
-                           :target {:referent (virtual-referent
-                                               '(anything :tag)
-                                               (item-referent item)
-                                               nil
-                                               :position :after)
-                                    :select-pattern (conj item-key
-                                                          :tags [:pattern])}}]
-                    [:div {:class "item with-elements"}
-                     [:div {:class "content-text editable"
-                            :target {:referent (item-referent item)
-                                     :template ""}
-                            :key (conj item-key :content)}
-                      "39"]
-                     [:div {:class "horizontal-tags-element tag wide"}
-                      (any)
-                      [:div (any) "Ke"]]]])))))
-
-;;; TODO: Add a test where some of the arguments are true.
-  (deftest labels-and-elements-DOM-R-test
-    (let [element-as-list `(39
-                            ("age" :tag (~o1 :order))
-                            ("Ke"
-                             ("according-to" :tag (~o1 :order))
-                             (~o1 :order)))
-
-          element (let-mutated [element element-as-list]
-                    element)
-          element-key [:root (:item-id element)]
-          element-referent (item-referent element)
-          age (first (current-value (matching-elements "age" element)))
-          age-tag (first (current-value (matching-elements :tag age)))
-          age-key (conj element-key (:item-id age))
-          qualifier (first (current-value (matching-elements "Ke" element)))
-          according-to (first (current-value (matching-elements
-                                              "according-to" qualifier)))
-          according-to-id (:item-id according-to)
-          inherited  (assoc base-inherited
-                            :width 1.0
-                            :key-prefix element-key
-                            :subject-referent element-referent
-                            :attributes [[#{:content} {:class "placeholder"}]])
-          dom (current-value
-               (labels-and-elements-DOM-R
-                [age qualifier] false false false :vertical inherited))]
-      (is (check dom
-                 [:div {:class "wrapped-element tag"}
-                  [:div {:key (conj age-key :content)
-                         :class "content-text editable item tag"
-                         :target {:template '(anything :tag)
-                                  :referent (item-referent age)}}
-                   "age"]
-                  [:div {:class "indent-wrapper"}
-                   [:div {:class "item elements-wrapper"}
-                    [:div {:class "horizontal-tags-element tag wide"}
-                     [:div {:class
-                            "tag horizontal-header top-border bottom-border"}
-                      [:div (any) "according-to"]]
-                     [:div (any) "Ke"]]]]]))))
-
-
-  (deftest item-content-and-elements-DOM-R-test
-    (let [element-as-list `(39
-                            ("age" :tag (~o1 :order))
-                            ("Ke"
-                             ("according-to" :tag (~o1 :order))
-                             (~o1 :order)))
-
-          element (let-mutated [element element-as-list]
-                    element)
-          element-key [:root (:item-id element)]
-          element-referent (item-referent element)
-          age (first (current-value (matching-elements "age" element)))
-          age-tag (first (current-value (matching-elements :tag age)))
-          age-key (conj element-key (:item-id age))
-          qualifier (first (current-value (matching-elements "Ke" element)))
-          according-to (first (current-value (matching-elements
-                                              "according-to" qualifier)))
-          according-to-id (:item-id according-to)
-          inherited  (assoc base-inherited
-                            :width 1.0
-                            :key-prefix element-key
-                            :subject-referent element-referent
-                            :attributes [[#{:content} {:class "placeholder"}]])
-          dom (current-value
-               (item-content-and-elements-DOM-R
-                age 39 [age qualifier] false inherited))]
-      (is (check dom
-                 [:div {:class "wrapped-element tag"}
-                  (any)
-                  [:div {:class "indent-wrapper"}
-                   [:div {:class "item with-elements"}
-                    [:div {:class "placeholder content-text editable"
-                           :target {:referent element-referent
-                                    :template ""}
-                           :key (conj element-key :content)}
-                     "39"]
-                    [:div {:class "horizontal-tags-element tag wide"}
-                     [:div {:class
-                            "tag horizontal-header top-border bottom-border"}
-                      [:div (any) "according-to"]]                   
-                     [:div (any) "Ke"]]]]]))))
-  )

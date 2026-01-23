@@ -16,7 +16,8 @@
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
              [store-utils :refer [add-element add-object
-                                  add-universal-objects]]
+                                  add-universal-objects
+                                  add-label-object]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
              [model-utils :refer [semantic-label-elements]]
@@ -85,26 +86,6 @@
         dom-R (renderer spec mutable-store)]
     (computation-value dom-R cd)))
 
-(deftest virtual-DOM-test
-  (is (check (virtual-DOM-component {:template "foo"
-                                     :relative-id :bar
-                                     :position :before})
-             [:component {:template "foo"
-                          :position :before
-                          :relative-id :bar
-                          :render-dom (virt-DOM)
-                          :get-action-data (virt-AD)}])))
-
-(defn add-label-object-to-store
-  "Add a label object with the given name to the store.
-   Return the updated store and the id of the label object."
-  [store name]
-  (let [[s1 label-oid] (get-new-object-id store)
-        [s2 _] (add-element s1 label-oid link-type)
-        [s3 label-name-id] (add-element s2 label-oid name)
-        [s4 _] (add-element s3 label-name-id name-label)]
-    [s4 label-oid]))
-
 (defn make-joe-and-jane-store
   "Make a store with labels test-object and foo-object and with
     [:object 'Joe' test-object foo-object]
@@ -112,9 +93,9 @@
   Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 test-label-oid] (add-label-object-to-store s "test")
+        [s1 test-label-oid] (add-label-object s "test")
         test-label-object (id->entity test-label-oid s1)
-        [s2 foo-label-oid] (add-label-object-to-store s1 "foo")
+        [s2 foo-label-oid] (add-label-object s1 "foo")
         foo-label-object (id->entity foo-label-oid s2)
         [s4 joe-id] (add-element s2 nil "Joe")
         [s5 joe-test-id] (add-element s4 joe-id test-label-object)
@@ -136,8 +117,8 @@
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object-to-store s "one")
-        [s2 two-oid] (add-label-object-to-store s1 "two")
+        [s1 one-oid] (add-label-object s "one")
+        [s2 two-oid] (add-label-object s1 "two")
         [s3 fred-id] (add-element s2 nil "Fred")
         [s4 label-one-id] (add-element s3 fred-id `(~(id->entity one-oid s3)
                                                    (~o1 :order)))
@@ -156,8 +137,8 @@
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object-to-store s "one")
-        [s2 two-oid] (add-label-object-to-store s1 "two")
+        [s1 one-oid] (add-label-object s "one")
+        [s2 two-oid] (add-label-object s1 "two")
         [s3 fred-id] (add-element s2 nil "Fred")
         [s4 element-1-id] (add-element s3 fred-id `(1 (~o1 :order)))
         [s5 label-one-id] (add-element s4 element-1-id
@@ -184,10 +165,10 @@
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object-to-store s "one")
-        [s2 two-oid] (add-label-object-to-store s1 "two")
-        [s3 zero-oid] (add-label-object-to-store s2 "zero")
-        [s4 both-oid] (add-label-object-to-store s3 "both")
+        [s1 one-oid] (add-label-object s "one")
+        [s2 two-oid] (add-label-object s1 "two")
+        [s3 zero-oid] (add-label-object s2 "zero")
+        [s4 both-oid] (add-label-object s3 "both")
         [s5 fred-id] (add-element s4 nil "Fred")
         [s6 element-0-id] (add-element s5 fred-id `(0 (~o1 :order)))
         [s7 label-zero-id] (add-element s6 element-0-id
@@ -221,6 +202,16 @@
             :label-two-id label-two-id
             :label-2-both-id label-2-both-id
             :element-3-id element-3-id}]))
+
+(deftest virtual-DOM-test
+  (is (check (virtual-DOM-component {:template "foo"
+                                     :relative-id :bar
+                                     :position :before})
+             [:component {:template "foo"
+                          :position :before
+                          :relative-id :bar
+                          :render-dom (virt-DOM)
+                          :get-action-data (virt-AD)}])))
 
 (deftest horizontal-label-hierarchy-node-DOM-test
   (let [[store ids] (make-joe-and-jane-store)
@@ -308,18 +299,16 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
-              ;; TODO: !!! Should these objects be in parens, like
-              ;;       object elements should be?
               [:component {:template (as-set `(~'anything
-                                               ~test-label-object
-                                               ~foo-label-object))
+                                               (~test-label-object)
+                                               (~foo-label-object)))
                            :width 0.8
                            :excluded-element-ids (as-set [(:joe-test-id ids)
                                                           (:joe-foo-id ids)])
                            :relative-id (:joe-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
-            [:component {:template `(~'anything ~test-label-object)
+            [:component {:template `(~'anything (~test-label-object))
                          :width 0.8
                          :excluded-element-ids [(:jane-test-id ids)]
                          :relative-id (:jane-id ids)
@@ -352,15 +341,15 @@
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
               [:component {:template (as-set `(~'anything
-                                               ~test-label-object
-                                               ~foo-label-object))
+                                               (~test-label-object)
+                                               (~foo-label-object)))
                            :width 0.8
                            :excluded-element-ids (as-set [(:joe-test-id ids)
                                                           (:joe-foo-id ids)])
                            :relative-id (:joe-id ids)
                            :render-dom render-item-DOM
                            :get-action-data (default-AD)}]]]
-            [:component {:template `(~'anything ~test-label-object)
+            [:component {:template `(~'anything (~test-label-object))
                          :width 0.8
                          :excluded-element-ids [(:jane-test-id ids)]
                          :relative-id (:jane-id ids)
@@ -473,9 +462,9 @@
 
 (deftest named-object-DOM-test
   (let [[s1 oid] (get-new-object-id (new-element-store))
-        [store fred-id] (add-element s1 oid `("Fred" ~name-label))
+        [store fred-id] (add-element s1 oid `("Fred" (~name-label)))
         [two-name-store friedrich-id] (add-element store oid
-                                                   `("Friedrich" ~name-label))
+                                                   `("Friedrich" (~name-label)))
         [label-store _] (add-element store oid link-type)
         [class-store _] (add-element store oid object-type)]
     (is (check (named-object-DOM (id->entity oid store)
@@ -545,7 +534,7 @@
   
   ;; Test a named object
   (let [[s1 oid] (get-new-object-id (new-element-store))
-        [store fred-name-id] (add-element s1 oid `("Fred" ~name-label))
+        [store fred-name-id] (add-element s1 oid `("Fred" (~name-label)))
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
                                  :relative-id oid
@@ -734,7 +723,7 @@
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template `(~'anything ~one-object)
+                                :template `(~'anything (~one-object))
                                 :relative-id (:element-1-id ids)
                                 :excluded-element-ids [(:label-one-id ids)]
                                 :render-dom render-item-DOM
@@ -750,7 +739,7 @@
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template `(~'anything ~two-object)
+                                :template `(~'anything (~two-object))
                                 :relative-id (:element-2-id ids)
                                 :excluded-element-ids [(:label-two-id ids)]
                                 :render-dom render-item-DOM
@@ -785,7 +774,7 @@
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :template `(~'anything ~zero-object)
+                                :template `(~'anything (~zero-object))
                                 :excluded-element-ids [(:label-zero-id ids)]
                                 :relative-id (:element-0-id ids)
                                 :render-dom render-item-DOM
@@ -814,8 +803,8 @@
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
-                                                       ~one-object
-                                                       ~both-object))
+                                                       (~one-object)
+                                                       (~both-object)))
                                    :excluded-element-ids
                                    (as-set [(:label-1-both-id ids)
                                             (:label-one-id ids)])
@@ -834,8 +823,8 @@
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
-                                                       ~two-object
-                                                       ~both-object))
+                                                       (~two-object)
+                                                       (~both-object)))
                                    :excluded-element-ids
                                    (as-set [(:label-2-both-id ids)
                                             (:label-two-id ids)])
@@ -961,7 +950,7 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template `(~'anything ~one-object)
+                         :template `(~'anything (~one-object))
                          :excluded-element-ids [(:label-one-id ids)]
                          :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM
@@ -977,7 +966,7 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template `(~'anything ~two-object)
+                         :template `(~'anything (~two-object))
                          :excluded-element-ids [(:label-two-id ids)]
                          :relative-id (:element-2-id ids)
                          :render-dom render-item-DOM
@@ -1013,7 +1002,7 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template `(~'anything ~zero-object)
+                         :template `(~'anything (~zero-object))
                          :excluded-element-ids [(:label-zero-id ids)]
                          :relative-id (:element-0-id ids)
                          :render-dom render-item-DOM
@@ -1030,7 +1019,7 @@
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
-                         :template `(~'anything ~both-object)
+                         :template `(~'anything (~both-object))
                          :relative-id :virtual
                          :position :after
                          :sibling true
@@ -1049,8 +1038,8 @@
                            :get-action-data (default-AD)}]]]
             [:component {:width 1.03125
                          :template (as-set `(~'anything
-                                             ~both-object
-                                             ~one-object))
+                                             (~both-object)
+                                             (~one-object)))
                          :excluded-element-ids (as-set [(:label-1-both-id ids)
                                                         (:label-one-id ids)])
                          :relative-id (:element-1-id ids)
@@ -1070,8 +1059,8 @@
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
                           :template (as-set `(~'anything
-                                              ~both-object
-                                              ~two-object))
+                                              (~both-object)
+                                              (~two-object)))
                           :excluded-element-ids (as-set [(:label-2-both-id ids)
                                                          (:label-two-id ids)])
                           :relative-id (:element-2-id ids)

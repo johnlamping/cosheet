@@ -5,11 +5,13 @@
              [orderable :as orderable]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element add-universal-objects
+                                  add-label-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->entity
                                          label->elements elements to-list
-                                         make-object-list link-type]]
+                                         make-object-list
+                                         link-type name-label]]
              [expression :refer [expr expr-let expr-seq]]
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
@@ -96,23 +98,30 @@
     (computation-value dom-R cd)))
 
 (deftest get-virtual-column-cell-action-data-test
-  (let [[s1 table-id] (add-element (new-element-store) nil
-                                  (add-order-elements
-                                   '(""
-                                     (:x :row-condition
-                                         anything)
-                                     (:x :column-headers
-                                         (anything ("c1" :label))
-                                         (anything ("c2" :label))))))
-        [store row-id] (add-element s1 nil (add-order-elements
-                                           '(anything (1 ("c1" :label))
-                                                      (2 ("c2" :label)))))
+  (let [s (add-universal-objects (new-element-store))
+        [s1 c1-label-oid] (add-label-object s "c1")
+        [s2 c2-label-oid] (add-label-object s1 "c2")
+        c1-object (id->entity c1-label-oid s2)
+        c2-object (id->entity c2-label-oid s2)
+        [s3 table-id] (add-element s2 nil
+                                   (add-order-elements
+                                    `(""
+                                      (:x :row-condition
+                                          ~'anything)
+                                      (:x :column-headers
+                                          (~'anything (~c1-object))
+                                          (~'anything (~c2-object))))))
+        [store row-id] (add-element s3 nil (add-order-elements
+                                            `(~'anything
+                                              (1 (~c1-object))
+                                              (2 (~c2-object)))))
         data (get-virtual-column-cell-action-data
               {}
               {:table-id table-id :subject-ids [row-id]}
               nil store)
         new-store (:store data)
         new-id (first (:subject-ids data))]
+    ;; TODO: !!! This shouldn't be a :label here, but an object list
     (is (= (semantic-to-list (id->entity new-id new-store))
            '("" (" A" :label))))))
 

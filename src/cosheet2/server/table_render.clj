@@ -183,13 +183,6 @@
                true true :horizontal spec-down)]
       (add-attributes dom {:class "query-condition"}))))
 
-(defn is-label-template?
-  "Return true if the template describes a label."
-  [template]
-  (and (sequential? template)
-       (some #(= (content %) :label)
-             (rest template))))
-
 (defn table-hierarchy-node-disqualifications
   "Given a hierarchy node, return a seq of conditions that immediate
   elements of the node must not satisfy, because they are covered

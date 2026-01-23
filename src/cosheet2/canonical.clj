@@ -65,7 +65,8 @@
         (do (assert (= orientation :source))
             [:object canonical-elements])
         (and (= orientation :source)
-             (empty? canonical-elements))
+             (empty? canonical-elements)
+             (primitive? canonical-content))
         canonical-content
         true [orientation canonical-content canonical-elements]))
 

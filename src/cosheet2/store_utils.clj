@@ -7,7 +7,8 @@
                                       element? object? named-object?
                                       anonymous-object?
                                       content orientation elements
-                                      name-label link-type object-type]])))
+                                      name-label link-type object-type
+                                      make-object-list]])))
 
 ;;; These are utilities for adding and removing element and object
 ;;; entities from the store.
@@ -66,6 +67,12 @@
         [s5 _] (add-element s4 object-type-id `("class" (~name-label)))
         [s6 _] (add-element s5 object-type-id `(~object-type))]
     s6))
+
+(defn add-label-object
+  "Add a label object with the given name to the store.
+   Return the updated store and the id of the label object."
+  [store name]
+  (add-object store (make-object-list [`(~name ~name-label) `(~link-type)])))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the

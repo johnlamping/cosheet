@@ -128,16 +128,29 @@
 (deftest table-DOM-test
   (let [specification {:width 3.0
                        :elements-template 'anything}
+        s (add-universal-objects (new-element-store))
+        [sa age-oid] (add-label-object s "age")
+        [sb name-oid] (add-label-object sa "name")
+        [sc id-oid] (add-label-object sb "id")
+        [sd single-oid] (add-label-object sc "single")
+        [se height-oid] (add-label-object sd "height")
+        [sf other-oid] (add-label-object se "other")
+        temp-age-label-object (id->entity age-oid sf)
+        temp-name-label-object (id->entity name-oid sf)
+        temp-id-label-object (id->entity id-oid sf)
+        temp-single-label-object (id->entity single-oid sf)
+        temp-height-label-object (id->entity height-oid sf)
+        other-label-object (id->entity other-oid sf)
         joe-list `("Joe"
                    :top-level
                    (~o2 :order)
                    ("male" (~o1 :order))
                    ("married" (~o2 :order))
                    (39 (~o3 :order)
-                       ("age" :label (~o3 :order))
+                       (~temp-age-label-object (~o3 :order))
                        ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
                    (45 (~o4 :order)
-                       ("age" :label (~o3 :order)))
+                       (~temp-age-label-object (~o3 :order)))
                    ("Joe" (~o5 :order)
                     ("name" :label (~o3 :order)))
                    ("Joseph" (~o6 :order)
@@ -156,12 +169,13 @@
                     ;; than the table condition to test that it will
                     ;; cause the condition to be eliminated in batch
                     ;; edits.
-                    (~'anything (~o3 :order) ("age" :label (~o3 :order))))
+                    (~'anything (~o3 :order) (~temp-age-label-object
+                                              (~o3 :order))))
         table-list `("table"
                      (~'anything
                       :row-condition
                       (~'anything
-                       ("age" :label (~o1 :order))
+                       (~temp-age-label-object (~o1 :order))
                        (~o8 :order)))
                      (~'anything
                       :column-headers
@@ -177,7 +191,7 @@
                       (~'anything ("name" :label (~o1 :order))
                        (~o4 :order))
                       (~'anything
-                       ("age" :label (~o1 :order))
+                       (~temp-age-label-object (~o1 :order))
                        ("other" :label (~o2 :order))
                        (~o5 :order))
                       (~'anything ("6-2" (~o1 :order)
@@ -185,10 +199,16 @@
                        (~o6 :order))
                       ("something" ("child" (~o1 :order))
                        (~o7 :order))))
-        [s1 joe-id] (add-element (new-element-store) nil joe-list)
+        [s1 joe-id] (add-element sf nil joe-list)
         [s2 jane-id] (add-element s1 nil jane-list)
         [s3 test-id] (add-element s2 nil test-list)
         [store table-id] (add-element s3 nil table-list)
+        age-label-object (id->entity age-oid store)
+        name-label-object (id->entity name-oid store)
+        id-label-object (id->entity id-oid store)
+        single-label-object (id->entity single-oid store)
+        height-label-object (id->entity height-oid store)
+        label-object (id->entity other-oid store)
         joe (id->entity joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))
@@ -303,12 +323,11 @@
                           :parallel-ids [rc1-id]
                           :class "label"
                           :omit-universal-elements true
-                          :excluded-element-ids [(any)]
                           :relative-id (any)
                           :render-dom render-item-DOM
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
-              [:component {:template '(anything ("age" :label))
+              [:component {:template `(~'anything (~age-label-object))
                            :width 0.75
                            :excluded-element-ids [(any)]
                            :relative-id rc1-id
@@ -747,7 +766,8 @@
              {:relative-id :body
               :alternate-row-sibling column-headers-id
               :column-descriptions-R (any)
-              :row-template-R '(anything (anything ("age" :label)) :top-level)
+              :row-template-R `(~'anything (~'anything (~age-label-object))
+                                :top-level)
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM
               :get-action-data (pass-AD)}]]]))

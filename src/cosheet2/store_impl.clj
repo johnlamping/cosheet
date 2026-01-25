@@ -1,6 +1,6 @@
 (ns cosheet2.store-impl
   (:require (cosheet2 [store :refer :all :as store]
-                      [entity :refer [StoredEntity]
+                      [entity :refer [stored-entity?]
                               :as entity]
                       [utils :refer [pseudo-set-set
                                      pseudo-set-seq
@@ -640,7 +640,7 @@
               (let [contents (map entity/content elements)]
                 (and (not-any? #(or (nil? %)
                                     (and (entity/object? %)
-                                         (not (satisfies? StoredEntity %))))
+                                         (not (stored-entity? %))))
                                contents)
                      (apply distinct? contents))))]))))
 
@@ -660,7 +660,7 @@
       ;; TODO: When the content is an anonymous object, get candidate
       ;;       ids for it, then use those as if they were content?
       (and (entity/object? content)
-           (not (satisfies? StoredEntity content)))
+           (not (stored-entity? content)))
       [element-matches false]
       
       true

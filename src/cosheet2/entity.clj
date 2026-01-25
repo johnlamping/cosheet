@@ -247,12 +247,16 @@
 (def link-type)
 (def object-type)
 
+(defn stored-entity?
+  [entity]
+  (satisfies? StoredEntity entity))
+
 (defn universal-object?
   "Return true if the object is one of the universal objects:
   name-label, link-type, and object-type. The object can be in any
   store."
   [entity]
-  (and (satisfies? StoredEntity entity)
+  (and (stored-entity? entity)
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
 
 (defn anonymous-object?
@@ -260,7 +264,7 @@
   Note: This must be kept in synch with store-impl/anonymous-object-id?"
   [entity]
   (and (object? entity)
-       (not (and (satisfies? StoredEntity entity)
+       (not (and (stored-entity? entity)
                  (or (string? (:id (:item-id entity)))
                      ;; All mutable objects count as named, because
                      ;; they have unique identities.
@@ -273,7 +277,7 @@
   "Return true if the entity is a non-generic object."
   [entity]
   (and (object? entity)
-       (or (and (satisfies? StoredEntity entity)
+       (or (and (stored-entity? entity)
                 (or (string? (:id (:item-id entity)))
                     ;; All mutable objects count as named, because
                     ;; they have unique identities.
@@ -405,7 +409,7 @@
     ;; corresponding object from the mutable store.
     (expr-let [immutable (updating-immutable entity)]
       ((immutable-to-list-generator
-        (fn [object skipped-element] (if (satisfies? StoredEntity object)
+        (fn [object skipped-element] (if (stored-entity? object)
                                        (in-different-store object entity)
                                        object)))
        immutable nil))

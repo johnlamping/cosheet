@@ -1,8 +1,7 @@
 (ns cosheet2.query-impl
   (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
-                      [entity :refer [Entity StoredEntity
-                                      mutable-entity? primitive? object?
-                                      named-object?
+                      [entity :refer [mutable-entity? primitive? object?
+                                      named-object? stored-entity?
                                       id->entity entity-key
                                       orientation content elements
                                       make-element-list make-object-list
@@ -125,7 +124,7 @@
   (and (let [elements (elements entity)]
          (or (empty? elements) (= elements '(:label))))
        (let [content (content entity)]
-         (or (primitive? content) (satisfies? StoredEntity content)))))
+         (or (primitive? content) (stored-entity? content)))))
 
 (defn labels-for-element
   "Given an element of a term, find primitives that can serve as labels
@@ -203,6 +202,7 @@
 (defn extended-by? [fixed-term entity]
   (or (nil? fixed-term)
       (cond
+        (nil? fixed-term) true
         (primitive? fixed-term)
         (equivalent-primitives? fixed-term (content entity))
         (named-object? fixed-term)
@@ -279,7 +279,7 @@
 
 (def matching-extensions)
 
-(defn variable-matches
+(defn variable-match-extensions
   "Return a seq of environments for which the variable matches the entity.
   Each environment will a binding for this variable, if it has a name,
   plus bindings for any other variables in the qualifier."
@@ -290,7 +290,7 @@
     (let [value (env name)]
       (if (nil? value)
         (when (and (not (nil? entity))
-                   (or (not reference) (satisfies? StoredEntity entity)))
+                   (or (not reference) (stored-entity? entity)))
           (let [envs (if (nil? qualifier)
                        [env]
                        (matching-extensions
@@ -300,7 +300,7 @@
               envs
               (seq (map #(assoc % name entity) envs)))))
         (if reference
-          (when (and (= value entity) (satisfies? StoredEntity entity))
+          (when (and (= value entity) (stored-entity? entity))
                 [env])
           (when (= (canonicalize value)
                    (canonicalize entity))
@@ -371,7 +371,7 @@
        m))
    {} match-map))
 
-(defn multiple-element-matches
+(defn disjoint-element-match-extensions
   "Given a sequence of terms, a map from environments to sequences of
   disallowed elements, and a entity, return a sequence of environments
   where each term matches a different element in the entity that
@@ -385,7 +385,7 @@
           disjoint-map (concat-maps
                         (map conj-disjoint-maps
                              (vals env-map) matching-maps))]
-      (multiple-element-matches
+      (disjoint-element-match-extensions
        (rest terms) disjoint-map entity entity-element-filter))))
 
 (defn no-element-matches
@@ -398,64 +398,85 @@
                    (first queries) env entity entity-element-filter))
       (no-element-matches (rest queries) env entity entity-element-filter))))
 
-(defn item-matches [item item-element-filter env entity entity-element-filter]
-  (let [content-match-envs
-        (if (object? item)
-          (when (object? entity)
-            [env])
-          (when (and (not (object? entity))
-                     (= (orientation item) (orientation entity)))
-            (if-let [item-content (content item)]
-              ;; When matching content that is an object, the item we
-              ;; got must have been an element, and there'll be a
-              ;; corresponding element on the content, just in the
-              ;; reverse orientation. If we checked that that element
-              ;; matched we could go into an infinite loop, bouncing
-              ;; back and forth between objects. And there is no
-              ;; point, because we know the element is going to be
-              ;; there, by virtue of our element being present. So we
-              ;; tell subsequent checks to filter out that element
-              ;; before checking.
-              (matching-extensions
-               item-content (make-element-filter item) env
-               (content entity) (make-element-filter entity))
-              [env])))]
-    (when (seq content-match-envs)
-      (let [item-elements (item-element-filter (elements item))]
-        (if (empty? item-elements)
-          content-match-envs
-          (let [[positive negative] (separate-negations item-elements)]
-            (let [envs
-                  (cond
-                    (empty? positive)
-                    content-match-envs
-                    (empty? (rest positive))
-                    (-> (map #(element-matches
-                               (first positive) % entity entity-element-filter)
-                             content-match-envs)
-                        distinct-concat)
-                    true
-                    (multiple-element-matches
-                     positive
-                     (zipmap content-match-envs (repeat [[]]))
-                     entity
-                     identity))]
-              (if (empty? negative)
+(defn sub-elements-match-extensions
+  "Return all extensions of the environments for which the the elements
+  of the entity match the elements of the item, ignoring filtered out
+  elements."
+  [item item-element-filter envs entity entity-element-filter]
+  (let [item-elements (item-element-filter (elements item))]
+    (if (empty? item-elements)
+      envs
+      (let [[positive negative] (separate-negations item-elements)]
+        (let [envs-matching-positive
+              (cond
+                (empty? positive)
                 envs
-                (filter #(no-element-matches
-                          negative % entity entity-element-filter)
-                        envs)))))))))
+                (empty? (rest positive))
+                (-> (map #(element-matches
+                           (first positive) % entity entity-element-filter)
+                         envs)
+                    distinct-concat)
+                true
+                (disjoint-element-match-extensions
+                 positive
+                 (zipmap envs (repeat [[]]))
+                 entity
+                 entity-element-filter))]
+          (if (empty? negative)
+            envs-matching-positive
+            (filter #(no-element-matches
+                      negative % entity entity-element-filter)
+                    envs-matching-positive)))))))
+
+(defn object-match-extensions
+  "Return all extensions of the environment for which the entity matches
+  the item, which must be an object. Filtered out elements are
+  ignored."
+  [item item-element-filter env entity entity-element-filter]
+  (when (object? entity)
+    (if (= (entity-key item) (entity-key entity))
+      [env]
+      ;; A stored named object, can only match itself. But can be
+      ;; matched, in the other direction, by a pattern.
+      (when (or (not (stored-entity? item)) (not (named-object? item)))
+        (sub-elements-match-extensions item item-element-filter [env]
+                                       entity entity-element-filter)))))
+
+(defn element-match-extensions
+   "Return all extensions of the environment for which the entity matches
+  the item, which must be an element. Filtered out elements are
+  ignored."
+  [item item-element-filter env entity entity-element-filter]
+  (when (and (not (object? entity)) ;; We might match a primitive.
+             (= (orientation item) (orientation entity)))
+    (let [extensions
+          ;; When matching content that is an object, our element
+          ;; will also appear as an element of it, just in the
+          ;; reverse orientation. If we checked that that element
+          ;; matched we could go into an infinite loop, bouncing
+          ;; back and forth between objects. And there is no point,
+          ;; because we know the element is going to be there, by
+          ;; virtue of our element being present. So we tell
+          ;; subsequent checks to filter out our element before
+          ;; checking.
+          (matching-extensions
+           (content item) (make-element-filter item) env
+           (content entity) (make-element-filter entity))]
+      (when (seq extensions)
+        (sub-elements-match-extensions item item-element-filter extensions
+                                       entity entity-element-filter)))))
 
 (defn matching-extensions [term term-element-filter env
                            entity entity-element-filter]
   (assert (not (mutable-entity? term)))
-  (if (primitive? term)
-    (when (extended-by? term entity) [env])
-    (if (variable-query? term)
-      (variable-matches term term-element-filter env
-                        entity entity-element-filter)
-      (item-matches
-       term term-element-filter env entity entity-element-filter))))
+  (cond (primitive? term) (when (extended-by? term entity) [env])
+        (variable-query? term) (variable-match-extensions
+                                term term-element-filter env
+                                entity entity-element-filter)
+        (object? term) (object-match-extensions term term-element-filter env
+                                                entity entity-element-filter)
+        true (element-match-extensions term term-element-filter env
+                                       entity entity-element-filter)))
 
 (defmethod matching-extensions-m true [term env entity]
   (matching-extensions term identity env entity identity))
@@ -487,7 +508,7 @@
       (let [[template precise] (closest-template var env)
             ;; TODO: Make this use precise information.
             candidate-ids (first (candidate-matching-ids store template))
-            matches (map #(variable-matches
+            matches (map #(variable-match-extensions
                            var identity env (id->entity % store) identity)
                          candidate-ids)]
         (distinct-concat matches))

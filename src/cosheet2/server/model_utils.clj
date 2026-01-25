@@ -200,9 +200,7 @@
                        (concat [(not-query :label)])
                        (and (nil? new-content) require-orders)
                        (concat ['(nil :order)]))]
-    (if (seq new-elements)
-      (apply list (cons new-content new-elements))
-      new-content)))
+    (make-element-list :source new-content new-elements)))
 
 (defn entity->fixed-term
   "Convert the entity to a list, and change 'anything to nil."

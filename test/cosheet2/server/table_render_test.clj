@@ -140,7 +140,7 @@
         temp-id-label-object (id->entity id-oid sf)
         temp-single-label-object (id->entity single-oid sf)
         temp-height-label-object (id->entity height-oid sf)
-        other-label-object (id->entity other-oid sf)
+        temp-other-label-object (id->entity other-oid sf)
         joe-list `("Joe"
                    :top-level
                    (~o2 :order)
@@ -152,10 +152,10 @@
                    (45 (~o4 :order)
                        (~temp-age-label-object (~o3 :order)))
                    ("Joe" (~o5 :order)
-                    ("name" :label (~o3 :order)))
+                    (~temp-name-label-object (~o3 :order)))
                    ("Joseph" (~o6 :order)
-                    ("name" :label (~o1 :order))
-                    ("id" :label (~o2 :order))))
+                    (~temp-name-label-object (~o1 :order))
+                    (~temp-id-label-object (~o2 :order))))
         jane-list `("Jane"
                     :top-level
                     (~o1 :order)
@@ -179,23 +179,23 @@
                        (~o8 :order)))
                      (~'anything
                       :column-headers
-                      (~'anything ("single" :label (~o1 :order))
+                      (~'anything (~temp-single-label-object (~o1 :order))
                        (~o1 :order))
                       (~'anything
-                       ("name" :label (~o1 :order))
+                       (~temp-name-label-object (~o1 :order))
                        (~o2 :order))
                       (~'anything
-                       ("name" :label (~o1 :order))
-                       ("other" :label (~o2 :order))
+                       (~temp-name-label-object (~o1 :order))
+                       (~temp-other-label-object (~o2 :order))
                        (~o3 :order))
-                      (~'anything ("name" :label (~o1 :order))
+                      (~'anything (~temp-name-label-object (~o1 :order))
                        (~o4 :order))
                       (~'anything
                        (~temp-age-label-object (~o1 :order))
-                       ("other" :label (~o2 :order))
+                       (~temp-other-label-object (~o2 :order))
                        (~o5 :order))
                       (~'anything ("6-2" (~o1 :order)
-                                   ("height" :label (~o2 :order)))
+                                   (~temp-height-label-object (~o2 :order)))
                        (~o6 :order))
                       ("something" ("child" (~o1 :order))
                        (~o7 :order))))
@@ -208,7 +208,7 @@
         id-label-object (id->entity id-oid store)
         single-label-object (id->entity single-oid store)
         height-label-object (id->entity height-oid store)
-        label-object (id->entity other-oid store)
+        other-label-object (id->entity other-oid store)
         joe (id->entity joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))
@@ -226,11 +226,11 @@
         c1-id (:item-id c1)
         c2 (first (matching-elements `(nil ~o2) column-headers))
         c2-id (:item-id c2)
-        c2-name (first (matching-elements "name" c2))
+        c2-name (first (matching-elements `(~name-label-object) c2))
         c2-name-id (:item-id c2-name)
         c3 (first (matching-elements `(nil ~o3) column-headers))
         c3-id (:item-id c3)
-        c3-name (first (matching-elements "name" c3))
+        c3-name (first (matching-elements `(~name-label-object) c3))
         c3-name-id (:item-id c3-name)
         c4 (first (matching-elements `(nil ~o4) column-headers))
         c4-id (:item-id c4)
@@ -391,8 +391,7 @@
                         :relative-id c2-name-id
                         :render-dom render-item-DOM
                         :get-action-data (default-AD)
-                        :class "label with-children"
-                        :excluded-element-ids [(any)]}]
+                        :class "label with-children"}]
            [:div {:class "column-header-sequence"}
             ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
@@ -542,24 +541,24 @@
          column-descriptions
          [{:column-id c1-id
            :width 0.75
-           :query `(nil ("single" :label)
+           :query `(nil (~single-label-object)
                         ~(not-query :label)
                         (nil :order))}
           {:column-id c2-id
            :competing-ids [c3-id]
            :disqualifications `(~(as-set
-                                  `(nil ("name" :label)
-                                        ("other" :label)
+                                  `(nil (~name-label-object)
+                                        (~other-label-object)
                                         ~(not-query :label)
                                         (nil :order))))
            :width 0.75
-           :query (as-set `(nil ("name" :label)
+           :query (as-set `(nil (~name-label-object)
                                 ~(not-query :label)
                                 (nil :order)))}
           {:column-id c3-id
            :width 0.75
-           :query (as-set `(nil ("name" :label)
-                                ("other" :label)
+           :query (as-set `(nil (~name-label-object)
+                                (~other-label-object)
                                 ~(not-query :label)
                                 (nil :order)))}
           (any) (any) (any) (any) (any)]))
@@ -608,7 +607,7 @@
                        :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
-                       :query `(nil ("single" :label)
+                       :query `(nil (~single-label-object)
                                     ~(not-query :label)
                                     (nil :order))
                        :render-dom (cell-DOM)
@@ -619,13 +618,13 @@
                        :class "table-cell"
                        :relative-id c2-id
                        :row-id joe-id
-                       :query (as-set `(nil ("name" :label)
+                       :query (as-set `(nil (~name-label-object)
                                             ~(not-query :label)
                                             (nil :order)))
                        :competing-ids [c3-id]
                        :disqualifications `(~(as-set
-                                              `(nil ("name" :label)
-                                                    ("other" :label)
+                                              `(nil (~name-label-object)
+                                                    (~other-label-object)
                                                     ~(not-query :label)
                                                     (nil :order))))
                        :render-dom (cell-DOM)
@@ -636,8 +635,8 @@
                        :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
-                       :query (as-set `(nil ("name" :label)
-                                            ("other" :label)
+                       :query (as-set `(nil (~name-label-object)
+                                            (~other-label-object)
                                             ~(not-query :label)
                                             (nil :order)))
                        :render-dom (cell-DOM)
@@ -660,7 +659,7 @@
          [:component
           {:width 0.75
            :relative-id :virtual
-           :template '("" ("single" :label))
+           :template `("" (~single-label-object))
            :render-dom (virt-DOM)
            :get-action-data (virt-AD)}]))
     (is (check
@@ -685,11 +684,11 @@
             {:relative-id joe-joe-id
              :render-dom render-item-DOM
              :get-action-data (default-AD)
-             :template '("" ("name" :label))
+             :template `("" (~name-label-object))
              :width 0.75
              :excluded-element-ids
              [(:item-id (first (matching-elements
-                                "name" joe-joe)))]
+                                `(~name-label-object) joe-joe)))]
              :get-do-batch-edit-action-data
              (table-cell-item-do-batch-AD)}]]
           [:div {:class "wrapped-element label"}
@@ -705,21 +704,20 @@
                          (item-do-batch-AD)]
                         :class "label"
                         :omit-universal-elements true
-                        :excluded-element-ids [(any)]
                         :relative-id (any)}]
             [:div {:class "indent-wrapper"}
              [:component
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM
                :get-action-data (default-AD)
-               :template '("" ("name" :label) ("id" :label))
+               :template `("" (~name-label-object) (~id-label-object))
                :width 0.75
                :excluded-element-ids
                (as-set
                 [(:item-id (first (matching-elements
-                                   "name" joe-joseph)))
+                                   `(~name-label-object) joe-joseph)))
                  (:item-id (first (matching-elements
-                                   "id" joe-joseph)))])
+                                   `(~id-label-object) joe-joseph)))])
                :get-do-batch-edit-action-data
                (table-cell-item-do-batch-AD)}]]]]))
 
@@ -734,7 +732,7 @@
                        :column-ids [c1-id]
                        :class "table-cell"
                        :render-dom (virt-DOM)
-                       :template '("" ("single" :label))
+                       :template `("" (~single-label-object))
                        :get-action-data (virt-AD)
                        :width 0.75}]
           (any) (any) (any) (any) (any) (any)]))
@@ -757,8 +755,8 @@
               :hierarchy-R
               [{:cosheet2.server.hierarchy/hierarchy-node true
                 :leaves (any)
-                :properties {[:source "single" {:label 1}] 1}
-                :cumulative-properties {[:source "single" {:label 1}] 1}}
+                :properties {[:source single-label-object {}] 1}
+                :cumulative-properties {[:source single-label-object {}] 1}}
                (any) (any) (any) (any)]
               :render-dom render-table-header-DOM
               :get-action-data (default-AD)}]

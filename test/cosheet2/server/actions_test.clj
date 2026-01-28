@@ -271,22 +271,23 @@
         ;; object inside, and its name.
         holder-dom-spec {:relative-id fred-holder-id
                          :width 2.0
-                         :template `(~(make-object-list ["foo"]))}
+                         :template `(~(make-object-list ["foo"]))
+                         :get-action-data default-get-action-data}
         holder-dom (render-item-DOM holder-dom-spec store)
         [_ object-dom-spec] holder-dom
         object-dom ((:render-dom object-dom-spec) object-dom-spec store)
         [_ name-dom-spec] object-dom
         name-dom ((:render-dom name-dom-spec) name-dom-spec store)
         ;; Now, walk the nested doms to get the action data. 
-        holder-action-data (default-get-action-data
+        holder-action-data ((:get-action-data holder-dom-spec)
                             holder-dom-spec {} :set-content
                             store)
-        object-action-data (default-get-action-data
+        object-action-data ((:get-action-data object-dom-spec)
                             object-dom-spec holder-action-data :set-content
                             store)
-        name-action-data (default-get-action-data
-                            name-dom-spec object-action-data :set-content
-                            store)
+        name-action-data ((:get-action-data name-dom-spec)
+                          name-dom-spec object-action-data :set-content
+                          store)
         ;; And set up a function to run setting the name.
         run-set-name (fn [from to]
                        (let [action-data

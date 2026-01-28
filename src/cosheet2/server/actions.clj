@@ -164,7 +164,9 @@
 
 (defn do-set-content
   [store {:keys [subject-ids past-subject-ids template from to session-state]}]
-  (when (and from to (seq subject-ids) (not (equivalent-primitives? from to)))
+  (when (and from to (seq subject-ids)
+             (every? link-id? subject-ids)
+             (not (equivalent-primitives? from to)))
     (let [template (if (sequential-template? template)
                      ;; We need to get to the final template, which
                      ;; should be an object reference.
@@ -174,29 +176,26 @@
                      (content template))] 
       (if (object-reference-template? template)
         ;; We are getting a new name at an object reference position.
-        ;; First, get an object corresponding to the name. Then go two
-        ;; steps back in the subject id history, first to the object
-        ;; we're possibly replacing, then to the link containing it,
-        ;; and change that link to point to the new object.
+        ;; First, get an object corresponding to the name. Then check
+        ;; that the position still holds an object, and swap in the
+        ;; new one.
         ;; TODO: !!!  We need to handle reversed links, which we can
         ;; do by checking which end matches the old object.
         (let [name (clojure.string/trim to)
               [store object-id] (get-or-make-object-by-name
                                  store name (:template template))
-              containing-object-ids (first past-subject-ids)
-              containing-element-ids (second past-subject-ids)
-              original-object-id (first containing-object-ids)]
-          (when (and (= (count subject-ids) (count containing-element-ids))
-                     (or (= original-object-id :placeholder)
-                         (object-id? original-object-id))
-                     (every? #(= % original-object-id) containing-object-ids)
-                     (every? link-id? containing-element-ids))
+              ;; TODO: !!! This needs to handle orientation.
+              current-contents (map #(id->source store %) subject-ids)
+              first-content (first current-contents)]
+          (when (and (every? #(= % first-content) current-contents)
+                     (or (= first-content "")
+                         (object-id? first-content)))
             (let [store (reduce
                          (fn [store element-id]
                            ;; TODO: !!! This needs to handle orientation.
                            (update-set-source
-                            store element-id original-object-id object-id))
-                         store containing-element-ids)]
+                            store element-id first-content object-id))
+                         store subject-ids)]
               ;; TODO: !!! This needs to handle orientation.
               (if-let [name-element-id
                        (first (target-label->ids

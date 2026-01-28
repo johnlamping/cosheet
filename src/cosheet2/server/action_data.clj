@@ -425,22 +425,22 @@
                     subject-ids
                     (find-virtual-adjacents
                      targets specification immutable-store))
+        template-sequence (if (sequential-template? template)
+                            (:template-sequence template)
+                            [template])
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]
-           (let [[ids store]
-                 (if (or (object-reference-template? template)
-                         (placeholder-object-template? template))
-                   [(repeat (count targets) :placeholder) store]
-                   (create-possible-selector-elements
-                    template targets adjacents
-                    (or position :after) use-bigger store))
-                 past-ids (cons targets past-ids)]
-             [ids ids past-ids store]))
+           (if (or (object-reference-template? template)
+                   (placeholder-object-template? template))
+             ;; We don't do anything for a virtual object.
+             [targets adjacents past-ids store]
+             (let [[ids store] (create-possible-selector-elements
+                                template targets adjacents
+                                (or position :after) use-bigger store)]
+               [ids ids (cons targets past-ids) store])))
          [targets adjacents past-subject-ids immutable-store]
-         (if (sequential-template? template)
-           (:template-sequence template)
-           [template]))]
+         template-sequence)]
     (println "Made items"
              template
              (simplify-for-print targets)

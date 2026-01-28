@@ -544,6 +544,52 @@
             (into-attributes (:class "placeholder")))
      (if anything "\u00A0..." (str primitive))]))
 
+(defn css-class-for-name
+  "Return the class to use in formatting the name of this entity."
+  [entity]
+  (cond (seq (content->elements entity link-type)) "label"
+        (seq (content->elements entity object-type)) "class"
+        true "name"))
+
+(defn render-content-named-object-DOM
+  "Produce dom for a named object in content position. This means that
+  we just show its name, and editing the displayed name doesn't change
+  the object, but selects (or creates) an object with the provided
+  name. The specification should have a :relative-id of :content, and
+  an auxiliary-item-id that gives the id of the object."
+  [{:keys [auxiliary-item-id relative-id] :as specification} store]
+  (assert (= relative-id :content))
+  (expr-let [object (id->updating-entity-R auxiliary-item-id store)]
+    (let [names (-> (label->elements object name-label)
+                    ordered-entities)
+          num-names (count names)
+          specification (-> specification
+                            (dissoc :auxiliary-item-id :relative-id
+                                    :render-dom :get-action-data)
+                            (assoc :template `(~(make-object-reference-template
+                                                 (:template specification)))
+                                   :omit-universal-elements true
+                                   :get-action-data-override
+                                   get-pass-through-action-data)
+                            (into-attributes
+                             {:class (css-class-for-name object)}))]
+      (assert (> num-names 0))
+      (if (= num-names 1)
+        (item-component (first names)
+                        (into-attributes specification
+                                         {:class "named-object"}))
+        (into [:div {:class "named-object vertical-stack"}]
+              (map #(item-component % specification) names))))))
+
+(defn content-named-object-component
+  [object specification]
+  (make-component (-> specification
+                      (dissoc :get-action-data-override)
+                      (assoc :relative-id :content
+                             :auxiliary-item-id (:item-id object)
+                             :render-dom render-content-named-object-DOM
+                             :get-action-data get-pass-through-action-data))))
+
 (defn item-content-DOM
   "Make dom for the content part of an item."
   [item {:keys [immutable template] :as specification}]
@@ -555,7 +601,7 @@
     (cond (primitive? contents)
           (item-primitive-content-DOM item contents specification)
           (named-object? contents)
-          (item-component contents specification)
+          (content-named-object-component contents specification)
           true
           ;; TODO: !!! We don't currently handle content that is
           ;; itself a structured entity. We will need that for
@@ -619,13 +665,6 @@
            inner-dom labels specification)))
       (add-attributes {:class "item"})))
 
-(defn css-class-for-name
-  "Return the class to use in formatting the name of this entity."
-  [entity]
-  (cond (seq (content->elements entity link-type)) "label"
-        (seq (content->elements entity object-type)) "class"
-        true "name"))
-
 (defn entity-DOM
   [entity {:keys [excluded-element-ids] :as specification}]
   "Produce dom for an entity that is not a named object"
@@ -643,27 +682,6 @@
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
-(defn named-object-DOM
-  "Produce dom for a named object."
-  [entity specification]
-  (let [names (-> (label->elements entity name-label)
-                  ordered-entities)
-        num-names (count names)
-        specification (-> specification
-                          (dissoc :relative-id :render-dom :get-action-data)
-                          (assoc :template `(~(make-object-reference-template
-                                               (:template specification))))
-                          (assoc :omit-universal-elements true)
-                          (into-attributes
-                           {:class (css-class-for-name entity)}))]
-    (assert (> num-names 0))
-    (if (= num-names 1)
-      (item-component (first names)
-                      (into-attributes specification
-                                       {:class "named-object"}))
-      (into [:div {:class "named-object vertical-stack"}]
-            (map #(item-component % specification) names)))))
-
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items). This is the default renderer."
@@ -672,14 +690,12 @@
   (assert (:width specification)
           [specification
            (semantic-to-list (id->entity relative-id store))])
-  (assert (not (:item-id specification))
+  (assert (not (:auxiliary-item-id specification))
           [specification
            (semantic-to-list (id->entity relative-id store))])
   (expr-let [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
-    (if (named-object? entity)
-      (named-object-DOM entity specification)
-      (entity-DOM entity specification))))
+    (entity-DOM entity specification)))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM

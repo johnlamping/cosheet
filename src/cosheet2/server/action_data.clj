@@ -247,7 +247,7 @@
   (.write w "parallel-AD"))
 
 (defn default-get-action-data
-  "There must be a relative-id or an item-id. If there are no
+  "There must be a auxiliary-item-id or a relative-id.  If there are no
   parallel-ids, just do get-item-or-exemplar-action-data. If there are
   parallel-ids, first do parallel-items-get-action-data on them,
   followed by get-item-or-exemplar-action-data."

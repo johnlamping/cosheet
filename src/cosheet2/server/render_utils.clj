@@ -139,7 +139,7 @@
 
 (defn specification-item-id
   [specification]
-  (or (:item-id specification) (:relative-id specification)))
+  (or (:auxiliary-item-id specification) (:relative-id specification)))
 
 (defn restrict-store-to-specification-id
   "Given a dom specification and a mutable store, return a category

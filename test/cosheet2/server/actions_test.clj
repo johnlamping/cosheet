@@ -274,9 +274,9 @@
                          :template `(~(make-object-list ["foo"]))}
         holder-dom (render-item-DOM holder-dom-spec store)
         [_ object-dom-spec] holder-dom
-        object-dom (render-item-DOM object-dom-spec store)
+        object-dom ((:render-dom object-dom-spec) object-dom-spec store)
         [_ name-dom-spec] object-dom
-        name-dom (render-item-DOM name-dom-spec store)
+        name-dom ((:render-dom name-dom-spec) name-dom-spec store)
         ;; Now, walk the nested doms to get the action data. 
         holder-action-data (default-get-action-data
                             holder-dom-spec {} :set-content

@@ -460,67 +460,64 @@
                            :render-dom (virt-DOM)
                            :get-action-data (virt-AD)}]])))
 
-(deftest named-object-DOM-test
+(deftest render-conent-named-object-DOM-test
   (let [[s1 oid] (get-new-object-id (new-element-store))
         [store fred-id] (add-element s1 oid `("Fred" (~name-label)))
         [two-name-store friedrich-id] (add-element store oid
                                                    `("Friedrich" (~name-label)))
         [label-store _] (add-element store oid link-type)
-        [class-store _] (add-element store oid object-type)]
-    (is (check (named-object-DOM (id->entity oid store)
-                                 (assoc basic-dom-specification
-                                        :template (make-object-list [5])))
+        [class-store _] (add-element store oid object-type)
+        template (make-object-list [`(~name-label)])
+        spec (assoc basic-dom-specification
+                    :relative-id :content
+                    :auxiliary-item-id oid
+                    :template template)]
+    (is (check (render-content-named-object-DOM spec store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          (make-object-list [5])))
+                                            template))
                             :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))
-    (is (check (named-object-DOM (id->entity oid two-name-store)
-                                 (assoc basic-dom-specification
-                                        :template (make-object-list [5])))
+                            :get-action-data (pass-AD)}]))
+    (is (check (render-content-named-object-DOM spec two-name-store)
                (as-set
                 [:div {:class "named-object vertical-stack"}
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
-                                            (make-object-list [5])))
+                                            template))
                               :class "name"
                               :relative-id fred-id
                               :omit-universal-elements true
                               :render-dom render-item-DOM
-                              :get-action-data (default-AD)}]
+                              :get-action-data (pass-AD)}]
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
-                                            (make-object-list [5])))
+                                            template))
                               :class "name"
                               :relative-id friedrich-id
                               :omit-universal-elements true
                               :render-dom render-item-DOM
-                              :get-action-data (default-AD)}]])))
-    (is (check (named-object-DOM (id->entity oid label-store)
-                                 (assoc basic-dom-specification
-                                        :template (make-object-list [5])))
+                              :get-action-data (pass-AD)}]])))
+    (is (check (render-content-named-object-DOM spec label-store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          (make-object-list [5])))
+                                            template))
                             :class "label named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))
-    (is (check (named-object-DOM (id->entity oid class-store)
-                                 (assoc basic-dom-specification
-                                        :template (make-object-list [5])))
+                            :get-action-data (pass-AD)}]))
+    (is (check (render-content-named-object-DOM spec class-store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                          (make-object-list [5])))
+                                            template))
                             :class "class named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))))
+                            :get-action-data (pass-AD)}]))))
 
 (deftest render-item-DOM-test-simple
   ;; Test a simple cell
@@ -531,55 +528,40 @@
                           store)]
     (is (check dom
                [:div {:class "editable content-text item"} "Fred"])))
-  
-  ;; Test a named object
-  (let [[s1 oid] (get-new-object-id (new-element-store))
-        [store fred-name-id] (add-element s1 oid `("Fred" (~name-label)))
-        dom (run-renderer render-item-DOM
-                          (assoc basic-dom-specification
-                                 :relative-id oid
-                                 :template (make-object-list [5]))
-                          store)]
-    (is (check dom
-               [:component {:width 1.5
-                            :template `(~(make-object-reference-template
-                                          (make-object-list [5])))
-                            :class "name named-object"
-                            :relative-id fred-name-id
-                            :omit-universal-elements true
-                            :render-dom render-item-DOM
-                            :get-action-data (default-AD)}])))
 
   ;; Test an entity holding a named object
   (let [[s1 fred-oid] (-> (new-element-store)
-                         (add-universal-objects)
-                         (get-new-object-id))
+                          (add-universal-objects)
+                          (get-new-object-id))
         [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
         [store fred-holder-id] (add-element s2 nil `(~(id->entity fred-oid nil)))
         dom (run-renderer render-item-DOM
-                           (assoc basic-dom-specification
-                                  :relative-id fred-holder-id
-                                  :template `(~(make-object-list [5])))
-                           store)
+                          (assoc basic-dom-specification
+                                 :relative-id fred-holder-id
+                                 :template `(~(make-object-list
+                                               [`(~name-label)])))
+                          store)
         ;; We expect a component, which we also run, to make sure it is right.
         [_ spec] dom
-        inner-dom (run-renderer render-item-DOM spec store)]
+        inner-dom (run-renderer (:render-dom spec) spec store)]
     (is (check dom
                [:component {:width 1.5
                             :class "editable item"
-                            :relative-id fred-oid,
-                            :template (make-object-list [5])
-                            :render-dom render-item-DOM
-                            :get-action-data (default-AD)}]))
+                            :auxiliary-item-id fred-oid,
+                            :relative-id :content
+                            :template (make-object-list
+                                       [`(~name-label)])
+                            :render-dom render-content-named-object-DOM
+                            :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
                             :template `(~(make-object-reference-template
-                                          (make-object-list [5])))
+                                          (make-object-list [`(~name-label)])))
                             :relative-id fred-name-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
-                            :get-action-data (default-AD)}])))
+                            :get-action-data (pass-AD)}])))
   
   ;; Test a cell with a couple of labels, one excluded.
   (let [[store ids] (make-fred-one-two-store)

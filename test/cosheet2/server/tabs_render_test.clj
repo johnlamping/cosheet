@@ -98,7 +98,7 @@
            [:div]
            [:component
             {:relative-id :virtual-tab
-             :item-id (:item-id t3)
+             :auxiliary-item-id (:item-id t3)
              :class "tab virtualTab"
              :template ['(""
                           :tab

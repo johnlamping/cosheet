@@ -604,7 +604,7 @@
                                                   (~one-object)
                                                   (~two-object)))
                               :relative-id :content
-                              :item-id (:fred-id ids)
+                              :auxiliary-item-id (:fred-id ids)
                               :render-dom render-content-only-DOM
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
@@ -632,7 +632,7 @@
                        :width 1.5}]
           [:component {:template ""
                        :relative-id :content
-                       :item-id fred-id
+                       :auxiliary-item-id fred-id
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)
                        :width 1.5}]]))))
@@ -655,7 +655,7 @@
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
-                             :item-id fred-id
+                             :auxiliary-item-id fred-id
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -708,7 +708,7 @@
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
-                             :item-id (:fred-id ids)
+                             :auxiliary-item-id (:fred-id ids)
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -759,7 +759,7 @@
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
-                             :item-id (:fred-id ids)
+                             :auxiliary-item-id (:fred-id ids)
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -883,7 +883,7 @@
            [:component {:template ""
                         :width 1.5
                         :relative-id :content
-                        :item-id fred-id
+                        :auxiliary-item-id fred-id
                         :render-dom render-content-only-DOM
                         :get-action-data (pass-AD)}]
            [:div {:class "vertical-stack"}
@@ -935,7 +935,7 @@
           [:component {:template ""
                        :width 1.5
                        :relative-id :content
-                       :item-id (:fred-id ids)
+                       :auxiliary-item-id (:fred-id ids)
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
@@ -987,7 +987,7 @@
           [:component {:template ""
                        :width 1.5
                        :relative-id :content
-                       :item-id (:fred-id ids)
+                       :auxiliary-item-id (:fred-id ids)
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}

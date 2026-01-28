@@ -692,11 +692,13 @@
   shows the content of one of them. This function doesn't go through
   elided components."
   [component-atom monitored-ids]
-  (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
-    ;; We check for item-id first, because relative-id can be :content,
-    ;; or other markers that don't indicate an item.
-    (when-let [target (or item-id relative-id)]
-      (assert (not= target :content))
+  (let [{:keys [auxiliary-item-id relative-id]}
+        (:dom-specification @component-atom)]
+    ;; We check for auxiliary-item-id first, because relative-id can
+    ;; be :content, or other markers that don't indicate an item.
+    (when-let [target (or auxiliary-item-id relative-id)]
+      (assert (not= :content target)
+              (:dom-specification @component-atom))
       (some #{target} monitored-ids))))
 
 (defn adjust-subdom-for-client

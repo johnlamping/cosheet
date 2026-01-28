@@ -203,8 +203,9 @@
 (defn get-item-or-exemplar-action-data
   "This is the vanilla action getter, for doms that might be in a
   context that makes them refer to several items."
-  [specification inherited-action-data action immutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))
+  [{:keys [auxiliary-item-id relative-id]} ; specification
+   inherited-action-data action immutable-store]
+  (let [id (or auxiliary-item-id relative-id)
         {:keys [:subject-ids :past-subject-ids]} inherited-action-data
         new-subject-ids (get-item-or-exemplars-for-id
                          subject-ids immutable-store id)]
@@ -231,7 +232,8 @@
              (run-action-data-getter
               getter
               (-> specification
-                  (assoc :item-id id)
+                  (assoc :auxiliary-item-id id
+                         :relative-id :overridden)
                   (dissoc :parallel-ids))
               inherited-action-data action immutable-store)))]
     (let [new-subject-ids (mapcat get-action-data-for-id parallel-ids)]
@@ -299,9 +301,9 @@
 
 (defn get-item-do-batch-edit-action-data
   "Find the dom's id or extend the selection sequence with it."
-  [{:keys [item-id relative-id]}
+  [{:keys [auxiliary-item-id relative-id]} ; specification
    inherited-action-data action immutable-store]
-  (let [id (or item-id relative-id)]
+  (let [id (or auxiliary-item-id relative-id)]
     (if (and id (:stack-ids inherited-action-data))
       (let [target (id->target immutable-store id)
             selected-id (batch-selected-id inherited-action-data)]
@@ -338,7 +340,8 @@
   [{:keys [parallel-ids] :as specification}
    inherited-action-data action immutable-store getter]
   (getter (-> specification
-              (assoc :item-id (first parallel-ids))
+              (assoc :auxiliary-item-id (first parallel-ids)
+                     :relative-id :overridden)
               (dissoc :parallel-ids))
           inherited-action-data action immutable-store))
 

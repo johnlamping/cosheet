@@ -266,7 +266,7 @@
 
     ;; Check get-table-header-do-batch-edit-action-data
     (is (check (get-table-header-do-batch-edit-action-data
-                {:item-id c2-id
+                {:auxiliary-item-id c2-id
                  :column-ids [c1-id c2-id c3-id]
                  :competing-ids [c4-id]}
                 {:table-id table-id} nil store)
@@ -275,7 +275,7 @@
                 :stack-ids [c1-id c2-id c3-id]
                 :selected-index 1}))
     (is (check (get-table-header-do-batch-edit-action-data
-                {:item-id c2-id
+                {:auxiliary-item-id c2-id
                  :column-ids [c2-id]
                  :competing-ids [c4-id]}
                 {:table-id table-id} nil store)
@@ -336,7 +336,7 @@
             ;; A virtual element for more condition.
             [:div {:class "wrapped-element label virtual-column"}
              [:component {:relative-id :virtual-label
-                          :item-id rc1-id
+                          :auxiliary-item-id rc1-id
                           :width 0.75
                           :sibling true
                           :template (make-sequential-template
@@ -356,7 +356,7 @@
                            :sibling true
                            :width 0.75
                            :relative-id :virtual
-                           :item-id rc1-id
+                           :auxiliary-item-id rc1-id
                            :render-dom render-virtual-DOM
                            :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -523,7 +523,7 @@
                         :position :after
                         :sibling true
                         :width 0.75
-                        :item-id c7-id
+                        :auxiliary-item-id c7-id
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "label"
                         :render-dom (virt-DOM)}]
@@ -532,7 +532,7 @@
                          :template 'anything
                          :width 0.75
                          :sibling true
-                         :item-id c7-id
+                         :auxiliary-item-id c7-id
                          :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                          :render-dom (virt-DOM)}]]]]))
 

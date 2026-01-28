@@ -118,7 +118,7 @@
   [{:keys [last-tab-id]}]
   (virtual-DOM-component
    {:relative-id :virtual-tab
-    :item-id last-tab-id
+    :auxiliary-item-id last-tab-id
     :class "tab virtualTab"
     :template [`("" :tab ~new-tab-table-element) 'anything]  
     :sibling true

@@ -216,32 +216,40 @@
 ;;; sequence, where the first element is the function, and the rest of
 ;;; the list is additional arguments. (This approach is easier to to
 ;;; display and to debug than closures.)
-;;;           :relative-id  The id relative to containing component for
+;;;           :relative-id  The id relative to the containing component for
 ;;;                         identifying this component in the dom.
 ;;;                         This is normally the id the dom is about, or an
 ;;;                         exemplar element of one of the ids the containing
 ;;;                         component is about.
-;;;                         However, what the component is about may be
-;;;                         overridden by :item-id. In that case, :relative-id
-;;;                         may be a keyword, or an ItemId, or a vec of those.
+;;;                         However, in some cases, this will be a
+;;;                         keyword, like :content or :virtual, which
+;;;                         will be enough to uniquely indicate how
+;;;                         this component relates to its parent. In
+;;;                         these cases, if an id is still needed,
+;;;                         :auxiliary-item-id will hold id.
 ;;;                 :class  Optional. A subset of the CSS classes the DOM
 ;;;                         will have. The dom may have additional classes.
-;;; :omit-universal-elements If true, don't show elements of the objects
-;;;                          whose contents are one of the universal
-;;;                          objects: name-label, link-type, and
-;;;                          object-type. This is used when showing
-;;;                          just the name of a named object, because
-;;;                          we don't also want to show that it is
-;;;                          labeled as a name. That's clear from
-;;;                          context, and would lead to infinite
-;;;                          recursion, since the name label also has
-;;;                          name "name". In contrast, when showing
-;;;                          all of a named object, we want to show
-;;;                          the label of the name, so then we don't
-;;;                          use this.
-;;;               :item-id  The id of the item the dom is about, if
-;;;                         :relative-id is not an id or needs to be
-;;;                         overridden.
+;;; :omit-universal-elements  If true, don't show elements of the objects
+;;;                         whose contents are one of the universal
+;;;                         objects: name-label, link-type, and
+;;;                         object-type. This is used when showing
+;;;                         just the name of a named object, because
+;;;                         we don't also want to show that it is
+;;;                         labeled as a name. That's clear from
+;;;                         context, and would lead to infinite
+;;;                         recursion, since the name label also has
+;;;                         name "name". In contrast, when showing
+;;;                         all of a named object, we want to show
+;;;                         the label of the name, so then we don't
+;;;                         use this.
+;;;     :auxiliary-item-id  If this is present, :relative-id will be a
+;;;                         keyword, and this field will give an id
+;;;                         needed by the component. Its meaning
+;;;                         depends on :relative-id's keyword:
+;;;                         :content - the id of the element for which
+;;;                         this dom should show the content.
+;;;                         :virtual - the id of the item that the new
+;;;                         item should be adjacent to in the store.
 ;;;          :parallel-ids  Sometimes a dom pertains to more ids than its
 ;;;                         parent does, like a label dom that wraps
 ;;;                         several items. In that case, :parallel-ids

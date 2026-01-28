@@ -222,14 +222,14 @@
 
 (deftest get-item-do-batch-edit-action-data-test
   (is (check (get-item-do-batch-edit-action-data
-              {:item-id (:item-id joe-id)}
+              {:auxiliary-item-id (:item-id joe-id)}
               {:query-ids []
                :stack-ids [jane-id]}
               nil store)
              {:query-ids []
               :stack-ids [jane-id]}))
   (is (check (get-item-do-batch-edit-action-data
-              {:item-id joe-id}
+              {:auxiliary-item-id joe-id}
               {:query-ids [jane-id]
                :stack-ids [joe-id]}
               nil store)
@@ -237,7 +237,7 @@
               :stack-ids [joe-id]
               :selected-index 0}))
   (is (check (get-item-do-batch-edit-action-data
-              {:item-id joe-id}
+              {:auxiliary-item-id joe-id}
               {:query-ids []
                :stack-ids [jane-id joe-id]}
               nil store)
@@ -245,7 +245,7 @@
               :stack-ids [jane-id joe-id]
               :selected-index 1}))
   (is (check (get-item-do-batch-edit-action-data
-              {:item-id (:item-id joe-age)}
+              {:auxiliary-item-id (:item-id joe-age)}
               {:query-ids []
                :stack-ids [jane-id joe-id]}
               nil store)
@@ -254,7 +254,7 @@
               :selected-index 1
               :selection-sequence [(:item-id joe-age)]}))
   (is (check (get-item-do-batch-edit-action-data
-              {:item-id (:item-id joe-age)}
+              {:auxiliary-item-id (:item-id joe-age)}
               {:query-ids []
                :stack-ids [jane-id joe-id]
                :selected-index 1}
@@ -317,7 +317,7 @@
 
 (deftest parallel-items-get-do-batch-edit-action-data-test
   (is (check (parallel-items-get-do-batch-edit-action-data
-              {:item-id (:item-id joe-age)
+              {:auxiliary-item-id (:item-id joe-age)
                :parallel-ids [(:item-id joe-age-tag)]}
               {:query-ids [jane-id]
                :stack-ids [joe-id]

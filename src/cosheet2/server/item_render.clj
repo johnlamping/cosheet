@@ -90,12 +90,11 @@
   [item excluded-elements specification]
   (assert (empty? (:excluded-element-ids specification))
           [excluded-elements specification])
-  (if (empty? excluded-elements)
-    (item-component item specification)
-    (item-component
-     item
-     (assoc specification
-            :excluded-element-ids (vec (map :item-id excluded-elements))))))
+  (let [new-spec (cond-> specification
+                   (seq excluded-elements)
+                   (assoc :excluded-element-ids
+                          (vec (map :item-id excluded-elements))))]
+    (item-component item new-spec)))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -565,9 +564,9 @@
 
 (defn render-content-only-DOM
   "Render a dom spec for only the content of an item."
-  [{:keys [relative-id item-id] :as specification} store]
+  [{:keys [relative-id auxiliary-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
-  (expr-let [item (id->updating-entity-R item-id store)]
+  (expr-let [item (id->updating-entity-R auxiliary-item-id store)]
     (item-content-DOM
      item (select-keys specification [:class :width :immutable :template]))))
 
@@ -584,7 +583,7 @@
          (cond-> (-> (select-keys specification
                                   [:template :class :width])
                      (assoc :relative-id :content
-                            :item-id (:item-id item)
+                            :auxiliary-item-id (:item-id item)
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
            (label-element? item)

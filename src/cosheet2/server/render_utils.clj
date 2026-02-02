@@ -1,5 +1,5 @@
 (ns cosheet2.server.render-utils
-  (:require (cosheet2 [entity :refer [target-entity elements
+  (:require (cosheet2 [entity :refer [target-entity elements element?
                                       label-element? object? label-object?
                                       link-type make-object-list
                                       make-element-list content orientation]]
@@ -33,13 +33,15 @@
        requires creating a sequence of items. An item matching the
        first template of the template-sequence must be created, with
        that item used as the target for creating the item matching the
-       next template the sequence, etc. The reference of the whole
-       sequence is the item created for the final template."}
+       next template the sequence, etc. Except if a template is an
+       object, the new object becomes the content of the target. The
+       reference of the whole sequence is the item created for the
+       final template."}
     SequentialTemplate
     [template-sequence])
 
 (defmethod print-method SequentialTemplate [s ^java.io.Writer w]
-  (.write w (str "SequentialTemplate " (:template-sequence s))))
+  (.write w (str "SequentialTemplate " (vec (:template-sequence s)))))
 
 (defn make-sequential-template
   [template]
@@ -69,59 +71,46 @@
   [template]
   (instance? ObjectReferenceTemplate template))
 
-(defrecord
-    ^{:doc
-      "This is a template for a location that holds a placeholder for
-       virtual object. When action-data is made, no object needs to be
-       created, because its only subsidiary will be an object
-       reference, which will make or find the objects on its own."}
-    PlaceholderObjectTemplate
-    [])
-
-(defmethod print-method PlaceholderObjectTemplate [s ^java.io.Writer w]
-  (.write w (str "PlaceholderObjTemplate")))
-
-(defn make-placeholder-object-template
-  []
-  (->PlaceholderObjectTemplate))
-
-(defn placeholder-object-template?
-  [template]
-  (instance? PlaceholderObjectTemplate template))
-
 (defn virtual-template?
   "Return true if the template is one of the virtual templates."
   [template]
   (or (sequential-template? template)
-      (object-reference-template? template)
-      (placeholder-object-template? template)))
+      (object-reference-template? template)))
+
+(defn universal-template?
+  "Return true if the template can match both elements and objects."
+  [template]
+  (or (= template 'anything) (= template nil)))
 
 (defn ensure-label-object
-  "Give the list form that matches an object, make it be a label if it isn't."
+  "Give a template that can indicate an object, make it be a label object if
+  it isn't already."
   [template]
   (assert (not (virtual-template? template)))
   (if (label-object? template)
     template
-    (let [current-elements (if (or (= template 'anything) (= template nil))
+    (let [current-elements (if (universal-template? template)
                                 []
                                 (do (assert (object? template))
                                     (elements template)))]
       (make-object-list (conj current-elements `(~link-type))))))
 
 (defn ensure-label-object-content
-  "Given the list form of an element, make its content be a label if it
-  isn't already."
+  "Given a template that can match an element, make its content be a
+  label object, if it isn't already."
   [template]
-  (if (or (= template 'anything) (= template nil))
-    `(~(ensure-label-object template)))
+  (assert (or (element? template) (universal-template? template)))
   (make-element-list (orientation template)
                      (ensure-label-object (content template))
                      (elements template)))
 
 (defn make-virtual-label-template
-  "Turn a template into one for a virtual label. The incoming template
-  must either be an element holding a label object or a sequential
-  template, whose last template is an element holding a label object."
+  "Given a template for an element, make a template for a virtual label
+  consisting of that element. In other words, pull out the the last
+  template if there's a sequence. That template should be a template
+  for an element.  Replace it with two templates, one for an identical
+  element, except with content of the empty string. and one for a
+  label object that matches the element's content."
   [template]
   (let [[prefix-templates last-template]
         (if (sequential-template? template)
@@ -131,11 +120,9 @@
     (make-sequential-template
      (concat
       prefix-templates
-      ['("")                              ; the element that is the label.
-       (make-placeholder-object-template) ; the object holding its value.
-       (make-object-reference-template    ; the name of that object.
-        ;; The ensure-label-object-content handles an 'anything template.
-        (content (ensure-label-object-content last-template)))]))))
+      [(cons "" (elements last-template))  ; the element that is the label.
+       (make-object-reference-template     ; the name of the label object.
+        (ensure-label-object (content last-template)))]))))
 
 (defn specification-item-id
   [specification]
@@ -175,7 +162,7 @@
 (defn transform-specification-for-labels
   [specification]
   (assoc (select-keys specification [:width :immutable])
-         :template (ensure-label-object-content 'anything)
+         :template `(~(ensure-label-object 'anything))
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels

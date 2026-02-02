@@ -300,9 +300,11 @@
 ;;;                         Or the value of the template may be a
 ;;;                         SequentialTemplate.  That means an item
 ;;;                         matching the first element of its template
-;;;                         sequence must be created, with a sub-item
-;;;                         matching the rest of the template
-;;;                         sequence.
+;;;                         sequence must be created, using that as
+;;;                         the target of the next, etc. Except if a
+;;;                         template is an object, it becomes the
+;;;                         content of the target, rather than a
+;;;                         sub-element.
 ;;;                         Or the value of :template may instead be
 ;;;                         an ObjectReferenceTemplate. That means
 ;;;                         that this cell holds the name of an

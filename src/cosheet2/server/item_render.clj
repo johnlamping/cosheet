@@ -39,6 +39,7 @@
                       ensure-label-object-content
                       make-virtual-label-template
                       make-component
+                      object-reference-template?
                       nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -161,7 +162,10 @@
 (defn virtual-label-DOM-component
   "Return a dom for a virtual label. The label must occur inside an
   overall component for the item it modifies. The specification should
-  be for elements of the item."
+  have a template for what needs to be on the label element, beyond
+  the label. We don't require relative-id, but our callers must use it
+  if there are multiple virtual labels under the same component, to
+  distinguish their ids."
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
   (virtual-DOM-component
@@ -261,7 +265,7 @@
   "Given a hierarchy node for labels, Return DOM for example elements
   that give rise to the properties of the node, given a specification
   that applies to the overall node."
-    [hierarchy-node specification]
+  [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
         ;; Note: parallel-items-get-do-batch-edit-action-data assumes that
@@ -273,14 +277,12 @@
                 (do
                   (assert (label-object? (content (:template labels-spec)))
                           labels-spec)
-                  (virtual-DOM-component
+                  (virtual-label-DOM-component
                    ;; TODO: Track hierarchy depth in the spec, and use
                    ;; it to uniquify virtual labels.
                    (-> labels-spec
                        (assoc :relative-id [example-descendant-id
-                                            :virtual-label]
-                              :template (make-virtual-label-template
-                                         (:template labels-spec)))
+                                            :virtual-label])
                        (add-parallel-item-ids descendant-ids))))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
@@ -321,8 +323,9 @@
 
 (defn labeled-items-whole-hierarchy-node-DOM
   "Return the dom for everything at and under a labeled items hierarchy node.
-  orientation gives which way to lay out the contained items.
-  The specification must give :orientation."
+  orientation gives which way to lay out the contained items.  The
+  specification must give :orientation (which is totally different
+  from the :orientation of an element)."
   [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
   (assert (empty? (:excluded-element-ids specification)) specification)
@@ -583,6 +586,8 @@
 
 (defn content-named-object-component
   [object specification]
+  (assert (object? (:template specification))
+          (:template specification))
   (make-component (-> specification
                       (dissoc :get-action-data-override)
                       (assoc :relative-id :content

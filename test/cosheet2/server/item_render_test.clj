@@ -25,7 +25,6 @@
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
              [render-utils :refer [make-sequential-template
-                                   make-placeholder-object-template
                                    make-object-reference-template
                                    make-virtual-label-template
                                    ensure-label-object]]
@@ -415,6 +414,7 @@
                                            [(parallel-AD) (item-AD)]
                                            (virt-AD)]
                          :render-dom (virt-DOM)
+                         :position :after
                          :class "label"
                          :omit-universal-elements true}]
             [:component {:template 'anything
@@ -447,7 +447,6 @@
                 :template (make-sequential-template
                            [`(~(make-object-list ["foo"]))
                             '("")
-                            (make-placeholder-object-template)
                             (make-object-reference-template
                              (make-object-list [`(~link-type)]))])
                 :position :after
@@ -653,6 +652,7 @@
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "label"
+                    :position :after
                     :omit-universal-elements true}]
                   [:component {:width 0.9
                                :template 'anything
@@ -671,6 +671,7 @@
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "label"
+                    :position :after
                     :omit-universal-elements true}]
                   [:component {:width 0.9
                                :template 'anything
@@ -824,6 +825,7 @@
                               :relative-id [(:element-3-id ids) :virtual-label]
                               :render-dom (virt-DOM)
                               :class "label"
+                              :position :after
                               :omit-universal-elements true}]
                  [:component {:width 0.9
                               :template 'anything
@@ -880,6 +882,7 @@
                                              (virt-AD)]
                            :render-dom (virt-DOM)
                            :class "label"
+                           :position :after
                            :omit-universal-elements true}]]
              [:component {:width 1.03125
                           :template 'anything
@@ -897,6 +900,7 @@
                                              (virt-AD)]
                            :render-dom (virt-DOM)
                            :class "label"
+                           :position :after
                            :omit-universal-elements true}]]
              [:component {:width 1.03125
                           :template 'anything
@@ -1060,6 +1064,7 @@
                                             [(parallel-AD) (item-AD)]
                                             (virt-AD)]
                           :class "label"
+                          :position :after
                           :omit-universal-elements true}]]
             [:component {:width 1.03125
                          :template 'anything

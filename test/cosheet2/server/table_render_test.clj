@@ -37,7 +37,6 @@
              [render-utils :refer [make-virtual-label-template
                                    make-sequential-template
                                    make-object-reference-template
-                                   make-placeholder-object-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list semantic-elements]]
@@ -342,7 +341,6 @@
                           :template (make-sequential-template
                                      ['anything
                                       '("")
-                                      (make-placeholder-object-template)
                                       (make-object-reference-template
                                        (make-object-list [`(~link-type)]))])
                           :position :after
@@ -517,7 +515,6 @@
                         :template (make-sequential-template
                                    ['anything
                                     '("")
-                                    (make-placeholder-object-template)
                                     (make-object-reference-template
                                      (make-object-list [`(~link-type)]))])
                         :position :after
@@ -665,8 +662,7 @@
     (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 3)) store)
-         [:div
-          {:class "vertical-stack"}
+         [:div {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element virtual-wrapper"
                              " narrow")}
            [:component
@@ -679,6 +675,7 @@
                                (virt-AD)]
              :render-dom (virt-DOM)
              :class "label"
+             :position :after
              :omit-universal-elements true}]
            [:component
             {:relative-id joe-joe-id

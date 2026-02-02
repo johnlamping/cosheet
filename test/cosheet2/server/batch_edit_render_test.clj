@@ -34,7 +34,6 @@
              [render-utils :refer [ensure-label-object
                                    make-virtual-label-template
                                    make-sequential-template
-                                   make-placeholder-object-template
                                    make-object-reference-template]]
              [batch-edit-render :refer :all])
              ; :reload
@@ -285,7 +284,6 @@
                         :template (make-sequential-template
                                    ['anything
                                     '("")
-                                    (make-placeholder-object-template)
                                     (make-object-reference-template
                                      (make-object-list [`(~link-type)]))])
                         :position :after

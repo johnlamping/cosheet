@@ -16,8 +16,7 @@
                       :as query])
             (cosheet2.server
              [render-utils :refer [sequential-template?
-                                   object-reference-template?
-                                   placeholder-object-template?]]
+                                   object-reference-template?]]
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
@@ -431,9 +430,9 @@
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]
-           (if (or (object-reference-template? template)
-                   (placeholder-object-template? template))
-             ;; We don't do anything for a virtual object.
+           (if (object-reference-template? template)
+             ;; We don't do anything for a virtual named object. It
+             ;; will be created or found when its name is processed.
              [targets adjacents past-ids store]
              (let [[ids store] (create-possible-selector-elements
                                 template targets adjacents

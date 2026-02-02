@@ -22,7 +22,7 @@
                    Store]]
     [store-utils :refer [remove-entity-by-id add-object]]
     [entity :refer [make-object-list elements content->elements
-                    name-label object?
+                    name-label object? element?
                     link-type-object? object-type-object? non-type-object?]]
     [query :refer [matching-items]]
     mutable-store-impl
@@ -167,14 +167,27 @@
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
-    (let [template (if (sequential-template? template)
-                     ;; We need to get to the final template, which
-                     ;; should be an object reference.
-                     (last (:template-sequence template))
-                     ;; The incoming template is for the whole element. We want
-                     ;; its content.
-                     (content template))] 
-      (if (object-reference-template? template)
+    (let [last-template (if (sequential-template? template)
+                          ;; We need to get to the last template, which
+                          ;; should be an object reference.
+                          (last (:template-sequence template))
+                          ;; The incoming template is for the whole
+                          ;; element or its content.
+                          template)
+          ;; Usually, the template would be for the content we are
+          ;; setting. But if an element has nothing but its content,
+          ;; then there is not necessarily a separate component for
+          ;; the content, and we will get the template from the
+          ;; element's component's. So we have to check if the
+          ;; template is an element, and get its content in that case.
+          ;; We have to check for an object reference template first,
+          ;; because those don't support the usual entity operations,
+          ;; like element?
+          content-template (if (or (object-reference-template? last-template)
+                                   (not (element? last-template)))
+                             last-template
+                             (content last-template))] 
+      (if (object-reference-template? content-template)
         ;; We are getting a new name at an object reference position.
         ;; First, get an object corresponding to the name. Then check
         ;; that the position still holds an object, and swap in the
@@ -183,7 +196,7 @@
         ;; do by checking which end matches the old object.
         (let [name (clojure.string/trim to)
               [store object-id] (get-or-make-object-by-name
-                                 store name (:template template))
+                                 store name (:template content-template))
               ;; TODO: !!! This needs to handle orientation.
               current-contents (map #(id->source store %) subject-ids)
               first-content (first current-contents)]

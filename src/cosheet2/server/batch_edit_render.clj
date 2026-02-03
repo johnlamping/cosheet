@@ -147,7 +147,7 @@
   (let [is-leaf (empty? child-doms)
         node-dom (horizontal-label-hierarchy-node-DOM
                   node
-                  (assoc specification :get-action-data-override
+                  (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))
         class (cond-> "batch-stack label"
                 is-leaf (str " leaf"))]

@@ -67,23 +67,17 @@
 
 (defn item-component
   "Make a component dom to display the given item. The item's id becomes
-  the relative-id, and the render-dom and get-action-data are filled in.
-  If the specification has :get-action-data-override, it is used in place
-  of the normal :get-action-data."
+  the relative-id, and the render-dom and get-action-data are filled in."
   [item specification]
   (assert (not (:relative-id specification))
           (:relative-id specification))
   (assert (not (:render-dom specification))
           (:render-dom specification))
-  (assert (not (:get-action-data specification))
-          (:get-action-data specification))
-  (make-component (-> specification
-                      (dissoc :get-action-data-override)
-                      (assoc :relative-id (:item-id item)
-                             :render-dom render-item-DOM
-                             :get-action-data (or (:get-action-data-override
-                                                   specification)
-                                                  default-get-action-data)))))
+  (make-component (assoc specification
+                         :relative-id (:item-id item)
+                         :render-dom render-item-DOM
+                         :get-action-data (or (:get-action-data specification)
+                                              default-get-action-data))))
 
 (defn item-minus-excluded-component
   "Make a component dom to display the given item, minus the excluded
@@ -91,6 +85,8 @@
   [item excluded-elements specification]
   (assert (empty? (:excluded-element-ids specification))
           [excluded-elements specification])
+  (assert (not (:get-action-data specification))
+          (:get-action-data specification))
   (let [new-spec (cond-> specification
                    (seq excluded-elements)
                    (assoc :excluded-element-ids
@@ -566,16 +562,15 @@
     (let [names (-> (label->elements object name-label)
                     ordered-entities)
           num-names (count names)
-          specification (-> specification
-                            (dissoc :auxiliary-item-id :relative-id
-                                    :render-dom :get-action-data)
-                            (assoc :template `(~(make-object-reference-template
-                                                 (:template specification)))
-                                   :omit-universal-elements true
-                                   :get-action-data-override
-                                   get-pass-through-action-data)
-                            (into-attributes
-                             {:class (css-class-for-name object)}))]
+          specification (->
+                         specification
+                         (dissoc :auxiliary-item-id :relative-id :render-dom)
+                         (assoc :template `(~(make-object-reference-template
+                                              (:template specification)))
+                                :omit-universal-elements true
+                                :get-action-data get-pass-through-action-data)
+                         (into-attributes
+                          {:class (css-class-for-name object)}))]
       (assert (> num-names 0))
       (if (= num-names 1)
         (item-component (first names)
@@ -588,12 +583,11 @@
   [object specification]
   (assert (object? (:template specification))
           (:template specification))
-  (make-component (-> specification
-                      (dissoc :get-action-data-override)
-                      (assoc :relative-id :content
-                             :auxiliary-item-id (:item-id object)
-                             :render-dom render-content-named-object-DOM
-                             :get-action-data get-pass-through-action-data))))
+  (make-component (assoc specification
+                         :relative-id :content
+                         :auxiliary-item-id (:item-id object)
+                         :render-dom render-content-named-object-DOM
+                         :get-action-data get-pass-through-action-data)))
 
 (defn item-content-DOM
   "Make dom for the content part of an item."

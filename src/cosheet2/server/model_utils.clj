@@ -9,8 +9,11 @@
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
                       [entity :refer [primitive? object? anonymous-object?
-                                      label-element? id->entity
+                                      link-type-object? object-type-object?
+                                      named-object?
+                                      element? label-element? id->entity
                                       content elements orientation
+                                      link-type object-type
                                       content->elements
                                       label->elements label->element
                                       target-entity entity-key
@@ -21,6 +24,7 @@
                                            add-universal-objects]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?
+                                     special-form-type sub-query
                                      extended-by?]]
                       [query-impl :refer [separate-negations]]
                       [query-calculator :refer [matching-item-ids-R]])
@@ -177,37 +181,67 @@
       (if-let [target (target-entity entity)]
         (selector? target))))
 
+(defn replace-anything-by-nil
+  "If the value is 'anything, replace it with nil."
+  [value]
+  (if (= 'anything value) nil value))
+
+(def transform-pattern-toward-fixed-term)
+
+(defn transform-pattern-elements-toward-fixed-term
+  "Given elements of a pattern, alter them according to the options for
+  transform-pattern-toward-fixed-term."
+  [pattern-elements options]
+  (->> pattern-elements
+       ;; First turn nils into elements so they'll get :order if
+       ;; needed.
+       (map #(if (nil? (replace-anything-by-nil %)) '(nil) %))
+       (map #(transform-pattern-toward-fixed-term % options))))
+
+;; TODO: !!! How do you prevent matching a system object? User objects
+;; don't have :order elements to mark them as non-system. Do system
+;; objects need a special element to mark them as such?
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
     * Replace 'anything by nil.
-    * If require-not-labels and an element is not a label, then require it
-      not to have a :label element.
-    * If require-orders and an entity has nil content, add a '(nil :order)
-      element to make it only match user editable elements."
-  [pattern & {:keys [require-not-labels require-orders] :as options}]
-  (let [old-content (content pattern)
-        new-content (if (= 'anything old-content) nil old-content) 
-        new-elements (cond-> (map #(transform-pattern-toward-fixed-term
-                                    %
-                                    :require-not-labels require-not-labels
-                                    :require-orders require-orders)
-                                  (elements pattern))
-                       (and require-not-labels
-                            (not (label-element? pattern))
-                            (or (nil? new-content)
-                                (string? new-content)
-                                (number? new-content)))
-                       (concat [(not-query :label)])
-                       (and (nil? new-content) require-orders)
-                       (concat ['(nil :order)]))]
-    (make-element-list :source new-content new-elements)))
+    * If require-not-type is true and an object is not a type, then
+      require it not to have a label-type or object-type element.
+    * If require-orders is true and an element has nil content, add a
+      '(nil :order) element to make it only match user editable elements."
+  [pattern {:keys [require-not-type require-orders] :as options}]
+  (cond
+    (primitive? pattern)
+    (replace-anything-by-nil pattern)
+    (element? pattern)
+    (let [new-content
+          (let [replaced-content (replace-anything-by-nil (content pattern))]
+            (cond-> replaced-content
+              (object? replaced-content)
+              (transform-pattern-toward-fixed-term options)))]
+      (make-element-list
+       (orientation pattern)
+       new-content
+       (cond-> (transform-pattern-elements-toward-fixed-term
+                (elements pattern) options)
+         (and (nil? new-content) require-orders)
+         (concat ['(nil :order)]))))
+    (named-object? pattern)
+    pattern
+    (object? pattern)
+    (make-object-list
+     (cond-> (transform-pattern-elements-toward-fixed-term
+              (elements pattern) options)
+       (and require-not-type
+            (not (link-type-object? pattern))
+            (not (object-type-object? pattern)))
+       (concat [(not-query `(~link-type)) (not-query `(~object-type))])))))
 
 (defn entity->fixed-term
   "Convert the entity to a list, and change 'anything to nil."
   [entity]
   (-> entity
       semantic-to-list
-      transform-pattern-toward-fixed-term))
+      (transform-pattern-toward-fixed-term {})))
 
 (defn entity->fixed-term-with-negations
     "Given an entity, alter it to work as a query that assumes everything
@@ -218,7 +252,7 @@
   [entity]
   (-> entity
       semantic-to-list
-      (transform-pattern-toward-fixed-term :require-not-labels true)))
+      (transform-pattern-toward-fixed-term {:require-not-type true})))
 
 (defn pattern-to-fixed-term
   "Given a pattern, alter it to work as a fixed-term. Specifically:
@@ -227,9 +261,8 @@
     * If an entity has nil content, add a '(nil :order) element to make
       it only match user editable elements."
   [pattern]
-  (transform-pattern-toward-fixed-term pattern
-                                      :require-not-labels true
-                                      :require-orders true))
+  (transform-pattern-toward-fixed-term
+   pattern {:require-not-type true :require-orders true}))
 
 (defn exemplar-to-fixed-term
   "Given an exemplar entity, turn it into a fixed-term"

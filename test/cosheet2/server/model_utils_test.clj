@@ -2,16 +2,16 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [orderable :refer [split initial]]
                       [entity :refer [in-different-store
+                                      link-type object-type
                                       make-object-list
                                       make-element-list
-                                      id->object]]
+                                      id->object id->entity label->elements
+                                      to-list]]
                       [store :refer [new-element-store update-source
                                      make-item-id]]
                       [store-utils :refer [add-element remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
-                      [entity :refer [id->entity label->elements
-                                      to-list]]
                       entity-impl
                       [reporter :refer [reporter-value]]
                       [calculator :refer [request compute new-calculator-data]]
@@ -51,18 +51,42 @@
 (def joe (id->entity joe-id store))
 
 (deftest transform-pattern-toward-fixed-term-test
-  (let [pattern '(anything anything ("a" :label))]
-    (is (= (transform-pattern-toward-fixed-term pattern)
-           '(nil nil ("a" :label))))
-    (is (= (transform-pattern-toward-fixed-term
-            pattern :require-not-labels true)
-           `(nil (nil ~(not-query :label)) ("a" :label) ~(not-query :label))))
-    (is (= (transform-pattern-toward-fixed-term
-            pattern :require-not-labels true :require-orders true)
-           `(nil (nil ~(not-query :label) (nil :order))
-                 ("a" :label)
-                 ~(not-query :label)
-                 (nil :order))))))
+  (let [pattern (make-element-list
+                 :target
+                 'anything
+                 ['anything
+                  `(~(make-object-list `((~link-type))))
+                  `(~(make-object-list `("a")))])]
+    (is (check (transform-pattern-toward-fixed-term
+                pattern {})
+               (make-element-list
+                 :target
+                 nil
+                 [nil
+                  `(~(make-object-list `((~link-type))))
+                  `(~(make-object-list `("a")))])))
+    (is (check (transform-pattern-toward-fixed-term
+                pattern {:require-not-type true})
+               (make-element-list
+                 :target
+                 nil
+                 [nil
+                  `(~(make-object-list `((~link-type))))
+                  `(~(make-object-list `("a"
+                                         ~(not-query `(~link-type))
+                                         ~(not-query `(~object-type)))))])))
+    (is (check (transform-pattern-toward-fixed-term
+                pattern {:require-not-type true
+                         :require-orders true})
+               (make-element-list
+                 :target
+                 nil
+                 ['(nil (nil :order))
+                  `(~(make-object-list `((~link-type))))
+                  `(~(make-object-list `("a"
+                                         ~(not-query `(~link-type))
+                                         ~(not-query `(~object-type)))))
+                  '(nil :order)])))))
 
 (deftest specialize-generic-test
   (let [[c1 s1] (specialize-generic '("x" (??? :a) (??? 22))

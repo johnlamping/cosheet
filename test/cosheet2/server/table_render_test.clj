@@ -539,24 +539,20 @@
          [{:column-id c1-id
            :width 0.75
            :query `(nil (~single-label-object)
-                        ~(not-query :label)
                         (nil :order))}
           {:column-id c2-id
            :competing-ids [c3-id]
            :disqualifications `(~(as-set
                                   `(nil (~name-label-object)
                                         (~other-label-object)
-                                        ~(not-query :label)
                                         (nil :order))))
            :width 0.75
            :query (as-set `(nil (~name-label-object)
-                                ~(not-query :label)
                                 (nil :order)))}
           {:column-id c3-id
            :width 0.75
            :query (as-set `(nil (~name-label-object)
                                 (~other-label-object)
-                                ~(not-query :label)
                                 (nil :order)))}
           (any) (any) (any) (any) (any)]))
 
@@ -605,7 +601,6 @@
                        :relative-id c1-id
                        :row-id joe-id
                        :query `(nil (~single-label-object)
-                                    ~(not-query :label)
                                     (nil :order))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
@@ -616,13 +611,11 @@
                        :relative-id c2-id
                        :row-id joe-id
                        :query (as-set `(nil (~name-label-object)
-                                            ~(not-query :label)
                                             (nil :order)))
                        :competing-ids [c3-id]
                        :disqualifications `(~(as-set
                                               `(nil (~name-label-object)
                                                     (~other-label-object)
-                                                    ~(not-query :label)
                                                     (nil :order))))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
@@ -634,7 +627,6 @@
                        :row-id joe-id
                        :query (as-set `(nil (~name-label-object)
                                             (~other-label-object)
-                                            ~(not-query :label)
                                             (nil :order)))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)

@@ -20,8 +20,8 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
-(declare anonymous-object-id?)
-(declare has-link-to-anonymous-object?)
+(declare non-identified-object-id?)
+(declare has-link-to-non-identified-object?)
 (declare add-link-from-triple)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
@@ -202,20 +202,20 @@
     ;; TODO: !!! Once we are using objects at top level, assert that
     ;;       neither target nor source are nil.
     
-    ;; Disallow links between two anonymous objects that both already
-    ;; have links to anonymous objects. This ensures that the
-    ;; relationships between anonymous objects will not have any
-    ;; loops. Both queries and Entity/to-list rely on that.
-    ;; We can't put this test in add-link-from-triple because that is
+    ;; Disallow links between two non-identified objects that both
+    ;; already have links to non-identified objects. This ensures that
+    ;; the relationships between non-identified objects will not have
+    ;; any loops. Both queries and Entity/to-list rely on that.  We
+    ;; can't put this test in add-link-from-triple because that is
     ;; called to read in a store, where, depending on the order links
     ;; are read, this condition might be violated, even though there
-    ;; are no loops throuch anonymous objects.
+    ;; are no loops throuch non-identified objects.
     (when (and (object-id? target) ;; Redundant, but fast.
                (object-id? source) ;; Redundant, but fast.
-               (anonymous-object-id? this target)
-               (anonymous-object-id? this source))
-      (assert (not (and (has-link-to-anonymous-object? this target)
-                        (has-link-to-anonymous-object? this source)))))
+               (non-identified-object-id? this target)
+               (non-identified-object-id? this source))
+      (assert (not (and (has-link-to-non-identified-object? this target)
+                        (has-link-to-non-identified-object? this source)))))
     (let [item-id (->ItemId (:next-number this))]
       [(-> this
            (update-in [:next-number] inc)
@@ -510,9 +510,9 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
-;;; Note: This must be kept in synch with Entity/anonymous-object?
-(defn anonymous-object-id?
-  "Return true if the item id represents an anonymous object."
+;;; Note: This must be kept in synch with Entity/non-identified-object?
+(defn non-identified-object-id?
+  "Return true if the item id represents an non-identified object."
   [store item-id]
   (and (object-id? item-id)
        ;; Doesn't have a special id.
@@ -523,14 +523,14 @@
               (some #(not (contains? #{nil "" 'anything} %))
                     (map #(id->source store %) name-ids))))))
 
-(defn has-link-to-anonymous-object?
-  "Return true if the item id has a link to an id representing an
-  anonymous object."
+(defn has-link-to-non-identified-object?
+  "Return true if the item id has a link to an id representing a
+  non-identified object."
   [store item-id]
-  (let [anonymous-id? #(anonymous-object-id? store %)]
-    (or (some anonymous-id? (map #(id->source store %)
+  (let [non-identified-id? #(non-identified-object-id? store %)]
+    (or (some non-identified-id? (map #(id->source store %)
                                  (target->ids store item-id)))
-        (some anonymous-id? (map #(id->target store %)
+        (some non-identified-id? (map #(id->target store %)
                                  (source->ids store item-id))))))
 
 (defn has-name-link?
@@ -567,11 +567,11 @@
 (defn descendant-ids [store id]
   "Given a link id, return a seq of the id and the ids of all its
    descendant elements, including elements of its content if that is
-   an anonymous object."
+   a non-identified object."
   (concat [id]
           (mapcat #(descendant-ids store %) (target->ids store id))
           (let [content (id->source store id)]
-            (when (anonymous-object-id? store content)
+            (when (non-identified-object-id? store content)
               (descendant-ids store content)))))
 
 (defn all-temporary-ids [store]
@@ -657,8 +657,9 @@
       (nil? content)
       [element-matches element-matches-precise]
       
-      ;; TODO: When the content is an anonymous object, get candidate
-      ;;       ids for it, then use those as if they were content?
+      ;; TODO: When the content is an non-identified object, get
+      ;;       candidate ids for it, then use those as if they were
+      ;;       content?
       (and (entity/object? content)
            (not (stored-entity? content)))
       [element-matches false]

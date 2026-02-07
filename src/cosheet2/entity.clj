@@ -259,22 +259,9 @@
   (and (stored-entity? entity)
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
 
-(defn anonymous-object?
-  "Return true if the entity is a generic object.
-  Note: This must be kept in synch with store-impl/anonymous-object-id?"
-  [entity]
-  (and (object? entity)
-       (not (and (stored-entity? entity)
-                 (or (string? (:id (:item-id entity)))
-                     ;; All mutable objects count as named, because
-                     ;; they have unique identities.
-                     (mutable-entity? entity))))
-       (not (when-let [names (label->elements entity name-label)]
-              (some #(not (contains? #{nil "" 'anything} %))
-                    (map content names))))))
-
-(defn named-object?
-  "Return true if the entity is a non-generic object."
+(defn uniquely-identified-object?
+  "Return true if the entity is an object that is uniquely identified by
+  its name or by its id."
   [entity]
   (and (object? entity)
        (or (and (stored-entity? entity)
@@ -285,6 +272,20 @@
            (when-let [names (label->elements entity name-label)]
              (some #(not (contains? #{nil "" 'anything} %))
                    (map content names))))))
+
+(defn non-identified-object?
+  "Return true if the entity is a generic object.
+  Note: This must be kept in synch with store-impl/non-identified-object-id?"
+  [entity]
+  (and (object? entity)
+       (not (and (stored-entity? entity)
+                 (or (string? (:id (:item-id entity)))
+                     ;; All mutable objects count as named, because
+                     ;; they have unique identities.
+                     (mutable-entity? entity))))
+       (not (when-let [names (label->elements entity name-label)]
+              (some #(not (contains? #{nil "" 'anything} %))
+                    (map content names))))))
 
 (defn link-type-object?
   "Return true if the entity is an object that is a link type."
@@ -370,10 +371,10 @@
   handling objects with the object to list function. The
   object-to-list function must also take an object and an element to
   skip.
-  The element to skip only has an effect when converting an anonymous
+  The element to skip only has an effect when converting an non-identified
   object. In that case, an element of the object with the same key
-  will not be shown. This avoids an infinite loop when an anonymous
-  object has a relation to another anonymous object, and showing all
+  will not be shown. This avoids an infinite loop when an non-identified
+  object has a relation to another non-identified object, and showing all
   elements of both objects would bounce back and forth between them
   forever."
   ;; Note: We tried using a letfn here, so we didn't have to pass in
@@ -390,7 +391,7 @@
                                 (map #(recurse % nil) (elements entity)))))))
 
 (defn immutable-object-to-list [object skipped-element]
-  (if (anonymous-object? object)
+  (if (non-identified-object? object)
     (let [recurse (immutable-to-list-generator immutable-object-to-list)]
       (make-object-list (map #(recurse % nil)
                              ;; We rely on entity-key ignoring
@@ -422,7 +423,8 @@
   [item]
   (let [content (content item)
         elements (cond-> (elements item)
-                      (anonymous-object? content) (concat (elements content)))]
+                   (non-identified-object? content)
+                   (concat (elements content)))]
     (+ (get {nil 0.1   'anything 0.1   "" 0.2}
             content 1.0)
        (* 0.5 (apply + (map entity-complexity elements))))))

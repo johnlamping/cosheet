@@ -272,19 +272,22 @@
           unindexed-object-store
           (keys (:id->source unindexed-object-store))))
 
-(deftest anonymous-object-id?-test
-  (is (anonymous-object-id? object-store (make-object-id -1)))
-  (is (not (anonymous-object-id? object-store (make-object-id "special"))))
-  (is (not (anonymous-object-id? object-store (make-object-id -3))))
-  (is (not (anonymous-object-id? object-store (make-link-id 2)))))
+(deftest non-identified-object-id?-test
+  (is (non-identified-object-id? object-store (make-object-id -1)))
+  (is (not (non-identified-object-id? object-store (make-object-id "special"))))
+  (is (not (non-identified-object-id? object-store (make-object-id -3))))
+  (is (not (non-identified-object-id? object-store (make-link-id 2)))))
 
-(deftest has-link-to-anonymous-object?-test
-  (is (has-link-to-anonymous-object? object-store (make-object-id -1)))
-  (is (has-link-to-anonymous-object? object-store (make-object-id -2)))
-  (is (has-link-to-anonymous-object? object-store (make-object-id -3)))
-  (is (has-link-to-anonymous-object? object-store (make-object-id "object")))
-  (is (not (has-link-to-anonymous-object? object-store (make-object-id -4))))
-  (is (not (has-link-to-anonymous-object? object-store (make-object-id -5)))))
+(deftest has-link-to-non-identified-object?-test
+  (is (has-link-to-non-identified-object? object-store (make-object-id -1)))
+  (is (has-link-to-non-identified-object? object-store (make-object-id -2)))
+  (is (has-link-to-non-identified-object? object-store (make-object-id -3)))
+  (is (has-link-to-non-identified-object?
+       object-store (make-object-id "object")))
+  (is (not (has-link-to-non-identified-object?
+            object-store (make-object-id -4))))
+  (is (not (has-link-to-non-identified-object?
+            object-store (make-object-id -5)))))
 
 (deftest add-link-test
   (let [[added-store id]
@@ -304,10 +307,10 @@
                (add-link object-store (make-object-id 99) (make-object-id 99))))
   (is (thrown? java.lang.AssertionError
                (add-link object-store (make-object-id -2) (make-object-id -7))))
-  ;; OK because one side is not anonymous.
+  ;; OK because one side is not non-identified.
   (add-link object-store (make-object-id -2) (make-object-id -3))
   (add-link object-store (make-object-id -3) (make-object-id -2))
-  ;; OK because one side's linked to objects are not anonymous.
+  ;; OK because one side's linked to objects are not non-identified.
   (add-link object-store (make-object-id -2) (make-object-id -4))
   (add-link object-store (make-object-id -4) (make-object-id -2))
   (add-link object-store (make-object-id -2) (make-object-id -5))
@@ -637,11 +640,11 @@
     (is (check (into {} smaller-store)
                (into {} (data-to-store (new-element-store)
                                        (store-to-data temporary-store))))))
-  ;; Try with obj-2 being anonymous.
+  ;; Try with obj-2 being non-identified.
   (let [temporary-store (-> test-store
                             (declare-temporary-id (make-link-id 3))
                             (declare-temporary-id (make-link-id 8))
-                            ;; Make id -2 anonymous
+                            ;; Make id -2 non-identified
                             (remove-link (make-link-id 72)))
         smaller-store (-> test-store
                           (remove-link (make-link-id 8))

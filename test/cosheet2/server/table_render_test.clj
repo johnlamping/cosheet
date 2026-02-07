@@ -308,6 +308,7 @@
          [:div {:class "horizontal-labels-element query-condition"}
           ;; A virtual label for the condition.
           [:component {:template virtual-label-template
+                       :is-object-name true
                        :position :after
                        :relative-id :virtual-label
                        :width 0.75
@@ -342,7 +343,9 @@
                                      ['anything
                                       '("")
                                       (make-object-reference-template
-                                       (make-object-list [`(~link-type)]))])
+                                       (make-object-list [`(~link-type)
+                                                        `("" (~name-label))]))])
+                          :is-object-name true
                           :position :after
                           :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -399,6 +402,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template virtual-label-template
+               :is-object-name true
                :position :after
                :parallel-ids [c2-id]
                :get-action-data [(comp-AD)
@@ -437,6 +441,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template virtual-label-template
+               :is-object-name true
                :position :after
                :parallel-ids [c4-id]
                :get-action-data [(comp-AD)
@@ -471,6 +476,7 @@
            [:component {:column-ids [c6-id]
                         :width 0.75
                         :template virtual-label-template
+                        :is-object-name true
                         :position :after
                         :parallel-ids [c6-id]
                         :get-action-data [(comp-AD)
@@ -493,6 +499,7 @@
            [:component {:column-ids [c7-id]
                         :width 0.75
                         :template virtual-label-template
+                        :is-object-name true
                         :position :after
                         :parallel-ids [c7-id]
                         :get-action-data [(comp-AD)
@@ -516,7 +523,9 @@
                                    ['anything
                                     '("")
                                     (make-object-reference-template
-                                     (make-object-list [`(~link-type)]))])
+                                     (make-object-list [`(~link-type)
+                                                        `("" (~name-label))]))])
+                        :is-object-name true
                         :position :after
                         :sibling true
                         :width 0.75
@@ -660,6 +669,7 @@
            [:component
             {:width 0.75
              :template virtual-label-template
+             :is-object-name true
              :relative-id [(any) :virtual-label]
              :parallel-ids [joe-joe-id]
              :get-action-data [(comp-AD)

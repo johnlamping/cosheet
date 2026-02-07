@@ -12,7 +12,7 @@
                                         label->elements label->content
                                         name-label link-type object-type
                                         make-object-list make-element-list
-                                        named-object? anonymous-object?
+                                        uniquely-identified-object?
                                         in-different-store]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
@@ -36,13 +36,15 @@
                                   relative-ids->client-id
                                   client-id->relative-ids]]
              [actions :refer :all]
-             [action-data :refer [get-id-action-data default-get-action-data]]
+             [action-data :refer [get-id-action-data default-get-action-data
+                                  update-action-data-for-component]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
                                   semantic-to-list selector?
                                   pattern-to-fixed-term]]
              [session-state :refer [update-add-session-temporary-element]]
+             [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]])
             ; :reload
             ))
@@ -175,7 +177,7 @@
   (let [[s id] (get-or-make-object-by-name
                 new-store "Joey" (make-object-list []))
         joey (id->entity id s)]
-    (is (named-object? joey))
+    (is (uniquely-identified-object? joey))
     (is (= (map semantic-to-list (elements joey))
            `(("Joey" (~(in-different-store name-label s)))))))
   (let [[s id] (get-or-make-object-by-name
@@ -185,7 +187,7 @@
   (let [[s id] (get-or-make-object-by-name
                 new-store "Joe" (make-object-list [`(~link-type) '(3 4)]))
         joe (id->entity id s)]
-    (is (named-object? joe))
+    (is (uniquely-identified-object? joe))
     (is (check (map semantic-to-list (elements joe))
                (as-set `(("Joe" (~(in-different-store name-label s)))
                          (~(in-different-store link-type s))
@@ -193,7 +195,7 @@
   (let [[s id] (get-or-make-object-by-name
                 new-store "Joe" (make-object-list [`(~object-type) '(3 4)]))
         joe (id->entity id s)]
-    (is (named-object? joe))
+    (is (uniquely-identified-object? joe))
     (is (check (map semantic-to-list (elements joe))
                (as-set `(("Joe" (~(in-different-store name-label s)))
                          (~(in-different-store object-type s))
@@ -272,22 +274,25 @@
         holder-dom-spec {:relative-id fred-holder-id
                          :width 2.0
                          :template `(~(make-object-list ["foo"]))
-                         :get-action-data default-get-action-data}
+                         :get-action-data default-get-action-data
+                         :render-dom render-item-DOM}
         holder-dom (render-item-DOM holder-dom-spec store)
         [_ object-dom-spec] holder-dom
         object-dom ((:render-dom object-dom-spec) object-dom-spec store)
         [_ name-dom-spec] object-dom
-        name-dom ((:render-dom name-dom-spec) name-dom-spec store)
         ;; Now, walk the nested doms to get the action data. 
-        holder-action-data ((:get-action-data holder-dom-spec)
-                            holder-dom-spec {} :set-content
-                            store)
-        object-action-data ((:get-action-data object-dom-spec)
-                            object-dom-spec holder-action-data :set-content
-                            store)
-        name-action-data ((:get-action-data name-dom-spec)
-                          name-dom-spec object-action-data :set-content
-                          store)
+        holder-component-atom (atom {:dom-specification holder-dom-spec})
+        object-component-atom (atom {:dom-specification object-dom-spec})
+        name-component-atom (atom {:dom-specification name-dom-spec})
+        holder-action-data (update-action-data-for-component
+                            holder-component-atom {}
+                            :set-content store)
+        object-action-data (update-action-data-for-component
+                            object-component-atom holder-action-data
+                            :set-content store)
+        name-action-data (update-action-data-for-component
+                            name-component-atom object-action-data
+                            :set-content store)
         ;; And set up a function to run setting the name.
         run-set-name (fn [from to]
                        (let [action-data

@@ -15,7 +15,7 @@
                             extended-by?]]
              [entity :as entity  :refer [id->entity
                                          label->elements elements
-                                         make-object-list link-type]]
+                                         make-object-list link-type name-label]]
              [expression :refer [expr-let]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -285,7 +285,9 @@
                                    ['anything
                                     '("")
                                     (make-object-reference-template
-                                     (make-object-list [`(~link-type)]))])
+                                     (make-object-list [`(~link-type)
+                                                        `("" (~name-label))]))])
+                        :is-object-name true
                         :position :after
                         :do-not-match-query true}]
            [:component {:relative-id :stack-virtual

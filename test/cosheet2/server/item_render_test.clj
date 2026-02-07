@@ -247,6 +247,7 @@
          [:div {:class
                 "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template virtual-label-template
+                       :is-object-name true
                        :width 0.75
                        :parallel-ids [(:jane-id ids)]
                        :get-action-data [(comp-AD)
@@ -397,6 +398,7 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:template virtual-label-template
+                       :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
                        :class "label"
@@ -408,6 +410,7 @@
                   "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
                          :template virtual-label-template
+                         :is-object-name true
                          :relative-id [sally-id :virtual-label]
                          :parallel-ids [sally-id]
                          :get-action-data [(comp-AD)
@@ -448,7 +451,9 @@
                            [`(~(make-object-list ["foo"]))
                             '("")
                             (make-object-reference-template
-                             (make-object-list [`(~link-type)]))])
+                             (make-object-list [`(~link-type)
+                                                `("" (~name-label))]))])
+                :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)
                 :class "label"
@@ -459,7 +464,7 @@
                            :render-dom (virt-DOM)
                            :get-action-data (virt-AD)}]])))
 
-(deftest render-conent-named-object-DOM-test
+(deftest render-content-object-by-name-DOM-test
   (let [[s1 oid] (get-new-object-id (new-element-store))
         [store fred-id] (add-element s1 oid `("Fred" (~name-label)))
         [two-name-store friedrich-id] (add-element store oid
@@ -471,21 +476,24 @@
                     :relative-id :content
                     :auxiliary-item-id oid
                     :template template)]
-    (is (check (render-content-named-object-DOM spec store)
+    (is (check (render-content-object-by-name-DOM spec store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                            template))
+                                          template))
+                            :is-object-name true
                             :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (pass-AD)}]))
-    (is (check (render-content-named-object-DOM spec two-name-store)
+    (is (check (render-content-object-by-name-DOM
+                spec two-name-store)
                (as-set
                 [:div {:class "named-object vertical-stack"}
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
                                             template))
+                              :is-object-name true
                               :class "name"
                               :relative-id fred-id
                               :omit-universal-elements true
@@ -494,24 +502,27 @@
                  [:component {:width 1.5
                               :template `(~(make-object-reference-template
                                             template))
+                              :is-object-name true
                               :class "name"
                               :relative-id friedrich-id
                               :omit-universal-elements true
                               :render-dom render-item-DOM
                               :get-action-data (pass-AD)}]])))
-    (is (check (render-content-named-object-DOM spec label-store)
+    (is (check (render-content-object-by-name-DOM spec label-store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                            template))
+                                          template))
+                            :is-object-name true
                             :class "label named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (pass-AD)}]))
-    (is (check (render-content-named-object-DOM spec class-store)
+    (is (check (render-content-object-by-name-DOM spec class-store)
                [:component {:width 1.5
                             :template `(~(make-object-reference-template
-                                            template))
+                                          template))
+                            :is-object-name true
                             :class "class named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
@@ -550,13 +561,14 @@
                             :relative-id :content
                             :template (make-object-list
                                        [`(~name-label)])
-                            :render-dom render-content-named-object-DOM
+                            :render-dom render-content-object-by-name-DOM
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
                             :template `(~(make-object-reference-template
                                           (make-object-list [`(~name-label)])))
+                            :is-object-name true
                             :relative-id fred-name-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -604,6 +616,7 @@
           {:class
            "horizontal-labels-element virtual-wrapper narrow item"}
           [:component {:template virtual-label-template
+                       :is-object-name true
                        :position :after
                        :relative-id :virtual-label
                        :omit-universal-elements true
@@ -645,6 +658,7 @@
                   [:component
                    {:width 0.9
                     :template virtual-label-template
+                    :is-object-name true
                     :relative-id [id1 :virtual-label]
                     :render-dom (virt-DOM)
                     :parallel-ids [id1]
@@ -664,6 +678,7 @@
                   [:component
                    {:width 0.9
                     :template virtual-label-template
+                    :is-object-name true
                     :relative-id [id2 :virtual-label]
                     :render-dom (virt-DOM)
                     :parallel-ids [id2]
@@ -818,6 +833,7 @@
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :template virtual-label-template
+                              :is-object-name true
                               :parallel-ids [(:element-3-id ids)]
                               :get-action-data [(comp-AD)
                                                 [(parallel-AD) (item-AD)]
@@ -857,6 +873,7 @@
           [:component
            {:width 1.5
             :template virtual-label-template
+            :is-object-name true
             :relative-id :virtual-label
             :omit-universal-elements true
             :position :after
@@ -875,6 +892,7 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template virtual-label-template
+                           :is-object-name true
                            :relative-id [id1 :virtual-label]
                            :parallel-ids [id1]
                            :get-action-data [(comp-AD)
@@ -893,6 +911,7 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template virtual-label-template
+                           :is-object-name true
                            :relative-id [id2 :virtual-label]
                            :parallel-ids [id2]
                            :get-action-data [(comp-AD)
@@ -1056,6 +1075,7 @@
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template virtual-label-template
+                          :is-object-name true
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [(:element-3-id ids) :virtual-label]
                           :parallel-ids [(:element-3-id ids)]

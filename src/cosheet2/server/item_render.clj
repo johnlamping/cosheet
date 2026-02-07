@@ -4,7 +4,8 @@
                       [entity :refer [id->entity
                                       id->updating-entity-R
                                       content label-element? primitive? object?
-                                      named-object? universal-object?
+                                      uniquely-identified-object?
+                                      universal-object?
                                       label-object?
                                       elements
                                       label->elements content->elements
@@ -168,7 +169,8 @@
    (-> specification
        (assoc :relative-id (or relative-id :virtual-label)
               :position :after
-              :template (make-virtual-label-template template))
+              :template (make-virtual-label-template template)
+              :is-object-name true)
        (into-attributes {:class "label"}))))
 
 (defn virtual-entity-and-label-DOM
@@ -550,7 +552,7 @@
         (seq (content->elements entity object-type)) "class"
         true "name"))
 
-(defn render-content-named-object-DOM
+(defn render-content-object-by-name-DOM
   "Produce dom for a named object in content position. This means that
   we just show its name, and editing the displayed name doesn't change
   the object, but selects (or creates) an object with the provided
@@ -568,6 +570,7 @@
                          (assoc :template `(~(make-object-reference-template
                                               (:template specification)))
                                 :omit-universal-elements true
+                                :is-object-name true
                                 :get-action-data get-pass-through-action-data)
                          (into-attributes
                           {:class (css-class-for-name object)}))]
@@ -579,14 +582,14 @@
         (into [:div {:class "named-object vertical-stack"}]
               (map #(item-component % specification) names))))))
 
-(defn content-named-object-component
+(defn content-object-by-name-component
   [object specification]
   (assert (object? (:template specification))
           (:template specification))
   (make-component (assoc specification
                          :relative-id :content
                          :auxiliary-item-id (:item-id object)
-                         :render-dom render-content-named-object-DOM
+                         :render-dom render-content-object-by-name-DOM
                          :get-action-data get-pass-through-action-data)))
 
 (defn item-content-DOM
@@ -599,8 +602,8 @@
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
           (item-primitive-content-DOM item contents specification)
-          (named-object? contents)
-          (content-named-object-component contents specification)
+          (uniquely-identified-object? contents)
+          (content-object-by-name-component contents specification)
           true
           ;; TODO: !!! We don't currently handle content that is
           ;; itself a structured entity. We will need that for

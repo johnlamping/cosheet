@@ -7,7 +7,7 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [item-id? id->target id->source]]
                       [entity :refer [elements content label->elements
-                                      id->entity entity-complexity]]
+                                      id->entity entity-complexity object?]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
@@ -396,11 +396,7 @@
 
 (defn get-virtual-action-data
   "Create the specified virtual item(s) and make them the target(s).
-   The new items are instances of the template. The template may be a
-   vector, in which case the first element of the vector is created
-   first, then the second item as an element of that, the third as an
-   element of that, etc. With the id of the final item being the final
-   target.
+   The new items are instances of the template.
    The containing data's subject-ids are the target of the new items,
    unless sibling is true in which case they are the siblings.
    If sibling is true, the new items will be adjacent to the
@@ -411,7 +407,8 @@
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger past-subject-ids]
+  [{:keys [template sibling position use-bigger past-subject-ids
+           is-object-name]
            ; adjacent-query also used.
     :as specification}
    inherited-action-data action immutable-store]
@@ -427,19 +424,25 @@
         template-sequence (if (sequential-template? template)
                             (:template-sequence template)
                             [template])
+        ;; We don't create the object for a virtual named object. It
+        ;; will be created or found when its name is processed. (The
+        ;; object still appears in the template sequence, so it is
+        ;; available to the name processor.)
+        templates (cond-> template-sequence
+                    (and is-object-name
+                         (or (object-reference-template?
+                              (last template-sequence))
+                             (object? (last template-sequence))))
+                    butlast)
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]
-           (if (object-reference-template? template)
-             ;; We don't do anything for a virtual named object. It
-             ;; will be created or found when its name is processed.
-             [targets adjacents past-ids store]
-             (let [[ids store] (create-possible-selector-elements
-                                template targets adjacents
-                                (or position :after) use-bigger store)]
-               [ids ids (cons targets past-ids) store])))
+           (let [[ids store] (create-possible-selector-elements
+                              template targets adjacents
+                              (or position :after) use-bigger store)]
+             [ids ids (cons targets past-ids) store]))
          [targets adjacents past-subject-ids immutable-store]
-         template-sequence)]
+         templates)]
     (println "Made items"
              template
              (simplify-for-print targets)
@@ -481,16 +484,17 @@
     [composed-get-action-data current to-add]))
 
 (defn update-action-data-for-component
-  "Update the action data for one component, running all the different
-  possible getters the component might have, and adding the component
-  to the data."
+  "Update the action data for one component atom, running all the
+  different possible getters the component might have, and adding the
+  component to the data."
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
         {:keys [get-do-batch-edit-action-data]} spec 
         ;; These keys are always copied from the spec to the action
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
-        copied-keys [:table-id :row-id :column-ids :tab-id]
+        copied-keys [:table-id :row-id :column-ids :tab-id
+                     :is-object-name]
         partial-action-data (into containing-action-data
                                   (select-keys spec copied-keys))
         action-data (let [getter (if (= action :batch-edit)
@@ -499,4 +503,4 @@
                                    (action-data-getter spec))]
                       (run-action-data-getter
                        getter spec partial-action-data action immutable-store))]
-    (assoc  action-data :component component)))
+    (assoc action-data :component component)))

@@ -163,7 +163,8 @@
         (add-object store pattern)))))
 
 (defn do-set-content
-  [store {:keys [subject-ids past-subject-ids template from to session-state]}]
+  [store {:keys [subject-ids past-subject-ids template is-object-name
+                 from to session-state]}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
@@ -187,16 +188,19 @@
                                    (not (element? last-template)))
                              last-template
                              (content last-template))] 
-      (if (object-reference-template? content-template)
-        ;; We are getting a new name at an object reference position.
+      (if is-object-name
+        ;; We are setting a new name for a named object.
         ;; First, get an object corresponding to the name. Then check
         ;; that the position still holds an object, and swap in the
         ;; new one.
         ;; TODO: !!!  We need to handle reversed links, which we can
         ;; do by checking which end matches the old object.
-        (let [name (clojure.string/trim to)
+        (let [template (if (object-reference-template? content-template)
+                         (:template content-template)
+                         content-template)
+              name (clojure.string/trim to)
               [store object-id] (get-or-make-object-by-name
-                                 store name (:template content-template))
+                                 store name template)
               ;; TODO: !!! This needs to handle orientation.
               current-contents (map #(id->source store %) subject-ids)
               first-content (first current-contents)]

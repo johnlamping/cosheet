@@ -5,7 +5,7 @@
                                       primitive? object? element?
                                       content elements orientation
                                       make-element-list
-                                      named-object?]])))
+                                      uniquely-identified-object?]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -78,7 +78,7 @@
         (primitive? entity)
         (canonical-primitive-form entity)
         (object? entity)
-        (if (named-object? entity)
+        (if (uniquely-identified-object? entity)
           entity
           [:object
            (multiset (map canonicalize (elements entity)))])

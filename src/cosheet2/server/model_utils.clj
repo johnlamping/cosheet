@@ -8,9 +8,9 @@
                       [canonical :refer [canonicalize]]
                       [store :refer [new-element-store update-source
                                      target-label->ids]]
-                      [entity :refer [primitive? object? anonymous-object?
+                      [entity :refer [primitive? object? non-identified-object?
                                       link-type-object? object-type-object?
-                                      named-object?
+                                      uniquely-identified-object?
                                       element? label-element? id->entity
                                       content elements orientation
                                       link-type object-type
@@ -117,7 +117,7 @@
   "The skipped element lets semantic-to-list avoid going back up a link
   it just traversed to this object."
   [object use-order skipped-element]
-  (if (anonymous-object? object)
+  (if (non-identified-object? object)
     (->> (cond-> (semantic-elements object)
            use-order (ordered-entities))
          (remove #(= (entity-key %) (entity-key skipped-element)))
@@ -225,7 +225,7 @@
                 (elements pattern) options)
          (and (nil? new-content) require-orders)
          (concat ['(nil :order)]))))
-    (named-object? pattern)
+    (uniquely-identified-object? pattern)
     pattern
     (object? pattern)
     (make-object-list
@@ -234,7 +234,9 @@
        (and require-not-type
             (not (link-type-object? pattern))
             (not (object-type-object? pattern)))
-       (concat [(not-query `(~link-type)) (not-query `(~object-type))])))))
+       (concat [(not-query `(~link-type)) (not-query `(~object-type))])))
+    true
+    (assert false pattern)))
 
 (defn entity->fixed-term
   "Convert the entity to a list, and change 'anything to nil."

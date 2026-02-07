@@ -1,7 +1,8 @@
 (ns cosheet2.server.render-utils
   (:require (cosheet2 [entity :refer [target-entity elements element?
                                       label-element? object? label-object?
-                                      link-type make-object-list
+                                      link-type name-label make-object-list
+                                      label->elements
                                       make-element-list content orientation]]
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
@@ -82,18 +83,26 @@
   [template]
   (or (= template 'anything) (= template nil)))
 
+;;; TODO: !!! This counts class objects as labels, but only creates
+;;; label objects. make it consistent.
 (defn ensure-label-object
   "Give a template that can indicate an object, make it be a label object if
   it isn't already."
   [template]
   (assert (not (virtual-template? template)))
-  (if (label-object? template)
-    template
-    (let [current-elements (if (universal-template? template)
-                                []
-                                (do (assert (object? template))
-                                    (elements template)))]
-      (make-object-list (conj current-elements `(~link-type))))))
+  (let [is-label (label-object? template)
+        has-name (seq (label->elements template name-label))]
+    (if (and is-label has-name)
+      template
+      (make-object-list
+       (cond-> (if (universal-template? template)
+                 []
+                 (do (assert (object? template))
+                     (elements template)))
+         (not is-label)
+         (conj `(~link-type))
+         (not has-name)
+         (conj `("" (~name-label))))))))
 
 (defn ensure-label-object-content
   "Given a template that can match an element, make its content be a
@@ -106,7 +115,7 @@
 
 (defn make-virtual-label-template
   "Given a template for an element, make a template for a virtual label
-  consisting of that element. In other words, pull out the the last
+  consisting of that element. In other words, pull out the last
   template if there's a sequence. That template should be a template
   for an element.  Replace it with two templates, one for an identical
   element, except with content of the empty string. and one for a

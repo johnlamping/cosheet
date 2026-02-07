@@ -4,8 +4,9 @@
                                      link-id?
                                      name-label-id link-type-id object-type-id]]
                       [entity :refer [StoredEntity
-                                      element? object? named-object?
-                                      anonymous-object?
+                                      element? object?
+                                      uniquely-identified-object?
+                                      non-identified-object?
                                       content orientation elements
                                       name-label link-type object-type
                                       make-object-list]])))
@@ -37,8 +38,8 @@
   [store container-id template]
   (assert (not (instance? clojure.lang.PersistentVector template)))
   (assert (not (element? (content template))) template)
-  (assert (not (anonymous-object? template)) template)
-  (if (and (named-object? template)
+  (assert (not (non-identified-object? template)) template)
+  (if (and (uniquely-identified-object? template)
            (satisfies? StoredEntity template))
     (add-link store container-id (:item-id template))
     (let [[store content-endpoint]

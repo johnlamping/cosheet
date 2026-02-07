@@ -305,16 +305,6 @@
 ;;;                         template is an object, it becomes the
 ;;;                         content of the target, rather than a
 ;;;                         sub-element.
-;;;                         Or the value of :template may instead be
-;;;                         an ObjectReferenceTemplate. That means
-;;;                         that this cell holds the name of an
-;;;                         object, and the cell refers to that
-;;;                         object. Editing the cell should not change
-;;;                         the name of the object, but should make
-;;;                         the enclosing element refer to the object
-;;;                         with the name the user entered. The
-;;;                         reference object holds the template that
-;;;                         the object referred to must satisfy.
 ;;;        :is-object-name  This cell holds the name of a named object,
 ;;;                         and while the cell's relative id is for
 ;;;                         the name of the object, the cell logically

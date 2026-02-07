@@ -33,8 +33,7 @@
              [order-utils :refer [ordered-entities add-order-elements]]
              [render-utils :refer [ensure-label-object
                                    make-virtual-label-template
-                                   make-sequential-template
-                                   make-object-reference-template]]
+                                   make-sequential-template]]
              [batch-edit-render :refer :all])
              ; :reload
             ))
@@ -284,9 +283,8 @@
                         :template (make-sequential-template
                                    ['anything
                                     '("")
-                                    (make-object-reference-template
-                                     (make-object-list [`(~link-type)
-                                                        `("" (~name-label))]))])
+                                    (make-object-list [`(~link-type)
+                                                       `("" (~name-label))])])
                         :is-object-name true
                         :position :after
                         :do-not-match-query true}]

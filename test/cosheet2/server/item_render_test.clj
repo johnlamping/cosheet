@@ -25,7 +25,6 @@
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
              [render-utils :refer [make-sequential-template
-                                   make-object-reference-template
                                    make-virtual-label-template
                                    ensure-label-object]]
              [action-data :refer [default-get-action-data
@@ -450,9 +449,8 @@
                 :template (make-sequential-template
                            [`(~(make-object-list ["foo"]))
                             '("")
-                            (make-object-reference-template
-                             (make-object-list [`(~link-type)
-                                                `("" (~name-label))]))])
+                            (make-object-list [`(~link-type)
+                                               `("" (~name-label))])])
                 :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)
@@ -478,8 +476,7 @@
                     :template template)]
     (is (check (render-content-object-by-name-DOM spec store)
                [:component {:width 1.5
-                            :template `(~(make-object-reference-template
-                                          template))
+                            :template template
                             :is-object-name true
                             :class "name named-object"
                             :relative-id fred-id
@@ -491,8 +488,7 @@
                (as-set
                 [:div {:class "named-object vertical-stack"}
                  [:component {:width 1.5
-                              :template `(~(make-object-reference-template
-                                            template))
+                              :template template
                               :is-object-name true
                               :class "name"
                               :relative-id fred-id
@@ -500,8 +496,7 @@
                               :render-dom render-item-DOM
                               :get-action-data (pass-AD)}]
                  [:component {:width 1.5
-                              :template `(~(make-object-reference-template
-                                            template))
+                              :template template
                               :is-object-name true
                               :class "name"
                               :relative-id friedrich-id
@@ -510,8 +505,7 @@
                               :get-action-data (pass-AD)}]])))
     (is (check (render-content-object-by-name-DOM spec label-store)
                [:component {:width 1.5
-                            :template `(~(make-object-reference-template
-                                          template))
+                            :template template
                             :is-object-name true
                             :class "label named-object"
                             :relative-id fred-id
@@ -520,8 +514,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check (render-content-object-by-name-DOM spec class-store)
                [:component {:width 1.5
-                            :template `(~(make-object-reference-template
-                                          template))
+                            :template template
                             :is-object-name true
                             :class "class named-object"
                             :relative-id fred-id
@@ -566,8 +559,7 @@
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
-                            :template `(~(make-object-reference-template
-                                          (make-object-list [`(~name-label)])))
+                            :template (make-object-list [`(~name-label)])
                             :is-object-name true
                             :relative-id fred-name-id
                             :omit-universal-elements true

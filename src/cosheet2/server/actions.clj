@@ -43,10 +43,9 @@
                          exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
                          unspecified-column-header-template]]
-    [render-utils :refer [object-reference-template? sequential-template?]]
+    [render-utils :refer [sequential-template?]]
     [order-utils :refer [furthest-item
-                         update-add-element-with-order-and-temporary]]))
-  (:import [cosheet2.server.render_utils ObjectReferenceTemplate]))
+                         update-add-element-with-order-and-temporary]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -184,10 +183,9 @@
           ;; We have to check for an object reference template first,
           ;; because those don't support the usual entity operations,
           ;; like element?
-          content-template (if (or (object-reference-template? last-template)
-                                   (not (element? last-template)))
-                             last-template
-                             (content last-template))] 
+          template (if (element? last-template)
+                     (content last-template)
+                     last-template)] 
       (if is-object-name
         ;; We are setting a new name for a named object.
         ;; First, get an object corresponding to the name. Then check
@@ -195,10 +193,7 @@
         ;; new one.
         ;; TODO: !!!  We need to handle reversed links, which we can
         ;; do by checking which end matches the old object.
-        (let [template (if (object-reference-template? content-template)
-                         (:template content-template)
-                         content-template)
-              name (clojure.string/trim to)
+        (let [name (clojure.string/trim to)
               [store object-id] (get-or-make-object-by-name
                                  store name template)
               ;; TODO: !!! This needs to handle orientation.

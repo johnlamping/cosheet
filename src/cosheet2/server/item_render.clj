@@ -35,12 +35,10 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [ordered-entities]]
              [render-utils
-              :refer [make-object-reference-template
-                      make-sequential-template
+              :refer [make-sequential-template
                       ensure-label-object-content
                       make-virtual-label-template
                       make-component
-                      object-reference-template?
                       nest-if-multiple-DOM
                       condition-satisfiers
                       hierarchy-node-DOM
@@ -567,9 +565,7 @@
           specification (->
                          specification
                          (dissoc :auxiliary-item-id :relative-id :render-dom)
-                         (assoc :template `(~(make-object-reference-template
-                                              (:template specification)))
-                                :omit-universal-elements true
+                         (assoc :omit-universal-elements true
                                 :is-object-name true
                                 :get-action-data get-pass-through-action-data)
                          (into-attributes

@@ -36,7 +36,6 @@
                         :as hierarchy]
              [render-utils :refer [make-virtual-label-template
                                    make-sequential-template
-                                   make-object-reference-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list semantic-elements]]
@@ -342,9 +341,8 @@
                           :template (make-sequential-template
                                      ['anything
                                       '("")
-                                      (make-object-reference-template
-                                       (make-object-list [`(~link-type)
-                                                        `("" (~name-label))]))])
+                                      (make-object-list [`(~link-type)
+                                                         `("" (~name-label))])])
                           :is-object-name true
                           :position :after
                           :get-action-data [composed-get-action-data
@@ -522,9 +520,8 @@
                         :template (make-sequential-template
                                    ['anything
                                     '("")
-                                    (make-object-reference-template
-                                     (make-object-list [`(~link-type)
-                                                        `("" (~name-label))]))])
+                                    (make-object-list [`(~link-type)
+                                                       `("" (~name-label))])])
                         :is-object-name true
                         :position :after
                         :sibling true

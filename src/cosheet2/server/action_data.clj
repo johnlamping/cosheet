@@ -15,8 +15,7 @@
                                      extended-by?]
                       :as query])
             (cosheet2.server
-             [render-utils :refer [sequential-template?
-                                   object-reference-template?]]
+             [render-utils :refer [sequential-template?]]
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
@@ -430,9 +429,7 @@
         ;; available to the name processor.)
         templates (cond-> template-sequence
                     (and is-object-name
-                         (or (object-reference-template?
-                              (last template-sequence))
-                             (object? (last template-sequence))))
+                         (object? (last template-sequence)))
                     butlast)
         [targets _ past-ids new-store]
         (reduce

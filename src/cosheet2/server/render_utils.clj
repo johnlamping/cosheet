@@ -52,32 +52,6 @@
   [template]
   (instance? SequentialTemplate template))
 
-(defrecord
-    ^{:doc
-      "This is a template for a location that holds the name of an object.
-       That object must satisfy the template recorded here."}
-    ObjectReferenceTemplate
-    [template]  ; The template that the object must satisfy
-  )
-
-(defmethod print-method ObjectReferenceTemplate [s ^java.io.Writer w]
-  (.write w (str "ObjRefTemplate " (:template s))))
-
-(defn make-object-reference-template
-  [template]
-  (assert (object? template) template)
-  (->ObjectReferenceTemplate template))
-
-(defn object-reference-template?
-  [template]
-  (instance? ObjectReferenceTemplate template))
-
-(defn virtual-template?
-  "Return true if the template is one of the virtual templates."
-  [template]
-  (or (sequential-template? template)
-      (object-reference-template? template)))
-
 (defn universal-template?
   "Return true if the template can match both elements and objects."
   [template]
@@ -89,7 +63,7 @@
   "Give a template that can indicate an object, make it be a label object if
   it isn't already."
   [template]
-  (assert (not (virtual-template? template)))
+  (assert (not (sequential-template? template)))
   (let [is-label (label-object? template)
         has-name (seq (label->elements template name-label))]
     (if (and is-label has-name)
@@ -130,8 +104,7 @@
      (concat
       prefix-templates
       [(cons "" (elements last-template))  ; the element that is the label.
-       (make-object-reference-template     ; the name of the label object.
-        (ensure-label-object (content last-template)))]))))
+       (ensure-label-object (content last-template))]))))
 
 (defn specification-item-id
   [specification]

@@ -96,6 +96,26 @@
     (is (= c1  '("x" ("\u00A0A" :a) ("\u00A0B" 22))))
     (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
 
+(deftest template-to-possible-non-selector-template-test
+  (is (check (template-to-possible-non-selector-template 'anything)
+             ""))
+  (is (check (template-to-possible-non-selector-template '(anything 2))
+             '("" 2)))
+  (is (check (template-to-possible-non-selector-template '(2 anything))
+             '(2 "")))
+  (is (check (template-to-possible-non-selector-template
+              '(anything 2 :selector))
+             '(anything 2 :selector)))
+  (is (check (template-to-possible-non-selector-template
+              '(2 anything :selector))
+             '(2 anything :selector)))
+  (is (check (template-to-possible-non-selector-template
+              (make-object-list '(2 anything)))
+             (make-object-list '(2 ""))))
+  (is (check (template-to-possible-non-selector-template
+              (make-object-list '(2 anything  :selector)))
+             (make-object-list '(2 anything :selector)))))
+
 (deftest semantic-test
   (is (check (map canonicalize
                   (map to-list (semantic-elements joe)))

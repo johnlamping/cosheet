@@ -157,7 +157,7 @@
       ;; the name we are looking for.
       (let [pattern (-> (remove #(seq (content->elements % name-label))
                                 (elements template))
-                        (conj `(~name ~name-label))
+                        (conj `(~name (~name-label)))
                         make-object-list)]
         (add-object store pattern)))))
 

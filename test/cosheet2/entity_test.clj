@@ -471,6 +471,30 @@
   (is (= (entity-key orderable/initial) orderable/initial))
   (is (to-list 3) 3))
 
+(deftest map-elements-test
+  (let [incrementer #(if (number? %) (inc %) %)]
+    (is (= (map-elements incrementer '(1 5 (2 3) 4))
+           '(1 6 (2 3) 5)))
+    (is (= (map-elements incrementer (id->object (make-item-id "foo") nil))
+           (id->object (make-item-id "foo") nil)))
+    (is (= (map-elements incrementer (make-object-list '(5 (2 3) 4)))
+           (make-object-list '(6 (2 3) 5))))))
+
+(deftest recursively-map-elements-test
+  (is (check (recursively-map-elements
+              #(make-element-list
+                (orientation %)
+                (let [c (content %)] (if (number? c) (inc c) c))
+                (elements %))
+              `(1 (2 3)
+                  (~(make-object-list
+                     `(4 (5 6))))
+                  (~(id->object (make-item-id "foo") nil))))
+             `(2 (3 4)
+                 (~(make-object-list
+                    `(5 (6 7))))
+                 (~(id->object (make-item-id "foo") nil))))))
+
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))
   (is (= (entity-complexity nil) 0.1))

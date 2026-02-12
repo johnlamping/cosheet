@@ -264,11 +264,12 @@
         [s1 fred-oid] (-> (new-element-store)
                           (add-universal-objects)
                           (get-new-object-id))
-        [s2 fred-name-id] (add-element s1 fred-oid `("Fred" ~name-label))
+        [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
         [s3 fred-foo-id] (add-element s2 fred-oid "foo")
-        [s4 fred-holder-id] (add-element s3 nil (id->object fred-oid s2))
+        [s4 fred-holder-id] (add-element s3 nil `(~(id->object fred-oid s2)))
         [s5 sally-oid] (get-new-object-id s4)
-        [store sally-name-id] (add-element s5 sally-oid `("Sally" ~name-label))
+        [store sally-name-id] (add-element
+                               s5 sally-oid `("Sally" (~name-label)))
         ;; Now, render the nesting doms: the holding element, the
         ;; object inside, and its name.
         holder-dom-spec {:relative-id fred-holder-id

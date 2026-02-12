@@ -5,7 +5,8 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
-             [entity :refer [id->entity name-label link-type object-type
+             [entity :refer [id->element id->object
+                             name-label link-type object-type
                              make-object-list
                              to-list]]
              entity-impl
@@ -92,14 +93,14 @@
   []
   (let [s (add-universal-objects (new-element-store))
         [s1 test-label-oid] (add-label-object s "test")
-        test-label-object (id->entity test-label-oid s1)
+        test-label-object (id->object test-label-oid nil)
         [s2 foo-label-oid] (add-label-object s1 "foo")
-        foo-label-object (id->entity foo-label-oid s2)
+        foo-label-object (id->object foo-label-oid nil)
         [s4 joe-id] (add-element s2 nil "Joe")
-        [s5 joe-test-id] (add-element s4 joe-id test-label-object)
-        [s7 joe-foo-id] (add-element s5 joe-id foo-label-object)
+        [s5 joe-test-id] (add-element s4 joe-id `(~test-label-object))
+        [s7 joe-foo-id] (add-element s5 joe-id `(~foo-label-object))
         [s9 jane-id] (add-element s7 nil "Jane")
-        [store jane-test-id] (add-element s9 jane-id test-label-object)]
+        [store jane-test-id] (add-element s9 jane-id `(~test-label-object))]
     [store {:test-label-oid test-label-oid
             :foo-label-oid foo-label-oid
             :joe-id joe-id
@@ -118,9 +119,9 @@
         [s1 one-oid] (add-label-object s "one")
         [s2 two-oid] (add-label-object s1 "two")
         [s3 fred-id] (add-element s2 nil "Fred")
-        [s4 label-one-id] (add-element s3 fred-id `(~(id->entity one-oid s3)
+        [s4 label-one-id] (add-element s3 fred-id `(~(id->object one-oid nil)
                                                    (~o1 :order)))
-        [store label-two-id] (add-element s4 fred-id `(~(id->entity two-oid s4)
+        [store label-two-id] (add-element s4 fred-id `(~(id->object two-oid nil)
                                                       (~o2 :order)))]
     [store {:fred-id fred-id
             :one-oid one-oid
@@ -140,10 +141,10 @@
         [s3 fred-id] (add-element s2 nil "Fred")
         [s4 element-1-id] (add-element s3 fred-id `(1 (~o1 :order)))
         [s5 label-one-id] (add-element s4 element-1-id
-                                       `(~(id->entity one-oid s4)))
+                                       `(~(id->object one-oid nil)))
         [s6 element-2-id] (add-element s5 fred-id `(2 (~o2 :order)))
         [store label-two-id] (add-element s6 element-2-id
-                                          `(~(id->entity two-oid s6)))]
+                                          `(~(id->object two-oid nil)))]
     [store {:fred-id fred-id
             :one-oid one-oid
             :two-oid two-oid
@@ -170,20 +171,20 @@
         [s5 fred-id] (add-element s4 nil "Fred")
         [s6 element-0-id] (add-element s5 fred-id `(0 (~o1 :order)))
         [s7 label-zero-id] (add-element s6 element-0-id
-                                        `(~(id->entity zero-oid s6)))
+                                        `(~(id->object zero-oid s6)))
         [s8 element-2-id] (add-element s7 fred-id `(2 (~o3 :order)))
         [s9 label-two-id] (add-element s8 element-2-id
-                                       `(~(id->entity two-oid s8)
+                                       `(~(id->object two-oid s8)
                                          (~o1 :order)))
         [s10 label-2-both-id] (add-element s9 element-2-id
-                                           `(~(id->entity both-oid s9)
+                                           `(~(id->object both-oid s9)
                                              (~o2 :order)))
         [s11 element-1-id] (add-element s10 fred-id `(1 (~o2 :order)))
         [s12 label-one-id] (add-element s11 element-1-id
-                                       `(~(id->entity one-oid s11)
+                                       `(~(id->object one-oid s11)
                                          (~o1 :order)))
         [s13 label-1-both-id] (add-element s12 element-1-id
-                                           `(~(id->entity both-oid s12)
+                                           `(~(id->object both-oid s12)
                                              (~o2 :order)))
         [store element-3-id] (add-element s13 fred-id `(3 (~o4 :order)))]
     [store {:fred-id fred-id
@@ -213,8 +214,8 @@
 
 (deftest horizontal-label-hierarchy-node-DOM-test
   (let [[store ids] (make-joe-and-jane-store)
-        ordered-entities [(id->entity (:joe-id ids) store)
-                          (id->entity (:jane-id ids) store)]
+        ordered-entities [(id->element (:joe-id ids) store)
+                          (id->element (:jane-id ids) store)]
         labelses (map semantic-label-elements ordered-entities)
         item-maps (item-maps-by-elements ordered-entities labelses)
         hierarchy (hierarchy-by-canonical-info item-maps)
@@ -266,14 +267,14 @@
 (deftest labels-and-elements-DOM-test
   (let [[s ids] (make-joe-and-jane-store)
         [store sally-id] (add-element s nil "Sally")
-        joe (id->entity (:joe-id ids) store)
-        joe-test (id->entity (:joe-test-id ids) store)
-        joe-foo (id->entity (:joe-foo-id ids) store)
-        jane (id->entity (:jane-id ids) store)
-        jane-test (id->entity (:jane-test-id ids) store)
-        sally (id->entity sally-id store)
-        test-label-object (id->entity (:test-label-oid ids) store)
-        foo-label-object (id->entity (:foo-label-oid ids) store)]
+        joe (id->element (:joe-id ids) store)
+        joe-test (id->element (:joe-test-id ids) store)
+        joe-foo (id->element (:joe-foo-id ids) store)
+        jane (id->element (:jane-id ids) store)
+        jane-test (id->element (:jane-test-id ids) store)
+        sally (id->element sally-id store)
+        test-label-object (id->object (:test-label-oid ids) store)
+        foo-label-object (id->object (:foo-label-oid ids) store)]
     ;; Test two non-labels.
     (is (check
          (labels-and-elements-DOM
@@ -467,8 +468,8 @@
         [store fred-id] (add-element s1 oid `("Fred" (~name-label)))
         [two-name-store friedrich-id] (add-element store oid
                                                    `("Friedrich" (~name-label)))
-        [label-store _] (add-element store oid link-type)
-        [class-store _] (add-element store oid object-type)
+        [label-store _] (add-element store oid `(link-type))
+        [class-store _] (add-element store oid `(object-type))
         template (make-object-list [`(~name-label)])
         spec (assoc basic-dom-specification
                     :relative-id :content
@@ -507,7 +508,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "label named-object"
+                            :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -516,7 +517,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "class named-object"
+                            :class "name named-object"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -537,7 +538,7 @@
                           (add-universal-objects)
                           (get-new-object-id))
         [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
-        [store fred-holder-id] (add-element s2 nil `(~(id->entity fred-oid nil)))
+        [store fred-holder-id] (add-element s2 nil `(~(id->object fred-oid nil)))
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
                                  :relative-id fred-holder-id
@@ -568,8 +569,8 @@
   
   ;; Test a cell with a couple of labels, one excluded.
   (let [[store ids] (make-fred-one-two-store)
-        one-object (id->entity (:one-oid ids) store)
-        two-object (id->entity (:two-oid ids) store)
+        one-object (id->object (:one-oid ids) store)
+        two-object (id->object (:two-oid ids) store)
         dom (run-renderer render-item-DOM
                           (assoc basic-dom-specification
                                  :relative-id (:fred-id ids)
@@ -629,7 +630,7 @@
                                     `("Fred"
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
-        fred (id->entity fred-id store)
+        fred (id->element fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         dom (render-item-DOM (assoc basic-dom-specification
@@ -687,8 +688,8 @@
                                :get-action-data (default-AD)}]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
-        one-object (id->entity (:one-oid ids) store)
-        two-object (id->entity (:two-oid ids) store)
+        one-object (id->object (:one-oid ids) store)
+        two-object (id->object (:two-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 0.9)
@@ -736,10 +737,10 @@
                                 :get-action-data (default-AD)}]]]]])))
   ;; Test an item with four elements, with label sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
-        zero-object (id->entity (:zero-oid ids) store)
-        one-object (id->entity (:one-oid ids) store)
-        two-object (id->entity (:two-oid ids) store)
-        both-object (id->entity (:both-oid ids) store)
+        zero-object (id->object (:zero-oid ids) store)
+        one-object (id->object (:one-oid ids) store)
+        two-object (id->object (:two-oid ids) store)
+        both-object (id->object (:both-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 0.9)
@@ -848,7 +849,7 @@
                                       (3 (~o3 :order))
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
-        fred (id->entity fred-id store)
+        fred (id->element fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         id3 (:item-id (first (matching-elements 3 fred)))
@@ -920,8 +921,8 @@
                           :get-action-data (default-AD)}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
-        one-object (id->entity (:one-oid ids) store)
-        two-object (id->entity (:two-oid ids) store)
+        one-object (id->object (:one-oid ids) store)
+        two-object (id->object (:two-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 1.5)
@@ -970,10 +971,10 @@
                          :get-action-data (default-AD)}]]]])))
   ;; Test an item with four elements, with label sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
-        zero-object (id->entity (:zero-oid ids) store)
-        one-object (id->entity (:one-oid ids) store)
-        two-object (id->entity (:two-oid ids) store)
-        both-object (id->entity (:both-oid ids) store)
+        zero-object (id->object (:zero-oid ids) store)
+        one-object (id->object (:one-oid ids) store)
+        two-object (id->object (:two-oid ids) store)
+        both-object (id->object (:both-oid ids) store)
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 1.5)

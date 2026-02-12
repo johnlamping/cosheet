@@ -15,6 +15,7 @@
                                       content elements orientation
                                       link-type object-type
                                       content->elements
+                                      map-elements
                                       label->elements label->element
                                       target-entity entity-key
                                       make-element-list make-object-list
@@ -309,14 +310,13 @@
    string, unless in a part of the template that is marked as a selector,
    in which case don't modify it."
   [pattern]
-  (if (sequential? pattern)
-    (if (some #(= (content %) :selector)
-              (elements pattern))
-      pattern
-      (map template-to-possible-non-selector-template pattern))
-    (if (= 'anything pattern)
-      ""
-      pattern)))
+  (if (some #(= (content %) :selector) (elements pattern))
+    pattern
+    (map-elements
+     template-to-possible-non-selector-template
+     (if (= 'anything (content pattern))
+       (make-element-list (orientation pattern) "" (elements pattern))
+       pattern))))
 
 (defn create-selector-or-non-selector-element
   "Create an element, modifying the template if the target is not a

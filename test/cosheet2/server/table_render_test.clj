@@ -8,13 +8,14 @@
              [store-utils :refer [add-element add-universal-objects
                                   add-label-object]]
              [query :refer [matching-items matching-elements not-query]]
-             [entity :as entity  :refer [id->entity
+             [entity :as entity  :refer [id->element id->object
                                          label->elements elements to-list
                                          make-object-list
                                          link-type name-label]]
              [expression :refer [expr expr-let expr-seq]]
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
+             [store :refer [->ItemId]]
              [debug :refer [simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set]])
@@ -99,8 +100,8 @@
   (let [s (add-universal-objects (new-element-store))
         [s1 c1-label-oid] (add-label-object s "c1")
         [s2 c2-label-oid] (add-label-object s1 "c2")
-        c1-object (id->entity c1-label-oid s2)
-        c2-object (id->entity c2-label-oid s2)
+        c1-object (id->object c1-label-oid s2)
+        c2-object (id->object c2-label-oid s2)
         [s3 table-id] (add-element s2 nil
                                    (add-order-elements
                                     `(""
@@ -120,7 +121,7 @@
         new-store (:store data)
         new-id (first (:subject-ids data))]
     ;; TODO: !!! This shouldn't be a :label here, but an object list
-    (is (= (semantic-to-list (id->entity new-id new-store))
+    (is (= (semantic-to-list (id->element new-id new-store))
            '("" (" A" :label))))))
 
 (deftest table-DOM-test
@@ -133,12 +134,12 @@
         [sd single-oid] (add-label-object sc "single")
         [se height-oid] (add-label-object sd "height")
         [sf other-oid] (add-label-object se "other")
-        temp-age-label-object (id->entity age-oid sf)
-        temp-name-label-object (id->entity name-oid sf)
-        temp-id-label-object (id->entity id-oid sf)
-        temp-single-label-object (id->entity single-oid sf)
-        temp-height-label-object (id->entity height-oid sf)
-        temp-other-label-object (id->entity other-oid sf)
+        temp-age-label-object (id->object age-oid sf)
+        temp-name-label-object (id->object name-oid sf)
+        temp-id-label-object (id->object id-oid sf)
+        temp-single-label-object (id->object single-oid sf)
+        temp-height-label-object (id->object height-oid sf)
+        temp-other-label-object (id->object other-oid sf)
         joe-list `("Joe"
                    :top-level
                    (~o2 :order)
@@ -201,19 +202,19 @@
         [s2 jane-id] (add-element s1 nil jane-list)
         [s3 test-id] (add-element s2 nil test-list)
         [store table-id] (add-element s3 nil table-list)
-        age-label-object (id->entity age-oid store)
-        name-label-object (id->entity name-oid store)
-        id-label-object (id->entity id-oid store)
-        single-label-object (id->entity single-oid store)
-        height-label-object (id->entity height-oid store)
-        other-label-object (id->entity other-oid store)
-        joe (id->entity joe-id store)
+        age-label-object (id->object age-oid store)
+        name-label-object (id->object name-oid store)
+        id-label-object (id->object id-oid store)
+        single-label-object (id->object single-oid store)
+        height-label-object (id->object height-oid store)
+        other-label-object (id->object other-oid store)
+        joe (id->element joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))
         joe-joe-id (:item-id joe-joe)
         joe-joseph (first (matching-elements "Joseph" joe))
         joe-joseph-id (:item-id joe-joseph)
-        table (id->entity table-id store)
+        table (id->element table-id store)
         row-condition (entity/label->element table :row-condition)
         row-condition-id (:item-id row-condition)
         rc1 (first (matching-elements `(nil ~o8) row-condition))

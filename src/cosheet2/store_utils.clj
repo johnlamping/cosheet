@@ -36,16 +36,15 @@
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
-  (assert (not (instance? clojure.lang.PersistentVector template)))
+  (assert (not (object? template)) template) ; Use add-object.
   (assert (not (element? (content template))) template)
-  (assert (not (non-identified-object? template)) template)
   (if (and (uniquely-identified-object? template)
            (satisfies? StoredEntity template))
     (add-link store container-id (:item-id template))
     (let [[store content-endpoint]
           (let [element-content (content template)]
             ;; If we have an expanded object, we need to make an instance of it.
-            (if (instance? clojure.lang.PersistentVector element-content)
+            (if (vector? element-content)
               (add-object store element-content)
               [store (if (satisfies? StoredEntity element-content)
                        (:item-id element-content)
@@ -73,7 +72,7 @@
   "Add a label object with the given name to the store.
    Return the updated store and the id of the label object."
   [store name]
-  (add-object store (make-object-list [`(~name ~name-label) `(~link-type)])))
+  (add-object store (make-object-list [`(~name (~name-label)) `(~link-type)])))
 
 (defn- links-to-remove
   "Return a list of ids of items to remove in order to remove the

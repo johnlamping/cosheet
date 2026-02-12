@@ -14,8 +14,9 @@
 
 ;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,
 ;;; based on a multiset of "properties" associated with each leaf.
-;;; The hierarchy consists of a vector of nodes, each of which is a map that
-;;; has:
+;;; The hierarchy consists of a vector of nodes, each of which
+;;; corresponds to the properties shared by all its descendants. It is
+;;; represented as a map that has:
 ;;;       ::hierarchy-node  true (used to identify hierarchy nodes)
 ;;;            :properties  A multiset of the properties added by this node.
 ;;; :cumulative-properties  The multiset union of the properties of this node
@@ -32,7 +33,7 @@
 ;;; All the functions below that take a node-or-leaf argument also work
 ;;; on non-hierarchy nodes, which are assumed to be leaves of the hierarchy.
 ;;; These are interpreted as nodes with just themselves as a leaf,
-;;; and no properties or children.
+;;; and no added properties and no child nodes.
 
 (defn hierarchy-node?
   [node]
@@ -40,10 +41,10 @@
        (contains? node ::hierarchy-node)))
 
 (defn append-to-hierarchy
-  "Given a sub-part of a hierarchy, a leaf and its properties that are
-  not already accounted for by the containing hierarchy, add it to the
-  hierarchy. The cumulative properties of all ancestors
-  must also be provided.
+  "Given a sub-part of a hierarchy, a leaf, and its properties that are
+  not already accounted for by the containing hierarchy, add it into
+  the hierarchy. The cumulative properties of all ancestors must also
+  be provided.
   Don't merge items with empty properties at the top level."
   [hierarchy leaf properties ancestor-properties]
   (let [make-node (fn [leaves properties]
@@ -87,8 +88,8 @@
                  leaf properties ancestor-properties)))))))))
 
 (defn replace-hierarchy-leaves-by-nodes
-  "Given a hierarchy, add nodes as necessary so that if a node has leaves,
-  it has only one leaf, and no children."
+  "Given a hierarchy, interpolate nodes as necessary so that if a node
+  has leaves, it has only one leaf, and no children."
   [hierarchy]
   (vec
    (mapcat

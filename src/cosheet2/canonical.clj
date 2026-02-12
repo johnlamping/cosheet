@@ -17,8 +17,8 @@
 ;;;   Strings: Their trimmed lower case
 ;;;   Other primitives: Themselves
 ;;;   Mutable entities: Themselves
-;;;   Immutable named objects: Themselves
-;;;   Immutable anonymous objects: A pair of
+;;;   Immutable uniquely-identified objects: Themselves
+;;;   Immutable non-identified objects: A pair of
 ;;;     [:object
 ;;;      A multiset of the canonical descriptions of their elements.]
 ;;;   Other immutable elements: A triple of
@@ -80,6 +80,9 @@
         (object? entity)
         (if (uniquely-identified-object? entity)
           entity
+          ;; Since the object is not uniquely identified, we have to
+          ;; expand it out, so it can match other non-identified
+          ;; objects.
           [:object
            (multiset (map canonicalize (elements entity)))])
         true

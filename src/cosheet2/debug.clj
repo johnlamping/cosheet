@@ -79,7 +79,7 @@
         (let [keys (keys item)]
           (zipmap (map simplify-for-print keys)
                   (for [key keys] (simplify-for-print (get item key)))))
-        (instance? clojure.lang.PersistentVector item)
+        (vector? item)
         (if (and (not (empty? item))
                  (every? #(instance? clojure.lang.Atom %) item))
           (simplify-for-print (mm/current-contents item))

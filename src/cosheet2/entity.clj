@@ -337,7 +337,8 @@
 
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it
-  as much as possible without leaving ambiguities."
+  as much as possible without leaving ambiguities. This can turn
+  elements into primitives."
   [element-orientation content elements]
   ;; Validate the constraints on our object and elements
   (assert (or (not (element? content))
@@ -364,6 +365,53 @@
   ;; Make sure the elements we are given respect the list form.
   (assert (not-any? object? elements))
   (into [:object] elements))
+
+(defn map-elements
+  "Run the function, which must return an element, on each of the
+  elements of the entity, if any, to get new elements. Then reassemble
+  the entity from the resulting elements. Don't map the elements of
+  uniquely identified objects."
+  [f entity]
+  (cond (element? entity)
+        (make-element-list (orientation entity)
+                             ;; This ha`ndles contents that are objects.
+                             (content entity)
+                             (map f (elements entity)))
+        (and (object? entity) (not (uniquely-identified-object? entity)))
+        (make-object-list (map f (elements entity)))
+        :else
+        entity))
+
+;;; TODO: Get rid of the next two if they are not used.
+
+(defn coerce-primitive-to-element
+  "If the entity is a primitive, make it into an element. This is useful
+  when iterating over elements, to make sure that everything that
+  comes back is an element."
+  [entity]
+  (if (primitive? entity)
+    `(~entity)
+    entity))
+
+(defn recursively-map-elements
+  "Run the function on the entity, if it's an element, and on each
+  element it contains, recursively. Don't recurse through uniquely
+  identified objects. The function must return an element."
+  [f entity]
+  (cond (element? entity)
+        (f (make-element-list (orientation entity)
+                              ;; This handles contents that are objects.
+                              (recursively-map-elements
+                               f (content entity))
+                              (map #(recursively-map-elements
+                                     f (coerce-primitive-to-element %))
+                                   (elements entity))))
+        (and (object? entity) (not (uniquely-identified-object? entity)))
+        (make-object-list (map #(recursively-map-elements
+                                 f (coerce-primitive-to-element %))
+                               (elements entity)))
+        :else
+        entity))
 
 (defn immutable-to-list-generator [object-to-list]
   "Internal function that takes an object to list function and returns a

@@ -256,7 +256,7 @@
 (defn canonical-extended-by?
   "Return true if every part of c1 has a corresponding part in c2.
   Doesn't currently recognize all cases, specifically, when an
-  element of the first list corrresponds to an extension of it in the
+  element of the first list corresponds to an extension of it in the
   second."
   [c1 c2]
   (let [[orientation1 content1] (canonical-orientation-and-content c1)

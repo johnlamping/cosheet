@@ -259,6 +259,13 @@
   (and (stored-entity? entity)
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
 
+(defn generic-name?
+  "Return true if the name counts as generic, that is, if it doesn't
+  serve to identify an object"
+  [name]
+  ;; We have to use contains?, calling the set returns nil for nil.
+  (contains? #{nil "" 'anything} name))
+
 (defn uniquely-identified-object?
   "Return true if the entity is an object that is uniquely identified by
   its name or by its id."
@@ -270,7 +277,7 @@
                     ;; they have unique identities.
                     (mutable-entity? entity)))
            (when-let [names (label->elements entity name-label)]
-             (some #(not (contains? #{nil "" 'anything} %))
+             (some #(not (generic-name? %))
                    (map content names))))))
 
 (defn non-identified-object?

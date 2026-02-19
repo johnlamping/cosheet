@@ -195,8 +195,8 @@
   (and (semantic-element? entity) (not (keyword? (content entity)))))
 
 (defn update-add-element-with-order-and-temporary
-  "Add an entity, described in list form, to the store, with the given
-  target.  Add ordering information to the entity and each part of it,
+  "Add an element, described in list form, to the store, with the given
+  target.  Add ordering information to the element and each part of it,
   except for :label or :category specifiers and non-semantic elements,
   splitting the provided order for the orders, and returning an unused
   piece of it.  Put the new entity in the specified position (:before

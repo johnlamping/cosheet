@@ -120,20 +120,19 @@
      (category-change [id] mutable-store)))
 
 (defn condition-satisfiers
-  "Return a sequence of elements of an entity sufficient to make it
-  satisfy the elements of condition and nothing extra, except that
-  the empty string is considered nothing extra for a nil. The condition
-  must be in list form.  If part of a condition is not satisfied by
-  any element, ignore that part."
+  "Return a sequence of elements of an entity that match the elements of
+  condition, except that the empty string in an element is considered
+  to match a nil in a condition. The condition must be in list form.
+  If part of a condition is not satisfied by any element, ignore that
+  part."
   [entity condition]
-  (when (and (sequential? condition)
-             (not (empty? (rest condition))))
+  (when-let [condition-elements (seq (elements condition))]
     (let [elements (elements entity)
           canonical-elements (map entity->canonical-semantic elements)]
       (multiset-to-generating-values
        (multiset (map #(entity->canonical-semantic
                         (replace-in-seqs % nil ""))
-                      (rest condition)))
+                      condition-elements))
        canonical-elements elements))))
 
 (defn transform-specification-for-elements

@@ -22,6 +22,7 @@
             (first (add-element store container-id element)))
           store elements))
 
+  and template type, but doesn't satisfy the template. Return the new
 (defn add-object
   "Add an object, given in vector form, to the store.
   Return the new store and the id of the new object."
@@ -47,7 +48,6 @@
             (if (vector? element-content)
               (add-object store element-content)
               [store (if (satisfies? StoredEntity element-content)
-                       (:item-id element-content)
                        element-content)]))
           [store entity-link] (apply add-link store
                                      (if (= (orientation template) :target)

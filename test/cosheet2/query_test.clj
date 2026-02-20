@@ -59,6 +59,19 @@
                            '(3 ("foo" (4 true))))))
     (is (not (extended-by? '(3 2 2)
                            '(3 2))))
+    (is (extended-by? (make-object-list
+                     [`(1 (~(id->object (make-item-id "name") nil)))])
+                      (make-object-list
+                       [`(1 (~(id->object (make-item-id "name") nil)))
+                        2])))
+    (is (extended-by? (make-object-list
+                       [`(1 (~(id->object (make-item-id "name") nil)))
+                        2])
+                      (make-object-list
+                       [`(1 (~(id->object (make-item-id "name") nil)))
+                        2])))
+    (is (extended-by? `(~(id->object (make-item-id "name") nil))
+                      `(~(id->object (make-item-id "name") nil))))
     (is (not (extended-by? (make-element-list :source 1 '(2))
                            (make-element-list :target 1 '((2 3))))))
     (is (not (extended-by? (make-element-list :target 1 '(2))
@@ -93,6 +106,11 @@
                       (make-object-list '(1 2 3))))
     (is (extended-by? (make-object-list '(1 2))
                       (make-object-list '(1 2))))
+    (is (extended-by? (make-object-list
+                       [`(1 (~(id->object (make-item-id "name") nil)))])
+                      (make-object-list
+                       [`(1 (~(id->object (make-item-id "name") nil)))
+                        2])))
     (is (not (extended-by? (make-object-list '(1 2 3))
                            (make-object-list '(1 2)))))
     (is (not (extended-by? (make-element-list :source 1 '(1 2))
@@ -103,6 +121,11 @@
                            (make-object-list '(1 2)))))
     (is (not (extended-by? (make-object-list '(1 2))
                            (make-element-list :source 1 '(2)))))
+    (is (not (extended-by? (make-object-list
+                            [`(1 (~(id->object (make-item-id "name") nil)))
+                             2])
+                           (make-object-list
+                            [`(1 (~(id->object (make-item-id "name") nil)))]))))
     (is (extended-by? object-foo object-foo))
     (is (extended-by? object-foo object-bare-foo))
     (is (extended-by? object-bare-foo object-foo))

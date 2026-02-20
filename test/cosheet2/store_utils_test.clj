@@ -9,6 +9,7 @@
                              elements forward-elements in-different-store
                              name-label link-type object-type]]
              entity-impl
+             query-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
              [test-utils :refer [check as-set]])
@@ -19,17 +20,25 @@
   (let [s (new-element-store)
         [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
         [s2 id1] (add-object s1 (make-object-list '("Hello")))
+        ;; A reversed link. "Fred" is the source.
         [s3 id2] (add-element s2 "Fred" (make-element-list
                                          :target
                                          (id->object id1 s2)
                                          '(("by" :label))))
         [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
         [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
-        [s id6] (add-element s5 (make-item-id "George")
-                             `(1 (~(id->object (make-item-id "name") nil))))]
+        [s6 id6] (add-object s5
+                             (make-object-list
+                              [`(1 (~(id->object (make-item-id "name") nil)))
+                               2]))
+        [s id7] (add-object s6
+                            (make-object-list
+                             [`(1
+                                (~(id->object (make-item-id "name") nil)))]))]
     (is (= (id->target s id)) (make-item-id "0"))
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
+    (is (= id6 id7)) ; check that we found the existing object.
     (is (check (to-list (id->element id s))
                (as-set `(77
                          ("test" :label)
@@ -43,8 +52,10 @@
                           (~(id->object (make-item-id "a") s)))))))
     (is (check (to-list (id->element id3 s))
                `(~(make-object-list '(1)) 3)))
-    (is (check (to-list (id->element id6 s))
-               `(1 (~(id->object (make-item-id "name") s)))))))
+    (is (= id7 id6))
+    (is (check (map to-list (elements (id->object id6 s)))
+               [`(1 (~(id->object (make-item-id "name") s)))
+                2]))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]

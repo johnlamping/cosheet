@@ -203,11 +203,20 @@
 (defn extended-by? [fixed-term entity]
   (or (nil? fixed-term)
       (cond
-        (nil? fixed-term) true
+        ;; Nil matches anything
+        (nil? fixed-term)
+        true
+        ;; Primitives match anything with matching content.
         (primitive? fixed-term)
         (equivalent-primitives? fixed-term (content entity))
-        (uniquely-identified-object? fixed-term)
+        ;; A uniquely identified stored object only matches
+        ;; itself. (But the list form of what would be a uniquely
+        ;; identified object has to be able match a stored form,
+        ;; because we might be searching for the stored form.)
+        (and (stored-entity? fixed-term)
+             (uniquely-identified-object? fixed-term))
         (= (entity-key fixed-term) (entity-key entity))
+        ;; In the general case, the parts have to match.
         true
         (and (= (object? fixed-term) (object? entity))
              (or (object? fixed-term)

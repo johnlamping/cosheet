@@ -12,7 +12,8 @@
                    target-label->ids id->source ImmutableStore
                    get-new-object-id]]
     [entity :refer [content elements label->elements label->content
-                    id->entity object? entity-complexity
+                    id->entity object? uniquely-identified-object?
+                    entity-complexity
                     make-object-list content->elements name-label]]
     [query :refer [matching-items special-form? extended-by?]]
     [store-utils :refer [add-element find-object-by-name remove-entity-by-id]]
@@ -299,14 +300,25 @@
                   :after (reverse elements)))]
     [s order]))
 
+(defn update-add-object-with-given-elements-and-order
+  "Add an object with the given elements to the store, in the given
+  order. If the elements describe a uniquely identified object, there
+  must not already be a matching on in the store. Return the new
+  store, the id of the new object, and the unused part of the order."
+  [store element-templates order]
+  (let [[store object-id] (get-new-object-id store)
+        [store order] (add-elements-with-order
+                       store object-id element-templates order false)]
+    [store object-id order]))
+
 (defn get-or-make-ordered-object-by-name
   "Find or make an object with the given name, and satisfying the
   fixed-term. If an object is found, add elements to it if necessary
   to make it satisfy the template, and remove elements that are
-  rendered redundant. Return the new store the id of the matching
+  rendered redundant. Return the new store, the id of the matching
   object, and the unused part of the order."
   [store name fixed-term order position]
-  (assert object? fixed-term)
+  (assert (object? fixed-term) fixed-term)
   (if-let [object (find-object-by-name store name fixed-term)]
     (let [object-id (:item-id object)
           [terms-to-add ids-to-remove]
@@ -318,14 +330,24 @@
     ;; Remove any existing name in the template, replacing it with
     ;; the name we are looking for.
     (let [object-elements (-> (remove #(seq (content->elements % name-label))
-                              (elements fixed-term))
-                              (conj `(~name (~name-label))))
-          [store object-id] (get-new-object-id store)
-          [store order] (add-elements-with-order
-                         store object-id object-elements order false)]
-      [store object-id order])))
+                                      (map fixed-term-to-template
+                                           (elements fixed-term)))
+                              (conj `(~name (~name-label))))]
+      (update-add-object-with-given-elements-and-order
+       store object-elements order))))
 
-;;; TODO: !!! Make the following use get-or-make-ordered-object-by-name
+(defn update-add-object-with-order
+  "Add an object matching the template to the store, or update a unique
+  one to match the template. Return the new store, the id of the
+  object, and the unused part of the order."
+  [store template order position]
+  (assert (object? template) template)
+  (if (uniquely-identified-object? template)
+    (let [names (label->elements template name-label)]
+      (assert (seq names) template)
+      (get-or-make-ordered-object-by-name store name template order position))
+    (update-add-object-with-given-elements-and-order
+     store (elements template) order)))
 
 (defn update-add-element-with-order-and-temporary
   "Add an element, described in list form, to the store, with the given
@@ -345,8 +367,10 @@
     (if (not (orderable-entity? template))
       (let [[s1 id] (add-element store target-id template)]
         [s1 id order])
-      (let [value-to-store template-content
-            ;; TODO: !!! Put call to get-or-make-ordered-object-by-name.
+      (let [value-to-store
+            (if (object? template-content)
+              (update-add-object-with-order template order position)
+              template-content)
             [s1 id] (add-link store target-id value-to-store)
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a

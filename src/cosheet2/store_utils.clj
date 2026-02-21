@@ -40,6 +40,17 @@
         (object-type-object? template-object) object-type-object?
         true non-type-object?))
 
+(defn find-object-by-name
+  "Find an object with the given name, and with the type that matches
+   the template's type."
+  [store name template]
+  (let [query (make-object-list [`(~name (~name-label))])
+        matches (matching-items query store) 
+        filtered (filter (template-type-test template) matches)]
+    (when (seq filtered)
+      (assert (= (count filtered) 1))
+      (first filtered))))
+
 (defn get-or-make-object-by-name
   "Find or make an object with the given name, and satisfying the
   template. Throw an error an object is found that matches the name
@@ -47,23 +58,18 @@
   store and the id of the matching object."
   [store name template]
   (assert object? template)
-  (let [query (make-object-list [`(~name (~name-label))])
-        matches (matching-items query store) 
-        filtered (filter (template-type-test template) matches)]
-    (if (seq filtered)
-      (let [object (first filtered)]
-        (assert (= (count filtered) 1))
-        (assert (extended-by? template object)
+  (if-let [object (find-object-by-name store name template)]
+    (do (assert (extended-by? template object)
                 [(map to-list (elements template))
                  (map to-list (elements object))])
-        [store (:item-id (first filtered))])
-      ;; Remove any existing name in the template, replacing it with
-      ;; the name we are looking for.
-      (let [pattern (-> (remove #(seq (content->elements % name-label))
-                                (elements template))
-                        (conj `(~name (~name-label)))
-                        make-object-list)]
-        (add-object-with-given-elements store (elements pattern))))))
+        [store (:item-id object)])
+    (let [;; Remove any existing name in the template, replacing it
+          ;; with the name we are looking for.
+          pattern (-> (remove #(seq (content->elements % name-label))
+                              (elements template))
+                      (conj `(~name (~name-label)))
+                      make-object-list)]
+      (add-object-with-given-elements store (elements pattern)))))
 
 (defn add-object
   "Add an object to the store, unless it is uniquely identified by its

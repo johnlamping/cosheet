@@ -267,32 +267,34 @@
   (contains? #{nil "" 'anything} name))
 
 (defn uniquely-identified-object?
-  "Return true if the entity is an object that is uniquely identified by
-  its name or by its id."
+  "Return true if the entity, which must be immutable, is an object that
+  is uniquely identified by its name or by its id."
   [entity]
   (and (object? entity)
        (or (and (stored-entity? entity)
-                (or (string? (:id (:item-id entity)))
-                    ;; All mutable objects count as named, because
-                    ;; they have unique identities.
-                    (mutable-entity? entity)))
+                (string? (:id (:item-id entity))))
            (when-let [names (label->elements entity name-label)]
              (some #(not (generic-name? %))
                    (map content names))))))
 
 (defn non-identified-object?
-  "Return true if the entity is a generic object.
+  "Return true if the entity, which must be immutable, is a generic object.
   Note: This must be kept in synch with store-impl/non-identified-object-id?"
   [entity]
   (and (object? entity)
        (not (and (stored-entity? entity)
-                 (or (string? (:id (:item-id entity)))
-                     ;; All mutable objects count as named, because
-                     ;; they have unique identities.
-                     (mutable-entity? entity))))
+                 (string? (:id (:item-id entity)))))
        (not (when-let [names (label->elements entity name-label)]
               (some #(not (contains? #{nil "" 'anything} %))
                     (map content names))))))
+
+(defn interned-object?
+  "Return true if the entity, which must be immutable, is a uniquely
+  identified object, and is stored. (That implies that it has been
+  interned."
+  [entity]
+  (and (stored-entity? entity)
+       (uniquely-identified-object? entity)))
 
 (defn link-type-object?
   "Return true if the entity is an object that is a link type."
@@ -377,14 +379,14 @@
   "Run the function, which must return an element, on each of the
   elements of the entity, if any, to get new elements. Then reassemble
   the entity from the resulting elements. Don't map the elements of
-  uniquely identified objects."
+  interned objects."
   [f entity]
   (cond (element? entity)
         (make-element-list (orientation entity)
-                             ;; This ha`ndles contents that are objects.
+                             ;; This handles contents that are objects.
                              (content entity)
                              (map f (elements entity)))
-        (and (object? entity) (not (uniquely-identified-object? entity)))
+        (and (object? entity) (not (interned-object? entity)))
         (make-object-list (map f (elements entity)))
         :else
         entity))
@@ -402,8 +404,8 @@
 
 (defn recursively-map-elements
   "Run the function on the entity, if it's an element, and on each
-  element it contains, recursively. Don't recurse through uniquely
-  identified objects. The function must return an element."
+  element it contains, recursively. Don't recurse through interned
+  objects. The function must return an element."
   [f entity]
   (cond (element? entity)
         (f (make-element-list (orientation entity)
@@ -413,7 +415,7 @@
                               (map #(recursively-map-elements
                                      f (coerce-primitive-to-element %))
                                    (elements entity))))
-        (and (object? entity) (not (uniquely-identified-object? entity)))
+        (and (object? entity) (not (interned-object? entity)))
         (make-object-list (map #(recursively-map-elements
                                  f (coerce-primitive-to-element %))
                                (elements entity)))
@@ -477,12 +479,20 @@
    elements, sub-elements, etc, with sub-elements counting less."
   [item]
   (let [content (content item)
-        elements (cond-> (elements item)
-                   (non-identified-object? content)
-                   (concat (elements content)))]
-    (+ (get {nil 0.1   'anything 0.1   "" 0.2}
-            content 1.0)
-       (* 0.5 (apply + (map entity-complexity elements))))))
+        content-is-interned (interned-object? content)
+        all-elements (cond-> (elements item)
+                       (and (object? content) (not content-is-interned))
+                       (concat (elements content)))]
+    ;; We count generic content less, but enough that a generic
+    ;; content plus an element is considered higher complexity than a
+    ;; primitive.
+    (+ (if (object? content)
+         ;; A non-interned object counts like a primitive, while a
+         ;; non-interned object get its elements counted, plus a bit.
+         (if content-is-interned 1.0 0.3)
+         (get {nil 0.3   'anything 0.3   "" 0.4}
+              content 1.0))
+       (* 0.75 (apply + (map entity-complexity all-elements))))))
 
 (defn label->element
   "Return the element with the given label.

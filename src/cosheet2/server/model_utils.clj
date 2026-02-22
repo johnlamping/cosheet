@@ -13,7 +13,7 @@
                    target-label->ids get-new-object-id]]
     [entity :refer [primitive? object? non-identified-object?
                     link-type-object? object-type-object?
-                    uniquely-identified-object?
+                    uniquely-identified-object? interned-object?
                     element? label-element? id->entity
                     content elements orientation
                     link-type object-type name-label
@@ -219,7 +219,7 @@
                 (elements pattern) options)
          (and (nil? new-content) require-orders)
          (concat ['(nil :order)]))))
-    (uniquely-identified-object? pattern)
+    (interned-object? pattern)
     pattern
     (object? pattern)
     (make-object-list
@@ -298,24 +298,22 @@
   ;; there is a choice, we take ones that are least likely to
   ;; preclude subsequent matches.
   (let [sorted-fixed-terms (->> fixed-terms (sort-by entity-complexity) reverse)
-        sorted-targets (->> targets (sort-by entity-complexity))
-        [pairs unmatched-terms unmatched-targets]
-        (reduce
-         ;; We go through each fixed term.
-         (fn [[pairs unmatched-terms unmatched-targets] fixed-term]
-           (let [[matching-target remaining-targets]
-                 (extract-first #(extended-by? fixed-term %) unmatched-targets)]
-             (if matching-target
-               [(conj pairs [fixed-term matching-target])
-                unmatched-terms
-                remaining-targets]
-               [pairs
-                (conj unmatched-terms fixed-term)
-                unmatched-targets])))
-         [[] sorted-targets]
-         sorted-fixed-terms)]))
+        sorted-targets (->> targets (sort-by entity-complexity))]
+    (reduce
+     (fn [[pairs unmatched-terms unmatched-targets] fixed-term]
+       (let [[matching-target remaining-targets]
+             (extract-first #(extended-by? fixed-term %) unmatched-targets)]
+         (if matching-target
+           [(conj pairs [fixed-term matching-target])
+            unmatched-terms
+            remaining-targets]
+           [pairs
+            (conj unmatched-terms fixed-term)
+            unmatched-targets])))
+     [[] [] sorted-targets]
+     sorted-fixed-terms)))
 
-(defn elements-to-add-to-satisfy-fixed-term-elements
+(defn elements-to-change-to-satisfy-fixed-term-elements
   "Given a fixed-term and a stored object, return templates for elements
   that must be added to the stored object, and ids of any elements
   that may be removed from it, in order to make the object have as few
@@ -332,22 +330,22 @@
   you have to start with the union of the elements of the two
   arguments, but you can remove an element from the union if it is
   extended by an element from the other argument.
-  Return a pair of a seq of templates to add, and a seq of ids of
-  elements of the object to remove."
+  Return a pair of a seq of templates to add, and a seq of
+  elements to remove."
   [fixed-term object]
   (assert object? fixed-term)
   (assert object? object)
   (let [;; First find elements that extend targets. We will need to add the
         ;; un-matched targets.
         [_ unmatched-term-elements unmatched-object-elements]
-        (match-terms-and-targets (remove (special-form? (elements fixed-term)))
+        (match-terms-and-targets (remove special-form? (elements fixed-term))
                                  (elements object))
         templates-to-add (map fixed-term-to-template unmatched-term-elements)
         ;; Now find unmatched targets that extend unmatched
         ;; elements. We won't need the elements that are extended.
         [object-term-pairs _ _]
         (match-terms-and-targets unmatched-object-elements templates-to-add)]
-    [templates-to-add (map #(:item-id (first %)) object-term-pairs)]))
+    [templates-to-add (map first object-term-pairs)]))
 
 (def update-add-element-with-order-and-temporary)
 
@@ -387,11 +385,12 @@
   (assert (object? fixed-term) fixed-term)
   (if-let [object (find-object-by-name store name fixed-term)]
     (let [object-id (:item-id object)
-          [terms-to-add ids-to-remove]
-          (elements-to-add-to-satisfy-fixed-term-elements fixed-term object)
+          [templates-to-add elements-to-remove]
+          (elements-to-change-to-satisfy-fixed-term-elements fixed-term object)
           [store order] (add-elements-with-order
-                         store object-id terms-to-add order false)
-          store (reduce remove-entity-by-id store ids-to-remove)]
+                         store object-id templates-to-add order false)
+          store (reduce remove-entity-by-id store
+                        (map :item-id elements-to-remove))]
       [store object-id order])
     ;; Remove any existing name in the template, replacing it with
     ;; the name we are looking for.

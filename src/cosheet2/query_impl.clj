@@ -1,7 +1,7 @@
 (ns cosheet2.query-impl
   (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [mutable-entity? primitive? object?
-                                      uniquely-identified-object?
+                                      interned-object?
                                       stored-entity?
                                       id->entity entity-key
                                       orientation content elements
@@ -107,11 +107,11 @@
           value (env var-name)]
       (if value
         ;; We are not an exact match if we are looking for a
-        ;; particular entity for this variable, unless it is a named
+        ;; particular entity for this variable, unless it is an interned
         ;; object, because for anything else we'll just return a
         ;; pattern, not the object.
         [value (or (not (variable-reference term))
-                   (uniquely-identified-object? value))]
+                   (interned-object? value))]
         (let [[contextual exact]
               (contextualize-variable (variable-qualifier term) env)]
           [contextual (combine-exact-matches exact #{var-name})])))
@@ -209,12 +209,11 @@
         ;; Primitives match anything with matching content.
         (primitive? fixed-term)
         (equivalent-primitives? fixed-term (content entity))
-        ;; A uniquely identified stored object only matches
-        ;; itself. (But the list form of what would be a uniquely
+        ;; An interned object only matches
+        ;; itself. (But the list form of what would be an interned
         ;; identified object has to be able match a stored form,
         ;; because we might be searching for the stored form.)
-        (and (stored-entity? fixed-term)
-             (uniquely-identified-object? fixed-term))
+        (interned-object? fixed-term)
         (= (entity-key fixed-term) (entity-key entity))
         ;; In the general case, the parts have to match.
         true
@@ -262,7 +261,7 @@
       (if (is-fixed-term-special-form? as-list)
         [nil false]
         (do (assert (not (special-form? as-list)))
-            (if (or (primitive? as-list) (uniquely-identified-object? as-list))
+            (if (or (primitive? as-list) (interned-object? as-list))
               [as-list exact-match]
               (let [{dropped-elements true
                      kept-elements false}
@@ -446,10 +445,9 @@
   (when (object? entity)
     (if (= (entity-key item) (entity-key entity))
       [env]
-      ;; A stored named object, can only match itself. But can be
+      ;; And interned object, can only match itself. But can be
       ;; matched, in the other direction, by a pattern.
-      (when (or (not (stored-entity? item))
-                (not (uniquely-identified-object? item)))
+      (when (not (interned-object? item))
         (sub-elements-match-extensions item item-element-filter [env]
                                        entity entity-element-filter)))))
 

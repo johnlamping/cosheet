@@ -219,13 +219,6 @@
     (is (element? item-b))
     (is (object? item0))
     (is (not (object? item-b)))
-    (is (not (uniquely-identified-object? item-b)))
-    (is (uniquely-identified-object? item99))
-    (is (uniquely-identified-object? item0))
-    (is (uniquely-identified-object? (id->object (make-item-id "foo") s)))
-    (is (not (non-identified-object? item-b)))
-    (is (not (non-identified-object? item99)))
-    (is (not (non-identified-object? item0)))
     (is (= (orientation item0)) nil)
     (is (= (orientation item-b)) :source)
     (is (= (orientation item-a-reversed)) :target)
@@ -495,12 +488,16 @@
                     `(5 (6 7))))
                  (~(id->object (make-item-id "foo") nil))))))
 
+(deftest test-test
+  (println (entity-complexity `(~(make-object-list '(1 2)) (2 "a")))))
+
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))
-  (is (= (entity-complexity nil) 0.1))
-  (is (= (entity-complexity '(1 2 "" nil)) 1.65))
-  (is (= (entity-complexity '(1 (2 "a"))) 1.75))
-  (is (= (entity-complexity `(~(make-object-list '(1 2)) (2 "a"))) 2.75)))
+  (is (= (entity-complexity nil) 0.3))
+  (is (= (entity-complexity '(1 2 "" nil)) (+ 1 (* 0.75 (+ 1 0.4 0.3)))))
+  (is (= (entity-complexity '(1 (2 "a"))) (+ 1 (* 0.75 (+ 1 0.75)))))
+  (is (= (entity-complexity `(~(make-object-list '(1 2)) (2 "a")))
+         (+ 0.3 (* 0.75 (+ 1 1)) (* 0.75 (+ 1 0.75))))))
 
 (deftest marked-as-type?-test
   (is (marked-as-type? '("foo" :label)))

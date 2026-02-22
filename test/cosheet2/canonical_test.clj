@@ -2,7 +2,9 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [canonical :refer :all]
                       [test-utils :refer [check]]
-                      [store :refer [make-item-id]]
+                      [store :refer [make-item-id new-element-store]]
+                      store-impl
+                      [store-utils :refer [add-object add-universal-objects]]
                       [entity :refer [make-object-list id->object]]
                       [entity-impl])
             ; :reload
@@ -15,10 +17,14 @@
                 "married"
                 (45 ("age" tag))))
 (def joe-anonymous-object (make-object-list (rest joe-list)))
-(def joe-named-object (make-object-list
-                       (conj (rest joe-list)
-                             `("Joe" (~(id->object (make-item-id "name")
-                                                   nil))))))
+(def joe-named-object
+  (let [[store id] (add-object
+                    (add-universal-objects (new-element-store))
+                    (make-object-list
+                     (conj (rest joe-list)
+                           `("Joe" (~(id->object (make-item-id "name")
+                                                 nil))))))]
+    (id->object id store)))
 
 (deftest canonicalize-test
   (is (check (canonicalize joe-list)

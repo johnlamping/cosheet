@@ -11,7 +11,8 @@
                     content orientation elements to-list
                     label->elements content->elements
                     make-object-list name-label link-type object-type]]
-    [query :refer [matching-items extended-by?]])))
+    [query :refer [matching-items extended-by?]]
+    query-impl)))
 
 ;;; These are utilities for adding and removing element and object
 ;;; entities from the store.

@@ -202,6 +202,103 @@
     (is (not (selector? non-selector-child)))
     (is (not (selector? non-selector-grandchild)))))
 
+(deftest match-terms-and-targets-test
+  (is (check (match-terms-and-targets [1 2 3] [2 3 4])
+             [(as-set [[3 3] [2 2]]) [1] [4]]))
+  (is (check (match-terms-and-targets [1 2 '(2 6) 3] ['(2 6) 2 3 4])
+             [(as-set[['(2 6) '(2 6)] [3 3] [2 2]]) [1] [4]]))
+  (is (check (match-terms-and-targets [1 2 '(nil 6) 3] ['(2 6) 2 3 4])
+             [(as-set[['(nil 6) '(2 6)] [3 3] [2 2]]) [1] [4]]))
+  (is (check (match-terms-and-targets [1 '(nil 6) 3] ['(2 6) 2 3 4])
+             [(as-set[['(nil 6) '(2 6)] [3 3]]) [1] [2 4]]))
+  (is (check (match-terms-and-targets [1 2 3] ['(2 6) 2 3 4])
+             [(as-set [[2 2] [3 3]]) [1] (as-set ['(2 6) 4])]))
+  (is (check (match-terms-and-targets [1 '(nil 6) 3] [2 3 4])
+             [[[3 3]] (as-set [1 '(nil 6)]) (as-set [2 4])])))
+
+(deftest elements-to-change-to-satisfy-fixed-term-elements-test
+  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+              (make-object-list [1 2 3]) (make-object-list [2 3 4]))
+             [[1] []]))
+  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+              (make-object-list ['(nil 1) 2 3]) (make-object-list [2 3 4]))
+             [['("" 1)] []]))
+  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+              (make-object-list [2 '(nil 1) '(3 4)])
+              (make-object-list ['(2 1 3) 3]))
+             [(as-set ['(3 4) 2]) [3]]))
+  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+              (make-object-list [2 '(nil 1) 3])
+              (make-object-list ['(2 5) 4]))
+             [(as-set [3 '("" 1)]) []])))
+
+(comment
+  (deftest elements-to-add-to-satisfy-fixed-term-object-test
+    (let [[store id] (add-object-with-elements (new-element-store)
+                                               '(1 (1 2) 2))]
+      (is (= (elements-to-add-to-satisfy-fixed-term-object
+              (make-object-list )
+              (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+             '(2))))
+    (is (= (elements-to-add-to-satisfy-fixed-term-object
+            (make-object-list '(1 (1 2)))
+            (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+           []))
+    (is (check (elements-to-add-to-satisfy-fixed-term-object
+                (make-object-list '(1 (1 2) 2))
+                (make-object-list '(3 4)))
+               (as-set '(1 (1 2) 2))))
+    (is (check (elements-to-add-to-satisfy-fixed-term-object
+                (make-object-list '(1 (1 2) (1 2 3) 3 3 3))
+                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+               (as-set '((1 2) 3 3))))
+    (is (check (elements-to-add-to-satisfy-fixed-term-object
+                (make-object-list '((1 2 3) (1 2) 1 3 3 3))
+                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
+               (as-set '((1 2) 3 3))))))
+
+(comment
+  (deftest add-test
+  (let [s (new-element-store)
+        [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
+        [s2 id1] (add-object s1 (make-object-list '("Hello")))
+        ;; A reversed link. "Fred" is the source.
+        [s3 id2] (add-element s2 "Fred" (make-element-list
+                                         :target
+                                         (id->object id1 s2)
+                                         '(("by" :label))))
+        [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
+        [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
+        [s6 id6] (add-object s5
+                             (make-object-list
+                              [`(1 (~(id->object (make-item-id "name") nil)))
+                               2]))
+        [s id7] (add-object s6
+                            (make-object-list
+                             [`(1
+                                (~(id->object (make-item-id "name") nil)))]))]
+    (is (= (id->target s id)) (make-item-id "0"))
+    (is (= (id->target s id2)) id1)
+    (is (= (id->source s id2)) "Fred")
+    (is (= id6 id7)) ; check that we found the existing object.
+    (is (check (to-list (id->element id s))
+               (as-set `(77
+                         ("test" :label)
+                         (~(make-object-list '(1)) 3)))))
+    (is (= (to-list (id->element id2 s))
+           '("Fred" ("by" :label))))
+    (is (check (to-list (id->object id1 s))
+               (as-set (make-object-list
+                        `("Hello"
+                          ("Fred" ("by" :label))
+                          (~(id->object (make-item-id "a") s)))))))
+    (is (check (to-list (id->element id3 s))
+               `(~(make-object-list '(1)) 3)))
+    (is (= id7 id6))
+    (is (check (map to-list (elements (id->object id6 s)))
+               [`(1 (~(id->object (make-item-id "name") s)))
+                2])))))
+
 (deftest update-add-element-with-order-test
   (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id 6
@@ -271,31 +368,6 @@
     (is ((:temporary-ids s) id))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
-
-(comment
-  (deftest elements-to-add-to-satisfy-fixed-term-object-test
-    (let [[store id] (add-object-with-elements (new-element-store)
-                                               '(1 (1 2) 2))]
-      (is (= (elements-to-add-to-satisfy-fixed-term-object
-              (make-object-list )
-              (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-             '(2))))
-    (is (= (elements-to-add-to-satisfy-fixed-term-object
-            (make-object-list '(1 (1 2)))
-            (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-           []))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '(1 (1 2) 2))
-                (make-object-list '(3 4)))
-               (as-set '(1 (1 2) 2))))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '(1 (1 2) (1 2 3) 3 3 3))
-                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-               (as-set '((1 2) 3 3))))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '((1 2 3) (1 2) 1 3 3 3))
-                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-               (as-set '((1 2) 3 3))))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")

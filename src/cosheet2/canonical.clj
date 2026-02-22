@@ -5,7 +5,7 @@
                                       primitive? object? element?
                                       content elements orientation
                                       make-element-list
-                                      uniquely-identified-object?]])))
+                                      interned-object?]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -17,7 +17,7 @@
 ;;;   Strings: Their trimmed lower case
 ;;;   Other primitives: Themselves
 ;;;   Mutable entities: Themselves
-;;;   Immutable uniquely-identified objects: Themselves
+;;;   Interned-objects: Themselves
 ;;;   Immutable non-identified objects: A pair of
 ;;;     [:object
 ;;;      A multiset of the canonical descriptions of their elements.]
@@ -78,11 +78,10 @@
         (primitive? entity)
         (canonical-primitive-form entity)
         (object? entity)
-        (if (uniquely-identified-object? entity)
+        (if (interned-object? entity)
           entity
-          ;; Since the object is not uniquely identified, we have to
-          ;; expand it out, so it can match other non-identified
-          ;; objects.
+          ;; Since the object is not interned, we have to expand it
+          ;; out, so it can match other non-interned objects.
           [:object
            (multiset (map canonicalize (elements entity)))])
         true

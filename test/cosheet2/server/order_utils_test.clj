@@ -41,7 +41,6 @@
 (def o5 (nth orderables 4))
 (def o6 (nth orderables 5))
 (def o7 (nth orderables 6))
-(def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
                 (~o1 :order)
                 ("male" (~o2 :order))
@@ -140,76 +139,6 @@
     (compute cd)
     (is (check (reporter-value copy-of-ordered-R)
                (map :item-id [joe-39 joe-male joe-married joe-45])))))
-
-(deftest update-add-element-with-order-test
-  (let [[s id order] (update-add-element-with-order-and-temporary
-                      store joe-id 6
-                      unused-orderable :before true)
-        joe (id->entity joe-id s)
-        new-entity (first (matching-elements 6 joe))
-        [o5 o6] (orderable/split unused-orderable :before)]
-    (is (= (to-list new-entity)
-           `(6 (~o5 :order))))
-    (is (= order o6))
-    (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-element-with-order-and-temporary
-                      store joe-id 6
-                      unused-orderable :before false)
-        joe (id->entity joe-id s)
-        new-entity (first (matching-elements 6 joe))
-        [o5 o6] (orderable/split unused-orderable :after)]
-    (is (= (to-list new-entity)
-           `(6 (~o5 :order))))
-    (is (= order o6))
-    (is (= (:item-id new-entity) id)))    
-  (let [[s id order] (update-add-element-with-order-and-temporary
-                      store joe-id 6
-                      unused-orderable :after true)
-        joe (id->entity joe-id s)
-        new-entity (first (matching-elements 6 joe))
-        [o5 o6] (orderable/split unused-orderable :after)]
-    (is (= (to-list new-entity)
-           `(6 (~o6 :order))))
-    (is (= order o5))
-    (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-element-with-order-and-temporary
-                      store joe-id '(6 ("height" :label))
-                      unused-orderable :before true)
-        joe (id->entity joe-id s)
-        new-entity (first (label->elements joe "height"))
-        [x o5] (orderable/split unused-orderable :before)
-        [o6 o7] (orderable/split x :after)]
-    (is (check (canonicalize (to-list new-entity))
-               (canonicalize `(6 (~o7 :order)
-                                 ("height" :label
-                                  (~o6 :order))))))
-    (is (= order o5))
-    (is (= (:item-id new-entity) id)))
-  ;; Check that order in the list style entity is preserved in the
-  ;; :order values.
-  ;; Also check and that non-semantic elements don't get order information
-  ;; and that the entity is marked temporary, if requested.
-  (let [[s id order] (update-add-element-with-order-and-temporary
-                      store joe-id '(6 ("height" :label)
-                                       ("" :label)
-                                       :temporary
-                                       (:other ""))
-                      unused-orderable :after false)
-        joe (id->entity joe-id s)
-        new-entity (first (label->elements joe "height"))
-        [x o5] (orderable/split unused-orderable :before)
-        [x o6] (orderable/split x :before)
-        [o8 o7] (orderable/split x :before)]
-    (is (check (canonicalize (to-list new-entity))
-               (canonicalize
-                `(6 (~o5 :order)
-                    ("height" :label (~o7 :order))
-                    ("" :label (~o6 :order))
-                    :temporary
-                    (:other "")))))
-    (is ((:temporary-ids s) id))
-    (is (= order o8))
-    (is (= (:item-id new-entity) id))))
 
 (deftest furthest-item-test
   (is (= (furthest-item [joe-married] :before) joe-married))

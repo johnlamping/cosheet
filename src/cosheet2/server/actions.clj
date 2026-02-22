@@ -42,10 +42,10 @@
                          create-possible-selector-elements
                          exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
-                         unspecified-column-header-template]]
+                         unspecified-column-header-template
+                         update-add-element-with-order-and-temporary]]
     [render-utils :refer [sequential-template?]]
-    [order-utils :refer [furthest-item
-                         update-add-element-with-order-and-temporary]])))
+    [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.

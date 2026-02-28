@@ -201,6 +201,8 @@
   (add-link [this target source]
     (assert (not (link-id? source)) [target source])
     (assert (not (vector? source)) [target source])
+    (assert (not (stored-entity? source)) source)
+    (assert (not (stored-entity? target)) target)
     ;; TODO: !!! Once we are using objects at top level, assert that
     ;;       neither target nor source are nil.
     

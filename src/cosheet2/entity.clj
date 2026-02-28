@@ -266,13 +266,19 @@
   ;; We have to use contains?, calling the set returns nil for nil.
   (contains? #{nil "" 'anything} name))
 
+(defn id-identified-object?
+  "Return true if the entity is an object that is identified by its id."
+  [entity]
+  (and (stored-entity? entity)
+       (object? entity)
+       (string? (:id (:item-id entity)))))
+
 (defn uniquely-identified-object?
   "Return true if the entity, which must be immutable, is an object that
   is uniquely identified by its name or by its id."
   [entity]
   (and (object? entity)
-       (or (and (stored-entity? entity)
-                (string? (:id (:item-id entity))))
+       (or (id-identified-object? entity)
            (when-let [names (label->elements entity name-label)]
              (some #(not (generic-name? %))
                    (map content names))))))
@@ -282,8 +288,7 @@
   Note: This must be kept in synch with store-impl/non-identified-object-id?"
   [entity]
   (and (object? entity)
-       (not (and (stored-entity? entity)
-                 (string? (:id (:item-id entity)))))
+       (not (id-identified-object? entity))
        (not (when-let [names (label->elements entity name-label)]
               (some #(not (contains? #{nil "" 'anything} %))
                     (map content names))))))
@@ -402,25 +407,23 @@
     `(~entity)
     entity))
 
-(defn recursively-map-elements
-  "Run the function on the entity, if it's an element, and on each
-  element it contains, recursively. Don't recurse through interned
-  objects. The function must return an element."
+(defn recursively-map-entity
+  "Recursively run the function on the 'tree' of the entity, chasing
+  through contents and elements until reaching entities that can't
+  have elements. The function must
+  return the same kid of entity as it gets."
   [f entity]
   (cond (element? entity)
-        (f (make-element-list (orientation entity)
-                              ;; This handles contents that are objects.
-                              (recursively-map-elements
-                               f (content entity))
-                              (map #(recursively-map-elements
-                                     f (coerce-primitive-to-element %))
-                                   (elements entity))))
+        (f (make-element-list
+            (orientation entity)
+            (recursively-map-entity f (content entity))
+            (map #(recursively-map-entity f %)
+                 (elements entity))))
         (and (object? entity) (not (interned-object? entity)))
-        (make-object-list (map #(recursively-map-elements
-                                 f (coerce-primitive-to-element %))
-                               (elements entity)))
+        (f (make-object-list (map #(recursively-map-entity f %)
+                                  (elements entity))))
         :else
-        entity))
+        (f entity)))
 
 (defn immutable-to-list-generator [object-to-list]
   "Internal function that takes an object to list function and returns a

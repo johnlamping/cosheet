@@ -7,6 +7,7 @@
     [entity :refer [StoredEntity
                     element? object? stored-entity? generic-name?
                     uniquely-identified-object? non-identified-object?
+                    id-identified-object?
                     link-type-object? object-type-object? non-type-object?
                     content orientation elements to-list
                     label->elements content->elements
@@ -73,26 +74,23 @@
       (add-object-with-given-elements store (elements pattern)))))
 
 (defn add-object
-  "Add an object to the store, unless it is uniquely identified by its
-  name and is already in the store, in which case, check that it
-  satisfies the template.  Return the new store and the id of the
-  object."
+  "Add an object to the store, unless it is uniquely identified and is
+  already in the store, in which case, check that it satisfies the
+  template.  Return the new store and the id of the object."
   [store template]
   (assert object? template)
-  (if (uniquely-identified-object? template)
-    (or (when (stored-entity? template)
-          (let [object-id (:item-id template)]
-            (when (string? (:id object-id))
-              ;; There is only one object with the given id. Return it.
-              [store object-id])))
+  (cond (id-identified-object? template)
+        [store (:item-id template)]
+        (uniquely-identified-object? template)
         ;; The template doesn't have a string id, so it must have a name.
         (let [name (->> (label->elements template name-label)
                         (map content)
                         (remove generic-name?)
                         first)
               _ (assert name name)]
-          (get-or-make-object-by-name store name template)))
-  (add-object-with-given-elements store (elements template))))
+          (get-or-make-object-by-name store name template))
+        true
+        (add-object-with-given-elements store (elements template))))
 
 (defn add-element
   "In the store, add an element matching the template to the containing

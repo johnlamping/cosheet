@@ -1,16 +1,20 @@
 (ns cosheet2.server.model-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [orderable :refer [split initial]]
-                      [entity :refer [in-different-store
-                                      link-type object-type
-                                      make-object-list
-                                      make-element-list
-                                      id->object id->entity label->elements
-                                      to-list]]
+                      [entity :refer [in-different-store stored-entity?
+                                      link-type object-type name-label
+                                      make-object-list make-element-list
+                                      recursively-map-entity
+                                      id->object id->entity
+                                      label->elements content->elements
+                                      to-list elements]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      make-item-id]]
-                      [store-utils :refer [add-element remove-entity-by-id]]
+                      [store-utils :refer [add-element add-object
+                                           add-universal-objects
+                                           remove-entity-by-id
+                                           find-object-by-name]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
                       entity-impl
@@ -155,7 +159,29 @@
          `(~(make-object-list [3 :name]) 2)))
   (is (= (ordered-semantic-to-list
           `(1 (~(make-object-list [3 :bar]) (:foo))))
-         `(1 (~(make-object-list [3]))))))
+         `(1 (~(make-object-list [3])))))
+  (let [s (add-universal-objects (new-element-store))
+        age-label (make-object-list `(("age" (~name-label))
+                                      (~link-type)))
+        ;; We use add-object, rather than update-add-object-with-order,
+        ;; which hasn't been tested at this point.
+        [s1 age-label-id] (add-object s age-label)
+        age-label (id->object age-label-id s1)
+        named-joe-list (make-object-list
+                               `(("Joe" (~name-label))
+                                 (59 (~age-label))))
+        [store joe-id] (add-object s1 named-joe-list)
+        joe (id->object joe-id store)]
+    ;; semantic-to-list shouldn't go inside named objects.
+    (is (= (semantic-to-list joe) joe))
+    (is (= (ordered-semantic-to-list joe) joe))
+    ;; object-semantic-to-list should go inside a named object.
+    (is (check
+         (object-semantic-to-list joe)
+         ;; We can't be sure of the order of elements.
+         (as-set (recursively-map-entity
+                  #(if (stored-entity? %) (in-different-store % store) %)
+                  named-joe-list))))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))
@@ -232,74 +258,87 @@
               (make-object-list ['(2 5) 4]))
              [(as-set [3 '("" 1)]) []])))
 
-(comment
-  (deftest elements-to-add-to-satisfy-fixed-term-object-test
-    (let [[store id] (add-object-with-elements (new-element-store)
-                                               '(1 (1 2) 2))]
-      (is (= (elements-to-add-to-satisfy-fixed-term-object
-              (make-object-list )
-              (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-             '(2))))
-    (is (= (elements-to-add-to-satisfy-fixed-term-object
-            (make-object-list '(1 (1 2)))
-            (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-           []))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '(1 (1 2) 2))
-                (make-object-list '(3 4)))
-               (as-set '(1 (1 2) 2))))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '(1 (1 2) (1 2 3) 3 3 3))
-                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-               (as-set '((1 2) 3 3))))
-    (is (check (elements-to-add-to-satisfy-fixed-term-object
-                (make-object-list '((1 2 3) (1 2) 1 3 3 3))
-                (make-object-list '(3 4 (1 2 3) (1 4) 1)))
-               (as-set '((1 2) 3 3))))))
+(deftest get-or-make-ordered-object-by-name-test
+  (let
+      ;; First, make a new object.
+      [[s1 id1 order1] (get-or-make-ordered-object-by-name
+                        store
+                        "Tina" (make-object-list [1 2])
+                        unused-orderable :before)
+       ;; Ask for it again.
+       [s2 id2 order2] (get-or-make-ordered-object-by-name
+                        s1
+                        "Tina" (make-object-list [1 2])
+                        order1 :before)
+       ;; Ask for it again, with fewer required elements.
+       [s3 id3 order3] (get-or-make-ordered-object-by-name
+                        s2
+                        "Tina" (make-object-list [1])
+                        order2 :before)
+       ;; Ask for it, with no additional required elements.
+       [s4 id4 order4] (get-or-make-ordered-object-by-name
+                        s3
+                        "Tina" (make-object-list [])
+                        order3 :before)
+       ;; Ask for it, with different required elements.
+       [s5 id5 order5] (get-or-make-ordered-object-by-name
+                        s4
+                        "Tina" (make-object-list [2 '(3 4)])
+                        order4 :before)
+       ;; Ask for it, with elements that have some commonality with
+       ;; existing ones.
+       [s6 id6 order6] (get-or-make-ordered-object-by-name
+                        s5
+                        "Tina" (make-object-list ['(1 2) 3])
+                        order5 :before)
+       ;; Ask for an object with a different name than existing ones.
+       [s7 id7 order7] (get-or-make-ordered-object-by-name
+                        s6
+                        "Tony" (make-object-list [])
+                        order6 :before)]
+    
+    ;; The new Tina object should match the template.
+    (is (check (object-semantic-to-list (id->object id1 s1))
+               (as-set (recursively-map-entity
+                        #(if (stored-entity? %) (in-different-store % s1) %)
+                        (make-object-list
+                         [`("Tina" (~name-label)) 1 2])))))
+    ;; Nothing should have changed when it was asked for again.
+    (is (= s1 s2))
+    (is (= id1 id2))
+    (is (= order1 order2))
+    ;; Nothing should have changed when it was asked for with fewer elements.
+    (is (= s1 s3))
+    (is (= id1 id3))
+    (is (= order1 order3))
+    ;; Nothing should have changed when it was asked for with no elements.
+    (is (= s1 s4))
+    (is (= id1 id4))
+    (is (= order1 order4))
+    ;; The Tina object should have gotten an additional element so it
+    ;; matches the additional template.
+    (is (= id1 id5))
+    (is (check (object-semantic-to-list (id->object id1 s5))
+               (as-set (recursively-map-entity
+                        #(if (stored-entity? %) (in-different-store % s5) %)
+                        (make-object-list
+                         [`("Tina" (~name-label)) 1 2 '(3 4)])))))
+    ;; The Tina object should have gotten rid of a redundant element.
+    (is (= id1 id6))
+    (is (check (object-semantic-to-list (id->object id1 s6))
+               (as-set (recursively-map-entity
+                        #(if (stored-entity? %) (in-different-store % s6) %)
+                        (make-object-list
+                         [`("Tina" (~name-label)) '(1 2) 2 '(3 4)])))))
+    ;; The new Tony object should match its (empty) template.
+    (is (not= id1 id7))
+    (is (check (object-semantic-to-list (id->object id7 s7))
+               (as-set (recursively-map-entity
+                        #(if (stored-entity? %) (in-different-store % s7) %)
+                        (make-object-list
+                         [`("Tony" (~name-label))])))))))
 
-(comment
-  (deftest add-test
-  (let [s (new-element-store)
-        [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
-        [s2 id1] (add-object s1 (make-object-list '("Hello")))
-        ;; A reversed link. "Fred" is the source.
-        [s3 id2] (add-element s2 "Fred" (make-element-list
-                                         :target
-                                         (id->object id1 s2)
-                                         '(("by" :label))))
-        [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
-        [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
-        [s6 id6] (add-object s5
-                             (make-object-list
-                              [`(1 (~(id->object (make-item-id "name") nil)))
-                               2]))
-        [s id7] (add-object s6
-                            (make-object-list
-                             [`(1
-                                (~(id->object (make-item-id "name") nil)))]))]
-    (is (= (id->target s id)) (make-item-id "0"))
-    (is (= (id->target s id2)) id1)
-    (is (= (id->source s id2)) "Fred")
-    (is (= id6 id7)) ; check that we found the existing object.
-    (is (check (to-list (id->element id s))
-               (as-set `(77
-                         ("test" :label)
-                         (~(make-object-list '(1)) 3)))))
-    (is (= (to-list (id->element id2 s))
-           '("Fred" ("by" :label))))
-    (is (check (to-list (id->object id1 s))
-               (as-set (make-object-list
-                        `("Hello"
-                          ("Fred" ("by" :label))
-                          (~(id->object (make-item-id "a") s)))))))
-    (is (check (to-list (id->element id3 s))
-               `(~(make-object-list '(1)) 3)))
-    (is (= id7 id6))
-    (is (check (map to-list (elements (id->object id6 s)))
-               [`(1 (~(id->object (make-item-id "name") s)))
-                2])))))
-
-(deftest update-add-element-with-order-test
+(deftest update-add-element-with-order-and-temporary-test
   (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before true)
@@ -337,12 +376,45 @@
         new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
+    (is (= (:item-id new-entity) id))
     (is (check (canonicalize (to-list new-entity))
                (canonicalize `(6 (~o7 :order)
                                  ("height" :label
                                   (~o6 :order))))))
-    (is (= order o5))
-    (is (= (:item-id new-entity) id)))
+    (is (= order o5)))
+  ;; Try adding something that requires adding an object.
+  (let [[s id order] (update-add-element-with-order-and-temporary
+                      store joe-id `(6 (~(make-object-list
+                                          [`("Tina" (~name-label)) 1 2])))
+                      unused-orderable :before true)
+        joe (id->entity joe-id s)
+        new-entity (first (content->elements joe 6))
+        tina (find-object-by-name s "Tina" (make-object-list nil))]
+    (is (= (:item-id new-entity) id))
+    (is (check (ordered-semantic-to-list new-entity)
+               `(6 (~tina))))
+    (is (check (object-semantic-to-list tina)
+               (as-set (recursively-map-entity
+                        #(if (stored-entity? %) (in-different-store % s) %)
+                        (make-object-list [`("Tina" (~name-label)) 1 2])))))
+    ;; Now try adding another element that references the same object.
+    (let [[s1 id1 order1] (update-add-element-with-order-and-temporary
+                           s joe-id `(7 (~(make-object-list
+                                           [`("Tina" (~name-label)) 2 3])))
+                           order :before true)
+          joe (id->entity joe-id s1)
+          new-entity (first (content->elements joe 7))
+          tina (find-object-by-name s1 "Tina" (make-object-list nil))]
+      (is (= (:item-id new-entity) id1))
+      (is (check (ordered-semantic-to-list new-entity)
+                 `(7 (~tina))))
+      (is (check (object-semantic-to-list tina)
+                 (as-set
+                  (recursively-map-entity
+                   #(if (stored-entity? %) (in-different-store % s1) %)
+                   ;; Tina should have gotten an extra property.
+                   (make-object-list [`("Tina" (~name-label)) 1 2 3])))))))
+  
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.
   ;; Also check and that non-semantic elements don't get order information

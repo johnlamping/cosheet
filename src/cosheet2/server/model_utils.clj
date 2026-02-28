@@ -14,6 +14,7 @@
     [entity :refer [primitive? object? non-identified-object?
                     link-type-object? object-type-object?
                     uniquely-identified-object? interned-object?
+                    id-identified-object?
                     element? label-element? id->entity
                     content elements orientation
                     link-type object-type name-label
@@ -21,7 +22,7 @@
                     map-elements
                     target-entity entity-key
                     make-element-list make-object-list
-                    entity-complexity]]
+                    entity-complexity stored-entity?]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects]]
     [query :refer [matching-items matching-elements
@@ -109,8 +110,8 @@
 (defn internal-object-semantic-to-list
   "The skipped element lets semantic-to-list avoid going back up a link
   it just traversed to this object."
-  [object use-order skipped-element]
-  (if (non-identified-object? object)
+  [object use-order expand-identified skipped-element]
+  (if (or expand-identified (non-identified-object? object))
     (->> (cond-> (semantic-elements object)
            use-order (ordered-entities))
          (remove #(= (entity-key %) (entity-key skipped-element)))
@@ -123,14 +124,14 @@
   (cond (primitive? immutable-entity)
         immutable-entity
         (object? immutable-entity)
-        (internal-object-semantic-to-list immutable-entity use-order nil)
+        (internal-object-semantic-to-list immutable-entity use-order false nil)
         true
         (let [content (content immutable-entity)
               elements (cond-> (semantic-elements immutable-entity)
                          use-order (ordered-entities))
               content-semantic (if (object? content)
                                  (internal-object-semantic-to-list
-                                  content use-order immutable-entity)
+                                  content use-order false immutable-entity)
                                  (internal-semantic-to-list content use-order))
               element-semantics (map #(internal-semantic-to-list % use-order)
                                      elements)]
@@ -150,6 +151,13 @@
   :order information calls for."
   [immutable-entity]
   (internal-semantic-to-list immutable-entity true))
+
+(defn object-semantic-to-list
+  "Given an immutable object, make a list representation of its semantic
+  information, even if the object is identified. Put elements in the
+  order that the :order information calls for."
+  [immutable-entity]
+  (internal-object-semantic-to-list immutable-entity true true nil))
 
 (defn entity->canonical-semantic
   "Return the canonical form of the semantic information for the entity.
@@ -289,7 +297,9 @@
   "Given a sequence of fixed terms and a sequence of targets, make the
   best possible pairing of fixed terms with targets that extend
   them. Return a seq of the matched pairs, a seq of the unpaired fixed
-  terms and a seq of the unpaired targets."
+  terms and a seq of the unpaired targets.
+  We handle fixed terms that are stored entities with non-semantic
+  parts, by matching only their semantic parts."
   [fixed-terms targets]
   ;; We order the terms starting from highest complexity
   ;; (hardest to find an extension for), and the object elements
@@ -301,8 +311,13 @@
         sorted-targets (->> targets (sort-by entity-complexity))]
     (reduce
      (fn [[pairs unmatched-terms unmatched-targets] fixed-term]
-       (let [[matching-target remaining-targets]
-             (extract-first #(extended-by? fixed-term %) unmatched-targets)]
+       (let [;; If the fixed term is a stored entity; we only want to
+             ;; match its semantic parts.
+             semantic (if (stored-entity? fixed-term)
+                        (semantic-to-list fixed-term)
+                        fixed-term)
+             [matching-target remaining-targets]
+             (extract-first #(extended-by? semantic %) unmatched-targets)]
          (if matching-target
            [(conj pairs [fixed-term matching-target])
             unmatched-terms
@@ -369,10 +384,10 @@
   order. If the elements describe a uniquely identified object, there
   must not already be a matching on in the store. Return the new
   store, the id of the new object, and the unused part of the order."
-  [store element-templates order]
+  [store element-templates order position]
   (let [[store object-id] (get-new-object-id store)
         [store order] (add-elements-with-order
-                       store object-id element-templates order false)]
+                       store object-id element-templates order position)]
     [store object-id order]))
 
 (defn get-or-make-ordered-object-by-name
@@ -388,7 +403,7 @@
           [templates-to-add elements-to-remove]
           (elements-to-change-to-satisfy-fixed-term-elements fixed-term object)
           [store order] (add-elements-with-order
-                         store object-id templates-to-add order false)
+                         store object-id templates-to-add order position)
           store (reduce remove-entity-by-id store
                         (map :item-id elements-to-remove))]
       [store object-id order])
@@ -399,7 +414,7 @@
                                            (elements fixed-term)))
                               (conj `(~name (~name-label))))]
       (update-add-object-with-given-elements-and-order
-       store object-elements order))))
+       store object-elements order position))))
 
 (defn update-add-object-with-order
   "Add an object matching the template to the store, or update a unique
@@ -407,12 +422,16 @@
   object, and the unused part of the order."
   [store template order position]
   (assert (object? template) template)
-  (if (uniquely-identified-object? template)
-    (let [names (label->elements template name-label)]
-      (assert (seq names) template)
-      (get-or-make-ordered-object-by-name store name template order position))
-    (update-add-object-with-given-elements-and-order
-     store (elements template) order)))
+  (cond (id-identified-object? template)
+        [store (:item-id template) order]
+        (uniquely-identified-object? template)
+        (let [name-elements (label->elements template name-label)]
+          (assert (seq name-elements) template)
+          (get-or-make-ordered-object-by-name
+           store (content (first name-elements)) template order position))
+        true
+        (update-add-object-with-given-elements-and-order
+         store (elements template) order)))
 
 (defn update-add-element-with-order-and-temporary
   "Add an element, described in list form, to the store, with the given
@@ -427,16 +446,17 @@
   [store target-id template order position use-bigger]
   (let [template-content (content template)
         template-elements (elements template)
-        temporary (some (fn [element] (= (content element) :temporary))
-                        template-elements)]
+        is-temporary (some (fn [element] (= (content element) :temporary))
+                           template-elements)]
     (if (not (orderable-entity? template))
-      (let [[s1 id] (add-element store target-id template)]
-        [s1 id order])
-      (let [value-to-store
+      (let [[s id] (add-element store target-id template)]
+        [s id order])
+      (let [[s0 value-to-store order]
             (if (object? template-content)
-              (update-add-object-with-order template order position)
-              template-content)
-            [s1 id] (add-link store target-id value-to-store)
+              (update-add-object-with-order
+               store template-content order position)
+              [store template-content order])
+            [s1 id] (add-link s0 target-id value-to-store)
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
             ;; bigger and a smaller part, putting the bigger part in
@@ -459,7 +479,7 @@
             [s3 _] (add-element
                     s2 id `(~(if use-bigger bigger-order smaller-order)
                             :order))]
-        [(if temporary (declare-temporary-id s3 id) s3)
+        [(if is-temporary (declare-temporary-id s3 id) s3)
          id
          (if use-bigger smaller-order bigger-order)]))))
 

@@ -473,12 +473,11 @@
     (is (= (map-elements incrementer (make-object-list '(5 (2 3) 4)))
            (make-object-list '(6 (2 3) 5))))))
 
-(deftest recursively-map-elements-test
-  (is (check (recursively-map-elements
-              #(make-element-list
-                (orientation %)
-                (let [c (content %)] (if (number? c) (inc c) c))
-                (elements %))
+(deftest recursively-map-entity-test
+  (is (check (recursively-map-entity
+              #(cond (number? %) (inc %)
+                     (interned-object? %) (id->object (make-item-id "bar") nil)
+                     :else %)
               `(1 (2 3)
                   (~(make-object-list
                      `(4 (5 6))))
@@ -486,7 +485,7 @@
              `(2 (3 4)
                  (~(make-object-list
                     `(5 (6 7))))
-                 (~(id->object (make-item-id "foo") nil))))))
+                 (~(id->object (make-item-id "bar") nil))))))
 
 (deftest test-test
   (println (entity-complexity `(~(make-object-list '(1 2)) (2 "a")))))

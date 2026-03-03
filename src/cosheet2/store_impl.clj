@@ -20,7 +20,6 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
-(declare non-identified-object-id?)
 (declare has-link-to-non-identified-object?)
 (declare add-link-from-triple)
 (declare add-or-defer-link)
@@ -513,19 +512,6 @@
   (if (:modified-ids store)
     (update-in store [:modified-ids] #(conj % id))
     store))
-
-;;; Note: This must be kept in synch with Entity/non-identified-object?
-(defn non-identified-object-id?
-  "Return true if the item id represents an non-identified object."
-  [store item-id]
-  (and (object-id? item-id)
-       ;; Doesn't have a special id.
-       (not (string? (:id item-id)))
-       ;; Doesn't have a name.
-       (not (when-let [name-ids (target-label->ids
-                                 store item-id (make-item-id "name"))]
-              (some #(not (contains? #{nil "" 'anything} %))
-                    (map #(id->source store %) name-ids))))))
 
 (defn has-link-to-non-identified-object?
   "Return true if the item id has a link to an id representing a

@@ -382,7 +382,17 @@
                                  ("height" :label
                                   (~o6 :order))))))
     (is (= order o5)))
-  ;; Try adding something that requires adding an object.
+   ;; Try adding something that requires adding an non-identified object.
+  (let [[s id order] (update-add-element-with-order-and-temporary
+                      store joe-id `(6 (~(make-object-list
+                                          [1 2])))
+                      unused-orderable :before true)
+        joe (id->entity joe-id s)
+        new-entity (first (content->elements joe 6))]
+    (is (= (:item-id new-entity) id))
+    (is (check (ordered-semantic-to-list new-entity)
+               `(6 (~(make-object-list [1 2]))))))
+  ;; Try adding something that requires adding an identified object.
   (let [[s id order] (update-add-element-with-order-and-temporary
                       store joe-id `(6 (~(make-object-list
                                           [`("Tina" (~name-label)) 1 2])))

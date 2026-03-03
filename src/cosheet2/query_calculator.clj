@@ -9,8 +9,7 @@
                                         new-reporter invalid
                                         validity-category]]
                       [store :refer (mutable-store?)]
-                      [entity :refer [id->entity in-different-store
-                                      to-list]]
+                      [entity :refer [id->entity to-list]]
                       entity-impl
                       [query :refer [matching-items matching-extensions]]
                       query-impl

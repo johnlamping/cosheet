@@ -14,7 +14,7 @@
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
                    id->target target-label->ids id-valid-link?
-                   object-id? link-id? item-id?
+                   object-id? link-id? item-id? non-identified-object-id?
                    undo! redo!
                    name-label-id
                    current-store
@@ -22,7 +22,7 @@
                    Store]]
     [store-utils :refer [remove-entity-by-id add-object]]
     [entity :refer [make-object-list elements content->elements
-                    name-label object? element?
+                    name-label object? element? interned-object?
                     link-type-object? object-type-object? non-type-object?]]
     [query :refer [matching-items]]
     mutable-store-impl
@@ -81,46 +81,59 @@
     {:store response}
     response))
 
-(defn update-set-source-if-matching
-  "Set the source of the id in the store provided the current source
-   matches 'from'."
+(defn current-source-matches-from?
+  "Return true if the store's source for the id matches the from value
+  that the client reported, in the context of changing from to to.
+  We use this to make sure the store we are about to change looks like
+  what the user saw when they asked for a change."
   [store id from to]
-  ;; There are several special cases to match: If we have a number,
-  ;; the client will have a string. If the client had ..., it was a
-  ;; a wild card, and we could have anything.
+  ;; There are several special cases for what counts as match:
+  ;;   * If the store has a number, the client's from will be a
+  ;;     string.
+  ;;   * If the client's from is an uninterned object, any
+  ;;     semantically equivalent one should count as a match. (Actions
+  ;;     like add-twin can make multiple non-interned objects, which
+  ;;     are semantically identical. So we allow that.
+  ;;   * If the client had ..., it was a wild card, and we could
+  ;;     have anything.
+  ;;   * if the source has 'anything, the client should have "".
   (let [from (parse-string-as-number from)
         source (id->source store id)]
-    (if (if (or (item-id? source) (item-id? from))
-          (= source from)
-          (and
-           (or (equivalent-primitives? from source)
-               ;; Wildcard text matches anything,
-               ;; because it has to match instances too
-               (= from "\u00A0...")
-               ;; We are adding an object where there wasn't one.
-               (= from :placeholder)
-               ;; Setting a new selector.
-               (and (= from "") (= source 'anything)))
-           ;; When the user edits a heading whose value was filled in
-           ;; automatically, the UI clears the text to blank. Don't match
-           ;; in that case, as we don't want to remove the original heading
-           ;; if the user didn't type anything.
-           (not (and (string? from)
-                     (= (first from) \u00A0)
-                     (not= from "\u00A0...")
-                     (= to "")))))
-      (update-source store id (parse-string-as-number to))
-      (do (println "Old source doesn't match" from source)
-          store))))
+    (if (item-id? source)
+      (and (item-id? from)
+           (if (non-identified-object-id? store from)
+             (= (entity->canonical-semantic (id->entity from store))
+                (entity->canonical-semantic (id->entity source store)))
+             (= source from)))
+      (and
+       (or (equivalent-primitives? from source)
+           ;; Wildcard text matches anything,
+           ;; because it has to match instances too
+           (= from "\u00A0...")
+           ;; Setting a new selector.
+           (and (= from "") (= source 'anything)))
+       ;; When the user edits a heading whose value was filled in
+       ;; automatically, the UI clears the text to blank. Don't
+       ;; match in that case, if to is "", as we don't want to
+       ;; remove the original heading if the user didn't type
+       ;; anything.
+       (not (and (string? from)
+                 (= (first from) \u00A0)
+                 (not= from "\u00A0...")
+                 (= to "")))))))
 
 (defn update-set-source
+  "Set the source to to, provided it previously matched from."
   [store id from to]
   (let [to (if (and (= to "")
                     (selector? (id->entity id store)))
              'anything
-             to)
-        modified (update-set-source-if-matching store id from to)]
-    (abandon-problem-changes store modified id)))
+             to)]
+    (if (current-source-matches-from? store id from to)
+      (let [modified (update-source store id (parse-string-as-number to))]
+        (abandon-problem-changes store modified id))
+      (do (println "Old source doesn't match" from (id->source store id))
+          store))))
 
 (defn add-select-store-ids-request
   "Add a :select-store-ids instruction to a response, to select an item
@@ -178,11 +191,8 @@
           ;; setting. But if an element has nothing but its content,
           ;; then there is not necessarily a separate component for
           ;; the content, and we will get the template from the
-          ;; element's component's. So we have to check if the
-          ;; template is an element, and get its content in that case.
-          ;; We have to check for an object reference template first,
-          ;; because those don't support the usual entity operations,
-          ;; like element?
+          ;; element. So we have to check if the template is an
+          ;; element, and get its content in that case.
           template (if (element? last-template)
                      (content last-template)
                      last-template)] 
@@ -197,16 +207,27 @@
               [store object-id] (get-or-make-object-by-name
                                  store name template)
               ;; TODO: !!! This needs to handle orientation.
-              current-contents (map #(id->source store %) subject-ids)
-              first-content (first current-contents)]
-          (when (and (every? #(= % first-content) current-contents)
-                     (or (= first-content "")
-                         (object-id? first-content)))
+              logical-from (id->source store (first subject-ids))]
+          ;; We are going to claim that the user saw logical-from when
+          ;; they asked for the change. Make sure that what the user
+          ;; actually saw is consistent with that.
+          (when (or
+                 ;; We were already empty.
+                 (and (or (= logical-from "")
+                          (= logical-from 'anything))
+                      (= from ""))
+                 ;; There was an object with the name the user saw.
+                 (and (object-id? logical-from)
+                      (let [name (-> (id->entity logical-from store)
+                                     (label->elements name-label)
+                                     first
+                                     content)]
+                        (equivalent-primitives? name from))))
             (let [store (reduce
                          (fn [store element-id]
                            ;; TODO: !!! This needs to handle orientation.
                            (update-set-source
-                            store element-id first-content object-id))
+                            store element-id logical-from object-id))
                          store subject-ids)]
               ;; TODO: !!! This needs to handle orientation.
               (if-let [name-element-id
@@ -227,10 +248,14 @@
            (add-select-store-ids-request subject-ids session-state)))))))
 
 (defn do-add-twin
-  [store {:keys [subject-ids template session-state]}]
+  [store {:keys [subject-ids template is-object-name session-state]}]
   (when (not= template :singular)
-   (let [[ids store] (create-possible-selector-elements
-                      (or template 'anything)
+    (let [template (cond (not template) 'anything
+                         (object? template) (do (assert is-object-name)
+                                                `(~template))
+                         true template)
+          [ids store] (create-possible-selector-elements
+                      template
                       (map #(id->target store %) subject-ids)
                       subject-ids
                       :after true store)]

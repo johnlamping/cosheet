@@ -342,3 +342,15 @@
 (defmulti new-mutable-store
   (constantly true))
 
+;;; Note: This must be kept in synch with Entity/non-identified-object?
+(defn non-identified-object-id?
+  "Return true if the item id represents an non-identified object."
+  [store item-id]
+  (and (object-id? item-id)
+       ;; Doesn't have a special id.
+       (not (string? (:id item-id)))
+       ;; Doesn't have a name.
+       (not (when-let [name-ids (target-label->ids
+                                 store item-id (make-item-id "name"))]
+              (some #(not (contains? #{nil "" 'anything} %))
+                    (map #(id->source store %) name-ids))))))

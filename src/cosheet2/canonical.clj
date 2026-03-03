@@ -1,11 +1,10 @@
 (ns cosheet2.canonical
-  (:require (cosheet2 [utils :refer [multiset multiset-diff multiset-sum
-                                     multiset-conj]]
-                      [entity :refer [mutable-entity?
-                                      primitive? object? element?
-                                      content elements orientation
-                                      make-element-list
-                                      interned-object?]])))
+  (:require
+   (cosheet2
+    [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
+    [entity :refer [mutable-entity? primitive? object? element?
+                    content elements orientation in-different-store
+                    make-element-list interned-object?]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The

@@ -285,7 +285,7 @@
 
 (defn non-identified-object?
   "Return true if the entity, which must be immutable, is a generic object.
-  Note: This must be kept in synch with store-impl/non-identified-object-id?"
+  Note: This must be kept in synch with store/non-identified-object-id?"
   [entity]
   (and (object? entity)
        (not (id-identified-object? entity))
@@ -424,6 +424,14 @@
                                   (elements entity))))
         :else
         (f entity)))
+
+(defn recursively-in-different-store
+  "Recursively put all stored entities in the entity into a different store."
+  [entity store]
+  (recursively-map-entity #(if (stored-entity? %)
+                             (in-different-store % store)
+                             %)
+                          entity))
 
 (defn immutable-to-list-generator [object-to-list]
   "Internal function that takes an object to list function and returns a

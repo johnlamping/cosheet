@@ -317,6 +317,10 @@
     ;; Test changing Fred to fred.
     (let [[new-store for-client] (run-set-name "Fred" "fred")]
       (is (= new-store store)))
+
+    ;; Test no change if the from field is wrong;
+    (let [[new-store for-client] (run-set-name "Joe" "Sally")]
+      (is (= new-store store)))
     
     ;; Test changing to an object that had to be created.
     (let [[new-store for-client] (run-set-name "Fred" "Bob")

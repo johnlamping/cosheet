@@ -431,7 +431,7 @@
            store (content (first name-elements)) template order position))
         true
         (update-add-object-with-given-elements-and-order
-         store (elements template) order)))
+         store (elements template) order position)))
 
 (defn update-add-element-with-order-and-temporary
   "Add an element, described in list form, to the store, with the given
@@ -523,10 +523,10 @@
     [generic store]))
 
 (defn template-to-possible-non-selector-template
-  "Given a template alter it to work as a template for a possible non-selector.
-   Specifically, replace 'anything by the empty
-   string, unless in a part of the template that is marked as a selector,
-   in which case don't modify it."
+  "Given a template, alter it to work as a template for a possible
+  non-selector. Specifically, replace 'anything by the empty string,
+  unless in a part of the template that is marked as a selector, in
+  which case don't modify it."
   [pattern]
   (if (some #(= (content %) :selector) (elements pattern))
     pattern

@@ -1,60 +1,58 @@
 (ns cosheet2.server.item-render
-  (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
-                      [store :refer [make-item-id]]
-                      [entity :refer [id->entity
-                                      id->updating-entity-R
-                                      content label-element? primitive? object?
-                                      uniquely-identified-object?
-                                      universal-object?
-                                      label-object?
-                                      elements
-                                      label->elements content->elements
-                                      name-label link-type object-type
-                                      make-object-list]]
-                      [query :refer [matching-elements]]
-                      [utils :refer [multiset-diff assoc-if-non-empty
-                                     map-with-first-last
-                                     add-elements-to-entity-list
-                                     separate-by]]
-                      [debug :refer [simplify-for-print]]
-                      [hiccup-utils
-                       :refer [dom-attributes into-attributes add-attributes
-                               merge-classes]]
-                      [expression :refer [expr expr-let expr-seq expr-filter]])
-            (cosheet2.server
-             [model-utils :refer [semantic-elements
-                                  semantic-non-label-elements
-                                  semantic-label-elements
-                                  semantic-to-list]]
-             [hierarchy :refer [replace-hierarchy-leaves-by-nodes
-                                hierarchy-node-descendants
-                                hierarchy-node-leaves
-                                hierarchy-node-logical-leaves
-                                hierarchy-by-canonical-info
-                                item-maps-by-elements
-                                hierarchy-node-example-elements]]
-             [order-utils :refer [ordered-entities]]
-             [render-utils
-              :refer [make-sequential-template
-                      ensure-label-object-content
-                      make-virtual-label-template
-                      make-component
-                      nest-if-multiple-DOM
-                      condition-satisfiers
-                      hierarchy-node-DOM
-                      transform-specification-for-elements
-                      transform-specification-for-labels
-                      transform-specification-for-non-contained-labels
-                      specification-item-id]]
-             [action-data :refer [default-get-action-data
-                                  default-get-do-batch-edit-action-data
-                                  get-item-or-exemplar-action-data
-                                  get-item-do-batch-edit-action-data
-                                  get-pass-through-action-data
-                                  get-virtual-action-data
-                                  parallel-items-get-action-data
-                                  parallel-items-get-do-batch-edit-action-data
-                                  compose-action-data-getter]])))
+  (:require
+   (cosheet2
+    [canonical :refer [canonical-set-to-list]]
+    [store :refer [make-item-id]]
+    [entity :refer [id->entity id->updating-entity-R
+                    content label-element? primitive? object?
+                    uniquely-identified-object? universal-object?
+                    label-object?
+                    elements label->elements content->elements
+                    name-label link-type object-type
+                    make-object-list recursively-in-different-store
+                    entity-complexity]]
+    [query :refer [matching-elements]]
+    [utils :refer [multiset-diff assoc-if-non-empty
+                   map-with-first-last
+                   add-elements-to-entity-list
+                   separate-by]]
+    [debug :refer [simplify-for-print]]
+    [hiccup-utils :refer [dom-attributes into-attributes add-attributes
+                          merge-classes]]
+    [expression :refer [expr expr-let expr-seq expr-filter]])
+   (cosheet2.server
+    [model-utils :refer [semantic-elements
+                         semantic-non-label-elements semantic-label-elements
+                         semantic-to-list entity->canonical-semantic
+                         elements-to-change-to-satisfy-fixed-term-elements]]
+    [hierarchy :refer [replace-hierarchy-leaves-by-nodes
+                       hierarchy-node-descendants
+                       hierarchy-node-leaves
+                       hierarchy-node-logical-leaves
+                       hierarchy-by-canonical-info
+                       item-maps-by-elements
+                       hierarchy-node-example-elements]]
+    [order-utils :refer [ordered-entities]]
+    [render-utils :refer [make-sequential-template
+                          ensure-label-object-content
+                          make-virtual-label-template
+                          make-component
+                          nest-if-multiple-DOM
+                          condition-satisfiers
+                          hierarchy-node-DOM
+                          transform-specification-for-elements
+                          transform-specification-for-labels
+                          transform-specification-for-non-contained-labels
+                          specification-item-id]]
+    [action-data :refer [default-get-action-data
+                         default-get-do-batch-edit-action-data
+                         get-item-or-exemplar-action-data
+                         get-item-do-batch-edit-action-data
+                         get-pass-through-action-data
+                         get-virtual-action-data
+                         parallel-items-get-action-data
+                         parallel-items-get-do-batch-edit-action-data
+                         compose-action-data-getter]])))
 
 (defn opposite-orientation
     [orientation]
@@ -588,6 +586,23 @@
                          :render-dom render-content-object-by-name-DOM
                          :get-action-data get-pass-through-action-data)))
 
+(defn display-content-object-as-if-interned?
+  "Return true if an object that is being shown as a content, and with
+  the given template, should be shown as if it were interned object,
+  even though it has a generic name. We return true if the object
+  matches the template, with nothing extra. These objects can result
+  from add-twin on an interned object, and we want to show them
+  in the same format as their twin."
+  [template object]
+  (and (seq (label->elements object name-label))
+       ;; The template and object might mention identified objects
+       ;; with the same id, but from different stores. That shouldn't
+       ;; count as a difference.
+       (= (entity->canonical-semantic
+           (recursively-in-different-store object nil))
+          (entity->canonical-semantic
+           (recursively-in-different-store template nil)))))
+
 (defn item-content-DOM
   "Make dom for the content part of an item."
   [item {:keys [immutable template] :as specification}]
@@ -598,11 +613,14 @@
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
           (item-primitive-content-DOM item contents specification)
-          (uniquely-identified-object? contents)
+          (and (object? contents)
+               (or (uniquely-identified-object? contents)
+                   (display-content-object-as-if-interned?
+                    (content template) contents)))
           (content-object-by-name-component contents specification)
           true
-          ;; TODO: !!! We don't currently handle content that is
-          ;; itself a structured entity. We will need that for
+          ;; TODO: !!! We don't currently handle ordinary content that
+          ;; is itself a structured entity. We will need that for
           ;; anonymous objects.
           (assert false contents))))
 

@@ -158,6 +158,50 @@
                         :store (new-mutable-store new-store)
                         :client-state (new-map-state {})})
 
+(deftest current-source-matches-from?-test
+  ;; Test numbers
+  (let [[store five-id] (add-element new-store new-joe-id `(5 (~o5 :order)))]
+    (is (current-source-matches-from? store five-id "5" nil))
+    (is (not (current-source-matches-from? store five-id "6" nil))))
+  ;; Test named objects.
+  (let [[store friend-id] (add-element new-store new-joe-id
+                                       `(~(id->object new-jane-id nil)
+                                         (~o5 :order)))]
+    (is (current-source-matches-from? store friend-id new-jane-id nil))
+    (is (not (current-source-matches-from? store friend-id new-joe-id nil))))
+  ;; Test uninterned objects.
+  (let [common-elements [`("" (~name-label)
+                           `(~o5 :order))
+                          `(~link-type)]
+        ;; Make two objects that differ only in a non-semantic element
+        ;; and one object that differs from them semantically
+        common-object1 (make-object-list (conj common-elements `(~o1 :order)))
+        common-object2 (make-object-list (conj common-elements `(~o2 :order)))
+        longer-object (make-object-list
+                       (conj common-elements `(~o1 :order) `(5 (~o4 order))))
+        [s1 common-id1] (add-element new-store new-joe-id `(~common-object1))
+        [s2 common-id2] (add-element s1 new-joe-id `(~common-object2))
+        [store longer-id] (add-element s2 new-joe-id `(~longer-object))]
+    ;; Semantically matching
+    (is (current-source-matches-from?
+         store common-id1 (id->source store common-id2) nil))
+    (is (current-source-matches-from?
+         store longer-id (id->source store longer-id) nil))
+    ;; Semantically not matching
+    (is (not (current-source-matches-from?
+              store common-id1 (id->source store longer-id) nil)))
+    (is (not (current-source-matches-from?
+              store longer-id (id->source store common-id1) nil)))
+    (let [[store anything-id] (add-element store new-joe-id 'anything)
+          [store a-id] (add-element store new-joe-id "A")]
+      ;; "" in place of 'anything
+      (is (current-source-matches-from? store anything-id "" nil))
+      ;; A universal header matching something random
+      (is (current-source-matches-from? store common-id1 "\u00A0..." nil))
+      ;; The special case where a universal header shouldn't match
+      (is (current-source-matches-from? store a-id "\u00A0A" "B"))
+      (is (not (current-source-matches-from? store a-id "\u00A0A" ""))))))
+
 (deftest selected-test
   (let [client-id1 "root_1"
         client-id2 "root_2"

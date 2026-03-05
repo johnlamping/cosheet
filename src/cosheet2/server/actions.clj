@@ -99,28 +99,34 @@
   ;;   * if the source has 'anything, the client should have "".
   (let [from (parse-string-as-number from)
         source (id->source store id)]
-    (if (item-id? source)
-      (and (item-id? from)
-           (if (non-identified-object-id? store from)
-             (= (entity->canonical-semantic (id->entity from store))
-                (entity->canonical-semantic (id->entity source store)))
-             (= source from)))
-      (and
-       (or (equivalent-primitives? from source)
-           ;; Wildcard text matches anything,
-           ;; because it has to match instances too
-           (= from "\u00A0...")
-           ;; Setting a new selector.
-           (and (= from "") (= source 'anything)))
-       ;; When the user edits a heading whose value was filled in
-       ;; automatically, the UI clears the text to blank. Don't
-       ;; match in that case, if to is "", as we don't want to
-       ;; remove the original heading if the user didn't type
-       ;; anything.
-       (not (and (string? from)
-                 (= (first from) \u00A0)
-                 (not= from "\u00A0...")
-                 (= to "")))))))
+    (or
+     ;; Equivalent primitives
+     (and ; The nots here avoid a crash in equivalent-primitives?
+      (not (item-id? source))
+      (not (item-id? from))
+      (equivalent-primitives? from source)
+      ;; When the user edits a heading whose value was filled in
+      ;; automatically, the UI clears the text to blank. Don't
+      ;; match in that case, if to is "", as we don't want to
+      ;; remove the original heading if the user didn't type
+      ;; anything.
+      (not (and (string? from)
+                (= (first from) \u00A0)
+                (not= from "\u00A0...")
+                (= to ""))))
+     (and (item-id? source)
+          (item-id? from)
+          (if (non-identified-object-id? store from)
+            ;; Equivalent non-identified objects
+            (= (entity->canonical-semantic (id->entity from store))
+               (entity->canonical-semantic (id->entity source store)))
+            ;; Identical identified objects
+            (= source from)))
+     ;; Wildcard text matches anything, because it has to match
+     ;; instances too in batch edit.
+     (= from "\u00A0...")
+     ;; Setting a formerly universal selector
+     (and (= from "") (= source 'anything)))))
 
 (defn update-set-source
   "Set the source to to, provided it previously matched from."

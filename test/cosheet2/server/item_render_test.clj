@@ -7,7 +7,7 @@
              [debug :refer [envs-to-list simplify-for-print]]
              [entity :refer [id->element id->object
                              name-label link-type object-type
-                             make-object-list
+                             make-object-list uniquely-identified-object?
                              to-list]]
              entity-impl
              [store :refer [new-element-store get-new-object-id
@@ -533,7 +533,7 @@
     (is (check dom
                [:div {:class "editable content-text item"} "Fred"])))
 
-  ;; Test an entity holding a named object
+  ;; Test an entity holding an interned object
   (let [[s1 fred-oid] (-> (new-element-store)
                           (add-universal-objects)
                           (get-new-object-id))
@@ -543,7 +543,7 @@
                           (assoc basic-dom-specification
                                  :relative-id fred-holder-id
                                  :template `(~(make-object-list
-                                               [`(~name-label)])))
+                                               [`("" (~name-label))])))
                           store)
         ;; We expect a component, which we also run, to make sure it is right.
         [_ spec] dom
@@ -554,15 +554,53 @@
                             :auxiliary-item-id fred-oid,
                             :relative-id :content
                             :template (make-object-list
-                                       [`(~name-label)])
+                                       [`("" (~name-label))])
                             :render-dom render-content-object-by-name-DOM
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name named-object"
-                            :template (make-object-list [`(~name-label)])
+                            :template (make-object-list [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
+                            :omit-universal-elements true
+                            :render-dom render-item-DOM
+                            :get-action-data (pass-AD)}])))
+  ;; Test an entity that is not interned, but that should be displayed
+  ;; as if it is.
+  (let [[s1 anonymous-oid] (-> (new-element-store)
+                          (add-universal-objects)
+                          (get-new-object-id))
+        [s2 anonymous-name-id] (add-element
+                                s1 anonymous-oid `("" (~name-label)))
+        [store anonymous-holder-id] (add-element
+                                     s2 nil `(~(id->object anonymous-oid nil)))
+        dom (run-renderer render-item-DOM
+                          (assoc basic-dom-specification
+                                 :relative-id anonymous-holder-id
+                                 :template `(~(make-object-list
+                                               [`("" (~name-label))])))
+                          store)
+        ;; We expect a component, which we also run, to make sure it is right.
+        [_ spec] dom
+        inner-dom (run-renderer (:render-dom spec) spec store)]
+    ;; We should not have a uniquely identified object
+    (is (not (uniquely-identified-object? (id->object anonymous-oid store))))
+    (is (check dom
+               [:component {:width 1.5
+                            :class "editable item"
+                            :auxiliary-item-id anonymous-oid,
+                            :relative-id :content
+                            :template (make-object-list
+                                       [`("" (~name-label))])
+                            :render-dom render-content-object-by-name-DOM
+                            :get-action-data (pass-AD)}]))
+    (is (check inner-dom
+               [:component {:width 1.5
+                            :class "editable item name named-object"
+                            :template (make-object-list [`("" (~name-label))])
+                            :is-object-name true
+                            :relative-id anonymous-name-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
                             :get-action-data (pass-AD)}])))

@@ -17,7 +17,8 @@
              entity-impl
              [query :refer [matching-elements]]
              query-impl
-             [store :refer [new-element-store new-mutable-store store-update!]]
+             [store :refer [new-element-store new-mutable-store store-update!
+                            make-item-id]]
              store-impl
              mutable-store-impl
              [store-utils :refer [add-element remove-entity-by-id]]
@@ -150,13 +151,23 @@
   (is (= (furthest-element joe :before) joe-male)))
 
 (deftest add-order-elements-test
-  (let [ordered (add-order-elements `("a" ("b" "c") "d" ("e" :label)))]
+  (let [ordered (add-order-elements
+                 `("a"
+                   ("b" "c")
+                   "d"
+                   ("e" :label)
+                   (~(make-object-list `("f")))
+                   (~(id->entity (make-item-id "test") nil))))]
     (is (check ordered
                `("a" ("b" ("c" (~(any) :order))
                       (~(any) :order))
-                   ("d" (~(any) :order))
-                   ("e" :label (~(any) :order))
-                   (~(any) :order))))
+                 ("d" (~(any) :order))
+                 ("e" :label (~(any) :order))
+                 (~(make-object-list `(("f" (~(any) :order))))
+                  (~(any) :order))
+                 (~(id->entity (make-item-id "test") nil)
+                  (~(any) :order))
+                 (~(any) :order))))
     (is (orderable/earlier? (-> ordered second second second first)
                             (-> ordered second (nth 2) first)))
     (is (orderable/earlier? (-> ordered second (nth 2) first)

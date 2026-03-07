@@ -10,8 +10,10 @@
                         update-to-invalid]]
     [store :refer [update-source add-link declare-temporary-id
                    target-label->ids id->source ImmutableStore]]
-    [entity :refer [content elements label->elements label->content
-                    id->entity object?]]
+    [entity :refer [content elements orientation
+                    label->elements label->content
+                    id->entity make-element-list make-object-list
+                    element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
     [expression :refer [expr-let expr-seq]]
     [utils :refer [thread-map with-latest-value update-new-further-action
@@ -243,31 +245,51 @@
   (or (first (label->elements item :order))
       (first (matching-items '(nil :unused-orderable) store))))
 
-(defn add-order-elements-internal
-  "This form uses the specified order to order the elements,
-   and returns the new list and the unused part of order."
-  [entity order]
-  (cond
-    (sequential? entity)
-    (let [[elements order] (thread-map add-order-elements-internal
-                                       (rest entity) order)
-          [before after] (split order :after)]
-      [(apply list (concat [(first entity)]
-                           elements
-                           [`(~before :order)]))
-       after])
-    (orderable-entity? entity)
-    (let [[before after] (split order :after)]
-      [`(~entity (~before :order))
-       after])
-    true
-    [entity order]))
+(def add-order-elements-to-element)
+
+(defn add-order-elements-inside-object
+  "Use the specified order to add order information to all the object's
+  subparts. Return a list form for the new object and the unused part
+  of order."
+  [object order]
+  (let [[elements remainder] (thread-map add-order-elements-to-element
+                                         (elements object) order)]
+    [(make-object-list elements) remainder]))
+
+(defn add-order-elements-to-element
+  "Use the specified order to add order information to the entity, as if
+  it were an element, and to all its subparts. Return a list form for
+  the new entity and the unused part of order."
+    [entity order]
+    (cond
+      (element? entity)
+      (let [[elements remainder] (thread-map add-order-elements-to-element
+                                             (rest entity) order)
+            contents (content entity)
+            [contents remainder] (if (and (object? contents)
+                                          (not (interned-object? contents)))
+                                   (add-order-elements-inside-object
+                                    contents remainder)
+                                   [contents remainder])
+            [before after] (split remainder :after)]
+        [(make-element-list (orientation entity)
+                            contents
+                            (concat elements [`(~before :order)]))
+         after])
+      (orderable-entity? entity)
+      ;; We have an orderable primitive acting like an element. Turn
+      ;; it into an element, with an order.
+      (let [[before after] (split order :after)]
+        [`(~entity (~before :order))
+         after])
+      true
+      [entity order]))
 
 (defn add-order-elements
-  "Given the list form of the semantic part of an item, add order
-  information to each user selectable part so they are in the same
+  "Given the list form of semantic part of an element, add order
+  information to each user selectable sub-part so they are in the same
   order as in the list form. (If order information isn't added to a
   new item, queries may fail to find it, as the presence of order
   information is how queries restrict to semantic elements."
   [entity]
-  (first (add-order-elements-internal entity initial)))
+  (first (add-order-elements-to-element entity initial)))

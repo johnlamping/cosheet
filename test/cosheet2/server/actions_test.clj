@@ -40,9 +40,11 @@
                                   update-action-data-for-component]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
-                                  semantic-elements
-                                  semantic-to-list selector?
-                                  pattern-to-fixed-term]]
+                                  semantic-elements selector?
+                                  semantic-to-list object-semantic-to-list
+                                  pattern-to-fixed-term
+                                  update-add-object-with-order
+                                  update-add-element-with-order-and-temporary]]
              [session-state :refer [update-add-session-temporary-element]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]])
@@ -60,21 +62,14 @@
 (def o4 (nth orderables 3))
 (def o5 (nth orderables 4))
 (def unused-orderable (nth orderables 4))
-(def joe-list `("Joe"
-                (~o2 :order)
-                ("male" (~o1 :order))
-                (39 (~o3 :order)
-                    ("age" :label)
-                    ("doubtful" "confidence"))
-                ("married" (~o2 :order))
-                (45 (~o4 :order)
-                    ("age" :label))))
-(def jane-list `("Jane"
-                 (~o1 :order)
-                 (:selector)
-                 ("female" (~o2 :order))
-                 (45 (~o3 :order)
-                     ("age" :label))))
+(def joe-list (add-order-elements
+               '("Joe"
+                 "male"
+                 (39 ("age" :label) ("doubtful" "confidence"))
+                 "married"
+                 (45 ("age" :label)))))
+(def jane-list (add-order-elements
+                '("Jane" :selector "female" (45 ("age" :label)))))
 (def row-condition-elements ['(anything ("age" :label))])
 (def column-headers ['(anything ("age" :label))
                      '(anything ("c2" :label))])
@@ -113,23 +108,19 @@
 
 ;;; TODO: !!! This is the new format for table cells, where each is an object.
 ;;;       The store needs to convert to this.
-(def new-joe-object-list (make-object-list
-                          `(("Joe" (~name-label) (~o5 :order))
-                            (~o2 :order)
-                            ("male" (~o1 :order))
-                            (39 (~o3 :order)
-                                ("age" :label)
-                                ("doubtful" "confidence"))
-                            ("married" (~o2 :order))
-                            (45 (~o4 :order)
-                                ("age" :label)))))
-(def new-jane-object-list (make-object-list
-                           `(("Jane" (~name-label) (~o5 :order))
-                             (~o1 :order)
-                             (:selector)
-                             ("female" (~o2 :order))
-                             (45 (~o3 :order)
-                                 ("age" :label)))))
+;;; TODO: !!! The labels need to be converted to label objects.
+(def new-joe-object-list
+  (make-object-list
+   (map add-order-elements
+        `(("Joe" (~name-label))
+          "male"
+          (39 ("age" :label) ("doubtful" "confidence"))
+          "married"
+          (45 ("age" :label))))))
+(def new-jane-object-list
+  (make-object-list
+   (map add-order-elements
+        `(("Jane" (~name-label)) :selector "female" (45 ("age" :label))))))
 (def new-t0 (add-element (new-element-store) nil table-list))
 (def new-table-id (second new-t0))
 (def new-t1 (add-object (first new-t0) new-joe-object-list))
@@ -213,38 +204,6 @@
     (is (= client-id1 recovered-id1))
     (is (= client-id2 recovered-id2))))
 
-(deftest get-or-make-object-by-name-test
-  (let [[s id] (get-or-make-object-by-name
-                new-store "Joe" (make-object-list []))]
-    (is (= s new-store))
-    (is (= new-joe-id id)))
-  (let [[s id] (get-or-make-object-by-name
-                new-store "Joey" (make-object-list []))
-        joey (id->entity id s)]
-    (is (uniquely-identified-object? joey))
-    (is (= (map semantic-to-list (elements joey))
-           `(("Joey" (~(in-different-store name-label s)))))))
-  (let [[s id] (get-or-make-object-by-name
-                new-store "Joe" (make-object-list ['(3 4)]))]
-    (is (= s new-store))
-    (is (= new-joe-id id)))
-  (let [[s id] (get-or-make-object-by-name
-                new-store "Joe" (make-object-list [`(~link-type) '(3 4)]))
-        joe (id->entity id s)]
-    (is (uniquely-identified-object? joe))
-    (is (check (map semantic-to-list (elements joe))
-               (as-set `(("Joe" (~(in-different-store name-label s)))
-                         (~(in-different-store link-type s))
-                         (3 4))))))
-  (let [[s id] (get-or-make-object-by-name
-                new-store "Joe" (make-object-list [`(~object-type) '(3 4)]))
-        joe (id->entity id s)]
-    (is (uniquely-identified-object? joe))
-    (is (check (map semantic-to-list (elements joe))
-               (as-set `(("Joe" (~(in-different-store name-label s)))
-                         (~(in-different-store object-type s))
-                         (3 4)))))))
-
 (deftest do-set-content-test
   (let [result (do-set-content store
                                 {:subject-ids [(:item-id joe-age)]
@@ -302,23 +261,31 @@
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,
   ;; and doing a set content to a new object.
-  
   (let [;; First, set up a store with two objects, Fred and Sally, and with
         ;; an element holding Fred.
-        [s1 fred-oid] (-> (new-element-store)
-                          (add-universal-objects)
-                          (get-new-object-id))
-        [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
-        [s3 fred-foo-id] (add-element s2 fred-oid "foo")
-        [s4 fred-holder-id] (add-element s3 nil `(~(id->object fred-oid s2)))
-        [s5 sally-oid] (get-new-object-id s4)
-        [store sally-name-id] (add-element
-                               s5 sally-oid `("Sally" (~name-label)))
+        [s1 fred-oid order] (update-add-object-with-order
+                             (add-universal-objects (new-element-store))
+                             (make-object-list `(("Fred" (~name-label)) "foo"))
+                             initial :after)
+        [s2 fred-holder-id order] (update-add-element-with-order-and-temporary
+                                   s1 nil
+                                   `(~(id->object fred-oid s1))
+                                   initial :after false)
+        [store sally-oid order] (update-add-object-with-order
+                                 s2
+                                 (make-object-list `(("Sally" (~name-label))))
+                                 order :after)
+        sally-name (label->element (id->entity sally-oid store) name-label)
+        sally-name-id (:item-id sally-name)
+        ;; We include an empty name in the templates, to make sure
+        ;; that is handled correctly.
+        bare-template (make-object-list [`("" (~name-label))])
+        foo-template (make-object-list [`("" (~name-label)) "foo"])
         ;; Now, render the nesting doms: the holding element, the
         ;; object inside, and its name.
         holder-dom-spec {:relative-id fred-holder-id
                          :width 2.0
-                         :template `(~(make-object-list ["foo"]))
+                         :template `(~foo-template)
                          :get-action-data default-get-action-data
                          :render-dom render-item-DOM}
         holder-dom (render-item-DOM holder-dom-spec store)
@@ -339,10 +306,10 @@
                             name-component-atom object-action-data
                             :set-content store)
         ;; And set up a function to run setting the name.
-        run-set-name (fn [from to]
+        run-set-name (fn [from to template]
                        (let [action-data
                              (assoc name-action-data
-                                    :template (:template name-dom-spec)
+                                    :template template
                                     :from from
                                     :to to
                                     :session-state session-state)]
@@ -350,30 +317,41 @@
                              (normalize-handler-response store))))]
     
     ;; Test changing Fred to Sally.
-    (let [[new-store for-client] (run-set-name "Fred" "Sally")]
-      (is (= new-store (update-source store fred-holder-id sally-oid)))
+    (let [[new-store for-client] (run-set-name "Fred" "Sally" bare-template)]
+      (is (= (id->source new-store fred-holder-id) sally-oid))
+      (is (= new-store
+             (update-source store fred-holder-id sally-oid)))
+      (is (= (:select-store-ids for-client) [sally-name-id])))
+
+    ;; Test changing Fred to Sally, with a template that requires more.
+    ;; Also test the template being an element.
+    (let [[new-store for-client] (run-set-name "Fred" "Sally" `(~foo-template))]
+      (is (check (object-semantic-to-list (id->object sally-oid new-store))
+                 (as-set (make-object-list `(("Sally" (~(in-different-store
+                                                         name-label new-store)))
+                                             "foo")))))
       (is (= (:select-store-ids for-client) [sally-name-id])))
 
     ;; Test changing Fred to Fred.
-    (let [[new-store for-client] (run-set-name "Fred" "Fred")]
+    (let [[new-store for-client] (run-set-name "Fred" "Fred" foo-template)]
       (is (= new-store store)))
 
     ;; Test changing Fred to fred.
-    (let [[new-store for-client] (run-set-name "Fred" "fred")]
+    (let [[new-store for-client] (run-set-name "Fred" "fred" foo-template)]
       (is (= new-store store)))
 
     ;; Test no change if the from field is wrong;
-    (let [[new-store for-client] (run-set-name "Joe" "Sally")]
+    (let [[new-store for-client] (run-set-name "Joe" "Sally" foo-template)]
       (is (= new-store store)))
     
     ;; Test changing to an object that had to be created.
-    (let [[new-store for-client] (run-set-name "Fred" "Bob")
+    (let [[new-store for-client] (run-set-name "Fred" "Bob" foo-template)
           new-name-id (first (:select-store-ids for-client))
           new-object-id (id->target new-store new-name-id)
           new-object (id->entity new-object-id new-store)]
       (is (= (id->source new-store new-name-id) "Bob"))
       (is (= (id->source new-store fred-holder-id) new-object-id))
-      (is (check (map to-list (elements new-object))
+      (is (check (map semantic-to-list (semantic-elements new-object))
                  (as-set [`("Bob" (~(in-different-store name-label new-store)))
                           "foo"]))))))
 

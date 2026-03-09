@@ -392,29 +392,28 @@
 
 (defn get-or-make-ordered-object-by-name
   "Find or make an object with the given name, and satisfying the
-  fixed-term. If an object is found, add elements to it if necessary
-  to make it satisfy the template, and remove elements that are
+  fixed-term.
+  If an object is found, add elements to it if necessary
+  to make it satisfy the fixed term, and remove elements that are
   rendered redundant. Return the new store, the id of the matching
   object, and the unused part of the order."
   [store name fixed-term order position]
   (assert (object? fixed-term) fixed-term)
-  (if-let [object (find-object-by-name store name fixed-term)]
-    (let [object-id (:item-id object)
-          [templates-to-add elements-to-remove]
-          (elements-to-change-to-satisfy-fixed-term-elements fixed-term object)
+  ;; First, get or make an object with the given name.
+  (let [[store object-id order]
+        (if-let [object (find-object-by-name store name fixed-term)]
+          [store (:item-id object) order]
+          (update-add-object-with-given-elements-and-order
+           store `((~name (~name-label))) order position))]
+    ;; Now make it satisfy the fixed term.
+    (let [[templates-to-add elements-to-remove]
+          (elements-to-change-to-satisfy-fixed-term-elements
+           fixed-term (id->entity object-id store))
           [store order] (add-elements-with-order
                          store object-id templates-to-add order position)
           store (reduce remove-entity-by-id store
                         (map :item-id elements-to-remove))]
-      [store object-id order])
-    ;; Remove any existing name in the template, replacing it with
-    ;; the name we are looking for.
-    (let [object-elements (-> (remove #(seq (content->elements % name-label))
-                                      (map fixed-term-to-template
-                                           (elements fixed-term)))
-                              (conj `(~name (~name-label))))]
-      (update-add-object-with-given-elements-and-order
-       store object-elements order position))))
+      [store object-id order])))
 
 (defn update-add-object-with-order
   "Add an object matching the template to the store, or update a unique

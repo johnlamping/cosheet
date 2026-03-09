@@ -21,13 +21,13 @@
                    id->string string->id id->source
                    Store]]
     [store-utils :refer [remove-entity-by-id add-object]]
-    [entity :refer [make-object-list elements content->elements
+    [entity :refer [id->entity id->element make-object-list
+                    elements content content->elements
+                    label->element label->elements label->content
                     name-label object? element? interned-object?
                     link-type-object? object-type-object? non-type-object?]]
     [query :refer [matching-items]]
     mutable-store-impl
-    [entity :refer [id->entity to-list label->element
-                    content elements label->elements label->content]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
     query-impl
@@ -43,9 +43,11 @@
                          exemplar-to-fixed-term remove-semantic-elements
                          table-row-template table-column-headers-id
                          unspecified-column-header-template
-                         update-add-element-with-order-and-temporary]]
+                         update-add-element-with-order-and-temporary
+                         get-or-make-ordered-object-by-name
+                         object-semantic-to-list]]
     [render-utils :refer [sequential-template?]]
-    [order-utils :refer [furthest-item]])))
+    [order-utils :refer [furthest-item order-element-for-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -155,31 +157,6 @@
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
 
-(defn get-or-make-object-by-name
-  "Find an object with the given name, and the same kind as the template,
-   or make one. Return the new store and the id of the matching object.
-   (If an existing object is returned, it won't necessarily match the
-  entire template, just its type"
-  [store name template]
-  (assert object? template)
-  (let [query (make-object-list [`(~name (~name-label))])
-        matches (matching-items query store)
-        filtered (filter
-                  (cond (link-type-object? template) link-type-object?
-                        (object-type-object? template) object-type-object?
-                        true non-type-object?)
-                  matches)]
-    (if (seq filtered)
-      (do (assert (= (count filtered) 1))
-          [store (:item-id (first filtered))])
-      ;; Remove any existing name in the template, replacing it with
-      ;; the name we are looking for.
-      (let [pattern (-> (remove #(seq (content->elements % name-label))
-                                (elements template))
-                        (conj `(~name (~name-label)))
-                        make-object-list)]
-        (add-object store pattern)))))
-
 (defn do-set-content
   [store {:keys [subject-ids past-subject-ids template is-object-name
                  from to session-state]}]
@@ -201,17 +178,28 @@
           ;; element, and get its content in that case.
           template (if (element? last-template)
                      (content last-template)
-                     last-template)] 
+                     last-template)]
       (if is-object-name
-        ;; We are setting a new name for a named object.
+        ;; We are setting a new name in a place that holds a named object.
         ;; First, get an object corresponding to the name. Then check
         ;; that the position still holds an object, and swap in the
         ;; new one.
         ;; TODO: !!!  We need to handle reversed links, which we can
         ;; do by checking which end matches the old object.
         (let [name (clojure.string/trim to)
-              [store object-id] (get-or-make-object-by-name
-                                 store name template)
+              order-element (order-element-for-item
+                             (id->element (first subject-ids) store) store)
+              order (content order-element)
+              ;; The template might have a generic name. Remove it, or
+              ;; we'll make an object with both that and the name the
+              ;; user set.
+              template (make-object-list
+                        (remove #(and (seq (content->elements % name-label))
+                                      (= (content %) ""))
+                                (elements template)))
+              [store object-id remainder] (get-or-make-ordered-object-by-name
+                                           store name template order :after)
+              store (update-source store (:item-id order-element) remainder)
               ;; TODO: !!! This needs to handle orientation.
               logical-from (id->source store (first subject-ids))]
           ;; We are going to claim that the user saw logical-from when
@@ -243,7 +231,10 @@
                  {:store store} [name-element-id] session-state)
                 store))))
         (let [to (parse-string-as-number (clojure.string/trim to))]
-          (println "Setting " (count subject-ids) "items from" from "to" to)
+          (println "Setting" (count subject-ids) "items from" from "to"
+                   (if (object-id? to)
+                     (object-semantic-to-list (id->entity to store))
+                     to))
           (->
            (reduce
             (fn [store id]

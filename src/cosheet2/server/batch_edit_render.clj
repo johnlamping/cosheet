@@ -1,14 +1,15 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [id->entity updating-immutable
-                                      elements to-list label-element? label->elements
+                                      elements to-list
+                                      label-element? label->elements
+                                      add-elements-to-entity
                                       target-entity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
                       [debug :refer [simplify-for-print]]
-                      [utils :refer [add-elements-to-entity-list separate-by
-                                     disjoint-combinations]]
+                      [utils :refer [separate-by disjoint-combinations]]
                       [hiccup-utils :refer [add-attributes]]
                       [expression :refer [expr-let]])
             (cosheet2.server
@@ -38,7 +39,7 @@
     (let [query (-> query-entity
                     semantic-to-list
                     pattern-to-fixed-term
-                    (add-elements-to-entity-list [query-qualifier]))]
+                    (add-elements-to-entity [query-qualifier]))]
       (expr-let [matches (matching-item-ids-R query mutable-store)]
         (count matches)))))
 
@@ -97,13 +98,13 @@
   (let [query-entity (id->entity query-id store)
         stack-entity (id->entity stack-id store)
         query (pattern-to-fixed-term (semantic-to-list query-entity))
-        row-query (add-elements-to-entity-list query [:row-condition])
+        row-query (add-elements-to-entity query [:row-condition])
         matching-table-conditions (matching-items row-query store)]
     (distinct
      (concat
       (when (not do-not-match-query) [query-entity])
       [stack-entity] 
-      (matching-items (add-elements-to-entity-list query [:top-level])
+      (matching-items (add-elements-to-entity query [:top-level])
                       store)
       matching-table-conditions
       (map #(first (label->elements (target-entity %) :column-headers))

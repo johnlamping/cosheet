@@ -2,8 +2,8 @@
   (:require (cosheet2 [entity :refer [content elements
                                       label->elements label->content
                                       to-list object? primitive? orientation
-                                      make-element-list]]
-                      [utils :refer [add-elements-to-entity-list]])))
+                                      make-element-list
+                                      add-elements-to-entity]])))
 
 ;;; Querying involves looking for entities that are extensions of a
 ;;; query term.  For an entity to be an extension, it must be possible
@@ -160,14 +160,14 @@
   [query1 query2]
   `(::special-form
     (:and ::type)
-    ~(add-elements-to-entity-list (encode-sub-query query1) '(::first))
-    ~(add-elements-to-entity-list (encode-sub-query query2) '(::second))))
+    ~(add-elements-to-entity (encode-sub-query query1) '(::first))
+    ~(add-elements-to-entity (encode-sub-query query2) '(::second))))
 
 (defn forall-query
   [variable-name variable-qualifier query]
   `(::special-form
     (:forall ::type)
-    ~(add-elements-to-entity-list
+    ~(add-elements-to-entity
       (variable-query variable-name :qualifier variable-qualifier) [::variable])
     ~(encode-sub-query query)))
 
@@ -175,7 +175,7 @@
   [variable-name variable-qualifier query]
   `(::special-form
     (:exists ::type)
-    ~(add-elements-to-entity-list
+    ~(add-elements-to-entity
       (variable-query variable-name :qualifier variable-qualifier) [::variable])
     ~(encode-sub-query query)))
 

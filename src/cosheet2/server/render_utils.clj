@@ -7,7 +7,6 @@
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
-                                     add-elements-to-entity-list
                                      separate-by]]
                       [expression :refer [category-change]]
                       [debug :refer [simplify-for-print]]

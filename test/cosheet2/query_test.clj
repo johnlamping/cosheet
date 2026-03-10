@@ -9,13 +9,12 @@
                                       elements label->elements mutable-entity?
                                       primitive? entity-key
                                       make-object-list make-element-list
-                                      immutable-object-to-list]]
-                      [utils :refer [add-elements-to-entity-list]]
+                                      immutable-object-to-list
+                                      add-elements-to-entity]]
                       entity-impl
                       [query :as query :refer :all]
                       [query-impl :refer [closest-template minimal-label?]]
-                      [test-utils :refer [check as-set]]
-                     )
+                      [test-utils :refer [check as-set]])
             ; :reload
             ))
 
@@ -186,15 +185,15 @@
     (is (special-form? query))
     (is (= (special-form-type query) :forall))
     (is (= (quantifier-variable query)
-           (add-elements-to-entity-list (variable-query "foo" :qualifier 1)
-                                        '(::query/variable))))
+           (add-elements-to-entity (variable-query "foo" :qualifier 1)
+                                   '(::query/variable))))
     (is (= (sub-query query) (make-element-list :target 2 '(1)))))
   (let [query (exists-query "foo" 1 (make-element-list :target 2 '(1)))]
     (is (special-form? query))
     (is (= (special-form-type query) :exists))
     (is (= (quantifier-variable query)
-           (add-elements-to-entity-list (variable-query "foo" :qualifier 1)
-                                        '(::query/variable))))
+           (add-elements-to-entity (variable-query "foo" :qualifier 1)
+                                   '(::query/variable))))
     (is (= (sub-query query) (make-element-list :target 2 '(1))))))
 
 (deftest closest-template-test

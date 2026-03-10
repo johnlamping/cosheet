@@ -464,6 +464,19 @@
   (is (= (entity-key orderable/initial) orderable/initial))
   (is (to-list 3) 3))
 
+(deftest add-elements-to-entity-test
+  (is (= (add-elements-to-entity '(1 2 (3 4)) '())
+         '(1 2 (3 4))))
+  (is (= (add-elements-to-entity '(1 2 (3 4)) '(5 (6 7)))
+         '(1 2 (3 4) 5 (6 7))))
+  (is (= (add-elements-to-entity (make-element-list :target 1 '(2 (3 4)))
+                                 '(5 (6 7)))
+         (make-element-list :target 1 '(2 (3 4) 5 (6 7)))))
+  (is (= (add-elements-to-entity 1 '(5 (6 7)))
+         '(1 5 (6 7))))
+  (is (= (add-elements-to-entity (make-object-list '(1 2 (3 4))) '(5 (6 7)))
+         (make-object-list '(1 2 (3 4) 5 (6 7))))))
+
 (deftest map-elements-test
   (let [incrementer #(if (number? %) (inc %) %)]
     (is (= (map-elements incrementer '(1 5 (2 3) 4))
@@ -477,14 +490,13 @@
   (is (check (post-walk-entity
               #(cond (number? %) (inc %)
                      (interned-object? %) (id->object (make-item-id "bar") nil)
-                     (= % '(3 4)) "post confirmed"
+                     (= % '(3 4)) nil
                      :else %)
               `(1 (2 3)
                   (~(make-object-list
-                     `(4 (5 6))))
+                       `(4 (5 6))))
                   (~(id->object (make-item-id "foo") nil))))
-             `(2 "post confirmed"
-                 (~(make-object-list
+             `(2 (~(make-object-list
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
 
@@ -492,19 +504,15 @@
   (is (check (pre-walk-entity
               #(cond (number? %) (inc %)
                      (interned-object? %) (id->object (make-item-id "bar") nil)
-                     (= % '(2 3)) "pre confirmed"
+                     (= % '(2 3)) nil
                      :else %)
               `(1 (2 3)
                   (~(make-object-list
                      `(4 (5 6))))
                   (~(id->object (make-item-id "foo") nil))))
-             `(2 "pre confirmed"
-                 (~(make-object-list
+             `(2 (~(make-object-list
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
-
-(deftest test-test
-  (println (entity-complexity `(~(make-object-list '(1 2)) (2 "a")))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

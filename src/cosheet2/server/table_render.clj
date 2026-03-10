@@ -1,6 +1,6 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
-                                     add-elements-to-entity-list remove-first]]
+                                     remove-first]]
                       [store :refer [id->target target-label->ids]]
                       [reporter :refer [universal-category]]
                       [entity :refer [content elements label->elements

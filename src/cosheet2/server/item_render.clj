@@ -10,11 +10,11 @@
                     elements label->elements content->elements
                     name-label link-type object-type
                     make-object-list recursively-in-different-store
-                    entity-complexity]]
+                    entity-complexity 
+                    add-elements-to-entity]]
     [query :refer [matching-elements]]
     [utils :refer [multiset-diff assoc-if-non-empty
                    map-with-first-last
-                   add-elements-to-entity-list
                    separate-by]]
     [debug :refer [simplify-for-print]]
     [hiccup-utils :refer [dom-attributes into-attributes add-attributes
@@ -299,7 +299,7 @@
         leaf-spec (cond-> (dissoc specification :orientation)
                     (not (empty? property-list))
                     (update :template
-                            #(add-elements-to-entity-list % property-list)))]
+                            #(add-elements-to-entity % property-list)))]
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
@@ -669,7 +669,7 @@
         (let [inner-spec (-> specification
                              (dissoc :class)
                              (update :template
-                                     #(add-elements-to-entity-list
+                                     #(add-elements-to-entity
                                        ;; This might come from a column header.
                                        (content %)
                                        ;; We have exactly the required labels.

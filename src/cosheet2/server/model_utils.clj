@@ -3,7 +3,6 @@
    (cosheet2
     [debug :refer [simplify-for-print]]
     [utils :refer [thread-map replace-in-seqs
-                   add-elements-to-entity-list
                    extract-first]]
     [orderable :refer [initial split]]
     [expression :refer [expr expr-let expr-seq expr-filter]]
@@ -22,6 +21,7 @@
                     map-elements pre-walk-entity
                     target-entity entity-key
                     make-element-list make-object-list
+                    add-elements-to-entity
                     entity-complexity stored-entity?]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects]]
@@ -282,11 +282,11 @@
   ([query nil-replacement]
    (pre-walk-entity
     (fn [query] (cond (nil? query) nil-replacement
-                      (seq? query) (remove #(or (= % '(nil :order))
-                                                (special-form? %))
-                                           query)
+                      (element? query) (when (not (or (= query '(nil :order))
+                                                      (special-form? query)))
+                                         query)
                       true query))
-                    query)))
+    query)))
 
 ;;; Adding new elements and objects, noting the orders in their
 ;;; templates.
@@ -664,7 +664,7 @@
 (def unspecified-column-header-template
   ;; A header for a newly created column that we don't know anything about.
   ;; We give it a new label, so that it won't start out match everything.  
-  (add-elements-to-entity-list
+  (add-elements-to-entity
    column-header-template ['(??? :label)]))
 
 (defn starting-store

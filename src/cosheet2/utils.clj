@@ -430,14 +430,6 @@
   (swap-control-return! atom-map
                         #(ensure-in-map % key fun)))
 
-(defn add-elements-to-entity-list
-  "Add elements to the list form of an entity."
-  [entity elements]
-  (if (empty? elements)
-    entity
-    (concat (if (seq? entity) entity (list entity))
-            elements)))
-
 (defn call-pseudo-closure
   "A pseudo closure is either a function or a sequence of a function and
   some extra arguments. Call the function with the arguments given in

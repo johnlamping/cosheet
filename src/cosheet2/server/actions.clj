@@ -3,7 +3,6 @@
    (cosheet2
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map truncate-at-value
-                   add-elements-to-entity-list
                    swap-control-return!]]
     [canonical :refer [equivalent-primitives?]]
     [map-state :refer [map-state-get-current map-state-reset!

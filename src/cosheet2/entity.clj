@@ -356,7 +356,7 @@
   [element-orientation content elements]
   ;; Validate the constraints on our object and elements
   (assert (or (not (element? content))
-              ;; TODO: !!! For now, special forms are lists.
+              ;; TODO: !!! For now, special forms are elements.
               ;;           When they become objects, remove this case.
               (= (keyword? (first content)))))
   (assert (not-any? #(or (object? %)
@@ -379,6 +379,20 @@
   ;; Make sure the elements we are given respect the list form.
   (assert (not-any? object? elements))
   (into [:object] elements))
+
+(defn add-elements-to-entity
+  "Add elements an entity, using a list form for its top level if
+  anything changed."
+  [entity elements-to-add]
+  (if (empty? elements-to-add)
+    entity
+    (cond (element? entity)
+          (make-element-list (orientation entity)
+                             (content entity)
+                             (concat (elements entity) elements-to-add))
+          (object? entity)
+          (make-object-list (concat (elements entity) elements-to-add))
+          :else (make-element-list :source entity elements-to-add))))
 
 (defn map-elements
   "Run the function, which must return an element, on each of the
@@ -409,30 +423,33 @@
 
 (defn pre-walk-entity
   "Recursively run the function on all the elements of the entity, from
-  the top down up, going through non-interned objects. The function must
-  return the same kid of entity as it gets."
+  the top down up, going through non-interned objects. The function
+  must return the same kid of entity as it gets. If the function turns
+  an element into nil, that element will be removed."
   [f entity]
   (let [entity (f entity)]
     (cond (element? entity)
           (make-element-list (orientation entity)
                              (pre-walk-entity f (content entity))
-                             (map #(pre-walk-entity f %) (elements entity)))
+                             (keep #(pre-walk-entity f %) (elements entity)))
           (and (object? entity) (not (interned-object? entity)))
-          (make-object-list (map #(pre-walk-entity f %) (elements entity)))
+          (make-object-list (keep #(pre-walk-entity f %) (elements entity)))
           :else
           entity)))
 
 (defn post-walk-entity
   "Recursively run the function on all the elements of the entity, from
   the leaves up, going through non-interned objects. The function must
-  return the same kid of entity as it gets."
+  return the same kid of entity as it gets. If the function turns
+  an element into nil, that element will be removed."
   [f entity]
   (f (cond (element? entity)
            (make-element-list (orientation entity)
                               (post-walk-entity f (content entity))
-                              (map #(post-walk-entity f %) (elements entity)))
+                              (keep #(post-walk-entity f %)
+                                    (elements entity)))
            (and (object? entity) (not (interned-object? entity)))
-           (make-object-list (map #(post-walk-entity f %) (elements entity)))
+           (make-object-list (keep #(post-walk-entity f %) (elements entity)))
            :else
            entity)))
 

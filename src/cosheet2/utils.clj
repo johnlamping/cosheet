@@ -412,14 +412,6 @@
         (= x from) to
         true x))
 
-(defn prewalk-seqs
-  "Like clojure.walk/prewalk, but only descends into seqs"
-  [fun x]
-  (let [pre (fun x)]
-    (if (sequential? pre)
-      (map (partial prewalk-seqs fun) pre)
-      pre)))
-
 (defn ensure-in-map
   "Given a map, if the map has a value for the key, 
    return the map and that value. If not, call the function with the key,

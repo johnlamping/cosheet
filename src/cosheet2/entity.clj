@@ -407,28 +407,39 @@
     `(~entity)
     entity))
 
-(defn recursively-map-entity
-  "Recursively run the function on the 'tree' of the entity, chasing
-  through contents and elements until reaching entities that can't
-  have elements. The function must
+(defn pre-walk-entity
+  "Recursively run the function on all the elements of the entity, from
+  the top down up, going through non-interned objects. The function must
   return the same kid of entity as it gets."
   [f entity]
-  (cond (element? entity)
-        (f (make-element-list
-            (orientation entity)
-            (recursively-map-entity f (content entity))
-            (map #(recursively-map-entity f %)
-                 (elements entity))))
-        (and (object? entity) (not (interned-object? entity)))
-        (f (make-object-list (map #(recursively-map-entity f %)
-                                  (elements entity))))
-        :else
-        (f entity)))
+  (let [entity (f entity)]
+    (cond (element? entity)
+          (make-element-list (orientation entity)
+                             (pre-walk-entity f (content entity))
+                             (map #(pre-walk-entity f %) (elements entity)))
+          (and (object? entity) (not (interned-object? entity)))
+          (make-object-list (map #(pre-walk-entity f %) (elements entity)))
+          :else
+          entity)))
+
+(defn post-walk-entity
+  "Recursively run the function on all the elements of the entity, from
+  the leaves up, going through non-interned objects. The function must
+  return the same kid of entity as it gets."
+  [f entity]
+  (f (cond (element? entity)
+           (make-element-list (orientation entity)
+                              (post-walk-entity f (content entity))
+                              (map #(post-walk-entity f %) (elements entity)))
+           (and (object? entity) (not (interned-object? entity)))
+           (make-object-list (map #(post-walk-entity f %) (elements entity)))
+           :else
+           entity)))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."
   [entity store]
-  (recursively-map-entity #(if (stored-entity? %)
+  (post-walk-entity #(if (stored-entity? %)
                              (in-different-store % store)
                              %)
                           entity))

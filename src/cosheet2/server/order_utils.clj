@@ -16,8 +16,7 @@
                     element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
     [expression :refer [expr-let expr-seq]]
-    [utils :refer [thread-map with-latest-value update-new-further-action
-                   prewalk-seqs]]
+    [utils :refer [thread-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 
 ;;; Utilities for creating and using orders.
@@ -195,25 +194,6 @@
   "Return whether this entity should get an order position."
   [entity]
   (and (semantic-element? entity) (not (keyword? (content entity)))))
-
-;;; TODO: !!! Delete once this code is moved to model_utils, which already
-;;;           define this.
-(defn fixed-term-to-template
-  "Given a fixed-term, turn it into a template by removing any (nil :order),
-   removing any negations, and replacing any nil by the specified replacement,
-   which defaults to the empty string."
-  ([query]
-   (fixed-term-to-template query ""))
-  ([query nil-replacement]
-   (prewalk-seqs (fn [query] (cond (nil? query)
-                                   nil-replacement
-                                   (seq? query)
-                                   (remove #(or (= % '(nil :order))
-                                                (special-form? %))
-                                           query)
-                                   true
-                                   query))
-                 query)))
 
 (defn furthest-item
   "Given a list of items and a position,

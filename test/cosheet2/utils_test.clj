@@ -245,13 +245,6 @@
   (is (= (replace-in-seqs [1 [2 [1 2]]] 2 3)
          [1 [3 [1 3]]])))
 
-(deftest prewalk-seqs-test
-  (is (= (prewalk-seqs #(if (sequential? %)
-                          (remove (partial = [1 2]) %)
-                          %)
-                       '(0 (1 2 (1 2))))
-         '(0 (1 2)))))
-
 (deftest psuedo-closure-test
   (is (= (call-pseudo-closure list 1 2 3)
          '(1 2 3)))

@@ -473,16 +473,32 @@
     (is (= (map-elements incrementer (make-object-list '(5 (2 3) 4)))
            (make-object-list '(6 (2 3) 5))))))
 
-(deftest recursively-map-entity-test
-  (is (check (recursively-map-entity
+(deftest post-walk-entity-test
+  (is (check (post-walk-entity
               #(cond (number? %) (inc %)
                      (interned-object? %) (id->object (make-item-id "bar") nil)
+                     (= % '(3 4)) "post confirmed"
                      :else %)
               `(1 (2 3)
                   (~(make-object-list
                      `(4 (5 6))))
                   (~(id->object (make-item-id "foo") nil))))
-             `(2 (3 4)
+             `(2 "post confirmed"
+                 (~(make-object-list
+                    `(5 (6 7))))
+                 (~(id->object (make-item-id "bar") nil))))))
+
+(deftest pre-walk-entity-test
+  (is (check (pre-walk-entity
+              #(cond (number? %) (inc %)
+                     (interned-object? %) (id->object (make-item-id "bar") nil)
+                     (= % '(2 3)) "pre confirmed"
+                     :else %)
+              `(1 (2 3)
+                  (~(make-object-list
+                     `(4 (5 6))))
+                  (~(id->object (make-item-id "foo") nil))))
+             `(2 "pre confirmed"
                  (~(make-object-list
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))

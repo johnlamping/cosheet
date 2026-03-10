@@ -26,7 +26,7 @@
                                quantifier-variable]]
                       [canonical :refer [equivalent-primitives?
                                          canonicalize]]
-                      [utils :refer [prewalk-seqs unzip
+                      [utils :refer [unzip
                                      conj-disjoint-combinations
                                      disjoint-combinations]])))
 

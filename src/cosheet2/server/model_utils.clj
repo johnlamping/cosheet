@@ -2,7 +2,7 @@
   (:require
    (cosheet2
     [debug :refer [simplify-for-print]]
-    [utils :refer [thread-map prewalk-seqs replace-in-seqs
+    [utils :refer [thread-map replace-in-seqs
                    add-elements-to-entity-list
                    extract-first]]
     [orderable :refer [initial split]]
@@ -19,7 +19,7 @@
                     content elements orientation
                     link-type object-type name-label
                     content->elements label->elements label->element
-                    map-elements
+                    map-elements pre-walk-entity
                     target-entity entity-key
                     make-element-list make-object-list
                     entity-complexity stored-entity?]]
@@ -280,15 +280,13 @@
   ([query]
    (fixed-term-to-template query ""))
   ([query nil-replacement]
-   (prewalk-seqs (fn [query] (cond (nil? query)
-                                   nil-replacement
-                                   (seq? query)
-                                   (remove #(or (= % '(nil :order))
+   (pre-walk-entity
+    (fn [query] (cond (nil? query) nil-replacement
+                      (seq? query) (remove #(or (= % '(nil :order))
                                                 (special-form? %))
                                            query)
-                                   true
-                                   query))
-                 query)))
+                      true query))
+                    query)))
 
 ;;; Adding new elements and objects, noting the orders in their
 ;;; templates.

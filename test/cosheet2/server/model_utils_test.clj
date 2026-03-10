@@ -4,7 +4,7 @@
                       [entity :refer [in-different-store stored-entity?
                                       link-type object-type name-label
                                       make-object-list make-element-list
-                                      recursively-map-entity
+                                      recursively-in-different-store
                                       id->object id->entity
                                       label->elements content->elements
                                       to-list elements]]
@@ -179,9 +179,7 @@
     (is (check
          (object-semantic-to-list joe)
          ;; We can't be sure of the order of elements.
-         (as-set (recursively-map-entity
-                  #(if (stored-entity? %) (in-different-store % store) %)
-                  named-joe-list))))))
+         (as-set (recursively-in-different-store named-joe-list store))))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))
@@ -299,10 +297,9 @@
     
     ;; The new Tina object should match the template.
     (is (check (object-semantic-to-list (id->object id1 s1))
-               (as-set (recursively-map-entity
-                        #(if (stored-entity? %) (in-different-store % s1) %)
-                        (make-object-list
-                         [`("Tina" (~name-label)) 1 2])))))
+               (as-set (recursively-in-different-store
+                        (make-object-list [`("Tina" (~name-label)) 1 2])
+                        s1))))
     ;; Nothing should have changed when it was asked for again.
     (is (= s1 s2))
     (is (= id1 id2))
@@ -319,24 +316,22 @@
     ;; matches the additional template.
     (is (= id1 id5))
     (is (check (object-semantic-to-list (id->object id1 s5))
-               (as-set (recursively-map-entity
-                        #(if (stored-entity? %) (in-different-store % s5) %)
-                        (make-object-list
-                         [`("Tina" (~name-label)) 1 2 '(3 4)])))))
+               (as-set (recursively-in-different-store
+                        (make-object-list [`("Tina" (~name-label)) 1 2 '(3 4)])
+                        s5))))
     ;; The Tina object should have gotten rid of a redundant element.
     (is (= id1 id6))
     (is (check (object-semantic-to-list (id->object id1 s6))
-               (as-set (recursively-map-entity
-                        #(if (stored-entity? %) (in-different-store % s6) %)
+               (as-set (recursively-in-different-store
                         (make-object-list
-                         [`("Tina" (~name-label)) '(1 2) 2 '(3 4)])))))
+                         [`("Tina" (~name-label)) '(1 2) 2 '(3 4)])
+                        s6))))
     ;; The new Tony object should match its (empty) template.
     (is (not= id1 id7))
     (is (check (object-semantic-to-list (id->object id7 s7))
-               (as-set (recursively-map-entity
-                        #(if (stored-entity? %) (in-different-store % s7) %)
-                        (make-object-list
-                         [`("Tony" (~name-label))])))))))
+               (as-set (recursively-in-different-store
+                        (make-object-list [`("Tony" (~name-label))])
+                        s7))))))
 
 (deftest update-add-element-with-order-and-temporary-test
   (let [[s id order] (update-add-element-with-order-and-temporary
@@ -404,9 +399,9 @@
     (is (check (ordered-semantic-to-list new-entity)
                `(6 (~tina))))
     (is (check (object-semantic-to-list tina)
-               (as-set (recursively-map-entity
-                        #(if (stored-entity? %) (in-different-store % s) %)
-                        (make-object-list [`("Tina" (~name-label)) 1 2])))))
+               (as-set (recursively-in-different-store
+                        (make-object-list [`("Tina" (~name-label)) 1 2])
+                        s))))
     ;; Now try adding another element that references the same object.
     (let [[s1 id1 order1] (update-add-element-with-order-and-temporary
                            s joe-id `(7 (~(make-object-list
@@ -420,10 +415,10 @@
                  `(7 (~tina))))
       (is (check (object-semantic-to-list tina)
                  (as-set
-                  (recursively-map-entity
-                   #(if (stored-entity? %) (in-different-store % s1) %)
+                  (recursively-in-different-store
                    ;; Tina should have gotten an extra property.
-                   (make-object-list [`("Tina" (~name-label)) 1 2 3])))))))
+                   (make-object-list [`("Tina" (~name-label)) 1 2 3])
+                   s1))))))
   
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.

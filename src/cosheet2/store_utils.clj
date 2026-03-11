@@ -2,8 +2,9 @@
   (:require
    (cosheet2
     [store :refer [add-link remove-link get-new-object-id
-                   id->source target->ids
-                   link-id? name-label-id link-type-id object-type-id]]
+                   id->source target->ids source->ids
+                   link-id? object-id? non-identified-object-id?
+                   name-label-id link-type-id object-type-id]]
     [entity :refer [StoredEntity
                     element? object? stored-entity? generic-name?
                     uniquely-identified-object? non-identified-object?
@@ -134,20 +135,32 @@
   (add-object store (make-object-list [`(~name (~name-label)) `(~link-type)])))
 
 (defn- links-to-remove
-  "Return a list of ids of items to remove in order to remove the
-  entity with the given id, and all its elements.  Return the list in
-  an order suitable for removing."
-  [store id]
-  (let [element-removals (mapcat (partial links-to-remove store)
-                                 (target->ids store id))]
-    (concat element-removals
-            ;; Once everythig pointing to the element is gone, we can
-            ;; remove the element.
-            (if (link-id? id) [id] []))))
+  "Return a list of ids of links to remove in order to remove the entity
+  with the given id, and all its elements and non-identified objects
+  in their contents. Don't recurse into containing-id; our caller will
+  handle that. (This prevents infinite loops when an element contains
+  an object as its source.)
+  Return the list in an order suitable for removing."
+  [store containing-id id]
+  (concat
+   ;; First, we have to remove all the elements.
+   (mapcat (partial links-to-remove store id)
+           (cond-> (target->ids store id)
+             ;; Object ids can also be sources.
+             (object-id? id)
+             (concat (remove #(= containing-id %)
+                             (source->ids store id)))))
+   ;; Once all the elements are gone, if the id is a link, we can
+   ;; remove its content, if that is an object, then the link, itself.
+   (when (link-id? id)
+     (concat (let [content-id (id->source store id)]
+               (when (non-identified-object-id? store content-id)
+                 (links-to-remove store id content-id)))
+             [id]))))
 
 (defn remove-entity-by-id
   "Remove the entity with the given id, and all its elements."
   [store id]
   (reduce (fn [store id] (remove-link store id))
-          store (links-to-remove store id)))
+          store (links-to-remove store nil id)))
 

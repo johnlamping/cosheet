@@ -12,6 +12,7 @@
              query-impl
              [store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue]]
+             [canonical :refer [canonicalize]]
              [test-utils :refer [check as-set]])
             ; :reload
             ))
@@ -62,12 +63,15 @@
         (add-element (new-element-store) (make-item-id "0")
                     '("foo" ("test" :label)))
         [added-store2 e2]
-        (add-element added-store e1 '("Fred" ("by" :label)))
+        (add-element added-store e1 `(~(make-object-list '("Fred" 1))
+                                      ("by" :label)))
         removed-store (remove-entity-by-id added-store2 e2)]
-    (is (check (to-list (id->element e1 added-store2))
-               (as-set '("foo"
-                         ("test" :label)
-                         ("Fred" ("by" :label))))))
+    (println (canonicalize (id->element e1 added-store2)))
+    (is (check (canonicalize (id->element e1 added-store2))
+               (canonicalize `("foo"
+                               ("test" :label)
+                               (~(make-object-list '("Fred" 1))
+                                ("by" :label))))))
     (is (= (to-list (id->element e1 removed-store))
            '("foo" ("test" :label))))
     (is (= (assoc removed-store :next-number (:next-number added-store))

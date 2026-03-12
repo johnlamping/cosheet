@@ -83,9 +83,6 @@
 ;;; based on their elements, not their id. So they do have a list form
 ;;; that includes just their elements:
 ;;;    [:object element element ...]
-;;; The code that converts items in the store to their query forms
-;;; generates this representation for generic objects, which have the
-;;; tag, :generic, as a property in the store.
 
 ;;; Elements are more complicated. The most general list form of an
 ;;; element is
@@ -275,7 +272,7 @@
 
 (defn uniquely-identified-object?
   "Return true if the entity, which must be immutable, is an object that
-  is uniquely identified by its name or by its id."
+  is uniquely identified, either by its name or by its id."
   [entity]
   (and (object? entity)
        (or (id-identified-object? entity)

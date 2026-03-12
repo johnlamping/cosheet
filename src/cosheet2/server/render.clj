@@ -224,8 +224,10 @@
 ;;;                         However, in some cases, this will be a
 ;;;                         keyword, like :content or :virtual, which
 ;;;                         will be enough to uniquely indicate how
-;;;                         this component relates to its parent. In
-;;;                         these cases, if an id is still needed,
+;;;                         this component relates to its parent. If a
+;;;                         keyword wouldn't be unique, this can be a
+;;;                         pair of a keyword and an id. In these
+;;;                         cases, if an id is still needed,
 ;;;                         :auxiliary-item-id will hold id.
 ;;;                 :class  Optional. A subset of the CSS classes the DOM
 ;;;                         will have. The dom may have additional classes.

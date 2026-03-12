@@ -5,7 +5,7 @@
     [store :refer [make-item-id]]
     [entity :refer [id->entity id->updating-entity-R
                     content label-element? primitive? object?
-                    uniquely-identified-object? universal-object?
+                    interned-object? universal-object?
                     label-object?
                     elements label->elements content->elements
                     name-label link-type object-type
@@ -614,7 +614,7 @@
     (cond (primitive? contents)
           (item-primitive-content-DOM item contents specification)
           (and (object? contents)
-               (or (uniquely-identified-object? contents)
+               (or (interned-object? contents)
                    (display-content-object-as-if-interned?
                     (content template) contents)))
           (content-object-by-name-component contents specification)
@@ -745,8 +745,9 @@
                             (hierarchy-node-descendants node)) ]
     (cond
       (empty? (:properties node))
-      ;; We must be a leaf of a node that has children. We put a virtual
-      ;; cell where our labels would go.
+      ;; Since we don't add any properties, we must hold what would be
+      ;; a leaf of a node that has children. We put a virtual cell
+      ;; where our labels would go.
       (let [label-dom (cond-> (virtual-label-DOM-component
                                (assoc (add-parallel-item-ids specification
                                                              descendant-ids)

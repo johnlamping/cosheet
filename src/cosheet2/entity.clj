@@ -3,6 +3,7 @@
                       [expression :refer [expr-let]]
                       [store :refer [make-item-id item-id?
                                      link-id? object-id?
+                                     generic-name?
                                      ;; These are used by entity_impl.clj
                                      ;; when it is working in our namespace. 
                                      name-label-id
@@ -256,13 +257,6 @@
   (and (stored-entity? entity)
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
 
-(defn generic-name?
-  "Return true if the name counts as generic, that is, if it doesn't
-  serve to identify an object"
-  [name]
-  ;; We have to use contains?, calling the set returns nil for nil.
-  (contains? #{nil "" 'anything} name))
-
 (defn id-identified-object?
   "Return true if the entity is an object that is identified by its id."
   [entity]
@@ -464,10 +458,10 @@
   handling objects with the object to list function. The
   object-to-list function must also take an object and an element to
   skip.
-  The element to skip only has an effect when converting an non-identified
+  The element to skip only has an effect when converting an non-interned
   object. In that case, an element of the object with the same key
-  will not be shown. This avoids an infinite loop when an non-identified
-  object has a relation to another non-identified object, and showing all
+  will not be shown. This avoids an infinite loop when an non-interned
+  object has a relation to another non-interned object, and showing all
   elements of both objects would bounce back and forth between them
   forever."
   ;; Note: We tried using a letfn here, so we didn't have to pass in
@@ -484,7 +478,7 @@
                                 (map #(recurse % nil) (elements entity)))))))
 
 (defn immutable-object-to-list [object skipped-element]
-  (if (non-identified-object? object)
+  (if (not (interned-object? object))
     (let [recurse (immutable-to-list-generator immutable-object-to-list)]
       (make-object-list (map #(recurse % nil)
                              ;; We rely on entity-key ignoring

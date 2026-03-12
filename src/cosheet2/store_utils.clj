@@ -4,10 +4,11 @@
     [store :refer [add-link remove-link get-new-object-id
                    id->source target->ids source->ids
                    link-id? object-id? non-identified-object-id?
+                   generic-name?
                    name-label-id link-type-id object-type-id]]
     [entity :refer [StoredEntity
-                    element? object? stored-entity? generic-name?
-                    uniquely-identified-object? non-identified-object?
+                    element? object? stored-entity?
+                    uniquely-identified-object?
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
                     content orientation elements to-list
@@ -136,7 +137,7 @@
 
 (defn- links-to-remove
   "Return a list of ids of links to remove in order to remove the entity
-  with the given id, and all its elements and non-identified objects
+  with the given id, and all its elements and non-interned objects
   in their contents. Don't recurse into containing-id; our caller will
   handle that. (This prevents infinite loops when an element contains
   an object as its source.)

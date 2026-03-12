@@ -1107,7 +1107,6 @@
              [:component {:width 0.375
                           :template virtual-label-template
                           :is-object-name true
-                          ;; TODO: This breaks the relative id convention.
                           :relative-id [(:element-3-id ids) :virtual-label]
                           :parallel-ids [(:element-3-id ids)]
                           :render-dom (virt-DOM)

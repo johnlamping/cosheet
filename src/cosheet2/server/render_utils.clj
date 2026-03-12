@@ -102,7 +102,9 @@
     (make-sequential-template
      (concat
       prefix-templates
-      [(cons "" (elements last-template))  ; the element that is the label.
+       ;; The label.
+      [(cons "" (elements last-template))
+       ;; It's content.
        (ensure-label-object (content last-template))]))))
 
 (defn specification-item-id

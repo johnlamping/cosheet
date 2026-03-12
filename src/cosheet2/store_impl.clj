@@ -20,7 +20,7 @@
 ;;; target, and source. For efficiency, a store maintains indexes on
 ;;; that data.
 
-(declare has-link-to-non-identified-object?)
+(declare has-link-to-non-interned-object?)
 (declare add-link-from-triple)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
@@ -205,20 +205,20 @@
     ;; TODO: !!! Once we are using objects at top level, assert that
     ;;       neither target nor source are nil.
     
-    ;; Disallow links between two non-identified objects that both
-    ;; already have links to non-identified objects. This ensures that
-    ;; the relationships between non-identified objects will not have
+    ;; Disallow links between two non-interned objects that both
+    ;; already have links to non-interned objects. This ensures that
+    ;; the relationships between non-interned objects will not have
     ;; any loops. Both queries and Entity/to-list rely on that.  We
     ;; can't put this test in add-link-from-triple because that is
     ;; called to read in a store, where, depending on the order links
     ;; are read, this condition might be violated, even though there
-    ;; are no loops throuch non-identified objects.
-    (when (and (object-id? target) ;; Redundant, but fast.
-               (object-id? source) ;; Redundant, but fast.
-               (non-identified-object-id? this target)
-               (non-identified-object-id? this source))
-      (assert (not (and (has-link-to-non-identified-object? this target)
-                        (has-link-to-non-identified-object? this source)))))
+    ;; are no loops throuch non-interned objects.
+    (when (and (object-id? target)
+               (object-id? source)
+               (not (interned-object-id? this target))
+               (not (interned-object-id? this source)))
+      (assert (not (and (has-link-to-non-interned-object? this target)
+                        (has-link-to-non-interned-object? this source)))))
     (let [item-id (->ItemId (:next-number this))]
       [(-> this
            (update-in [:next-number] inc)
@@ -513,15 +513,16 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
-(defn has-link-to-non-identified-object?
+(defn has-link-to-non-interned-object?
   "Return true if the item id has a link to an id representing a
-  non-identified object."
+  non-interned object."
   [store item-id]
-  (let [non-identified-id? #(non-identified-object-id? store %)]
-    (or (some non-identified-id? (map #(id->source store %)
-                                 (target->ids store item-id)))
-        (some non-identified-id? (map #(id->target store %)
-                                 (source->ids store item-id))))))
+  (let [non-interned-object-id? #(and (object-id? %)
+                                      (not (interned-object-id? store %)))]
+    (or (some non-interned-object-id? (map #(id->source store %)
+                                           (target->ids store item-id)))
+        (some non-interned-object-id? (map #(id->target store %)
+                                           (source->ids store item-id))))))
 
 (defn has-name-link?
   "Return true if the item id has a link that gives it a non-trivial name."
@@ -557,11 +558,12 @@
 (defn descendant-ids [store id]
   "Given a link id, return a seq of the id and the ids of all its
    descendant elements, including elements of its content if that is
-   a non-identified object."
+   a non-interned object."
   (concat [id]
           (mapcat #(descendant-ids store %) (target->ids store id))
           (let [content (id->source store id)]
-            (when (non-identified-object-id? store content)
+            (when (and (object-id? content)
+                       (not (interned-object-id? store content)))
               (descendant-ids store content)))))
 
 (defn all-temporary-ids [store]
@@ -647,7 +649,7 @@
       (nil? content)
       [element-matches element-matches-precise]
       
-      ;; TODO: When the content is an non-identified object, get
+      ;; TODO: !!! When the content is an non-interned object, get
       ;;       candidate ids for it, then use those as if they were
       ;;       content?
       (and (entity/object? content)

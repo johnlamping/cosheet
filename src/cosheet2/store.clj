@@ -343,6 +343,14 @@
   (constantly true))
 
 ;;; Note: This must be kept in synch with Entity/non-identified-object?
+(defn generic-name?
+  "Return true if the name counts as generic, that is, if it doesn't
+  serve to identify an object."
+  [name]
+  ;; We have to use contains?, calling the set returns nil for nil.
+  (contains? #{nil "" 'anything} name))
+
+;;; TODO: !!! Remove this, in favor of interned-object-id?
 (defn non-identified-object-id?
   "Return true if the item id represents an non-identified object."
   [store item-id]
@@ -352,5 +360,19 @@
        ;; Doesn't have a name.
        (not (when-let [name-ids (target-label->ids
                                  store item-id (make-item-id "name"))]
-              (some #(not (contains? #{nil "" 'anything} %))
+              (some #(not (generic-name? %))
                     (map #(id->source store %) name-ids))))))
+
+;;; Note: This must be kept in synch with Entity/interned-object?
+(defn interned-object-id?
+  "Return true if the item id represents an non-identified object."
+  [store item-id]
+  (and (object-id? item-id)
+       (or
+        ;; Has a special id.
+        (string? (:id item-id))
+        ;; Has a non-generic name.
+        (when-let [name-ids (target-label->ids
+                             store item-id (make-item-id "name"))]
+          (some #(not (generic-name? %))
+                (map #(id->source store %) name-ids))))))

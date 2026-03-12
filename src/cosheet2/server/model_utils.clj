@@ -10,7 +10,7 @@
     [store :refer [new-element-store
                    update-source add-link declare-temporary-id
                    target-label->ids get-new-object-id]]
-    [entity :refer [primitive? object? non-identified-object?
+    [entity :refer [primitive? object?
                     link-type-object? object-type-object?
                     uniquely-identified-object? interned-object?
                     id-identified-object?
@@ -111,7 +111,7 @@
   "The skipped element lets semantic-to-list avoid going back up a link
   it just traversed to this object."
   [object use-order expand-identified skipped-element]
-  (if (or expand-identified (non-identified-object? object))
+  (if (or expand-identified (not (interned-object? object)))
     (->> (cond-> (semantic-elements object)
            use-order (ordered-entities))
          (remove #(= (entity-key %) (entity-key skipped-element)))

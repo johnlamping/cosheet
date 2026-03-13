@@ -274,16 +274,6 @@
              (some #(not (generic-name? %))
                    (map content names))))))
 
-(defn non-identified-object?
-  "Return true if the entity, which must be immutable, is a generic object.
-  Note: This must be kept in synch with store/non-identified-object-id?"
-  [entity]
-  (and (object? entity)
-       (not (id-identified-object? entity))
-       (not (when-let [names (label->elements entity name-label)]
-              (some #(not (contains? #{nil "" 'anything} %))
-                    (map content names))))))
-
 (defn interned-object?
   "Return true if the entity, which must be immutable, is a uniquely
   identified object, and is stored. (That implies that it has been

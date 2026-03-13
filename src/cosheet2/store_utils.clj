@@ -3,7 +3,7 @@
    (cosheet2
     [store :refer [add-link remove-link get-new-object-id
                    id->source target->ids source->ids
-                   link-id? object-id? non-identified-object-id?
+                   link-id? object-id? interned-object-id?
                    generic-name?
                    name-label-id link-type-id object-type-id]]
     [entity :refer [StoredEntity
@@ -155,7 +155,8 @@
    ;; remove its content, if that is an object, then the link, itself.
    (when (link-id? id)
      (concat (let [content-id (id->source store id)]
-               (when (non-identified-object-id? store content-id)
+               (when (and (object-id? content-id)
+                          (not (interned-object-id? store content-id)))
                  (links-to-remove store id content-id)))
              [id]))))
 

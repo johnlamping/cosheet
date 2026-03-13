@@ -342,7 +342,6 @@
 (defmulti new-mutable-store
   (constantly true))
 
-;;; Note: This must be kept in synch with Entity/non-identified-object?
 (defn generic-name?
   "Return true if the name counts as generic, that is, if it doesn't
   serve to identify an object."
@@ -350,22 +349,9 @@
   ;; We have to use contains?, calling the set returns nil for nil.
   (contains? #{nil "" 'anything} name))
 
-;;; TODO: !!! Remove this, in favor of interned-object-id?
-(defn non-identified-object-id?
-  "Return true if the item id represents an non-identified object."
-  [store item-id]
-  (and (object-id? item-id)
-       ;; Doesn't have a special id.
-       (not (string? (:id item-id)))
-       ;; Doesn't have a name.
-       (not (when-let [name-ids (target-label->ids
-                                 store item-id (make-item-id "name"))]
-              (some #(not (generic-name? %))
-                    (map #(id->source store %) name-ids))))))
-
 ;;; Note: This must be kept in synch with Entity/interned-object?
 (defn interned-object-id?
-  "Return true if the item id represents an non-identified object."
+  "Return true if the item id represents an interned object."
   [store item-id]
   (and (object-id? item-id)
        (or

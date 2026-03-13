@@ -13,7 +13,7 @@
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
                    id->target target-label->ids id-valid-link?
-                   object-id? link-id? item-id? non-identified-object-id?
+                   object-id? link-id? item-id? interned-object-id?
                    undo! redo!
                    name-label-id
                    current-store
@@ -117,8 +117,9 @@
                 (= to ""))))
      (and (item-id? source)
           (item-id? from)
-          (if (non-identified-object-id? store from)
-            ;; Equivalent non-identified objects
+          (if (and (object-id? from)
+                   (not (interned-object-id? store from)))
+            ;; Equivalent non-interned objects
             (= (entity->canonical-semantic (id->entity from store))
                (entity->canonical-semantic (id->entity source store)))
             ;; Identical identified objects

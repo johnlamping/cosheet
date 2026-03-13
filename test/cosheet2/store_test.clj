@@ -272,12 +272,6 @@
           unindexed-object-store
           (keys (:id->source unindexed-object-store))))
 
-(deftest non-identified-object-id?-test
-  (is (non-identified-object-id? object-store (make-object-id -1)))
-  (is (not (non-identified-object-id? object-store (make-object-id "special"))))
-  (is (not (non-identified-object-id? object-store (make-object-id -3))))
-  (is (not (non-identified-object-id? object-store (make-link-id 2)))))
-
 (deftest interned-object-id?-test
   (is (not (interned-object-id? object-store (make-object-id -1))))
   (is (interned-object-id? object-store (make-object-id "special")))

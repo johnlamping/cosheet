@@ -129,7 +129,7 @@
     ;(.preventDefault event) ;; Stop the browser menu from appearing
     ))
 
-(defn keypress-handler
+(defn keydown-handler
   [event]
   (let [ctrl (.-ctrlKey event)
         meta (.-metaKey event)
@@ -145,39 +145,35 @@
                (if @edit-field-open-on "edit field open " "")
                (if (is-immutable? @selected) "immutable " "")))
     (when (= total-shift 1)
-      (cond  ; TODO: !!! Now that we're using strings, try switching
-             ; this to a case statement.
-        (= "z" key) (do (.preventDefault event)
-                        (if @edit-field-open-on
-                          (close-edit-field)
-                          (do (.log js/console "undo")
-                              (request-action [:undo]))))
-        (= "y" key) (do (.preventDefault event)
-                        (when (not @edit-field-open-on)
-                          (do (.log js/console "redo")
-                              (request-action [:redo]))))
-        (= "q" key) (do (.preventDefault event)
-                        (.log js/console "quit-batch-edit")
-                        (close-edit-field)
-                        (request-action [:quit-batch-edit]))))
+      (case key
+        "z" (do (.preventDefault event)
+                (if @edit-field-open-on
+                  (close-edit-field)
+                  (do (.log js/console "undo")
+                      (request-action [:undo]))))
+        "y" (do (.preventDefault event)
+                (when (not @edit-field-open-on)
+                  (do (.log js/console "redo")
+                      (request-action [:redo]))))
+        "q" (do (.preventDefault event)
+                (.log js/console "quit-batch-edit")
+                (close-edit-field)
+                (request-action [:quit-batch-edit]))
+        nil))
     (when (and alt meta)
       (when (= "r" key)
         (request-replay :all)))
     (when (and ctrl (not alt) (not meta))
-      (let [command (cond (= "=" key) [:add-twin]
-                          (= "+" key) [:add-twin] 
-                          (= "." key) [:add-element]
-                          (= "l" key) [:add-label]
-                          (= "s" key) [:add-sibling]
-                          (= "#" key) [:add-sibling]
-                          (= "-" key) [:add-row]
-                          (= "_" key) [:add-row]
-                          (= "r" key) [:add-row]
-                          (= "\\" key) [:add-column]
-                          (= "|" key) [:add-column]
-                          (= "c" key) [:add-column]
-                          (= "e" key) [:expand]
-                          (= "b" key) [:batch-edit])
+      (let [command (case key
+                      ("=" "+") [:add-twin] 
+                      "." [:add-element]
+                      "l" [:add-label]
+                      ("s" "#") [:add-sibling]
+                      ("-" "_" "r") [:add-row]
+                      ("\\" "|" "c") [:add-column]
+                      "e" [:expand]
+                      "b" [:batch-edit]
+                      nil)
             id (when @selected (.-id @selected))]
         (when (and command (not @edit-field-open-on)
                    (or id (#{:batch-edit :quit-batch-edit} (first command))))
@@ -186,38 +182,40 @@
           (request-action
            (apply vector (first command) id (rest command))))))
     (when (= total-shift 0)
-      (cond
-        (= "Escape" key) (close-edit-field)
-        (= "Enter" key) (do (store-edit-field)
-                            (close-edit-field))
-        (= "Delete" key) (when (and @selected
-                                       (not @edit-field-open-on))
-                              (.log js/console (str [:delete]))
-                              (request-action
-                               [:delete (.-id @selected)]))
-        (= "Backspace" key) (when (not @edit-field-open-on)
-                              ;; Prevent navigating to prev page.
-                              (.preventDefault event)
-                              (when @selected
-                                (.log js/console
-                                      (str [:backspace]))
-                                (request-action
-                                 [:delete (.-id @selected)])))
-        (= "Tab" key)
-        (do (.preventDefault event)
-            (when @edit-field-open-on
-              (store-edit-field)
-              (close-edit-field))
-            (when-let [selection @selected]
-              (when (not (find-ancestor-with-class selection "tabs-holder"))
-                (when-let [next (next-mutable-editable selection)]
-                  (select-and-clear-pending next)))))
-        ;; Test if the key generates a character in a text field.
-        (= 1 (count key))
+      (if (= (count key) 1)
+        ;; The key generates a character in a text field. Open up the
+        ;; edit field if necessary.
         (when (and @selected
-                     (not (is-immutable? @selected))
-                     (not @edit-field-open-on))
-            (open-edit-field @selected (str (.-charCode event))))))))
+                   (not (is-immutable? @selected))
+                   (not @edit-field-open-on))
+          (open-edit-field @selected (str (.-charCode event)))))
+      (case key
+        "Escape" (close-edit-field)
+        "Enter" (do (store-edit-field)
+                    (close-edit-field))
+        "Delete" (when (and @selected
+                            (not @edit-field-open-on))
+                   (.log js/console (str [:delete]))
+                   (request-action
+                    [:delete (.-id @selected)]))
+        "Backspace" (when (not @edit-field-open-on)
+                      ;; Prevent navigating to prev page.
+                      (.preventDefault event)
+                      (when @selected
+                        (.log js/console
+                              (str [:backspace]))
+                        (request-action
+                         [:delete (.-id @selected)])))
+        "Tab" (do (.preventDefault event)
+                  (when @edit-field-open-on
+                    (store-edit-field)
+                    (close-edit-field))
+                  (when-let [selection @selected]
+                    (when (not (find-ancestor-with-class
+                                selection "tabs-holder"))
+                      (when-let [next (next-mutable-editable selection)]
+                        (select-and-clear-pending next)))))
+        nil))))
 
 (defn unload-handler
   [event]
@@ -233,7 +231,7 @@
     (.addEventListener app "click" click-handler)
     (.addEventListener app "dblclick" double-click-handler)
     (.addEventListener app "contextmenu" context-menu-handler)
-    (.addEventListener js/document "keydown" keypress-handler)
+    (.addEventListener js/document "keydown" keydown-handler)
     (.addEventListener toolbar "click" click-handler)
     (.addEventListener js/window "unload" unload-handler))
   (timed-log "page loaded.")

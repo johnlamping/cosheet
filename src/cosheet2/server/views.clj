@@ -180,49 +180,51 @@
           (include-css "../style.css")]
          [:body
           [:div#toolbar.toolbar
-           [:div#undo.tool
+           [:div#undo-tool.tool
             [:img {:src "../icons/undo.gif"}]
             [:div.tooltip "undo (C-Z)"]]
-           [:div#redo.tool
+           [:div#redo-tool.tool
             [:img {:src "../icons/redo.gif"}]
             [:div.tooltip "redo (C-Y)"]]
            [:div.toolgap]
-           [:div#expand.tool
+           [:div#expand-tool.tool
             [:img {:src "../icons/expand.gif"}]
             [:div.tooltip "expand (C-E)"]]
            [:div.toolgap]
-           [:div#add-twin.tool
+           [:div#add-twin-tool.tool
             [:img {:src "../icons/add_twin.gif"}]
             [:Div.tooltip "add twin (C-=)"]]
-           [:div#add-element.tool
+           [:div#add-element-tool.tool
             [:img {:src "../icons/add_element.gif"}]
             [:div.tooltip "add element (C->)"]]
-           [:div#add-label.tool
+           [:div#add-label-tool.tool
             [:img {:src "../icons/add_label.gif"}]
             [:div.tooltip "add label (C-L)"]]
-           [:div#add-sibling.tool
+           [:div#add-sibling-tool.tool
             [:img {:src "../icons/add_sibling.gif"}]
             [:div.tooltip "add sibling below (C-S)"]]
            [:div.toolgap]
-           [:div#add-row.tool
+           [:div#add-row-tool.tool
             [:img {:src "../icons/add_row.gif"}]
             [:div.tooltip "add row below (C-_)"]]
-           [:div#add-column.tool
+           [:div#add-column-tool.tool
             [:img {:src "../icons/add_column.gif"}]
             [:div.tooltip "add column right (C-|)"]]
            [:div.toolgap]
-           [:div#delete-row.tool
+           [:div#delete-row-tool.tool
             [:img {:src "../icons/delete_row.gif"}]
             [:div.tooltip "delete row"]]
-           [:div#delete-column.tool
+           [:div#delete-column-tool.tool
             [:img {:src "../icons/delete_column.gif"}]
             [:div.tooltip "delete column"]]
            [:div.toolgap]
            [:a.link {:href (str servlet-path "/logout")} "Logout"]
            [:a.link {:href (str servlet-path "/")} "Open"]]
           [:div#app "root"] ;; Client will create a component with id "root".
-          [:div#select_holder.select_holder
+          [:div#select_holder.popup.select_holder
            [:textarea#edit_input {"type" "text"}]]
+          [:div#context_menu.popup.context_menu
+           [:div#add-sibling-menu "add sibling"]]
           [:script "cosheet2.client.run();"]]))
      (html5
      [:head

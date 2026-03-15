@@ -50,11 +50,17 @@
 (defn menu-click-handler
   [logical-target]
   (let [id (.-id logical-target)
-        keyword ({"undo" :undo
+        command-name (if (or (clojure.string.ends-with? id "-tool")
+                             (clojure.string.ends-with? id "-menu"))
+                       (subs id 0 (- (count id) 5))
+                       id)
+        keyword (case command-name
+                  "undo" :undo
                   "redo" :redo
-                  "quit-batch-edit" :quit-batch-edit}
-                 id)
-        contextual-keyword ({"expand" :expand
+                  "quit-batch-edit" :quit-batch-edit
+                  nil)
+        contextual-keyword (case command-name
+                             "expand" :expand
                              "add-twin" :add-twin
                              "add-element" :add-element
                              "add-label" :add-label
@@ -63,8 +69,8 @@
                              "add-column" :add-column
                              "delete-column" :delete-column
                              "delete-row" :delete-row
-                             "batch-edit" :batch-edit}
-                           id)
+                             "batch-edit" :batch-edit
+                             nil)
         selection @selected]
     (.log js/console (str "menu click " id))
     (cond keyword

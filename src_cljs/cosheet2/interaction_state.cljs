@@ -1,13 +1,13 @@
 (ns cosheet2.interaction-state
-  (:require [goog.dom :as gdom]
-            [cosheet2.dom-utils :refer [find-ancestor-with-class
+  (:require [cosheet2.dom-utils :refer [find-ancestor-with-class
                                         scroll-to-be-visible]]))
 
 ;;; These are the UI operations on the edit field and on selections. We
 ;;; put them in their own file so both client.cljs and ajax.cljs can
 ;;; access them.
 
-(def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.
+;;; The dom the edit field is open on.
+(def edit-field-open-on (atom nil))
 
 (defn open-edit-field
   [target initial-content]
@@ -18,13 +18,7 @@
                                    "" ;; System provided name; clear it
                                       ;; so options appear.
                                    initial-content))
-      ;; Have to use setAttribute, as list is not a DOM field,
-      ;; only an HTML attribute.
-      (.setAttribute edit-input "list"
-                     (if (.contains (.-classList target) "tag")
-                       ":label-values"
-                       nil))
-      (.add (.-classList select-holder) "editing")
+      (.add (.-classList select-holder) "active")
       (scroll-to-be-visible select-holder)
       (.focus edit-input)
       (.select edit-input)
@@ -36,7 +30,10 @@
   (when @edit-field-open-on
     (let [select-holder (js/document.getElementById "select_holder")]
       (reset! edit-field-open-on nil)
-      (.remove (.-classList select-holder) "editing"))))
+      (.remove (.-classList select-holder) "active"))))
+
+;;; The dom the context menu is open on.
+(def context-menu-open-on (atom nil))
 
 ;; The currently selected dom.
 (def selected (atom nil))

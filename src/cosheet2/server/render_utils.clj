@@ -21,7 +21,6 @@
             (cosheet2.server
              [model-utils :refer [semantic-elements semantic-elements
                                   entity->fixed-term
-                                  entity->fixed-term-with-negations
                                   entity->canonical-semantic]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 

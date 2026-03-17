@@ -165,7 +165,7 @@
   [entity]
   (canonicalize (semantic-to-list entity)))
 
-;;; We have various list forms of items for different purposes:
+;;; We have various list forms of entities for different purposes:
 ;;;      query: a form suitable for use as a query. It can have nils,
 ;;;             which means it can't be saved in the store. It may
 ;;;             include non-semantic information, like :order or
@@ -207,7 +207,7 @@
   "Given a pattern, alter it in accordance with the options. Specifically:
     * Replace 'anything by nil.
     * If require-not-type is true and an object is not a type, then
-      require it not to have a label-type or object-type element.
+      require it not to have a link-type or object-type element.
     * If require-orders is true and an element has nil content, add a
       '(nil :order) element to make it only match user editable elements."
   [pattern {:keys [require-not-type require-orders] :as options}]
@@ -540,8 +540,8 @@
       (if-let [target (target-entity entity)]
         (selector? target))))
 
-(defn create-selector-or-non-selector-element
-  "Create an element, modifying the template if the target is not a
+(defn create-possible-selector-element
+  "Create an element, modifying the template if the target-id is not a
    a selector. Return the updated store and the id of the new element."
   [template target-id adjacent-id position use-bigger store]
   (let [template (if (and target-id
@@ -560,7 +560,7 @@
   (let [[specialized-template store] (specialize-generic template store)]
     (thread-map
      (fn [[target adjacent] store]
-       (let [[store id] (create-selector-or-non-selector-element
+       (let [[store id] (create-possible-selector-element
                          specialized-template
                          target adjacent position use-bigger store)]
          [id store]))

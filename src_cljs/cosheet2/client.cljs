@@ -1,22 +1,23 @@
 (ns cosheet2.client
-  (:require reagent.core 
-            reagent.dom
-            ;; Note: We seem to have to declare any closure packages used
-            ;; by our libraries in order for them to be visible to
-            ;; Chrome.
-            [cosheet2.client-utils :refer [component components
-                                           add-pending-clean]]
-            [cosheet2.dom-utils :refer [is-editable? is-immutable?
-                                        descendant-with-editable find-editable
-                                        dom-text find-ancestor-with-class
-                                        next-mutable-editable]]
-            cosheet2.hiccup-utils
-            [cosheet2.ajax :refer [timed-log request-action request-replay
-                                   ajax-request ajax-if-pending]]
-            [cosheet2.interaction-state :refer [edit-field-open-on
-                                                open-edit-field close-edit-field
-                                                selected deselect
-                                                select-and-clear-pending]]
+  (:require
+   reagent.core 
+   reagent.dom
+   ;; Note: We seem to have to declare any closure packages used by
+   ;; our libraries in order for them to be visible to Chrome.
+   [cosheet2.client-utils :refer [component components add-pending-clean]]
+   [cosheet2.dom-utils :refer [is-editable? is-immutable?
+                               descendant-with-editable find-editable
+                               dom-text find-ancestor-with-class
+                               next-mutable-editable]]
+   cosheet2.hiccup-utils
+   [cosheet2.ajax :refer [timed-log request-action request-replay
+                          ajax-request ajax-if-pending]]
+   [cosheet2.interaction-state :refer [edit-field-open-on
+                                       open-edit-field close-edit-field
+                                       open-context-menu close-context-menu
+                                       close-popups
+                                       selected deselect
+                                       select-and-clear-pending]]
             ))
 
 (reset! components {"root" (reagent.core/atom [:div {:id "root" :version 0}])})
@@ -33,6 +34,12 @@
                                 " into " (.-id target)))
           (request-action
            [:set-content (.-id target) :from old-value :to value]))))))
+
+(defn store-and-close-popups
+  "Store the edit field, and close the popups."
+  []
+  (store-edit-field)
+  (close-popups))
 
 (defn target-in-select-holder? [target]
   (find-ancestor-with-class target "select_holder" 4))
@@ -92,13 +99,13 @@
     (.log js/console (str "with class " (.-className target) "."))
     (let [in-select-holder (target-in-select-holder? effective-target)]
       (when (not in-select-holder)
-        (store-edit-field)
-        (close-edit-field))
+        (store-and-close-popups))
       (if-let [tool-target (find-ancestor-with-class effective-target "tool" 1)]
         (do (when @edit-field-open-on
               ;; A click on the tool can cause a loss of focus. Put it back.
               (.focus (js/document.getElementById "edit_input")))
             (menu-click-handler tool-target))
+        ;; TODO: !!! Check for the target being in the context menu.
         (when (not in-select-holder)
           (let [editable (find-editable effective-target event)]
             (when (not= editable @selected)
@@ -117,8 +124,7 @@
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (when (not (target-in-select-holder? effective-target))
-      (store-edit-field)
-      (close-edit-field)
+      (store-and-close-popups)
       (let [editable (find-editable effective-target event)]
         (if editable
           (do (select-and-clear-pending editable)
@@ -130,10 +136,21 @@
 
 (defn context-menu-handler
   [event]
-  (let [target (.-target event)]
-    ;; TODO: !!! Turn this on once we are bringing up a menu.
-    ;(.preventDefault event) ;; Stop the browser menu from appearing
-    ))
+  (let [target (.-target event)
+        ;; If a cell is selected, but not being edited, the select holder
+        ;; is in front of it, but empty. Move the click to the cell.
+        effective-target (if (= (.-id target) "select_holder")
+                           @selected target)]
+    (.log js/console (str "Context menu on id " (.-id target) "."))
+    (.log js/console (str "with class " (.-className target) "."))
+    (.preventDefault event) ;; Stop the browser menu from appearing
+    (let [in-select-holder (target-in-select-holder? effective-target)]
+      (when (not in-select-holder)
+        (store-and-close-popups))
+      (if-let [editable (find-editable effective-target event)]
+        (do (select-and-clear-pending editable)
+            (open-context-menu editable))
+        (deselect)))))
 
 (defn keydown-handler
   [event]
@@ -154,7 +171,7 @@
       (case key
         "z" (do (.preventDefault event)
                 (if @edit-field-open-on
-                  (close-edit-field)
+                  (close-popups)
                   (do (.log js/console "undo")
                       (request-action [:undo]))))
         "y" (do (.preventDefault event)
@@ -163,7 +180,7 @@
                       (request-action [:redo]))))
         "q" (do (.preventDefault event)
                 (.log js/console "quit-batch-edit")
-                (close-edit-field)
+                (close-popups)
                 (request-action [:quit-batch-edit]))
         nil))
     (when (and alt meta)
@@ -196,9 +213,8 @@
                    (not @edit-field-open-on))
           (open-edit-field @selected (str (.-charCode event)))))
       (case key
-        "Escape" (close-edit-field)
-        "Enter" (do (store-edit-field)
-                    (close-edit-field))
+        "Escape" (close-popups)
+        "Enter" (store-and-close-popups)
         "Delete" (when (and @selected
                             (not @edit-field-open-on))
                    (.log js/console (str [:delete]))
@@ -214,8 +230,7 @@
                          [:delete (.-id @selected)])))
         "Tab" (do (.preventDefault event)
                   (when @edit-field-open-on
-                    (store-edit-field)
-                    (close-edit-field))
+                    (store-and-close-popups))
                   (when-let [selection @selected]
                     (when (not (find-ancestor-with-class
                                 selection "tabs-holder"))

@@ -8,7 +8,6 @@
               process-response-for-pending take-pending-params]]
             [cosheet2.interaction-state :refer
              [close-edit-field edit-field-open-on select deselect selected
-              select-and-clear-pending
               pending-server-selection-request-id]]
             ))
 

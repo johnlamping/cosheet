@@ -989,18 +989,18 @@ body {
 
     &.active {
 	display: block;
-	position-area: span-right span-bottom;
 	position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
+	position-anchor: --selected;
     }
 }
 
-/* --- select holder --- */
 .editable.selected {
     /* So the popups can find what they are supposed to be next to. */
     anchor-name: --selected; 
 }
 
-#select_holder {
+/* --- select holder --- */
+.select_holder {
     background-color: cornsilk;
     border-radius: 5px;
     margin: 5px;
@@ -1010,7 +1010,7 @@ body {
     &.active {
 	width: max(200px, calc(anchor-size(width) * 1.5));
 	height: calc(anchor-size(height) + 15px);
-	position-anchor: --selected;
+	position-area: span-right span-bottom;
     }
 }
 
@@ -1023,6 +1023,24 @@ body {
     border-radius: 5px;
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
+
+/* context menu */
+.context_menu {
+    background-color: whitesmoke;
+    border-radius: 5px;
+    border-width: 1px;
+    margin: 0px;
+    box-shadow: 5px 5px 3px grey;
+    min-height: fit-content;
+
+    &.active {
+	width: max(200px, calc(anchor-size(width) * 1.5));
+	height: calc(anchor-size(height) + 15px);
+	position-area: right span-bottom;
+	position-anchor: --selected;
+    }
+}
+
 
 
 

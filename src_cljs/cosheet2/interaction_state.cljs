@@ -2,9 +2,10 @@
   (:require [cosheet2.dom-utils :refer [find-ancestor-with-class
                                         scroll-to-be-visible]]))
 
-;;; These are the UI operations on the edit field and on selections. We
-;;; put them in their own file so both client.cljs and ajax.cljs can
-;;; access them.
+;;; These are the UI operations on the edit field, the context menu,
+;;; and on selections. We put them in their own file so both
+;;; client.cljs and ajax.cljs can access them.
+
 
 ;;; The dom the edit field is open on.
 (def edit-field-open-on (atom nil))
@@ -32,29 +33,35 @@
       (reset! edit-field-open-on nil)
       (.remove (.-classList select-holder) "active"))))
 
+
 ;;; The dom the context menu is open on.
 (def context-menu-open-on (atom nil))
 
+(defn open-context-menu
+  [target]
+  (when (not= target @context-menu-open-on)
+    (let [context-menu (js/document.getElementById "context_menu")]
+      (.add (.-classList context-menu) "active")
+      (scroll-to-be-visible context-menu)
+      (reset! context-menu-open-on target))))
+
+(defn close-context-menu
+  "Close the context menu"
+  []
+  (when @context-menu-open-on
+    (let [context-menu (js/document.getElementById "context_menu")]
+      (reset! context-menu-open-on nil)
+      (.remove (.-classList context-menu) "active"))))
+
+(defn close-popups
+  "Close the edit field, without storing the value. And close the
+  context menu."
+  []
+  (close-edit-field)
+  (close-context-menu))
+
 ;; The currently selected dom.
 (def selected (atom nil))
-
-;; The last valid selection request id we have received from the client,
-;; if we we haven't already done it, and if the user hasn't made a
-;; different selection since we got it.
-(def pending-server-selection-request-id (atom nil))
-
-(defn set-special-class
-  "Set a specific dom to have a specified class, and record which dom it is.
-   atom-with-current is an atom that records the dom, if any, that currently
-   has the class"
-  [dom atom-with-current class]
-  (let [old-dom @atom-with-current]
-    (when (not= dom old-dom)
-      (when old-dom
-        (.remove (.-classList old-dom) class))
-      (when dom
-        (.add (.-classList dom) class))
-      (reset! atom-with-current dom))))
 
 (defn deselect []
   (let [target @selected]
@@ -70,6 +77,11 @@
     (.add (.-classList target) "selected")
     (reset! selected target)
     (scroll-to-be-visible target)))
+
+;; The last valid selection request id we have received from the client,
+;; if we we haven't already done it, and if the user hasn't made a
+;; different selection since we got it.
+(def pending-server-selection-request-id (atom nil))
 
 (defn select-and-clear-pending [target]
   (select target)

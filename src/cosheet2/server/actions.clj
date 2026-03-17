@@ -23,14 +23,15 @@
     [entity :refer [id->entity id->element make-object-list
                     elements content content->elements
                     label->element label->elements label->content
-                    name-label object? element? interned-object?
+                    name-label object? element? interned-object? label-element?
                     link-type-object? object-type-object? non-type-object?]]
     [query :refer [matching-items]]
     mutable-store-impl
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
     query-impl
-    [orderable :refer [initial split]])
+    [orderable :refer [initial split]]
+    [map-state :refer [map-state-get-current]])
    (cosheet2.server
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data
@@ -273,49 +274,47 @@
     (add-select-store-ids-request store ids session-state)))
 
 (defn do-add-row
-  [store arguments]
+  [store {:keys [row-id table-id column-ids client-id]}]
   (println "adding row")
-  (let [{:keys [row-id table-id column-ids client-id]}  arguments]
-    (when (and row-id table-id)
-      (let [table-entity (id->entity table-id store)
-            row-template (table-row-template table-entity)
-            row-parent-id (id->target store row-id)
-            [ids store] (create-possible-selector-elements
-                         row-template [row-parent-id] [row-id]
-                         :after false store)]
-        (if (and column-ids client-id)
-          ;; Select the cell in the new row that is in the same column
-          ;; as the cell that was selected.
-          (let [relative-ids (client-id->relative-ids client-id)
-                prefix-ids (truncate-at-value relative-ids row-id)
-                new-cell-client-id (relative-ids->client-id
-                                    (concat prefix-ids
-                                            [(first ids) (first column-ids)]))]
-            {:store store
-             :select new-cell-client-id})
-          store)))))
+  (when (and row-id table-id)
+    (let [table-entity (id->entity table-id store)
+          row-template (table-row-template table-entity)
+          row-parent-id (id->target store row-id)
+          [ids store] (create-possible-selector-elements
+                       row-template [row-parent-id] [row-id]
+                       :after false store)]
+      (if (and column-ids client-id)
+        ;; Select the cell in the new row that is in the same column
+        ;; as the cell that was selected.
+        (let [relative-ids (client-id->relative-ids client-id)
+              prefix-ids (truncate-at-value relative-ids row-id)
+              new-cell-client-id (relative-ids->client-id
+                                  (concat prefix-ids
+                                          [(first ids) (first column-ids)]))]
+          {:store store
+           :select new-cell-client-id})
+        store))))
 
 (defn do-add-column
-  [store arguments]
+  [store {:keys [column-ids table-id row-id client-id]}]
   (println "adding column")
-  (let [{:keys [column-ids table-id row-id client-id]}  arguments]
-    (when (and column-ids table-id)
-      (let [column-headers-id (table-column-headers-id table-id store)
-            [ids store] (create-possible-selector-elements
-                         unspecified-column-header-template
-                         [column-headers-id] [(last column-ids)]
-                         :after false store)]
-        (if (and row-id client-id)
-          ;; Select the cell in the new column that is in the same row
-          ;; as the cell that was selected.
-          (let [relative-ids (client-id->relative-ids client-id)
-                prefix-ids (truncate-at-value relative-ids row-id)
-                new-cell-client-id (relative-ids->client-id
-                                    (concat prefix-ids
-                                            [row-id (first ids)]))]
-            {:store store
-             :select new-cell-client-id})
-          store)))))
+  (when (and column-ids table-id)
+    (let [column-headers-id (table-column-headers-id table-id store)
+          [ids store] (create-possible-selector-elements
+                       unspecified-column-header-template
+                       [column-headers-id] [(last column-ids)]
+                       :after false store)]
+      (if (and row-id client-id)
+        ;; Select the cell in the new column that is in the same row
+        ;; as the cell that was selected.
+        (let [relative-ids (client-id->relative-ids client-id)
+              prefix-ids (truncate-at-value relative-ids row-id)
+              new-cell-client-id (relative-ids->client-id
+                                  (concat prefix-ids
+                                          [row-id (first ids)]))]
+          {:store store
+           :select new-cell-client-id})
+        store))))
 
 (defn do-delete 
   [store {:keys [subject-ids template]}]
@@ -329,51 +328,41 @@
             store subject-ids)))
 
 (defn do-delete-row
-  [store arguments]
+  [store {:keys [row-id]}]
   (println "deleting row")
-  (let [{:keys [row-id]}  arguments]
-    (when row-id
-      (remove-entity-by-id store row-id))))
+  (when row-id
+    (remove-entity-by-id store row-id)))
 
 (defn do-delete-column
-  [store arguments]
+  [store {:keys [column-ids table-id]}]
   (println "deleting row")
-  (let [{:keys [column-ids table-id]}  arguments]
-    (when (and column-ids table-id)
-      (let [column-headers-id (table-column-headers-id table-id store)
-            column-headers-entity (id->entity column-headers-id store)
-            columns (semantic-elements column-headers-entity)]
-        (when (and (> (count columns) 1) ; Don't remove the last column.
-                   (= (count column-ids) 1)) ; Don't remove multiple columns.
-          (remove-entity-by-id store (first column-ids)))))))
+  (when (and column-ids table-id)
+    (let [column-headers-id (table-column-headers-id table-id store)
+          column-headers-entity (id->entity column-headers-id store)
+          columns (semantic-elements column-headers-entity)]
+      (when (and (> (count columns) 1) ; Don't remove the last column.
+                 (= (count column-ids) 1)) ; Don't remove multiple columns.
+        (remove-entity-by-id store (first column-ids))))))
 
-(comment
-  (defn pop-content-from-key
-    "If the last item of the key is :content, remove it."
-    [key]
-    (if (= (last key) :content) (pop key) key))
-
-  ;; NOTE: subject-referent in here is obsolete.
-  (defn do-expand
-    [store arguments]
-    (let [{:keys [referent session-state]} arguments]
-      (when (referent? referent)
-        ;; If the target is a single item with no elements, switch the target
-        ;; to its target.
-        (let [items (instantiate-referent referent store)
-              item (first items)
-              [_ subject-ref] (referent->exemplar-and-subject referent)
-              subject-ref (or subject-ref
-                              (when-let [subject (subject item)]
-                                (item-referent subject)))
-              referent (if (and (every? #(= (content %) :tag)
-                                        (semantic-elements-R item))
-                                subject-ref)
-                         subject-ref
-                         referent)]
-          {:store store
-           :open (cond-> (str (:url-path session-state)
-                              "?referent=" (referent->string referent)))})))))
+(defn do-expand
+    [store {:keys [subject-ids session-state]}]
+  (when-let [subject-id (first subject-ids)]
+    (let [root-id (map-state-get-current (:client-state session-state) :root-id)
+          target (id->target store subject-id)
+          ;; In two cases we want to show the target of the
+          ;; subject, rather than the subject, itself:
+          ;;    * The subject is an element with nothing but a label.
+          ;;    * The subject is the current root.
+          show-target (when target
+                        (or (let [entity (id->entity subject-id store)
+                                  displayed-elements (semantic-elements entity)]
+                              (and (<= (count displayed-elements) 1)
+                                   (every? label-element?
+                                           displayed-elements)))
+                            (= subject-id root-id)))
+          id-to-open (if show-target target subject-id)]
+      {:store store
+       :open (str "?root=" (id->string id-to-open))})))
 
 (defn matching-element-ids
   "Given an id and an id that is a template for one of its elements,
@@ -480,7 +469,7 @@
     :delete-row do-delete-row
     :delete-column do-delete-column
     :set-content do-set-content
-    ; :expand do-expand
+    :expand do-expand
     :batch-edit do-batch-edit}
    action))
 

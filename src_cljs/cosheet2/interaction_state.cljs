@@ -13,8 +13,8 @@
 (defn open-edit-field
   [target initial-content]
   (when (not= target @edit-field-open-on)
-    (let [select-holder (js/document.getElementById "select_holder")
-          edit-input (js/document.getElementById "edit_input")]
+    (let [select-holder (js/document.getElementById "select-holder")
+          edit-input (js/document.getElementById "edit-input")]
       (set! (.-value edit-input) (if (= (first initial-content) \u00A0)
                                    "" ;; System provided name; clear it
                                       ;; so options appear.
@@ -29,7 +29,7 @@
   "Close the edit field, without storing the value."
   []
   (when @edit-field-open-on
-    (let [select-holder (js/document.getElementById "select_holder")]
+    (let [select-holder (js/document.getElementById "select-holder")]
       (reset! edit-field-open-on nil)
       (.remove (.-classList select-holder) "active"))))
 
@@ -40,7 +40,7 @@
 (defn open-context-menu
   [target]
   (when (not= target @context-menu-open-on)
-    (let [context-menu (js/document.getElementById "context_menu")]
+    (let [context-menu (js/document.getElementById "context-menu")]
       (.add (.-classList context-menu) "active")
       (scroll-to-be-visible context-menu)
       (reset! context-menu-open-on target))))
@@ -49,7 +49,7 @@
   "Close the context menu"
   []
   (when @context-menu-open-on
-    (let [context-menu (js/document.getElementById "context_menu")]
+    (let [context-menu (js/document.getElementById "context-menu")]
       (reset! context-menu-open-on nil)
       (.remove (.-classList context-menu) "active"))))
 

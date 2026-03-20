@@ -211,11 +211,11 @@
 
 (defn context-menu
   []
-  [:div#context_menu.popup.context_menu
-   [:div#add-twin-menu "add twin (same labels)"]
-   [:div#add-sibling-menu "add sibling (new labels)"]
-   [:div#add-element-menu "add child"]
-   [:div#add-label-menu "add label"]])
+  [:div#context-menu.popup.context_menu
+   [:div#add-twin-menu.menu-item "add twin (same labels)"]
+   [:div#add-sibling-menu.menu-item "add sibling (new labels)"]
+   [:div#add-element-menu.menu-item "add child"]
+   [:div#add-label-menu.menu-item "add label"]])
 
 (defn initial-page [file-path servlet-path root-id-string]
   (println (now-string) "initial page"
@@ -233,8 +233,8 @@
          [:body
           (toolbar servlet-path)
           [:div#app "root"] ;; Client will create a component with id "root".
-          [:div#select_holder.popup.select_holder
-           [:textarea#edit_input {"type" "text"}]]
+          [:div#select-holder.popup.select_holder
+           [:textarea#edit-input.edit_input {"type" "text"}]]
           (context-menu)
           [:script "cosheet2.client.run();"]]))
      (html5

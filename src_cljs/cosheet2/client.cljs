@@ -26,7 +26,7 @@
   []
   (let [target @edit-field-open-on]
     (when target
-      (let [edit-input (js/document.getElementById "edit_input")
+      (let [edit-input (js/document.getElementById "edit-input")
             value (.-value edit-input)
             old-value (dom-text target)]
         (when (not= value old-value)
@@ -54,7 +54,7 @@
    js/window "" "CosheetExpandPopup",
    (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
-(defn menu-click-handler
+(defn command-click-handler
   [logical-target]
   (let [id (.-id logical-target)
         command-name (if (or (clojure.string.ends-with? id "-tool")
@@ -93,33 +93,43 @@
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
         ;; is in front of it, but empty. Move the click to the cell.
-        effective-target (if (= (.-id target) "select_holder")
+        effective-target (if (= (.-id target) "select-holder")
                            @selected target)]
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
-    (let [in-select-holder (target-in-select-holder? effective-target)]
-      (when (not in-select-holder)
-        (store-and-close-popups))
-      (if-let [tool-target (find-ancestor-with-class effective-target "tool" 1)]
-        (do (when @edit-field-open-on
-              ;; A click on the tool can cause a loss of focus. Put it back.
-              (.focus (js/document.getElementById "edit_input")))
-            (menu-click-handler tool-target))
-        ;; TODO: !!! Check for the target being in the context menu.
-        (when (not in-select-holder)
-          (let [editable (find-editable effective-target event)]
-            (when (not= editable @selected)
-              (if editable
-                (select-and-clear-pending editable)
-                (deselect))
-              (request-action [:selected (and editable (.-id editable))]))))))))
+    (when (not (target-in-select-holder? effective-target))
+      (let [editable (find-editable effective-target event)]
+        (when (not= editable @selected)
+          (if editable
+            (select-and-clear-pending editable)
+            (deselect))
+          (request-action [:selected (and editable (.-id editable))])))
+      (store-and-close-popups))))
+
+(defn toolbar-click-handler
+  [event]
+  (let [target (.-target event)] 
+    (.log js/console (str "Command click on id " (.-id target) "."))
+    (when-let [command-target
+               ;; Many tool clicks are on images. We promote them to the tool.
+               (find-ancestor-with-class target "tool" 1)]
+      (store-and-close-popups)
+      (command-click-handler command-target))))
+
+(defn context-menu-click-handler
+  [event]
+  (let [target (.-target event)]
+    (.log js/console (str "Menu click on id " (.-id target) "."))
+    (command-click-handler target)
+    ;; We don't close the menu until we've done the command.
+    (store-and-close-popups)))
 
 (defn double-click-handler
   [event]
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
         ;; is in front of it, but empty. Move the click to the cell.
-        effective-target (if (= (.-id target) "select_holder")
+        effective-target (if (= (.-id target) "select-holder")
                            @selected target)]
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
@@ -134,23 +144,22 @@
         (when (not= editable @selected)
           (request-action [:selected (and editable (.-id editable))]))))))
 
-(defn context-menu-handler
+(defn contextmenu-handler
   [event]
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
         ;; is in front of it, but empty. Move the click to the cell.
-        effective-target (if (= (.-id target) "select_holder")
+        effective-target (if (= (.-id target) "select-holder")
                            @selected target)]
     (.log js/console (str "Context menu on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.preventDefault event) ;; Stop the browser menu from appearing
-    (let [in-select-holder (target-in-select-holder? effective-target)]
-      (when (not in-select-holder)
-        (store-and-close-popups))
-      (if-let [editable (find-editable effective-target event)]
-        (do (select-and-clear-pending editable)
-            (open-context-menu editable))
-        (deselect)))))
+    (when (not (target-in-select-holder? effective-target))
+      (store-and-close-popups))
+    (if-let [editable (find-editable effective-target event)]
+      (do (select-and-clear-pending editable)
+          (open-context-menu editable))
+      (deselect))))
 
 (defn keydown-handler
   [event]
@@ -247,13 +256,14 @@
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
         toolbar (js/document.getElementById "toolbar")
-        edit-input (js/document.getElementById "edit_input")]
+        context-menu (js/document.getElementById "context-menu")]
     (reagent.dom/render [component {:id "root"}] app)
     (.addEventListener app "click" click-handler)
     (.addEventListener app "dblclick" double-click-handler)
-    (.addEventListener app "contextmenu" context-menu-handler)
+    (.addEventListener app "contextmenu" contextmenu-handler)
     (.addEventListener js/document "keydown" keydown-handler)
-    (.addEventListener toolbar "click" click-handler)
+    (.addEventListener toolbar "click" toolbar-click-handler)
+    (.addEventListener context-menu "click" context-menu-click-handler)
     (.addEventListener js/window "unload" unload-handler))
   (timed-log "page loaded.")
   (add-pending-clean js/window.location.href)

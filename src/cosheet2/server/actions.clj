@@ -41,6 +41,7 @@
                          ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
                          exemplar-to-fixed-term remove-semantic-elements
+                         label-object-template
                          table-row-template table-column-headers-id
                          unspecified-column-header-template
                          update-add-element-with-order-and-temporary
@@ -269,7 +270,7 @@
 (defn do-add-label
   [store {:keys [subject-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
-                     '(anything :label) subject-ids subject-ids
+                     `(~label-object-template) subject-ids subject-ids
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 

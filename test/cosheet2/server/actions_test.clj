@@ -13,7 +13,8 @@
                                         name-label link-type object-type
                                         make-object-list make-element-list
                                         uniquely-identified-object?
-                                        in-different-store]]
+                                        in-different-store
+                                        recursively-in-different-store]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
@@ -43,6 +44,7 @@
                                   semantic-elements selector?
                                   semantic-to-list object-semantic-to-list
                                   pattern-to-fixed-term
+                                  label-object-template
                                   update-add-object-with-order
                                   update-add-element-with-order-and-temporary]]
              [session-state :refer [update-add-session-temporary-element]]
@@ -410,13 +412,22 @@
                                 :session-state session-state})
         new-store (:store result)
         new-jane-age (id->entity (:item-id jane-age) new-store)
-        new-joe-age (id->entity (:item-id joe-age) new-store)]
+        new-joe-age (id->entity (:item-id joe-age) new-store)
+        generic-label (recursively-in-different-store
+                       label-object-template
+                       new-store)
+        blank-label (recursively-in-different-store
+                     (make-object-list [`("" (~name-label))
+                                        `(~link-type)])
+                     new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize '(45 ("age" :label) ("" :label)))))
+               (canonicalize `(45 ("age" :label) (~blank-label)))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize '(45 ("age" :label) (anything :label)))))
-    (let [new-joe-element (first (matching-elements "" new-joe-age))
-          new-jane-element (first (matching-elements 'anything new-jane-age))]
+               (canonicalize `(45 ("age" :label) (~generic-label)))))
+    (let [new-joe-element (first (matching-elements `(~blank-label)
+                                                    new-joe-age))
+          new-jane-element (first (matching-elements `(~generic-label)
+                                                     new-jane-age))]
       (is (check (dissoc result :store)
                  {:select-store-ids [(:item-id new-joe-element)
                                      (:item-id new-jane-element)]

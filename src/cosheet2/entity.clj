@@ -377,30 +377,18 @@
 
 (defn map-elements
   "Run the function, which must return an element, on each of the
-  elements of the entity, if any, to get new elements. Then reassemble
-  the entity from the resulting elements. Don't map the elements of
-  interned objects."
+  elements of the entity, to get new elements. Then reassemble the
+  entity from the resulting elements. Don't map the elements of an
+  interned object."
   [f entity]
   (cond (element? entity)
         (make-element-list (orientation entity)
-                             ;; This handles contents that are objects.
-                             (content entity)
-                             (map f (elements entity)))
+                           (content entity)
+                           (map f (elements entity)))
         (and (object? entity) (not (interned-object? entity)))
         (make-object-list (map f (elements entity)))
         :else
         entity))
-
-;;; TODO: Get rid of the next two if they are not used.
-
-(defn coerce-primitive-to-element
-  "If the entity is a primitive, make it into an element. This is useful
-  when iterating over elements, to make sure that everything that
-  comes back is an element."
-  [entity]
-  (if (primitive? entity)
-    `(~entity)
-    entity))
 
 (defn pre-walk-entity
   "Recursively run the function on all the elements of the entity, from

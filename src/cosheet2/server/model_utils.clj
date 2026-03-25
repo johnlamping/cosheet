@@ -251,8 +251,7 @@
     "Given an entity, alter it to work as a query that assumes everything
      it is querying over is semantic. Specifically:
     * Replace 'anything by nil.
-    * If an element is not a label, then require it not to have
-      a :label element."
+    * If an element is not a label, then require it to not match labels."
   [entity]
   (-> entity
       semantic-to-list
@@ -261,7 +260,7 @@
 (defn pattern-to-fixed-term
   "Given a pattern, alter it to work as a fixed-term. Specifically:
     * Replace 'anything by nil.
-    * If an element is not a label, require it not to have a :label element.
+    * If an element is not a label, require it not to not match labels.
     * If an entity has nil content, add a '(nil :order) element to make
       it only match user editable elements."
   [pattern]
@@ -529,9 +528,19 @@
     pattern
     (map-elements
      template-to-possible-non-selector-template
-     (if (= 'anything (content pattern))
-       (make-element-list (orientation pattern) "" (elements pattern))
-       pattern))))
+     (let [contents (content pattern)]
+       (if-let [revised-contents
+                (cond (= 'anything contents)
+                      ""
+                      (and (object? contents)
+                           (not (interned-object? contents)))
+                      (template-to-possible-non-selector-template contents)
+                      :else
+                      false)]
+         (make-element-list (orientation pattern)
+                            revised-contents
+                            (elements pattern))
+         pattern)))))
 
 (defn selector?
   "Return whether the entity is (or is part of) a selector."
@@ -581,6 +590,9 @@
   (expr-let [holder-id (tabs-holder-id-R store)]
     (ordered-ids-R (target-label->ids store holder-id :tab)
                    store)))
+
+(def label-object-template
+  (make-object-list [`(~'anything (~name-label)) `(~link-type)]))
 
 ;;; A table item has a :table element, and has the following elements
 ;;; that describe the table:

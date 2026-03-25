@@ -123,7 +123,10 @@
              (make-object-list '(2 ""))))
   (is (check (template-to-possible-non-selector-template
               (make-object-list '(2 anything  :selector)))
-             (make-object-list '(2 anything :selector)))))
+             (make-object-list '(2 anything :selector))))
+  (is (check (template-to-possible-non-selector-template
+              `(~label-object-template))
+             `(~(make-object-list [`("" (~name-label)) `(~link-type)])))))
 
 (deftest semantic-test
   (is (check (map canonicalize

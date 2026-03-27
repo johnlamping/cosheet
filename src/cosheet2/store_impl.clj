@@ -405,7 +405,7 @@
         (update-in [:marked-as-type] #(disj % old-target))
         ;; TODO: !!! Get rid of the possibility the target is nil,
         ;;       once that is forbidden.
-        (and marks-as-type target)
+        (and target marks-as-type)
         (update-in [:marked-as-type] #(conj % target))))))
 
 ;;; NOTE: The next two definitions must be kept in synch with entity/label?

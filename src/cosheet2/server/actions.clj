@@ -269,10 +269,12 @@
 
 (defn do-add-label
   [store {:keys [subject-ids session-state]}]
-  (let [[ids store] (create-possible-selector-elements
-                     `(~label-object-template) subject-ids subject-ids
-                     :before false store)]
-    (add-select-store-ids-request store ids session-state)))
+  ;; We disallow adding a label to a label.
+  (when (not-any? #(label-element? (id->entity % store)) subject-ids)
+    (let [[ids store] (create-possible-selector-elements
+                       `(~label-object-template) subject-ids subject-ids
+                       :before false store)]
+      (add-select-store-ids-request store ids session-state))))
 
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]

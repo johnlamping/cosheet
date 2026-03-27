@@ -96,20 +96,19 @@
 (def joe (id->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
-(def joe-age-tag (first (matching-elements "age" joe-age)))
+(def joe-age-label (first (matching-elements "age" joe-age)))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
 (def jane (id->entity jane-id store))
 (def jane-female (first (matching-elements "female" jane)))
 (def jane-age (first (matching-elements 45 jane)))
-(def jane-age-tag (first (matching-elements "age" jane-age)))
 
 (def session-state {:session-temporary-id temporary-id
                     :store (new-mutable-store store)
                     :client-state (new-map-state {})})
 
-;;; TODO: !!! This is the new format for table cells, where each is an object.
-;;;       The store needs to convert to this.
+;;; TODO: !!! This is the new format for table rows, where each is an object.
+;;;       Replace the previous store by this.
 ;;; TODO: !!! The labels need to be converted to label objects.
 (def new-joe-object-list
   (make-object-list
@@ -139,13 +138,12 @@
 (def new-joe (id->entity new-joe-id new-store))
 (def new-joe-age (first (matching-elements 45 new-joe)))
 (def new-joe-bogus-age (first (matching-elements 39 new-joe)))
-(def new-joe-age-tag (first (matching-elements "age" new-joe-age)))
+(def new-joe-age-label (first (matching-elements "age" new-joe-age)))
 (def new-joe-male (first (matching-elements "male" new-joe)))
 (def new-joe-married (first (matching-elements "married" new-joe)))
 (def new-jane (id->entity new-jane-id new-store))
 (def new-jane-female (first (matching-elements "female" new-jane)))
 (def new-jane-age (first (matching-elements 45 new-jane)))
-(def new-jane-age-tag (first (matching-elements "age" new-jane-age)))
 
 (def new-session-state {:session-temporary-id new-temporary-id
                         :store (new-mutable-store new-store)
@@ -405,6 +403,7 @@
                   :if-selected ["old selection"]})))))
 
 (deftest do-add-label-test
+  ;; Test for adding a label when there is more than one subject id. 
   (let [store (update-selected store temporary-id "old selection")
         result (do-add-label store
                                {:subject-ids [(:item-id joe-age)
@@ -431,7 +430,12 @@
       (is (check (dissoc result :store)
                  {:select-store-ids [(:item-id new-joe-element)
                                      (:item-id new-jane-element)]
-                  :if-selected ["old selection"]})))))
+                  :if-selected ["old selection"]}))))
+  ;; Test that adding a label to a label does nothing.
+  (let [result (do-add-label store
+                             {:subject-ids [(:item-id joe-age-label)]
+                              :session-state session-state})]
+    (is (not result))))
 
 (deftest do-delete-test
   (let [new-store (do-delete store
@@ -666,11 +670,11 @@
 
   (deftest batch-edit-select-key-test
     (is (= (batch-edit-select-key
-            [joe joe-age joe-age-tag]
+            [joe joe-age joe-age-label]
             [jane joe])
-           [:batch (:item-id joe) (:item-id joe-age-tag)]))
+           [:batch (:item-id joe) (:item-id joe-age-label)]))
     (is (= (batch-edit-select-key
-            [joe joe-age joe-age-tag]
+            [joe joe-age joe-age-label]
             [jane])
            nil)))
 

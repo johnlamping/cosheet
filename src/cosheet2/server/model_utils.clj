@@ -18,7 +18,7 @@
                     content elements orientation
                     link-type object-type name-label
                     content->elements label->elements label->element
-                    map-elements pre-walk-entity
+                    map-elements pre-walk-entity post-walk-entity
                     target-entity entity-key
                     make-element-list make-object-list
                     add-elements-to-entity
@@ -526,21 +526,18 @@
   [pattern]
   (if (some #(= (content %) :selector) (elements pattern))
     pattern
-    (map-elements
-     template-to-possible-non-selector-template
-     (let [contents (content pattern)]
-       (if-let [revised-contents
-                (cond (= 'anything contents)
-                      ""
-                      (and (object? contents)
-                           (not (interned-object? contents)))
-                      (template-to-possible-non-selector-template contents)
-                      :else
-                      false)]
-         (make-element-list (orientation pattern)
-                            revised-contents
-                            (elements pattern))
-         pattern)))))
+    (post-walk-entity
+     (fn [element]
+       (let [contents (content element)]
+         (if-let [revised-contents
+                  (cond (= 'anything contents) ""
+                        ;; Check that no sub-part is a selector.
+                        (= :selector contents) (assert false element))]
+           (make-element-list (orientation element)
+                              revised-contents
+                              (elements element))
+           element)))
+     pattern)))
 
 (defn selector?
   "Return whether the entity is (or is part of) a selector."

@@ -7,7 +7,8 @@
                                       recursively-in-different-store
                                       id->object id->entity
                                       label->elements content->elements
-                                      to-list elements]]
+                                      content elements
+                                      to-list]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      make-item-id]]
@@ -198,21 +199,29 @@
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-element
                                (starting-store "starting-tab") nil
-                               '(thing :selector
-                                       (child (1 :order)
-                                              grandchild)))
+                               `("thing" :selector
+                                         ("child" (1 :order)
+                                                  "grandchild")
+                                 (~(make-object-list [4]) "object")))
         [s non-selector-root-id] (add-element
                                   s1 nil
-                                  '(thing (child (1 :order)
-                                                 grandchild)))
+                                  `("thing" ("child" (1 :order)
+                                                      "grandchild")
+                                            (~(make-object-list [4]) "object")))
         selector-root (id->entity selector-root-id s)
-        selector-child (first (matching-elements 'child selector-root))
-        selector-grandchild (first (matching-elements 'grandchild
+        selector-child (first (matching-elements "child" selector-root))
+        selector-grandchild (first (matching-elements "grandchild"
                                                       selector-child))
+        selector-object (content (first (matching-elements
+                                         `(~(make-object-list []))
+                                         selector-root)))
         non-selector-root (id->entity non-selector-root-id s)
-        non-selector-child (first (matching-elements 'child non-selector-root))
-        non-selector-grandchild (first (matching-elements 'grandchild
+        non-selector-child (first (matching-elements "child" non-selector-root))
+        non-selector-grandchild (first (matching-elements "grandchild"
                                                           non-selector-child))
+        non-selector-object (content (first (matching-elements
+                                             `(~(make-object-list []))
+                                             non-selector-root)))
         ordered-tab-ids (ordered-tabs-ids-R s)
         cd (new-calculator-data (new-priority-task-queue 0))]
     (request ordered-tab-ids cd)
@@ -225,9 +234,11 @@
     (is (selector? selector-root))
     (is (selector? selector-child))
     (is (selector? selector-grandchild))
+    (is (selector? selector-object))
     (is (not (selector? non-selector-root)))
     (is (not (selector? non-selector-child)))
-    (is (not (selector? non-selector-grandchild)))))
+    (is (not (selector? non-selector-grandchild)))
+    (is (not (selector? non-selector-object)))))
 
 (deftest match-terms-and-targets-test
   (is (check (match-terms-and-targets [1 2 3] [2 3 4])

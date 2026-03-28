@@ -53,6 +53,7 @@
     (is (not (interned-object? item0)))
     (is (= (orientation item0)) nil)
     (is (= (target-entity item0) nil))
+    (is (= (containing-elements item0) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (elements item99) nil))
     (is (= (forward-elements item99) nil))
@@ -117,6 +118,8 @@
     (is (= (target-entity item-a-reversed) item99))
     (is (= (target-entity item-b-reversed) (id->element ida s)))
     (is (= (label->elements item99 "foo") [(id->element ida s)]))
+    (is (= (containing-elements item1) [(id->element idm s)]))
+    (is (= (containing-elements item0) []))
     ;; Check that the :label is required.
     (is (= (label->elements (id->object id99 s5) "foo") nil))
     ;; Check that we pick up relationships both forwards and backwards.
@@ -227,7 +230,10 @@
     (is (= (orientation item-a-reversed)) :target)
     (is (= (current-value (target-entity (id->element ida ms))) item99))
     (is (= (current-value (target-entity item-a-reversed)) item99))
-    (is (= (current-value (target-entity item-b-reversed)) (id->element ida ms)))
+    (is (= (current-value (target-entity item-b-reversed))
+           (id->element ida ms)))
+    (is (= (current-value (containing-elements item1)) [(id->element idm ms)]))
+    (is (= (current-value (containing-elements item0)) []))
     (is (= (primitive? item0) false))
     (is (= (current-value (label->elements item99 "foo"))
            [(id->element ida ms)]))
@@ -585,3 +591,4 @@
 (deftest make-object-list-test
   (is (= (make-object-list [1])
          [:object 1])))
+

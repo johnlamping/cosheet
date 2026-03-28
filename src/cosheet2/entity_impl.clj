@@ -43,6 +43,7 @@
   StoredEntity
 
   (target-entity [this] nil)
+  (containing-elements [this] nil)
   
   (in-different-store [this store-or-entity]
     (id->entity-m item-id
@@ -80,6 +81,11 @@
   (target-entity [this]
     (when (not (object-id? item-id))
       (endpoint->entity (id->target store item-id) store)))
+
+  (containing-elements [this]
+    (assert (object-id? item-id) this)
+    (map #(endpoint->entity % store)
+         (source->ids store item-id)))
   
   (in-different-store [this store-or-entity]
     (id->entity-m item-id
@@ -156,7 +162,13 @@
   (target-entity [this]
     (when (not (object-id? item-id))
       (expr-let [target-id (id->target store item-id)]
-          (endpoint->entity target-id store))))
+        (endpoint->entity target-id store))))
+
+  (containing-elements [this]
+    (assert (object-id? item-id) this)
+    (expr-let [link-ids (source->ids store item-id)]
+      (map #(endpoint->entity % store)
+           link-ids)))
 
   (in-different-store [this store-or-entity]
     (id->entity-m item-id 

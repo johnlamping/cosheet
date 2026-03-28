@@ -63,10 +63,13 @@
 
 ;;; Elements are normally accessed in terms of content, orientation,
 ;;; and sub-elements. But elements that are associated with stores
-;;; also support a target-entity method, which returns the entity
-;;; corresponding to their link's target. Depending on the element's
-;;; orientation, that could either be its content or the entity the
-;;; element is about.
+;;; also support two other methods. The target-entity method takes an
+;;; element and returns the entity corresponding to its
+;;; target. Depending on the element's orientation, that could either
+;;; be its content or the entity the element is about. And the
+;;; containing-elements method takes an entity and returns the
+;;; elements that have it as its their content and have orientation
+;;; :source.
 
 ;;; Since some uses of entities require creating an entity that
 ;;; doesn't exactly match any entity in the store. There is a
@@ -206,6 +209,10 @@
     its target. This is independent of the orientation of the
     entity. If the target is a link, the resulting entity will be given
     orientation :source.")
+
+  (containing-elements [this]
+    "If the entity is an object, return all the elements that contain it
+    and have orientation :source.")
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,
@@ -523,5 +530,4 @@
   [entity label]
   (expr-let [element (label->element entity label)]
     (content element)))
-
 

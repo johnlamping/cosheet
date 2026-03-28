@@ -15,7 +15,7 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? id->entity
-                    content elements orientation
+                    content elements orientation containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
                     map-elements pre-walk-entity post-walk-entity
@@ -543,8 +543,11 @@
   "Return whether the entity is (or is part of) a selector."
   [entity]
   (or (seq (content->elements entity :selector))
-      (if-let [target (target-entity entity)]
-        (selector? target))))
+      (cond (element? entity) (when-let [target (target-entity entity)]
+                                (selector? target))
+            (object? entity) (let [containing (containing-elements entity)]
+                                 (when (= (count containing) 1)
+                                   (selector? (first containing)))))))
 
 (defn create-possible-selector-element
   "Create an element, modifying the template if the target-id is not a

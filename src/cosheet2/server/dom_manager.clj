@@ -791,6 +791,11 @@
   of the components, return the client id of that component.
   Add dom-version to any components sent that don't have one yet. And
   finally, do the side-effect of updating :highest-version."
+  ;; TODO: !!! Be able to pass in a client id of interest, and if
+  ;; there are several monidored ids, return the one closest to the
+  ;; client id. The monitored ids are used to request a selection from
+  ;; the client, and we want to make the one closest to the current
+  ;; selection.
   [dom-manager monitored-ids num]
   ;; We run this function under a lock. This lets us move dom version
   ;; data between components and the dom manager without race

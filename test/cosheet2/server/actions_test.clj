@@ -761,7 +761,8 @@
                         :from "Joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
       (is (= (id->source new-store joe-id) "Joseph"))
-      (is (= for-client {:select-store-ids [joe-id]}))
+      (is (= for-client {:select-store-ids [joe-id]
+                         :if-selected [(str "root_" (:id joe-id))]}))
       ;; TODO: Once we support selected, check that undo and redo ask
       ;; for the old selection.
 

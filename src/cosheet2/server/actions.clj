@@ -145,13 +145,14 @@
       (do (println "Old source doesn't match" from (id->source store id))
           store))))
 
-(defn add-select-store-ids-request
+(defn add-select-store-ids-request-given-session-state
   "Add a :select-store-ids instruction to a response, to select an item
-  showing one of the specified ids. The ajax reply handler will
-  translate that to a :select instruction."
-  ;; TODO: If an item shows up at several places in a table, and the user
-  ;;       adds an element to it, there is no guarantee that the selected
-  ;;       element will be the one under the item view the user was editing.
+  showing one of the specified ids, provided the current selection is
+  what we have recorded in the session state. The ajax reply handler
+  will translate that to a :select instruction."
+  ;; TODO: !!! We probably don't need to add if-selected, because
+  ;; views/ajax-response defauts to using the current selection from
+  ;; the client state.
   [response ids session-state]
   (let [temporary-id (:session-temporary-id session-state)
         response (ensure-response-map response)
@@ -159,9 +160,19 @@
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
 
+(defn add-select-store-ids-request-given-client-id
+  "Add a :select-store-ids instruction to a response, to select an item
+  showing one of the specified ids, provided the current selection is
+  the client id. The ajax reply handler will translate that to
+  a :select instruction."
+  [response ids client-id]
+  (let [response (ensure-response-map response)]
+    (cond-> (assoc response :select-store-ids ids)
+      client-id (assoc :if-selected [client-id]))))
+
 (defn do-set-content
   [store {:keys [subject-ids past-subject-ids template is-object-name
-                 from to session-state]}]
+                 client-id from to]}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
@@ -229,8 +240,8 @@
               (if-let [name-element-id
                        (first (target-label->ids
                                store object-id name-label-id))]
-                (add-select-store-ids-request
-                 {:store store} [name-element-id] session-state)
+                (add-select-store-ids-request-given-client-id
+                 {:store store} [name-element-id] client-id)
                 store))))
         (let [to (parse-string-as-number (clojure.string/trim to))]
           (println "Setting" (count subject-ids) "items from" from "to"
@@ -244,7 +255,8 @@
             store subject-ids)
            ;; We might have set the source on a virtual item.
            ;; This will make sure any newly created item is selected.
-           (add-select-store-ids-request subject-ids session-state)))))))
+           (add-select-store-ids-request-given-client-id
+            subject-ids client-id)))))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template is-object-name session-state]}]
@@ -258,14 +270,16 @@
                       (map #(id->target store %) subject-ids)
                       subject-ids
                       :after true store)]
-     (add-select-store-ids-request store ids session-state))))
+      (add-select-store-ids-request-given-session-state
+       store ids session-state))))
 
 (defn do-add-element
   [store {:keys [subject-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
                      'anything subject-ids subject-ids
                      :before false store)]
-    (add-select-store-ids-request store ids session-state)))
+    (add-select-store-ids-request-given-session-state
+     store ids session-state)))
 
 (defn do-add-label
   [store {:keys [subject-ids session-state]}]
@@ -274,7 +288,8 @@
     (let [[ids store] (create-possible-selector-elements
                        `(~label-object-template) subject-ids subject-ids
                        :before false store)]
-      (add-select-store-ids-request store ids session-state))))
+      (add-select-store-ids-request-given-session-state
+       store ids session-state))))
 
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]

@@ -1,5 +1,5 @@
 (ns cosheet2.mutable-map
-  (:require [cosheet.utils :refer :all]))
+  (:require [cosheet2.utils :refer :all]))
 
 ;;; Functions that implement mutable maps.
 ;;; By hiding mutable maps behind this abstraction, we can switch the

@@ -8,7 +8,7 @@
                       valid? validity-category]]
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
-    [store :refer [update-source add-link declare-temporary-id
+    [store :refer [update-source add-link
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements orientation
                     label->elements label->content

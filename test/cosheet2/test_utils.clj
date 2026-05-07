@@ -114,7 +114,7 @@
        (if result#
          ;; A non-nil result indicates a failure, and describes it.
          (do-report {:type :fail, :message ~msg,
-                  :expected '~form, :actual result#})
+                     :expected '~form, :actual result#})
          (do-report {:type :pass, :message ~msg,
-                  :expected '~form, :actual (cons ~pred values#)}))
+                     :expected '~form, :actual (cons ~pred values#)}))
        result#)))

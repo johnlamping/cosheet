@@ -155,7 +155,7 @@
   [v ^java.io.Writer w]
   (.write w "table-cell-item-do-batch-AD"))
 
-(defn render-table-condition-DOM
+(defn render-table-condition-DOM-R
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header"
   [{:keys [relative-id] :as spec} store]
@@ -257,7 +257,7 @@
           :vertical-wrapped)
          {:class  "column-header virtual-column"})))))
 
-(defn render-table-header-DOM
+(defn render-table-header-DOM-R
   "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
@@ -281,7 +281,7 @@
 
 ;;; TODO: This isn't generating the right batch edit action data for
 ;;; labels of its items.
-(defn render-table-cell-DOM
+(defn render-table-cell-DOM-R
   [{:keys [row-id query disqualifications] :as specification} store]
   (expr-let [row-entity (id->updating-entity-R row-id store)]
     (let [matches (matching-elements query row-entity)
@@ -303,7 +303,7 @@
          entities (:template spec) false :vertical non-virtual-spec)))))
 
 (defmethod print-method
-  cosheet2.server.table_render$render_table_cell_DOM
+  cosheet2.server.table_render$render_table_cell_DOM_R
   [v ^java.io.Writer w]
   (.write w "cell-DOM"))
 
@@ -323,7 +323,7 @@
          (assoc :relative-id column-id
                 :column-ids [column-id]
                 :class "table-cell"
-                :render-dom render-table-cell-DOM
+                :render-dom render-table-cell-DOM-R
                 :get-action-data get-pass-through-action-data
                 :get-do-batch-edit-action-data
                 get-table-cell-do-batch-edit-action-data)
@@ -332,7 +332,7 @@
                              :disqualifications
                              :width]))))))
 
-(defn render-table-row-DOM
+(defn render-table-row-DOM-R
   "Generate dom for a table row.
   The specification must have column-descriptions-R"
   [{:keys [row-id column-descriptions-R] :as specification} store]
@@ -345,7 +345,7 @@
         (into [:div {}] cells)))))
 
 (defmethod print-method
-  cosheet2.server.table_render$render_table_row_DOM
+  cosheet2.server.table_render$render_table_row_DOM_R
   [v ^java.io.Writer w]
   (.write w "row-DOM"))
 
@@ -359,7 +359,7 @@
           :row-id row-id ; Action data passes this down to everything
                          ; in the row.
           :class "table-row"
-          :render-dom render-table-row-DOM
+          :render-dom render-table-row-DOM-R
           :get-action-data [get-id-action-data row-id])))
 
 (defn table-virtual-row-cell-DOM-component
@@ -373,7 +373,7 @@
     :get-action-data get-virtual-action-data
     :width width}))
 
-(defn render-table-virtual-row-DOM
+(defn render-table-virtual-row-DOM-R
   "Generate dom for a table's virtual row."
   [{:keys [column-descriptions-R]} store]
   (expr-let [column-descriptions column-descriptions-R]
@@ -383,7 +383,7 @@
       (into [:div {:class "table-row"}] cells))))
 
 (defmethod print-method
-  cosheet2.server.table_render$render_table_virtual_row_DOM
+  cosheet2.server.table_render$render_table_virtual_row_DOM_R
   [v ^java.io.Writer w]
   (.write w "virt-row-DOM"))
 
@@ -395,17 +395,17 @@
      {:relative-id :virtual-row
       :class "table-row"
       :column-descriptions-R column-descriptions-R
-      :render-dom render-table-virtual-row-DOM
+      :render-dom render-table-virtual-row-DOM-R
       :sibling true
       ;; We need the value of the row-template, even though
-      ;; render-table-virtual-row-DOM doesn't use it, because the
+      ;; render-table-virtual-row-DOM-R doesn't use it, because the
       ;; action data needs it to be in the spec.
       :template row-template
       :get-action-data [composed-get-action-data
                         [get-id-action-data adjacent-id] ; our sibling
                         get-virtual-action-data]})))
 
-(defn render-table-rows-DOM
+(defn render-table-rows-DOM-R
   [{:keys [row-ids-R row-template-R column-descriptions-R] :as specification}
    store]
   ;; We get the current values of the information that is needed for
@@ -487,7 +487,7 @@
   [[mutable-store [(:table-id spec)]]
    [{:mutable-store mutable-store} nil]])
 
-(defn render-table-DOM
+(defn render-table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
   ;; The format of the element that describes a table is given in
@@ -555,14 +555,14 @@
                [virtual-column-description]))
             condition-dom (make-component
                            {:relative-id row-condition-id
-                            :render-dom render-table-condition-DOM
+                            :render-dom render-table-condition-DOM-R
                             :get-action-data default-get-action-data
                             :get-do-batch-edit-action-data
                             get-table-condition-do-batch-edit-action-data })
             header-dom (make-component
                         {:relative-id column-headers-id
                          :hierarchy-R hierarchy-R
-                         :render-dom render-table-header-DOM
+                         :render-dom render-table-header-DOM-R
                          :get-action-data default-get-action-data})
             body-dom (make-component
                       {:relative-id :body
@@ -572,7 +572,7 @@
                        :column-descriptions-R column-descriptions-R
                        :row-template-R row-template-R
                        :row-ids-R row-ids-R
-                       :render-dom render-table-rows-DOM
+                       :render-dom render-table-rows-DOM-R
                        :get-action-data get-pass-through-action-data})]
         [:div {:class "table"}
          condition-dom

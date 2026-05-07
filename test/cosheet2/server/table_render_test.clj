@@ -69,7 +69,7 @@
 ;;; functions is reloaded.)
 
 (defn virt-DOM [] render-virtual-DOM)
-(defn cell-DOM [] render-table-cell-DOM)
+(defn cell-DOM [] render-table-cell-DOM-R)
 
 (defn default-AD [] default-get-action-data)
 (defn comp-AD [] composed-get-action-data)
@@ -253,7 +253,7 @@
                            joe-id
                            {:column-descriptions-R column-descriptions})
         joe-row (run-renderer
-                 render-table-row-DOM (second joe-row-component) store)]
+                 render-table-row-DOM-R (second joe-row-component) store)]
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
@@ -304,7 +304,7 @@
     ;; Check the top level condition
     (is (check
          (run-renderer
-          render-table-condition-DOM {:relative-id row-condition-id} store)
+          render-table-condition-DOM-R {:relative-id row-condition-id} store)
          [:div {:class "horizontal-labels-element query-condition"}
           ;; A virtual label for the condition.
           [:component {:template virtual-label-template
@@ -365,7 +365,7 @@
     ;; Check the header
     (is (check
          (run-renderer
-          render-table-header-DOM {:hierarchy-R hierarchy} store)
+          render-table-header-DOM-R {:hierarchy-R hierarchy} store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)  
@@ -570,12 +570,12 @@
                       :row-id joe-id
                       :class "table-row"
                       :column-descriptions-R column-descriptions
-                      :render-dom render-table-row-DOM
+                      :render-dom render-table-row-DOM-R
                       :get-action-data [(id-AD) joe-id]}]))
 
     ;; Check rendering the list of rows.
     (is (check
-         (run-renderer render-table-rows-DOM
+         (run-renderer render-table-rows-DOM-R
                        {:relative-id :body
                         :column-descriptions-R column-descriptions
                         :row-template-R 'foo
@@ -586,12 +586,12 @@
                        :class "table-row"
                        :row-id joe-id
                        :column-descriptions-R column-descriptions
-                       :render-dom render-table-row-DOM
+                       :render-dom render-table-row-DOM-R
                        :get-action-data [(id-AD) joe-id]}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
                        :column-descriptions-R (any)
-                       :render-dom render-table-virtual-row-DOM
+                       :render-dom render-table-virtual-row-DOM-R
                        :template 'foo
                        :sibling true
                        :get-action-data [(comp-AD)
@@ -651,7 +651,7 @@
     ;; Check a rendering cells in a row
     (is (check
          (run-renderer
-          render-table-cell-DOM (second (nth joe-row 2)) store)
+          render-table-cell-DOM-R (second (nth joe-row 2)) store)
          [:component
           {:width 0.75
            :relative-id :virtual
@@ -660,7 +660,7 @@
            :get-action-data (virt-AD)}]))
     (is (check
          (run-renderer
-          render-table-cell-DOM (second (nth joe-row 3)) store)
+          render-table-cell-DOM-R (second (nth joe-row 3)) store)
          [:div {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element virtual-wrapper"
                              " narrow")}
@@ -721,7 +721,7 @@
     ;; Check rendering the virtual row
     (is (check
          (run-renderer
-          render-table-virtual-row-DOM
+          render-table-virtual-row-DOM-R
           {:column-descriptions-R column-descriptions}
           store)
          [:div {:class "table-row"}
@@ -737,12 +737,12 @@
     ;; Check rendering the overall table, given the necessary ids.
     (is (check
           (run-renderer
-           render-table-DOM
+           render-table-DOM-R
            {:relative-id table-id :table-id table-id}
            store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
-                        :render-dom render-table-condition-DOM
+                        :render-dom render-table-condition-DOM-R
                         :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
                         get-table-condition-do-batch-edit-action-data}]
@@ -755,7 +755,7 @@
                 :properties {[:source single-label-object {}] 1}
                 :cumulative-properties {[:source single-label-object {}] 1}}
                (any) (any) (any) (any)]
-              :render-dom render-table-header-DOM
+              :render-dom render-table-header-DOM-R
               :get-action-data (default-AD)}]
             [:component
              {:relative-id :body
@@ -764,13 +764,13 @@
               :row-template-R `(~'anything (~'anything (~age-label-object))
                                 :top-level)
               :row-ids-R [(any) (any)]
-              :render-dom render-table-rows-DOM
+              :render-dom render-table-rows-DOM-R
               :get-action-data (pass-AD)}]]]))
 
     ;; Check getting the subsidiary ids.
     (is (check
          (run-renderer
-          render-table-DOM
+          render-table-DOM-R
           {:relative-id joe-id :table-id joe-id}
           store)
          [:div {}]))))

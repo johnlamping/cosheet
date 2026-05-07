@@ -16,7 +16,7 @@
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]]
-             [table-render :refer [render-table-DOM get-table-rendering-data]]
+             [table-render :refer [render-table-DOM-R get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
                                         get-batch-edit-rendering-data]]
@@ -452,7 +452,7 @@
                   (make-component
                    {:relative-id (:item-id topic)
                     :table-id (:item-id topic)
-                    :render-dom render-table-DOM
+                    :render-dom render-table-DOM-R
                     :get-action-data default-get-action-data})])
                ;; No tab is selected. Show just the item.
                (make-component

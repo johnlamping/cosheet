@@ -14,7 +14,7 @@
             (cosheet2.server
              [render :refer :all]
              [tabs-render :refer [render-tabs-DOM]]
-             [table-render :refer [render-table-DOM get-table-rendering-data]]
+             [table-render :refer [render-table-DOM-R get-table-rendering-data]]
              [action-data :refer [default-get-action-data
                                   get-id-action-data]]
              [model-utils :refer [starting-store]]
@@ -57,5 +57,5 @@
 			 :get-action-data [get-id-action-data (any)]}]
 	   [:component {:relative-id (any)
                         :table-id (any)
-			:render-dom render-table-DOM
+			:render-dom render-table-DOM-R
                         :get-action-data default-get-action-data}]]]))))

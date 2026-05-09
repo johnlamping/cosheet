@@ -1,7 +1,19 @@
+:root {
+    --border-color: hsl(0, 0%, 80%);           /* default border/shadow gray */
+    --border-color-dark: hsl(0, 0%, 75%);      /* stronger border (toolbar, tools, batch) */
+    --bg-subtle: hsl(0, 0%, 95%);              /* empty cells, virtual tabs, tool buttons */
+    --bg-toolbar: hsl(0, 0%, 97%);             /* toolbar and hovered-tool background */
+    --tooltip-bg: hsl(0, 0%, 40%);             /* tooltip background */
+    --selection-color: hsla(220, 100%, 55%, 1); /* selection highlight */
+    --bw: 2px;                                 /* standard border width */
+    --nbw: -2px;                               /* border-width margin compensation */
+    --radius: 7px;                             /* standard corner radius */
+}
+
 * {
     border-style: solid;
     border-width: 0px;
-    border-color: hsl(0, 0%, 80%);
+    border-color: var(--border-color);
     box-sizing: border-box;
     background-color: transparent;
 }
@@ -43,7 +55,7 @@ body {
 
 /* need to override box shadow for selectors */
 .selected.selected.selected.selected {
-    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    box-shadow: inset 0 0 5px 3px var(--selection-color);
     border-radius: 5px;
 }
 
@@ -54,8 +66,8 @@ body {
    Usually, the border is set by the containing DOM element, but sometimes
    it is set explicitly. */
 .bordered {
-    border-width: 2px;
-    margin: 0px -2px -2px 0px;
+    border-width: var(--bw);
+    margin: 0px var(--nbw) var(--nbw) 0px;
 }
 
 /* --- Generic indentation --- */
@@ -110,7 +122,7 @@ body {
 
 /* grayish indicators of places where there is no current content */
 .editable:not(.content-text) {
-    background-color: hsl(0, 0%, 95%);
+    background-color: var(--bg-subtle);
 }
 
 .vertical-stack > .item {
@@ -210,8 +222,8 @@ body {
     flex-direction: column;
     justify-content: flex-end;
     text-align: center;
-    border-top-width: 2px;
-    box-shadow: 0px 2px hsl(0, 0%, 80%);
+    border-top-width: var(--bw);
+    box-shadow: 0px 2px var(--border-color);
     margin-left: 12px;
     margin-right: 12px;
     min-width: 20px;
@@ -226,8 +238,8 @@ body {
     background-color: white;
     z-index: -1;
     border-style: solid;
-    border-color: hsl(0, 0%, 80%);
-    box-shadow: inset 0px -1px 0px 0px hsl(0, 0%, 80%);
+    border-color: var(--border-color);
+    box-shadow: inset 0px -1px 0px 0px var(--border-color);
     display: block;
     content:" ";
     top: -2px;
@@ -236,15 +248,15 @@ body {
 }
 
 .tab::before {
-    border-width: 2px 0px 1px 2px;
-    border-top-left-radius: 7px;
+    border-width: var(--bw) 0px 1px var(--bw);
+    border-top-left-radius: var(--radius);
     left: -8px;
     transform:skewX(-15deg);
 }
 
 .tab::after {
-    border-width: 2px 2px 1px 0px;
-    border-top-right-radius: 7px;
+    border-width: var(--bw) var(--bw) 1px 0px;
+    border-top-right-radius: var(--radius);
     right: -8px;
     transform:skewX(15deg);
 }
@@ -260,7 +272,7 @@ body {
 }
 
 .tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after {
-     background-color: hsl(0, 0%, 95%);
+     background-color: var(--bg-subtle);
 }
 
 .tab.virtualTab {
@@ -277,7 +289,7 @@ body {
 }
 
 .tab.chosen {
-    box-shadow: inset 0px 2px 2px hsl(0, 0%, 80%),
+    box-shadow: inset 0px 2px 2px var(--border-color),
                 0px 2px hsl(0, 0%, 100%);
     border-bottom: 0px;
 }
@@ -290,26 +302,26 @@ body {
 }
 
 .tab.chosen.selected.selected.selected.selected {
-    box-shadow: inset 0px 2px 2px hsl(0, 0%, 80%),
+    box-shadow: inset 0px 2px 2px var(--border-color),
     0px 2px hsl(0, 0%, 100%),
-    inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    inset 0 0 5px 3px var(--selection-color);
 }
 
  /* Put the selected box shadow on the select holder, because the :left and
     :right of the tab can overlap its contents. */
 .tab.chosen > .select_holder {
-    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    box-shadow: inset 0 0 5px 3px var(--selection-color);
 }
 
 .tab.chosen::before {
     box-shadow: 2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset 2px 2px 2px hsl(0, 0%, 80%);
+                inset 2px 2px 2px var(--border-color);
     border-bottom: 0px;
 }
 
 .tab.chosen::after {
     box-shadow: -2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset -2px 2px 2px hsl(0, 0%, 80%);
+                inset -2px 2px 2px var(--border-color);
     border-bottom: 0px;
 }
 
@@ -325,10 +337,10 @@ body {
     flex-direction: column;
     align-items: flex-start;
     margin-left: 3px;
-    background-color: hsl(0, 0%, 95%);
-    border-width: 2px;
-    border-radius: 7px;
-    border-color: hsl(0, 0%, 75%);
+    background-color: var(--bg-subtle);
+    border-width: var(--bw);
+    border-radius: var(--radius);
+    border-color: var(--border-color-dark);
 }
 
 .exit-batch {
@@ -363,14 +375,14 @@ body {
 }
 
 .batch-stack {
-    border-width: 2px;
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
+    border-width: var(--bw);
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
 }
 
 .batch-stack > :first-child {
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -389,8 +401,8 @@ body {
 /* --- named objects --- */
 
 .named-object {
-    border-radius: 7px;
-    border-width: 2px;
+    border-radius: var(--radius);
+    border-width: var(--bw);
 }
 
 /* --- names --- */
@@ -432,14 +444,14 @@ body {
 }
 
 .horizontal-labels-element.narrow > * {
-    border-width: 2px;
-    margin-right: -2px;
-    margin-bottom: -2px;
+    border-width: var(--bw);
+    margin-right: var(--nbw);
+    margin-bottom: var(--nbw);
 }
 
 .horizontal-labels-element.narrow > :first-child {
-    border-bottom-left-radius: 7px;
-    border-top-left-radius: 7px;
+    border-bottom-left-radius: var(--radius);
+    border-top-left-radius: var(--radius);
     width: 12px;
 }
 
@@ -448,12 +460,12 @@ body {
 }
 
 .wrapped-element:not(.merge-with-parent) {
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-    border-bottom-left-radius: 7px;
-    border-width: 2px;
-    margin-right: -2px;
-    margin-bottom: -2px;
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-width: var(--bw);
+    margin-right: var(--nbw);
+    margin-bottom: var(--nbw);
     background-image:
     linear-gradient(to left,
                     hsla(0, 0%, 100%, .7),
@@ -474,11 +486,11 @@ body {
 }
 
 .vertical-stack.has-border > .wrapped-element {
-    margin-left: -2px;
+    margin-left: var(--nbw);
 }
 
 .vertical-stack.has-border > .wrapped-element:first-child {
-    margin-top: -2px;
+    margin-top: var(--nbw);
 }
 
 .wrapped-element > .indent-wrapper {
@@ -486,9 +498,9 @@ body {
 }
 
 .indent-wrapper > * {
-    border-width: 2px;
-    margin-bottom: -2px;
-    margin-right: -2px;
+    border-width: var(--bw);
+    margin-bottom: var(--nbw);
+    margin-right: var(--nbw);
 }
 
 .vertical-stack > .wrapped-element:last-child {
@@ -504,12 +516,12 @@ body {
 
 .horizontal-labels-element.wide > :last-child {
     width: 70%;
-    border-width: 2px;
-    margin: 0px 0px -2px 0px;
+    border-width: var(--bw);
+    margin: 0px 0px var(--nbw) 0px;
 }
 
 .horizontal-value-last {
-    border-bottom-width: 2px;
+    border-bottom-width: var(--bw);
     display: flex;
     flex-direction: row;
 }
@@ -525,11 +537,11 @@ body {
 }
 
 .vertical-stack.has-border > .horizontal-labels-element {
-    margin-left: -2px;
+    margin-left: var(--nbw);
 }
 
 .vertical-stack.has-border > .horizontal-labels-element:first-child {
-    margin-top: -2px;
+    margin-top: var(--nbw);
 }
 
 
@@ -537,7 +549,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: row;
-    border-left-width: 2px;
+    border-left-width: var(--bw);
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -568,11 +580,11 @@ body {
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));
     text-align: right;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    margin-bottom: -2px;
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
+    border-top-width: var(--bw);
+    border-bottom-width: var(--bw);
+    margin-bottom: var(--nbw);
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
 }
 
 .horizontal-header.top-border, .query-holder{
@@ -585,8 +597,8 @@ body {
                     hsla(0, 0%, 100%, .7),
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));
-    border-top-width: 2px;
-    border-top-left-radius: 7px;
+    border-top-width: var(--bw);
+    border-top-left-radius: var(--radius);
 }
 
 .horizontal-header.bottom-border {
@@ -599,9 +611,9 @@ body {
                     hsla(0, 0%, 100%, .7),
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));
-    border-bottom-width: 2px;
-    margin-bottom: -2px;
-    border-bottom-left-radius: 7px;
+    border-bottom-width: var(--bw);
+    margin-bottom: var(--nbw);
+    border-bottom-left-radius: var(--radius);
 }
 
 .horizontal-header.bottom-border.indent > .horizontal-header {
@@ -611,9 +623,9 @@ body {
 /* Label pairs, horizontal format */
 
 .vertical-labels-element {
-    border-width: 2px;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
+    border-width: var(--bw);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
 }
 
 .vertical-labels-element > * {
@@ -621,13 +633,13 @@ body {
 }
 
 .vertical-labels-element > :first-child {
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-    border-bottom-width: 2px;
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-width: var(--bw);
 }
 
 .horizontal-labels-element > .elements-wrapper {
-    border-left-width: 2px;
+    border-left-width: var(--bw);
     flex-grow: 1;
     display: flex;
 }
@@ -650,8 +662,8 @@ body {
 .query-condition {
     flex: none;
     display: flex;
-    border-width: 2px;
-    border-radius: 7px;
+    border-width: var(--bw);
+    border-radius: var(--radius);
     min-width: 300px;
     flex: 1 0 auto;
     position: relative;
@@ -699,7 +711,7 @@ body {
 /* Merge the border of the wrapped element with the query-holder border. */
 .wrapped-element.query-condition {
     margin-left: -5px;
-    margin-top: -2px;
+    margin-top: var(--nbw);
 }
 
 .table, .batch-edit {
@@ -736,7 +748,7 @@ body {
 }
 
 .table-rows > :first-child {
-    margin-top: -2px;
+    margin-top: var(--nbw);
 }
 
 .column-header-sequence, .horizontal-label-sequence {
@@ -746,7 +758,7 @@ body {
 }
 
 .table-main > .column-header-sequence {
-    border-bottom-width: 2px;
+    border-bottom-width: var(--bw);
 }
 
 .column-header-sequence > *, .horizontal-label-sequence > * {
@@ -767,7 +779,7 @@ body {
     flex-direction: column;
     justify-content: flex-end;
     text-align: center;
-    margin-right: -2px;
+    margin-right: var(--nbw);
 }
 
 .column-header.leaf {
@@ -775,11 +787,11 @@ body {
 }
 
 .column-header:not(.merge-with-parent) {
-    border-width: 2px;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-    margin-right: -2px;
-    margin-bottom: -2px;
+    border-width: var(--bw);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    margin-right: var(--nbw);
+    margin-bottom: var(--nbw);
     min-height: 25px;
 }
 
@@ -788,8 +800,8 @@ body {
 }
 
 .column-header.merge-with-parent {
-    padding: 2px; /* positions inside stuff as if there were a border */
-    margin: 0px -2px -2px 0px;
+    padding: var(--bw); /* positions inside stuff as if there were a border */
+    margin: 0px var(--nbw) var(--nbw) 0px;
     min-height: 25px;
 }
 
@@ -810,12 +822,12 @@ body {
 .column-header > .column-header,
 .column-header > .wrapped-element,
 .column-header > .column-header-sequence > :first-child {
-    margin-left: -2px;
+    margin-left: var(--nbw);
 }
 
 .column-header > .wrapped-element,
 .column-header > .column-header:first-child {
-    margin-top: -2px;
+    margin-top: var(--nbw);
 }
 
 .column-header:not(.merge-with-parent).label, .query-holder.label,
@@ -869,8 +881,8 @@ body {
     flex: none;
     display: flex;
     flex-direction: column;
-    border-width: 2px;
-    margin: 0px -2px -2px 0px;
+    border-width: var(--bw);
+    margin: 0px var(--nbw) var(--nbw) 0px;
 }
 
 .wrapped-element.table-cell > .indent-wrapper {
@@ -885,13 +897,13 @@ body {
 
 .toolbar {
     flex: none;
-    background-color: hsl(0, 0%, 97%);
+    background-color: var(--bg-toolbar);
     width: 100%;
     padding-top: 6px; /* Make up for the -2px on body */
     padding-bottom: 4px;
     padding-left: 10px;
     margin-bottom: 5px;
-    border-color: hsl(0, 0%, 75%);
+    border-color: var(--border-color-dark);
     border-width: 0px 0px 1px 0px;
 }
 
@@ -910,10 +922,10 @@ body {
     font-size: 20px;
     text-align: center;
     vertical-align: top;
-    background-color: hsl(0, 0%, 95%);
+    background-color: var(--bg-subtle);
     border-width: 1px;
     border-radius: 2px;
-    border-color: hsl(0, 0%, 75%);
+    border-color: var(--border-color-dark);
     margin: 0px 7px 0px 7px;
     display: inline-block;
 }
@@ -925,7 +937,7 @@ body {
 
 .tooltip {
     visibility: hidden;
-    background-color: hsl(0, 0%, 40%);
+    background-color: var(--tooltip-bg);
     font-size: 100%;
     box-sizing: content-box;
     width: max-content;
@@ -949,7 +961,7 @@ body {
     content: " ";
     border-width: 5px;
     border-style: solid;
-    border-color: transparent transparent hsl(0, 0%, 40%) transparent;
+    border-color: transparent transparent var(--tooltip-bg) transparent;
     position: absolute;
     top: -10px; /* Above the top of the tooltip */
     left: 50%;
@@ -957,9 +969,9 @@ body {
 }
 
 .tool:hover{
-    background-color: hsl(0, 0%, 97%);
+    background-color: var(--bg-toolbar);
     border-color: hsl(0, 0%, 60%);
-    border-width: 2px;
+    border-width: var(--bw);
     border-radius: 3px;
 }
 
@@ -1014,7 +1026,7 @@ body {
     font-size: 100%;
     resize: none;
     border-radius: 5px;
-    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    box-shadow: inset 0 0 5px 3px var(--selection-color);
 }
 
 /* context menu */

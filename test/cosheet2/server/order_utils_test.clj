@@ -7,7 +7,7 @@
                                         label->elements elements
                                         make-element-list make-object-list]]
              [orderable :as orderable]
-             [reporter :refer [reporter-value new-reporter invalid
+             [reporter :refer [reporter-value make-reporter invalid
                                set-value!]]
              [reporter-macros :refer [app-R]]
              [task-queue :refer [new-priority-task-queue]]
@@ -114,7 +114,7 @@
         joe-ordered-semantic-element-ids (map :item-id
                                               joe-ordered-semantic-elements)
         mutable-store (new-mutable-store store)
-        elements-R (new-reporter :value joe-semantic-element-ids)
+        elements-R (make-reporter :value joe-semantic-element-ids)
         ordered-R (ordered-ids-R elements-R mutable-store)
         copy-of-ordered-R (app-R identity ordered-R)
         cd (new-calculator-data (new-priority-task-queue 0))]

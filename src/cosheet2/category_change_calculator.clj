@@ -1,7 +1,7 @@
 (ns cosheet2.category-change-calculator
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call! remove-attendee!
-                                        validity-category new-reporter
+                                        validity-category make-reporter
                                         universal-category reporter?]]
                       [calculator :refer [modify-and-act!
                                           copy-value-callback
@@ -69,7 +69,7 @@
   (if (or (nil? categories)
           (= categories [universal-category]))
     reporter ; The categories don't make a difference.
-    (new-reporter
+    (make-reporter
      :value-source reporter
      :categories categories
      :calculator category-change-calculator)))

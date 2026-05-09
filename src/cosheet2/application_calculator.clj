@@ -1,5 +1,5 @@
 (ns cosheet2.application-calculator
-  (:require (cosheet2 [reporter :refer [new-reporter
+  (:require (cosheet2 [reporter :refer [make-reporter
                                         reporter? valid? data-valid? invalid
                                         reporter-data data-value
                                         set-attendee! set-attendee-and-call!
@@ -474,7 +474,7 @@
     ;; if the computation returns an application reporter, all calls
     ;; will return the identical reporter, from the cache, so that
     ;; reporter's computation won't be duplicated either.
-    (apply new-reporter
+    (apply make-reporter
            :application application
            :trace trace
            :calculator calculator

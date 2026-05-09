@@ -4,7 +4,7 @@
             (cosheet2 [mutable-map :as mm]
                       [task-queue :refer [current-tasks
                                           new-priority-task-queue]]
-                      [reporter :refer [invalid new-reporter
+                      [reporter :refer [invalid make-reporter
                                         reporter-data reporter-value
                                         reporter-atom set-value! set-attendee!
                                         set-calculator-data-if-needed!
@@ -22,11 +22,11 @@
 
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r1 (new-reporter :value :v)
-        r2 (new-reporter :value-source r1
+        r1 (make-reporter :value :v)
+        r2 (make-reporter :value-source r1
                          :value-source-priority-delta 1
                          :calculator-data cd)
-        r3 (new-reporter :former-application-value r1
+        r3 (make-reporter :former-application-value r1
                          :value-source-priority-delta 1
                          :calculator-data cd)]
     (register-copy-value r2 r1)
@@ -52,16 +52,16 @@
 
 (deftest copy-subordinate-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r0 (new-reporter :name :r0 :value :r0)
-        r1 (new-reporter :name :r1 :value :v :dependent-depth 1)
-        r2 (new-reporter :name :r2
+        r0 (make-reporter :name :r0 :value :r0)
+        r1 (make-reporter :name :r1 :value :v :dependent-depth 1)
+        r2 (make-reporter :name :r2
                          :value :x
                          :dependent-depth 1
                          :needed-values #{r1}
                          :application [identity r1]
                          :subordinate-values {}
                          :calculator-data cd)
-        r3 (new-reporter :name :r3
+        r3 (make-reporter :name :r3
                          :value-source r2
                          :value-source-priority-delta 1
                          :calculator-data cd)
@@ -113,18 +113,18 @@
 
 (deftest run-application-if-ready-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r0 (new-reporter :name :r0 :value 1)
-        r1 (new-reporter :name :r1
+        r0 (make-reporter :name :r0 :value 1)
+        r1 (make-reporter :name :r1
                          :calculator application-calculator
                          :value 3
                          :dependent-depth 0
                          :application [inc 2])
-        r (new-reporter :name :r
+        r (make-reporter :name :r
                         :application [inc r0]
                         :needed-values #{r0}
                         :subordinate-values {r0 [1 0]}
                         :calculator-data cd)
-        rc (new-reporter :name :rc
+        rc (make-reporter :name :rc
                          :value-source r
                          :value-source-priority-delta 1
                          :calculator-data cd)]
@@ -172,13 +172,13 @@
 
 (deftest application-calculator-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r0 (new-reporter :name :r0
+        r0 (make-reporter :name :r0
                          :value 1)
-        r (new-reporter :name :r
+        r (make-reporter :name :r
                         :application [inc r0]
                         :calculator application-calculator
                         :calculator-data cd)
-        rc (new-reporter :name :rc
+        rc (make-reporter :name :rc
                          :value 2
                          :application [identity r]
                          :value-source r
@@ -215,17 +215,17 @@
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         history (atom [])
         record (fn [arg] (swap! history #(conj % arg)))
-        r-base (new-reporter :name :r-base
+        r-base (make-reporter :name :r-base
                              :value invalid)
         ;; A computation on the base value.
-        r-calc (new-reporter :name :r-calc
+        r-calc (make-reporter :name :r-calc
                              :application [(fn [val] (record :r-calc)
                                              (first val))
                                            r-base]
                              :calculator application-calculator
                              :calculator-data cd)
         ;; A computation on the intermediate value.
-        r-final (new-reporter :name :r-final
+        r-final (make-reporter :name :r-final
                               :application [(fn [val] (record :r-final)
                                               val)
                                             r-calc]
@@ -269,7 +269,7 @@
   ;; There had been a bug with nil values throwing off propagation.
   ;; This tests that it is fixed.
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r0 (new-reporter :name :r0)
+        r0 (make-reporter :name :r0)
         r1 (app-R identity r0)
         r2 (app-R identity r1)]
     (request r2 cd)
@@ -294,7 +294,7 @@
         trials 10 ;100000
         changes-per-trial 1000
         base (vec (for [i (range width)]
-                    (new-reporter :name [0 i]
+                    (make-reporter :name [0 i]
                                   :value (mod (inc i) width))))
         reporters (loop [d 1
                          prev base

@@ -6,7 +6,7 @@
                                         remove-attendee!
                                         inform-attendees
                                         data-attended?
-                                        new-reporter invalid
+                                        make-reporter invalid
                                         validity-category]]
                       [store :refer (mutable-store?)]
                       [entity :refer [id->entity to-list]]
@@ -133,7 +133,7 @@
   store that match the term."
   [term store]
   (if (mutable-store? store)
-    (new-reporter :calculator query-calculator
+    (make-reporter :calculator query-calculator
                   :term term
                   :store store)
     (set (map :item-id (matching-items term store)))))

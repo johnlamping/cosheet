@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [reporter :refer [new-reporter reporter-data
+            (cosheet2 [reporter :refer [make-reporter reporter-data
                                         universal-category invalid]]
                       [reporter-macros :refer :all]
                       [application-calculator :refer [application-calculator]]
@@ -14,7 +14,7 @@
             ))
 
 (deftest reporter-macros-test
-  (let [r (new-reporter)]
+  (let [r (make-reporter)]
     (is (= (dissoc (reporter-data (app-R r 2 3)) :trace)
            {:application [r 2 3]
             :calculator application-calculator
@@ -58,7 +58,7 @@
          [2 3 4]))
 
   ;; Try cases where the expression references a reporter.
-  (let [r3 (new-reporter :value 3)]
+  (let [r3 (make-reporter :value 3)]
     (is (= (current-value (app-R + (app-R inc 1) r3))
            5))
     (is (= (current-value (cache-R + (cache-R inc 1) r3))

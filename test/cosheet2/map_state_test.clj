@@ -6,7 +6,7 @@
                       [calculator :refer [new-calculator-data
                                           compute
                                           propagate-calculator-data!]]
-                      [reporter  :refer [new-reporter valid? invalid
+                      [reporter  :refer [make-reporter valid? invalid
                                          reporter-value set-value!
                                          reporter-data
                                          set-attendee!]]
@@ -16,7 +16,7 @@
 
 (deftest map-state-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r1 (new-reporter :value 1)
+        r1 (make-reporter :value 1)
         ms (new-map-state {:a r1 :b 2})
         ra (map-state-get ms :a)
         rb (map-state-get ms :b)

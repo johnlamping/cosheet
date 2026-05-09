@@ -1,6 +1,6 @@
 (ns cosheet2.map-state
   (:require (cosheet2
-             [reporter :refer [new-reporter reporter-value
+             [reporter :refer [make-reporter reporter-value
                                change-data! change-data-control-return!
                                change-value!]]
              [reporter-macros :refer [app-R]]
@@ -13,7 +13,7 @@
 (defn new-map-state
   [initial]
   (assert (map? initial))
-  (new-reporter :value initial))
+  (make-reporter :value initial))
 
 (defn map-state-get-current [map-state key]
   (reporter-value (key (reporter-value map-state))))

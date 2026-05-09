@@ -5,7 +5,7 @@
             (cosheet2 [mutable-map :refer [mm-get current-contents]]
                       [task-queue :refer [new-priority-task-queue
                                           run-all-pending-tasks]]
-                      [reporter :refer [new-reporter reporter-data
+                      [reporter :refer [make-reporter reporter-data
                                         reporter-value
                                         set-value! valid? invalid]]
                       [calculator :refer [new-calculator-data current-value
@@ -20,13 +20,13 @@
             ))
 
 (deftest cache-key-test
-  (let [r0 (new-reporter :name :r0 :application [:a :b])
-        r1 (new-reporter :name :r1 :application [:a :b]
+  (let [r0 (make-reporter :name :r0 :application [:a :b])
+        r1 (make-reporter :name :r1 :application [:a :b]
                          :value-source r0 :cache-key [:a :b])
-        r2 (new-reporter :name :r1 :application [:a :b]
+        r2 (make-reporter :name :r1 :application [:a :b]
                          :value-source r0)
-        r00 (new-reporter :name :r0 :application [r0 r0])
-        r11 (new-reporter :name :r2 :application [r1 r1]
+        r00 (make-reporter :name :r0 :application [r0 r0])
+        r11 (make-reporter :name :r2 :application [r1 r1]
                           :value-source r00 :cache-key [[:a :b] [:a :b]])]
     (is (= (#'cosheet2.cache-calculator/cache-key [r1 r0])
            [[:a :b] r0]))
@@ -54,13 +54,13 @@
 (deftest cache-calculator-test
   (let [queue (new-priority-task-queue 0)
         cd (new-calculator-data queue)
-        r0 (new-reporter :name :r0 :value 1)
-        r1 (apply new-reporter
+        r0 (make-reporter :name :r0 :value 1)
+        r1 (apply make-reporter
                   :name :r1
                   :application [inc r0]
                   :calculator-data cd
                   (data-for-forwarding-reporter [inc r0]))
-        r2 (apply new-reporter
+        r2 (apply make-reporter
                   :name :r2
                   :application [inc r0]
                   :calculator-data cd
@@ -106,12 +106,12 @@
       (is (nil? (mm-get (:cache cd) [inc r0])))
       ;; Now try reporters with applications that access the cached value.
       ;; Initially, none of the cached values are valid.
-      (let [r11 (apply new-reporter
+      (let [r11 (apply make-reporter
                        :name :r11
                        :application [inc r1]
                        :calculator-data cd
                        (data-for-forwarding-reporter [inc r1]))
-            r22 (apply new-reporter
+            r22 (apply make-reporter
                        :name :r22
                        :application [inc r2]
                        :calculator-data cd
@@ -127,7 +127,7 @@
 ;;; take a very long time if it weren't cached.
 (deftest fib-cache-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        base (new-reporter :value 0)]
+        base (make-reporter :value 0)]
     (letfn [(fib [n] (if (<= n 1)
                        base
                        (app-R + (cache-R fib (- n 1)) (cache-R fib (- n 2)))))]
@@ -155,8 +155,8 @@
 ;; computations. This tests that :old-value-source of
 ;; application reporters is getting kept around long enough.
 (deftest reuse-test
-  (let [r1 (new-reporter :value 1)
-        rs (new-reporter :value [1 2 3])
+  (let [r1 (make-reporter :value 1)
+        rs (make-reporter :value [1 2 3])
         counter (atom 0)
         counting-plus (fn counting-plus [x y]
                         (swap! counter inc)

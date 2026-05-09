@@ -55,7 +55,7 @@
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))
         calculator (partial callback :c)
-        r (new-reporter :value invalid
+        r (make-reporter :value invalid
                         :calculator calculator
                         :extra :e)]
     (is (reporter? r))
@@ -143,7 +143,7 @@
         validity-history (atom [])
         make-callback (fn [history]
                         (fn [& args] (swap! history #(conj % args))))
-        r (new-reporter :value 2
+        r (make-reporter :value 2
                         :calculator (make-callback calculator-history))]
 
     (set-calculator-data! r :cd)

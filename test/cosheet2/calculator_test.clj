@@ -1,6 +1,6 @@
 (ns cosheet2.calculator-test
   (:require [clojure.test :refer [deftest is]]
-            (cosheet2 [reporter :refer [new-reporter reporter-atom reporter-data
+            (cosheet2 [reporter :refer [make-reporter reporter-atom reporter-data
                                         reporter-value set-value!
                                         data-value 
                                         valid? reporter?
@@ -17,7 +17,7 @@
 (defn fib [n s]
   (if (<= n 1)
     s   
-    (new-reporter :application [+ (fib (- n 1) s) (fib (- n 2) s)]
+    (make-reporter :application [+ (fib (- n 1) s) (fib (- n 2) s)]
                   :calculator (fn [& _] nil))))
 
 (deftest new-calculator-data-test
@@ -27,7 +27,7 @@
     (is (not (nil? (:cache cd))))))
 
 (deftest modify-and-act!-test
-  (let [r (new-reporter :test 10)
+  (let [r (make-reporter :test 10)
         a (atom 1)]
     (modify-and-act! r (fn [data]
                         (-> data
@@ -46,7 +46,7 @@
     true))
 
 (deftest propagate-calculator-data!-test
-  (let [state (new-reporter :value 0)
+  (let [state (make-reporter :value 0)
         f6 (fib 6 state)]
     (is (not (activated? f6)))
     (propagate-calculator-data! f6 :cd)
@@ -54,7 +54,7 @@
 
 (deftest update-value-and-dependent-depth-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r (new-reporter :value :v :dependent-depth 2)
+        r (make-reporter :value :v :dependent-depth 2)
         history (atom [])
         callback (fn [&{:keys [categories]}]
                    (swap! history #(conj % categories)))
@@ -111,8 +111,8 @@
 
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r1 (new-reporter :value :v)
-        r2 (new-reporter :value-source r1
+        r1 (make-reporter :value :v)
+        r2 (make-reporter :value-source r1
                          :value-source-priority-delta 1
                          :calculator-data cd)]
     (register-for-value-source r2 r1 copy-value-callback)
@@ -129,7 +129,7 @@
     (is (= (reporter-value r2) :w))))
 
 (deftest current-value-test
-  (let [state (new-reporter :value 0)
+  (let [state (make-reporter :value 0)
         fib6 (fib 6 state)]
     (is (= (current-value fib6) 0))
     (set-value! state 1)

@@ -559,18 +559,18 @@
    (when (and callback (reporter-valid? r))
      (call-callback-for-undescribed-change callback :key key :reporter r))))
 
-(defn new-reporter-data
+(defn merge-default-reporter-data
   [& {:as args}]
   (merge {:valid (value-valid? (get args :value invalid))
           :value invalid
           :priority Double/MAX_VALUE}
          args))
 
-(defn new-reporter
+(defn make-reporter
   [& {:as args}]
   (when-let [calculator (:calculator args)] (check-callback calculator))
   (->ReporterImpl
-   (atom (new-reporter-data args))))
+   (atom (merge-default-reporter-data args))))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (let [data @(:data s)]

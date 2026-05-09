@@ -5,7 +5,7 @@
                                         change-data-control-return!
                                         reporter-value
                                         universal-category Reporter
-                                        new-reporter-data]]
+                                        merge-default-reporter-data]]
                       [reporter-macros :refer [cache-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [utils :refer [call-with-latest-value union-seqs
@@ -16,7 +16,7 @@
   "Return the data for a new mutable store with a state that starts out
   equal to a given immutable store."
   [immutable-store]
-  (new-reporter-data
+  (merge-default-reporter-data
    :value (track-modified-ids immutable-store)
    ;; Undo is supported by having a list of past store states,
    ;; starting with the most recent, and going backward in time. Each

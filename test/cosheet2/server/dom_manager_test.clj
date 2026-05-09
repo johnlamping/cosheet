@@ -8,7 +8,7 @@
              orderable
              [utils :refer [dissoc-in with-latest-value swap-control-return!]]
              [test-utils :refer [check any as-set]]
-             [reporter :as reporter :refer [new-reporter set-value!
+             [reporter :as reporter :refer [make-reporter set-value!
                                             reporter-data reporter-value
                                             reporter-value-when-valid
                                             reporter-atom data-attended?]]
@@ -374,7 +374,7 @@
         trials 10 ; 10000
         changes-per-trial 300
         base (vec (for [i (range width)]
-                    (new-reporter :name [0 i]
+                    (make-reporter :name [0 i]
                                   :value (mod (inc i) width))))
         reporters (loop [d 1
                          prev base

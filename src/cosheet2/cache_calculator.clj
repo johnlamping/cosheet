@@ -1,5 +1,5 @@
 (ns cosheet2.cache-calculator
-  (:require (cosheet2 [reporter :refer [reporter? attended? new-reporter
+  (:require (cosheet2 [reporter :refer [reporter? attended? make-reporter
                                         reporter-data data-attended?]]
                       [mutable-map :as mm]
                       [calculator :refer [propagate-calculator-data!
@@ -97,7 +97,7 @@
   calculator data to it."
   [data cd]
   (or (mm/mm-get (:cache cd) (:cache-key data))
-      (let [reporter (apply new-reporter
+      (let [reporter (apply make-reporter
                             :application (:application data)
                             :calculator application-calculator
                             (when-let [original-name (:name data)]

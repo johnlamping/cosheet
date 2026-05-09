@@ -4,7 +4,7 @@
             (cosheet2
              [debug :refer :all]
              [task-queue :refer [current-tasks new-priority-task-queue]]
-             [reporter :refer [new-reporter reporter-atom reporter-data
+             [reporter :refer [make-reporter reporter-atom reporter-data
                                reporter-value set-value!
                                data-value 
                                valid? reporter?]]
@@ -18,7 +18,7 @@
 
 (deftest reporters-profile-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r0 (new-reporter :name :r0 :value 3)
+        r0 (make-reporter :name :r0 :value 3)
         indirect (fn indirect [arg] (app-R max arg r0))
         r1 (app-R indirect r0)
         r-inc (app-R inc (cache-R min r1))

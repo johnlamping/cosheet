@@ -4,7 +4,7 @@
     [orderable :refer [split earlier? initial]]
     [reporter :refer [reporter-data set-value! set-attendee!
                       inform-attendees data-attended? remove-attendee!
-                      new-reporter reporter-value reporter?
+                      make-reporter reporter-value reporter?
                       valid? validity-category]]
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
@@ -185,7 +185,7 @@
     ;; efficient to get what we need whenever we need to recompute. The
     ;; main point of this reporter is to avoid recomputing when it isn't
     ;; necessary.
-    (new-reporter :calculator ordered-ids-calculator
+    (make-reporter :calculator ordered-ids-calculator
                   :ids ids
                   :store store)))
 

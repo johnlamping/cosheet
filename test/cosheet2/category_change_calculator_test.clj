@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [task-queue :refer [new-priority-task-queue]]
-                      [reporter  :refer [new-reporter
+                      [reporter  :refer [make-reporter
                                          reporter-value reporter-data
                                          set-value! change-value! valid?]]
                       [calculator :refer [new-calculator-data
@@ -15,7 +15,7 @@
 
 (deftest category-change-calculator-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
-        r (new-reporter :name :r :value 1)
+        r (make-reporter :name :r :value 1)
         r1 (category-change-R [1 2] r)]
     (request r1 cd)
     (compute cd)

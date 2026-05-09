@@ -8,6 +8,11 @@
     --bw: 2px;                                 /* standard border width */
     --nbw: -2px;                               /* border-width margin compensation */
     --radius: 7px;                             /* standard corner radius */
+    /* White shimmer fading inward from each edge over var(--radius) distance */
+    --shimmer-right: linear-gradient(to right,  hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
+    --shimmer-left:  linear-gradient(to left,   hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
+    --shimmer-down:  linear-gradient(to bottom, hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
+    --shimmer-up:    linear-gradient(to top,    hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
 }
 
 * {
@@ -383,19 +388,7 @@ body {
 .batch-stack > :first-child {
     border-top-left-radius: var(--radius);
     border-bottom-left-radius: var(--radius);
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
 }
 
 /* --- named objects --- */
@@ -466,23 +459,7 @@ body {
     border-width: var(--bw);
     margin-right: var(--nbw);
     margin-bottom: var(--nbw);
-    background-image:
-    linear-gradient(to left,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-left), var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
 }
 
 .vertical-stack.has-border > .wrapped-element {
@@ -550,11 +527,7 @@ body {
     display: flex;
     flex-direction: row;
     border-left-width: var(--bw);
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right);
 }
 
 .horizontal-header > :first-child {
@@ -566,19 +539,7 @@ body {
 }
 
 .horizontal-header.top-border.bottom-border {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
     text-align: right;
     border-top-width: var(--bw);
     border-bottom-width: var(--bw);
@@ -588,29 +549,13 @@ body {
 }
 
 .horizontal-header.top-border, .query-holder{
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right), var(--shimmer-down);
     border-top-width: var(--bw);
     border-top-left-radius: var(--radius);
 }
 
 .horizontal-header.bottom-border {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right), var(--shimmer-up);
     border-bottom-width: var(--bw);
     margin-bottom: var(--nbw);
     border-bottom-left-radius: var(--radius);
@@ -832,19 +777,7 @@ body {
 
 .column-header:not(.merge-with-parent).label, .query-holder.label,
 .vertical-labels-element > :first-child {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to left,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right), var(--shimmer-left), var(--shimmer-down);
 }
 
 .column-header.merge-with-parent.label {
@@ -859,11 +792,7 @@ body {
 }
 
 .query-result-indent.label {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
+    background-image: var(--shimmer-right);
 }
 
 .table-row {

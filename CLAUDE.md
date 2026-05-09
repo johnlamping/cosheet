@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - General agent instructions  @doc/AGENTS.md
 - Clojure style guide @doc/clojure-style.md
 - Significant points about cosheet's architecture @doc/cosheet.md
+- Frontend design skill @doc/frontend-design.md
 
 ## Commands
 

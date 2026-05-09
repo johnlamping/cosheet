@@ -299,7 +299,7 @@
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
           updating-immutable-result (let-R [current-item (updating-immutable
-                                                             item99)] 
+                                                        item99)] 
                                       (is (not (mutable-entity? current-item)))
                                       (let [value (to-list current-item)]
                                         (swap! record-of-updates

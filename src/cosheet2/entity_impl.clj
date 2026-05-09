@@ -218,11 +218,11 @@
   (content->elements [this content-value]
     (let [content-key (entity-key content-value)]
       (let-R [element-ids (target-source->ids
-                              store item-id content-key)
-                 reverse-element-ids (when (and (object-id? item-id)
-                                                (object-id? content-key))
-                                       (target-source->ids
-                                        store content-key item-id))]
+                          store item-id content-key)
+              reverse-element-ids (when (and (object-id? item-id)
+                                            (object-id? content-key))
+                                    (target-source->ids
+                                     store content-key item-id))]
         (seq (concat (for [element-id element-ids]
                        (id->element element-id store))
                      (for [element-id reverse-element-ids]

@@ -710,7 +710,7 @@
           [specification
            (semantic-to-list (id->entity relative-id store))])
   (let-R [entity (id->updating-entity-R
-                     (specification-item-id specification) store)]
+                  (specification-item-id specification) store)]
     (entity-DOM entity specification)))
 
 (defmethod print-method

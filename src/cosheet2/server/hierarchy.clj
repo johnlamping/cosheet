@@ -241,9 +241,8 @@
 (defn hierarchy-by-labels
   "Given a sequence of items, generate a hierarchy based on all their labels."
   [items]
-  (let-R
-      [items-labels (map semantic-label-elements items)
-       item-maps (item-maps-by-elements items items-labels)]
+  (let-R [items-labels (map semantic-label-elements items)
+          item-maps (item-maps-by-elements items items-labels)]
     (hierarchy-by-canonical-info item-maps)))
 
 (defn hierarchy-node-example-elements

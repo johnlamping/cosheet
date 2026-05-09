@@ -358,8 +358,8 @@
     [item referent inherited]
     (let [inherited (into starting-inherited inherited)]
       (let-R [table (matching-elements :table item)
-                 top-level (matching-elements :top-level item)
-                 tags (matching-elements :tag item)]
+              top-level (matching-elements :top-level item)
+              tags (matching-elements :tag item)]
         (if (empty? table)
           (let [subject-ref (or (:subject-referent inherited)
                                 (let [[exemplar subject-ref]
@@ -394,11 +394,11 @@
       (when batch-editing
         (let [temporary-item (id->entity session-temporary-id store)]
           (let-R [selector-items (label->elements
-                                     temporary-item :batch-selector)
-                     row-selector (app-R first
-                                    (label->elements
-                                     temporary-item :batch-row-selector))
-                     query-content (semantic-to-list row-selector)]
+                                  temporary-item :batch-selector)
+                  row-selector (app-R first
+                                 (label->elements
+                                  temporary-item :batch-row-selector))
+                  query-content (semantic-to-list row-selector)]
             (when (and query-content (not= query-content 'anything))
               selector-items)))))))
 
@@ -406,7 +406,7 @@
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
   (let-R [id (map-state-get client-state :root-id)
-             id-valid (id-valid-link? store id)]
+          id-valid (id-valid-link? store id)]
     (or (when id-valid id)
         (app-R first (ordered-tabs-ids-R store)))))
 
@@ -430,7 +430,7 @@
   component."
   [store temporary-id client-state id-R]
   (let-R [id id-R
-             batch-editing (map-state-get client-state :batch-editing)]
+          batch-editing (map-state-get client-state :batch-editing)]
     (println "top level DOM id:" id "  Batch editing:" batch-editing)
     (if batch-editing
       (batch-editing-component store temporary-id)
@@ -501,32 +501,32 @@
   (defn top-level-DOM-R
     [store session-temporary-id client-state]
     (let-R [batch-editing-items (batch-editing-selector-items
-                                    store session-temporary-id client-state)]
+                                store session-temporary-id client-state)]
       (if (seq batch-editing-items)
         (batch-edit-DOM-R batch-editing-items store starting-inherited)
         (let-R [referent (state-map-get client-state :referent)
-                   subject-referent (state-map-get client-state
-                                                   :subject-referent)
-                   immutable-item (call-dependent-on-id
-                                   store nil
-                                   (fn [immutable-store]
-                                     (or (when referent
-                                           (first (instantiate-referent
-                                                   referent immutable-store)))
-                                         (first-tab-R immutable-store))))]
+                subject-referent (state-map-get client-state
+                                                :subject-referent)
+                immutable-item (call-dependent-on-id
+                                store nil
+                                (fn [immutable-store]
+                                  (or (when referent
+                                        (first (instantiate-referent
+                                                referent immutable-store)))
+                                      (first-tab-R immutable-store))))]
           (if immutable-item
             (let [item (id->entity (:item-id immutable-item) store)
                   inherited (cond-> starting-inherited
                               subject-referent
                               (assoc :subject-referent subject-referent))]
               (let-R [tab-tags (matching-elements :tab item)
-                         content (content item)]
+                      content (content item)]
                 (if (empty? tab-tags)
                   ;; Show just the item.
                   (top-level-item-DOM-R item referent inherited)
                   ;; Show a selection of tabs.
                   (let-R [topic (app-R first (label->elements item :tab-topic))
-                             target (target-entity item)]
+                          target (target-entity item)]
                     [:div {:class "tabbed"}
                      (make-component {:key [:tabs]}
                                      [tabs-DOM-R target item inherited])
@@ -565,6 +565,6 @@
     "Return a specification for the DOM indicated by the client."
     [store session-temporary-id client-state]
     (let-R [dom (top-level-DOM-spec
-                    store session-temporary-id client-state)]
+                store session-temporary-id client-state)]
       (into dom [(make-component {:key [:label-values]}
                                  [label-datalist-DOM-R store])]))))

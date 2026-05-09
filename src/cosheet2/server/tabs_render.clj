@@ -129,7 +129,7 @@
   item as tabs."
   [{:keys [relative-id chosen-tab-id] :as specification} store]
   (let-R [tabs-entity (id->updating-entity-R
-                          relative-id store)]
+                      relative-id store)]
     (let [;; The template starts out with an empty name
           tabs-spec {:template `("" :tab "" ~new-tab-table-element)
                      :nesting-depth 0

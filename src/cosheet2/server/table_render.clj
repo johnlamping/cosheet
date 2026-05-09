@@ -417,10 +417,10 @@
           non-virtual-rows (map #(table-row-component % row-spec)
                                 row-ids)]
       (let-R [virtual-row (table-virtual-row-DOM-component-R
-                              row-template-R
-                              column-descriptions-R
-                              (or (last row-ids)
-                                  (:alternate-row-sibling specification)))]
+                          row-template-R
+                          column-descriptions-R
+                          (or (last row-ids)
+                              (:alternate-row-sibling specification)))]
         (into [:div {:class "table-rows"}]
             (concat non-virtual-rows
                     [virtual-row]))))))
@@ -497,15 +497,15 @@
   ;; We first get just the ids of the main parts of the table
   ;; description.
   (let-R [[row-condition-id column-headers-id]
-             ;; Even though this computation will be redone whenever
-             ;; the table description changes, its result won't
-             ;; change, because the identities of the main parts don't
-             ;; change once they are created. So that won't trigger
-             ;; recomputation of the main body of the function.
-             (let-R [table-item (id->updating-entity-R
-                                    table-id store)]
-               [(:item-id (table-row-condition-element table-item))
-                (:item-id (table-column-headers-element table-item))])]
+          ;; Even though this computation will be redone whenever
+          ;; the table description changes, its result won't
+          ;; change, because the identities of the main parts don't
+          ;; change once they are created. So that won't trigger
+          ;; recomputation of the main body of the function.
+          (let-R [table-item (id->updating-entity-R
+                             table-id store)]
+            [(:item-id (table-row-condition-element table-item))
+             (:item-id (table-column-headers-element table-item))])]
     ;; First check to see if we have the table information filled in yet.
     ;; Render the table only if the table information has been filled in.
     (if (not (and row-condition-id column-headers-id))

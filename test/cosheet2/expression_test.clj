@@ -49,7 +49,7 @@
            (* 3 y))
          3))
   (is (= (let-R [[x y] [1 3]
-                    z (+ x y)]
+                 z (+ x y)]
            z)
          4))
   (is (= (seq-R (app-R map
@@ -70,7 +70,7 @@
                             (app-R * r3 y)))
            3))
     (is (= (current-value (let-R [[x y] (app-R vector 1 r3)
-                                     z (+ x y)]
+                                   z (+ x y)]
                             z))
            4))
     (is (= (current-value (seq-R (app-R map

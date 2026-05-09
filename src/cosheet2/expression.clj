@@ -119,7 +119,7 @@
          (fn ~(symbol (str binding-forms)) ; a name for the function.
            ~(vec binding-forms)
            ~@(if (empty? suffix) body [`(let-R ~(vec suffix) ~@body)]))
-       ~@values)))
+         ~@values)))
 
 ;;; TODO: These are eager. Consider adding support for lazy sequences
 ;;; of reporters. That requires adding a lazy cons operation, which
@@ -129,6 +129,17 @@
 ;;; with giving the reporter demand, and waiting for its value. This
 ;;; means that operations over the sequences, like map or filter,
 ;;; would need versions that include those app-R forms.
+
+(defmacro seq-R
+  "Given an argument that is a sequence or may a reporter and that
+  returns a sequence, and where that sequence may contain reporters,
+  make a reporter whose value is the sequence of corresponding
+  values."
+  [sequence]
+  `(let-R [sequence# ~sequence]
+     (when (not (empty? sequence#))
+       (new-application (cons vector sequence#)
+                        :trace (fn [thunk#] (thunk#))))))
 
 (defmacro app-seq-R
   "Given an expression that may evaluate to a sequence of reporters, make

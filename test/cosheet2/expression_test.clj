@@ -52,6 +52,10 @@
                     z (+ x y)]
            z)
          4))
+  (is (= (seq-R (app-R map
+                       (fn [x] (app-R inc x))
+                       [1 (app-R inc 1) 3]))
+         [2 3 4]))
   (is (= (app-seq-R map
                    (fn [x] (app-R inc x))
                    [1 (app-R inc 1) 3])
@@ -73,6 +77,10 @@
                                      z (+ x y)]
                             z))
            4))
+    (is (= (current-value (seq-R (app-R map
+                                        (fn [x] (app-R inc x))
+                                        [1 (app-R inc 1) r3])))
+           [2 3 4]))
     (is (= (current-value (app-seq-R map
                                     (fn [x] (app-R inc x))
                                     [1 (app-R inc 1) r3]))

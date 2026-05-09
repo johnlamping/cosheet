@@ -7,7 +7,6 @@
                                          set-value! change-value! valid?]]
                       [calculator :refer [new-calculator-data
                                           compute request unrequest]]
-                      [expression :refer [category-change]]
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
                       [test-utils :refer [check any]])
@@ -17,7 +16,7 @@
 (deftest category-change-calculator-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r (new-reporter :name :r :value 1)
-        r1 (category-change [1 2] r)]
+        r1 (category-change-R [1 2] r)]
     (request r1 cd)
     (compute cd)
     (is (= (:value-source (reporter-data r1)) r))

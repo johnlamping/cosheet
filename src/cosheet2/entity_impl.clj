@@ -12,8 +12,8 @@
                       [calculator :refer [current-value]]
                       [orderable :as orderable]
                       [entity :refer :all]
-                      [expression :refer [seq-R let-R
-                                          category-change]])))
+                      [expression :refer [seq-R let-R]]
+                      [category-change-calculator :refer [category-change-R]])))
 
 (defn endpoint->entity
   "Given any value of an endpoint, the store, and an optional
@@ -252,7 +252,7 @@
     item-id)
 
   (updating-immutable [this]
-    (let-R [immutable-store (category-change [item-id] store)]
+    (let-R [immutable-store (category-change-R [item-id] store)]
       (in-different-store this immutable-store))))
 
 (defn- equivalent-entities?

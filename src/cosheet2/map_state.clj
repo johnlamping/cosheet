@@ -3,8 +3,9 @@
              [reporter :refer [new-reporter reporter-value
                                change-data! change-data-control-return!
                                change-value!]]
-             [expression :refer [app-R category-change]]
-             [category-change-calculator :refer [category-change-calculator]])))
+             [expression :refer [app-R]]
+             [category-change-calculator :refer [category-change-calculator
+                                                 category-change-R]])))
 
 ;;; Support a reporter that holds a map. The entries in the map may
 ;;; themselves be reporters.
@@ -18,7 +19,7 @@
   (reporter-value (key (reporter-value map-state))))
 
 (defn map-state-get [map-state key]
-  (app-R key (category-change [key] map-state)))
+  (app-R key (category-change-R [key] map-state)))
 
 (defn map-state-change-value! [map-state key fun]
   (change-data! map-state

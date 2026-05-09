@@ -1,9 +1,7 @@
 (ns cosheet2.expression
   (:require (cosheet2
-             [reporter :refer [new-reporter reporter? universal-category]]
              [application-calculator :refer [make-application-R]]
-             [cache-calculator :refer [data-for-forwarding-reporter]]
-             [category-change-calculator :refer [category-change-calculator]])))
+             [cache-calculator :refer [data-for-forwarding-reporter]])))
 
 ;;; Convenient syntax for accepting and creating reporters, mostly macros.
 
@@ -27,22 +25,6 @@
             :trace (fn [thunk#] (thunk#))
             ~@(apply concat (seq (meta (first args))))
             (data-for-forwarding-reporter application#))))
-
-;;; TODO: Move this to category-change-calculator, so we have only macros.
-(defn category-change
-  "Takes a set of categories and a reporter and returns a reporter that
-  tracks the input reporter's value, but only when it has a change in
-  any of the given categories; the tracking reporter is only
-  guaranteed to be up to date as of the last such change."
-  [categories reporter]
-  (assert (reporter? reporter))
-  (if (or (nil? categories)
-          (= categories [universal-category]))
-    reporter ; The categories don't make a difference.
-    (new-reporter
-     :value-source reporter
-     :categories categories
-     :calculator category-change-calculator)))
 
 (defn- symbols
   "Return all the variables in a form."

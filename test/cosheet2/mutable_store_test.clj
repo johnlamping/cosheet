@@ -11,7 +11,7 @@
                                reporter-data]]
              [calculator :refer [new-calculator-data propagate-calculator-data!
                                  request compute computation-value]]
-             [expression :refer [category-change]]
+             [category-change-calculator :refer [category-change-R]]
              store-impl
              [mutable-store-impl :refer :all]
              [task-queue :refer [new-priority-task-queue
@@ -77,7 +77,7 @@
           element-ids (target->ids mutable-store element)
           label-ids (target-label->ids mutable-store element :label)
           candidate-ids (candidate-matching-ids mutable-store nil)
-          tracking-store (category-change [element] mutable-store)
+          tracking-store (category-change-R [element] mutable-store)
           callback (fn [& {:keys [key reporter description categories]}]
                      nil)]
       (propagate-calculator-data! source calculator-data)

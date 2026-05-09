@@ -1,8 +1,8 @@
 (ns cosheet2.category-change-calculator
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call! remove-attendee!
-                                        validity-category
-                                        reporter?]]
+                                        validity-category new-reporter
+                                        universal-category reporter?]]
                       [calculator :refer [modify-and-act!
                                           copy-value-callback
                                           update-to-invalid]]
@@ -58,3 +58,18 @@
            (not attended)
            (update-new-further-action
             remove-attendee! value-source callback-key)))))))
+
+(defn category-change-R
+  "Takes a set of categories and a reporter and returns a reporter that
+  tracks the input reporter's value, but only when it has a change in
+  any of the given categories; the tracking reporter is only
+  guaranteed to be up to date as of the last such change."
+  [categories reporter]
+  (assert (reporter? reporter))
+  (if (or (nil? categories)
+          (= categories [universal-category]))
+    reporter ; The categories don't make a difference.
+    (new-reporter
+     :value-source reporter
+     :categories categories
+     :calculator category-change-calculator)))

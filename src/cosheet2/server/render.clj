@@ -5,8 +5,8 @@
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
-                      [expression :refer [app-R let-R seq-R
-                                          category-change]]
+                      [expression :refer [app-R let-R seq-R]]
+                      [category-change-calculator :refer [category-change-R]]
                       [calculator :refer [current-value]]
                       [map-state :refer [map-state-get]]
                       [hiccup-utils :refer [add-attributes into-attributes]])
@@ -435,7 +435,7 @@
     (if batch-editing
       (batch-editing-component store temporary-id)
       (when id
-        (let-R [immutable-store (category-change [id] store)]
+        (let-R [immutable-store (category-change-R [id] store)]
           (let [immutable-item (id->entity id immutable-store)
                 is-tab (seq (matching-elements :tab immutable-item))]
             [:div {}

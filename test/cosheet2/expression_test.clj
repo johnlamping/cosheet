@@ -8,7 +8,7 @@
                       [application-calculator :refer [application-calculator]]
                       [cache-calculator :refer [cache-calculator]]
                       [category-change-calculator
-                       :refer [category-change-calculator]]
+                       :refer [category-change-calculator category-change-R]]
                       [calculator :refer [current-value]])
             ; :reload
             ))
@@ -29,15 +29,15 @@
             :priority Double/MAX_VALUE
             :value-source-priority-delta 1
             :cache-key [r 2 3]}))
-    (is (= (reporter-data (category-change [2 3] r))
+    (is (= (reporter-data (category-change-R [2 3] r))
            {:categories [2 3]
             :calculator category-change-calculator
             :value-source r
             :value invalid
             :valid false
             :priority Double/MAX_VALUE}))
-    (is (= (category-change nil r) r))
-    (is (= (category-change [universal-category] r) r)))
+    (is (= (category-change-R nil r) r))
+    (is (= (category-change-R [universal-category] r) r)))
   
   ;; Try cases where the expression should evaluate to a constant.
   (is (= (app-R + (app-R inc 1) 3)

@@ -8,7 +8,7 @@
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
                                      separate-by]]
-                      [expression :refer [category-change]]
+                      [category-change-calculator :refer [category-change-R]]
                       [debug :refer [simplify-for-print]]
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
@@ -116,7 +116,7 @@
   [specification mutable-store]
    (let [id (specification-item-id specification)]
      (assert (item-id? id) id)
-     (category-change [id] mutable-store)))
+     (category-change-R [id] mutable-store)))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of

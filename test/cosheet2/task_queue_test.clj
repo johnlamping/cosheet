@@ -4,7 +4,7 @@
             :reload))
 
 (deftest tasks-test
-  (let [queue (new-priority-task-queue 0)
+  (let [queue (make-priority-task-queue 0)
         history (atom [])
         task-factory (fn [& expected]
                        (fn [& args]
@@ -44,7 +44,7 @@
 
 (deftest tasks-workers-test
   (dotimes [_ 500]
-    (let [queue (new-priority-task-queue 3)
+    (let [queue (make-priority-task-queue 3)
           history (atom [])
           task-factory (fn [& expected]
                          (fn [& args]

@@ -3,14 +3,14 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2 [mutable-map :as mm]
                       [task-queue :refer [current-tasks
-                                          new-priority-task-queue]]
+                                          make-priority-task-queue]]
                       [reporter :refer [invalid make-reporter
                                         reporter-data reporter-value
                                         reporter-atom set-value! set-attendee!
                                         set-calculator-data-if-needed!
                                         remove-attendee! inform-attendees
                                         universal-category]]
-                      [calculator :refer [new-calculator-data current-value
+                      [calculator :refer [make-calculator-data current-value
                                           compute request]]
                       [reporter-macros :refer [app-R]]
                       [utils :refer :all]
@@ -21,7 +21,7 @@
             ))
 
 (deftest copy-value-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r1 (make-reporter :value :v)
         r2 (make-reporter :value-source r1
                          :value-source-priority-delta 1
@@ -51,7 +51,7 @@
          [Double/MAX_VALUE [universal-category] null-callback]))))
 
 (deftest copy-subordinate-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r0 (make-reporter :name :r0 :value :r0)
         r1 (make-reporter :name :r1 :value :v :dependent-depth 1)
         r2 (make-reporter :name :r2
@@ -67,7 +67,7 @@
                          :calculator-data cd)
         ;; Since cd is immutable, we can't replace its queue, but we
         ;; can set the content of its queue to the content of a fresh queue.
-        clear-cd-queue #(reset! (:queue cd) @(new-priority-task-queue 0))]
+        clear-cd-queue #(reset! (:queue cd) @(make-priority-task-queue 0))]
     ;; Give the ultimate reporters demand.
     (set-attendee! r2 :k 0 (constantly nil))
     (set-attendee! r3 :k 0 (constantly nil))
@@ -112,7 +112,7 @@
     (is (= (reporter-value r3) :r0))))
 
 (deftest run-application-if-ready-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r0 (make-reporter :name :r0 :value 1)
         r1 (make-reporter :name :r1
                          :calculator application-calculator
@@ -171,7 +171,7 @@
     (is (= (reporter-value rc) 3))))
 
 (deftest application-calculator-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r0 (make-reporter :name :r0
                          :value 1)
         r (make-reporter :name :r
@@ -212,7 +212,7 @@
 (deftest reuse-test
   ;; Make sure that intermediate computations are not getting done if
   ;; their input goes invalid but then goes valid to the same value.
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         history (atom [])
         record (fn [arg] (swap! history #(conj % arg)))
         r-base (make-reporter :name :r-base
@@ -268,7 +268,7 @@
 (deftest nil-value-test
   ;; There had been a bug with nil values throwing off propagation.
   ;; This tests that it is fixed.
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r0 (make-reporter :name :r0)
         r1 (app-R identity r0)
         r2 (app-R identity r1)]
@@ -307,7 +307,7 @@
                                         nth prev (nth prev i)))
                                   (range width))]
                         (recur (+ d 1) current (conj reporters current)))))
-        cd (new-calculator-data (new-priority-task-queue 4))
+        cd (make-calculator-data (make-priority-task-queue 4))
         evals (atom 0)]
     (letfn [(answers [arguments]
                (reduce

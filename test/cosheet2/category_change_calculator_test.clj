@@ -1,11 +1,11 @@
 (ns cosheet2.category-change-calculator-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [task-queue :refer [new-priority-task-queue]]
+            (cosheet2 [task-queue :refer [make-priority-task-queue]]
                       [reporter  :refer [make-reporter
                                          reporter-value reporter-data
                                          set-value! change-value! valid?]]
-                      [calculator :refer [new-calculator-data
+                      [calculator :refer [make-calculator-data
                                           compute request unrequest]]
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
@@ -14,7 +14,7 @@
             ))
 
 (deftest category-change-calculator-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r (make-reporter :name :r :value 1)
         r1 (category-change-R [1 2] r)]
     (request r1 cd)

@@ -8,11 +8,11 @@
                       store-impl
                       mutable-store-impl
                       [store-utils :refer [add-element remove-entity-by-id]]
-                      [task-queue :refer [new-priority-task-queue]]
+                      [task-queue :refer [make-priority-task-queue]]
                       [reporter :refer [set-calculator-data!
                                         set-attendee-and-call!
                                         reporter-value valid?]]
-                      [calculator :refer [new-calculator-data compute]]
+                      [calculator :refer [make-calculator-data compute]]
                       [query :refer [variable-query]]
                       [query-calculator :refer [matching-item-ids-R]]
                       [test-utils :refer [check]]
@@ -29,7 +29,7 @@
                    :reference reference)))
 
 (deftest query-calculator-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         s0 (new-element-store)
         [s1 id1] (add-element s0 nil '(:a (3 (4 5))))
         [s2 id2] (add-element s1 id1 '(1 (2 3)))

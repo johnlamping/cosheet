@@ -5,7 +5,7 @@
 
 ;;; Methods for maintaining a priority queue of tasks
 
-(defn new-priority-task-queue
+(defn make-priority-task-queue
   ;; Records a priority queue of unstarted tasks, a count of running,
   ;; but not finished tasks, a maximum number of worker threads, and a
   ;; number of current worker threads. (Note: tasks may be run under

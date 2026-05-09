@@ -12,8 +12,8 @@
      [query :refer [matching-elements]]
      [debug :refer [simplify-for-print]]
      query-impl
-     [calculator :refer [new-calculator-data compute]]
-     [task-queue :refer [new-priority-task-queue finished-all-tasks?]]
+     [calculator :refer [make-calculator-data compute]]
+     [task-queue :refer [make-priority-task-queue finished-all-tasks?]]
      [hiccup-utils :refer [dom-attributes add-attributes]]
      [reporter :as reporter]
      [map-state :refer [map-state-reset! map-state-get-current]]
@@ -32,8 +32,8 @@
   ; (:import (org.h2.util New))
   )
 
-(defonce common-queue (new-priority-task-queue 1))
-(defonce calculator-data (new-calculator-data common-queue))
+(defonce common-queue (make-priority-task-queue 1))
+(defonce calculator-data (make-calculator-data common-queue))
 
 (defonce time-formatter (java.text.DateFormat/getDateTimeInstance))
 (defn now-string

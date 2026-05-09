@@ -2,8 +2,8 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [map-state :refer :all]
-                      [task-queue :refer [new-priority-task-queue]]
-                      [calculator :refer [new-calculator-data
+                      [task-queue :refer [make-priority-task-queue]]
+                      [calculator :refer [make-calculator-data
                                           compute
                                           propagate-calculator-data!]]
                       [reporter  :refer [make-reporter valid? invalid
@@ -15,7 +15,7 @@
             ))
 
 (deftest map-state-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r1 (make-reporter :value 1)
         ms (new-map-state {:a r1 :b 2})
         ra (map-state-get ms :a)

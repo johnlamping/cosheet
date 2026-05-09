@@ -4,8 +4,8 @@
             (cosheet2
              [orderable :as orderable]
              [reporter :refer [make-reporter set-value! reporter-value]]
-             [task-queue :refer [new-priority-task-queue]]
-             [calculator :refer [new-calculator-data request compute]]
+             [task-queue :refer [make-priority-task-queue]]
+             [calculator :refer [make-calculator-data request compute]]
              [store :refer [new-element-store new-mutable-store store-reset!
                             id->target]]
              store-impl
@@ -115,7 +115,7 @@
   ([renderer spec data-getter store]
    (let [ms (new-mutable-store store)
          data (data-getter spec ms)
-         cd (new-calculator-data (new-priority-task-queue 0))]
+         cd (make-calculator-data (make-priority-task-queue 0))]
      (doseq [[rep dep] data]
        (request rep cd))
        (compute cd)
@@ -125,7 +125,7 @@
   (let [mutable-store (new-mutable-store s)
         query-R (make-reporter :value '(nil (nil ("c1" :label))))
         count-R (match-count-R query-R :top-level mutable-store)
-        cd (new-calculator-data (new-priority-task-queue 0))]
+        cd (make-calculator-data (make-priority-task-queue 0))]
     (request count-R cd)
     (compute cd)
     (is (= (reporter-value count-R) 2))

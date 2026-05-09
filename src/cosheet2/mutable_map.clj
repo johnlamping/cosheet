@@ -8,8 +8,8 @@
 ;;; with the keys sharded to a map based on the key's hash. That way,
 ;;; multiple calls to change the map are less likely to collide.
 
-(defn new-mutable-map
-  ([] (new-mutable-map 10))
+(defn make-mutable-map
+  ([] (make-mutable-map 10))
   ([parallelism] (vec (map (fn [i] (atom {})) (range parallelism)))))
 
 (defn- mm-ref [mm key]

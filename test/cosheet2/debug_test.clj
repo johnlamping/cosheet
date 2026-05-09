@@ -3,12 +3,12 @@
             [clojure.data :refer [diff]]
             (cosheet2
              [debug :refer :all]
-             [task-queue :refer [current-tasks new-priority-task-queue]]
+             [task-queue :refer [current-tasks make-priority-task-queue]]
              [reporter :refer [make-reporter reporter-atom reporter-data
                                reporter-value set-value!
                                data-value 
                                valid? reporter?]]
-             [calculator :refer [new-calculator-data current-value
+             [calculator :refer [make-calculator-data current-value
                                  propagate-calculator-data!
                                  compute request]]
              [reporter-macros :refer [app-R cache-R]]
@@ -17,7 +17,7 @@
             ))
 
 (deftest reporters-profile-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r0 (make-reporter :name :r0 :value 3)
         indirect (fn indirect [arg] (app-R max arg r0))
         r1 (app-R indirect r0)

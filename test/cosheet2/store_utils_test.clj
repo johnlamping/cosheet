@@ -11,7 +11,7 @@
              entity-impl
              query-impl
              [store-impl :refer :all]
-             [task-queue :refer [new-priority-task-queue]]
+             [task-queue :refer [make-priority-task-queue]]
              [canonical :refer [canonicalize]]
              [test-utils :refer [check as-set]])
             ; :reload

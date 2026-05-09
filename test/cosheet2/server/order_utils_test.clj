@@ -10,8 +10,8 @@
              [reporter :refer [reporter-value make-reporter invalid
                                set-value!]]
              [reporter-macros :refer [app-R]]
-             [task-queue :refer [new-priority-task-queue]]
-             [calculator :refer [new-calculator-data request compute]]
+             [task-queue :refer [make-priority-task-queue]]
+             [calculator :refer [make-calculator-data request compute]]
              [debug :refer [profile-and-print-reporters
                             simplify-for-print]]
              entity-impl
@@ -117,7 +117,7 @@
         elements-R (make-reporter :value joe-semantic-element-ids)
         ordered-R (ordered-ids-R elements-R mutable-store)
         copy-of-ordered-R (app-R identity ordered-R)
-        cd (new-calculator-data (new-priority-task-queue 0))]
+        cd (make-calculator-data (make-priority-task-queue 0))]
     (request copy-of-ordered-R cd)
     (is (= (reporter-value ordered-R) invalid))
     (is (= (reporter-value copy-of-ordered-R) invalid))

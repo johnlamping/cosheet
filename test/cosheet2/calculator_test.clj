@@ -7,7 +7,7 @@
                                         set-calculator-data-if-needed!
                                         set-attendee! change-data! invalid
                                         validity-category]]
-                      [task-queue :refer [new-priority-task-queue]]
+                      [task-queue :refer [make-priority-task-queue]]
                       [calculator :refer :all]
                       [utils :refer [update-new-further-action
                                      update-new-further-actions]])
@@ -20,9 +20,9 @@
     (make-reporter :application [+ (fib (- n 1) s) (fib (- n 2) s)]
                   :calculator (fn [& _] nil))))
 
-(deftest new-calculator-data-test
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)]
+(deftest make-calculator-data-test
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)]
     (is (= (:queue cd) queue))
     (is (not (nil? (:cache cd))))))
 
@@ -53,7 +53,7 @@
     (is (activated? f6))))
 
 (deftest update-value-and-dependent-depth-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r (make-reporter :value :v :dependent-depth 2)
         history (atom [])
         callback (fn [&{:keys [categories]}]
@@ -110,7 +110,7 @@
                      nil]))))
 
 (deftest copy-value-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         r1 (make-reporter :value :v)
         r2 (make-reporter :value-source r1
                          :value-source-priority-delta 1

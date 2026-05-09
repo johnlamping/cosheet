@@ -8,8 +8,8 @@
              [store :refer [new-mutable-store]]
              store-impl
              [reporter :refer [reporter-data reporter-value]]
-             [calculator :refer [new-calculator-data computation-value]]
-             [task-queue :refer [new-priority-task-queue]]
+             [calculator :refer [make-calculator-data computation-value]]
+             [task-queue :refer [make-priority-task-queue]]
              [utils :refer [call-pseudo-closure]])
             (cosheet2.server
              [render :refer :all]
@@ -25,8 +25,8 @@
 
 (defn render-dom-spec
   [spec mutable-store]
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         renderer (dom-renderer spec)
         dom-R (renderer spec mutable-store)]
     (computation-value dom-R cd)))
@@ -42,8 +42,8 @@
         mutable-store (new-mutable-store store)
         client-state (create-client-state mutable-store nil)
         top-level-id (top-level-id-R mutable-store client-state)
-        queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+        queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         DOM-R (top-level-DOM-R mutable-store temporary-id
                                client-state top-level-id)
         dom (computation-value DOM-R cd)]

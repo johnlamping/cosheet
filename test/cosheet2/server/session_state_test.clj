@@ -13,8 +13,8 @@
              [query :refer [matching-items]]
              [canonical :refer [canonicalize]]
              [map-state :refer [new-map-state map-state-get-current]]
-             [calculator :refer [new-calculator-data compute]]
-             [task-queue :refer [new-priority-task-queue]])
+             [calculator :refer [make-calculator-data compute]]
+             [task-queue :refer [make-priority-task-queue]])
             (cosheet2.server
              [session-state :refer :all]
              [item-render :refer [render-item-DOM]]
@@ -79,7 +79,7 @@
 
 (deftest prune-old-sessions-test
   (let [now (System/currentTimeMillis)
-        queue (new-priority-task-queue 0)]
+        queue (make-priority-task-queue 0)]
     (reset! session-info
             {:sessions {123 {:client-state (new-map-state
                                             {:last-time (- now 10000)})}
@@ -113,8 +113,8 @@
                          "Hello" [["a" "b"] [1 2] [3]])
         row1 (first (matching-items '(nil (1 ("a" :label))) store))
         ms (new-mutable-store store)
-        queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)]
+        queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)]
     (add-session-temporary-element! ms)
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms

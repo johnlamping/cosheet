@@ -15,7 +15,7 @@
                                         uniquely-identified-object?
                                         in-different-store
                                         recursively-in-different-store]]
-             [calculator :refer [new-calculator-data compute]]
+             [calculator :refer [make-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
              entity-impl
@@ -28,12 +28,12 @@
                             update-source]]
              [store-utils :refer [add-element add-object
                                   add-universal-objects]]
-             [task-queue :refer [new-priority-task-queue]]
+             [task-queue :refer [make-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [dom-manager :refer [new-dom-manager add-root-dom
+             [dom-manager :refer [make-dom-manager add-root-dom
                                   relative-ids->client-id
                                   client-id->relative-ids]]
              [actions :refer :all]
@@ -612,9 +612,9 @@
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,
                                       ; so we don't mess up the starting one.
-        queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
-        manager (new-dom-manager ms cd)
+        queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
+        manager (make-dom-manager ms cd)
         ss (assoc session-state :store ms :dom-manager manager)]
     (add-root-dom manager {:relative-id :Larry
                            :render-dom (fn [& _] [:div])
@@ -679,7 +679,7 @@
            nil)))
 
   (deftest do-actions-test
-    (let [queue (new-priority-task-queue 0)
+    (let [queue (make-priority-task-queue 0)
           mutable-store (new-mutable-store store queue)
           tracker (new-dom-tracker mutable-store)
           session-state {:tracker tracker
@@ -719,7 +719,7 @@
                'anything)))))
 
   (deftest confirm-actions-test
-    (let [queue (new-priority-task-queue 0)
+    (let [queue (make-priority-task-queue 0)
           client-state (new-state-map {:last-action nil} queue)]
       (is (= (confirm-actions {1 :a 2 :b 3 :c} client-state)
              [:a :b :c]))
@@ -733,10 +733,10 @@
   )
 
 (deftest do-actions-test
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         mutable-store (new-mutable-store store)
-        manager (new-dom-manager mutable-store cd)
+        manager (make-dom-manager mutable-store cd)
         session-state {:dom-manager manager
                        :store mutable-store
                        :client-state (new-map-state {:last-action nil})}]

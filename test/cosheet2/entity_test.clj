@@ -13,10 +13,10 @@
                       mutable-store-impl
                       [entity :refer :all]
                       [entity-impl :as entity-impl]
-                      [calculator :refer [current-value new-calculator-data
+                      [calculator :refer [current-value make-calculator-data
                                           propagate-calculator-data!]]
                       [canonical :refer [canonicalize]]
-                      [task-queue :refer [new-priority-task-queue
+                      [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
                       [test-utils :refer [check any as-set]])
             ; :reload
@@ -205,8 +205,8 @@
         [s12 idm] (add-link s11 id0 id1)
         [s13 idn] (add-link s12 idm "relationship")
         [s ido] (add-link s13 idn :label)
-        queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+        queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         ms (new-mutable-store s)
         item0 (id->object id0 ms)
         item1 (id->object id1 ms)

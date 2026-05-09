@@ -9,12 +9,12 @@
              [reporter :refer [set-attendee! reporter-value invalid
                                ;; TODO: Remove this
                                reporter-data]]
-             [calculator :refer [new-calculator-data propagate-calculator-data!
+             [calculator :refer [make-calculator-data propagate-calculator-data!
                                  request compute computation-value]]
              [category-change-calculator :refer [category-change-R]]
              store-impl
              [mutable-store-impl :refer :all]
-             [task-queue :refer [new-priority-task-queue
+             [task-queue :refer [make-priority-task-queue
                                  run-all-pending-tasks]]
              [test-utils :refer [check any as-set]]
              [debug :refer [store-as-list]])
@@ -30,7 +30,7 @@
      (store-as-list current)
      (vec (map store-as-list (map second future)))]))
 
-(def cd (new-calculator-data (new-priority-task-queue 0)))
+(def cd (make-calculator-data (make-priority-task-queue 0)))
 
 (deftest test-store
   (let [[store element]
@@ -38,8 +38,8 @@
                      nil '(77 ("test" :label)
                               ("Fred" ("by" :label))))
         initial-store (track-modified-ids store)
-        queue (new-priority-task-queue 0)
-        calculator-data (new-calculator-data queue) 
+        queue (make-priority-task-queue 0)
+        calculator-data (make-calculator-data queue) 
         mutable-store (new-mutable-store store)
         modified-store (update-source store element 99)]
     ;; Test the accessors.

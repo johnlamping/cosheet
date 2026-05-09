@@ -12,7 +12,7 @@
                                             reporter-data reporter-value
                                             reporter-value-when-valid
                                             reporter-atom data-attended?]]
-             [calculator :as calculator :refer [new-calculator-data compute
+             [calculator :as calculator :refer [make-calculator-data compute
                                                 current-value]]
              [application-calculator :as application-calculator]
              [reporter-macros :refer [app-R let-R]]
@@ -22,7 +22,7 @@
              mutable-store-impl
              [store-utils :refer [add-element]]
              [hiccup-utils :refer [dom-attributes add-attributes]]
-             [task-queue :refer [new-priority-task-queue
+             [task-queue :refer [make-priority-task-queue
                                  run-all-pending-tasks]])
             (cosheet2.server
              [dom-manager :refer :all]
@@ -73,8 +73,8 @@
 
 (deftest reuse-or-make-component-atom-test
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager "c1" 2 nil nil)
         c1-reused (reuse-or-make-component-atom s1 manager "c1" 2 nil c1)
         c2 (reuse-or-make-component-atom s2 manager "c2" 2 c1 c1)]
@@ -92,8 +92,8 @@
 
 (deftest update-dom-test
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)]
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)]
     (let [c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
       ;; Make c1 look like it has been activated.
       (swap! c1 #(assoc % :dom-R true :dom-version 1))
@@ -131,8 +131,8 @@
 
 (deftest activate-deactivate-component-test
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
         c2 (reuse-or-make-component-atom s2 manager "c2" 1 nil nil)]
     (activate-component c2)
     (is (check @manager
@@ -207,8 +207,8 @@
 
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
     (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
@@ -230,8 +230,8 @@
 
 (deftest client-id-test
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
     (activate-component c1)
     (compute cd)
@@ -252,8 +252,8 @@
         client1 "root"
         client3 (str client1 "_" (:id id2) "_" (:id id3))
         ms (new-mutable-store s)
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)]
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)]
     (add-root-dom
      manager
      {:relative-id :root
@@ -302,8 +302,8 @@
   ;; Also tests add-root-dom, request-client-refresh,
   ;; remove-all-doms, prepare-dom-for-client and adjust-subdom-for-client
   (let [ms (new-mutable-store (new-element-store))
-        cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)]
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)]
     (add-root-dom manager s1-)
     (let [c1- (client-id->component @manager "root")]
       (activate-component c1-)
@@ -393,9 +393,9 @@
                                            (doall (map (fn [pos] (atom 0))
                                                        (range width))))
                                          (range depth)))
-        cd (new-calculator-data (new-priority-task-queue 4))
+        cd (make-calculator-data (make-priority-task-queue 4))
         ms (new-mutable-store (new-element-store))
-        dm (new-dom-manager ms cd)
+        dm (make-dom-manager ms cd)
         client-lock (atom 0)
         doms-not-acknowledged (atom 0)
         repeat-doms-received (atom 0)

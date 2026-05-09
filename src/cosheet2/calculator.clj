@@ -39,12 +39,12 @@
   ;; Avoid huge print-outs.
   (.write w "<CalculatorData>"))
 
-(defn new-calculator-data
+(defn make-calculator-data
   "Create a calculator data to support both application and cache calculators."
   [queue]
   (assert (is_task_queue? queue))
   (map->CalculatorData
-   {:cache (mm/new-mutable-map)
+   {:cache (mm/make-mutable-map)
     :queue queue}))
 
 (defn propagate-calculator-data!

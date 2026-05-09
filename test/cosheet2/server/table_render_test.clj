@@ -12,8 +12,8 @@
                                          label->elements elements to-list
                                          make-object-list
                                          link-type name-label]]
-             [calculator :refer [new-calculator-data computation-value]]
-             [task-queue :refer [new-priority-task-queue]]
+             [calculator :refer [make-calculator-data computation-value]]
+             [task-queue :refer [make-priority-task-queue]]
              [store :refer [->ItemId]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -90,8 +90,8 @@
   "Run the renderer, then run the resulting dom-R, to get the final
   dom."
   [renderer spec mutable-store]
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         dom-R (renderer spec mutable-store)]
     (computation-value dom-R cd)))
 

@@ -23,7 +23,7 @@
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]
-    [dom-manager :refer [new-dom-manager add-root-dom remove-all-doms]])))
+    [dom-manager :refer [make-dom-manager add-root-dom remove-all-doms]])))
 
 ;;; This is the only function that directly turns one url into another.
 ;;; It is used only to remove the suffix from an initial url, so the client
@@ -342,7 +342,7 @@
   "Create the dom manager, and give it its root dom."
   [store temporary-id client-state calculator-data]
   (let [spec (top-level-DOM-spec store temporary-id client-state)
-        manager (new-dom-manager store calculator-data)]
+        manager (make-dom-manager store calculator-data)]
     (assert (:reporter spec))
     (propagate-calculator-data! (:reporter spec) calculator-data)
     (add-root-dom manager spec)

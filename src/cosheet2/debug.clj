@@ -11,9 +11,9 @@
                                         reporter-data reporter-value
                                         valid?]]
                       [orderable]
-                      [task-queue :refer [new-priority-task-queue]]
+                      [task-queue :refer [make-priority-task-queue]]
                       [calculator :refer [current-value computation-value
-                                          new-calculator-data]]
+                                          make-calculator-data]]
                       store-utils
                       [mutable-map :as mm]
                       [task-queue :refer [current-tasks]])))
@@ -271,7 +271,7 @@
   (let [cd (or (some #(when (reporter? %)
                         (:calculator-data (reporter-data %)))
                      reporters)
-               (new-calculator-data (new-priority-task-queue)))]
+               (make-calculator-data (make-priority-task-queue)))]
     (doseq [reporter reporters]
       (computation-value reporter cd))
     (first (accumulate-profiles {} #{} reporters #{}))))

@@ -5,7 +5,7 @@
             ))
 
 (deftest mutable-map-test
-  (let [mm (mm/new-mutable-map)]
+  (let [mm (mm/make-mutable-map)]
     
     (is (= (mm/update! mm :foo (fn [x] 5)) 5))
     (is (= (mm/update! mm :foo (fn [x] (+ x 2))) 7))

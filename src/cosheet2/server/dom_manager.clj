@@ -606,7 +606,7 @@
             (assert (instance? ComponentData result))
             result))))))
 
-(defn new-dom-manager
+(defn make-dom-manager
   "Return a new dom-manager object for doms over the store."
   [mutable-store calculator-data]
   (assert (instance? cosheet2.calculator.CalculatorData calculator-data))

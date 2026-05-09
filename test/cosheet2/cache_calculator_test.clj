@@ -3,12 +3,12 @@
             [clojure.pprint :refer [pprint]]
             [clojure.math :as math]
             (cosheet2 [mutable-map :refer [mm-get current-contents]]
-                      [task-queue :refer [new-priority-task-queue
+                      [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
                       [reporter :refer [make-reporter reporter-data
                                         reporter-value
                                         set-value! valid? invalid]]
-                      [calculator :refer [new-calculator-data current-value
+                      [calculator :refer [make-calculator-data current-value
                                           compute request unrequest
                                           computation-value]]
                       [reporter-macros :refer [app-R cache-R seq-R let-R]]
@@ -36,7 +36,7 @@
            [[:a :b] [[:a :b] [:a :b]]]))))
 
 (deftest cache-membership-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         data {:application [:a :b]
               :name "ab"
               :cache-key (#'cosheet2.cache-calculator/cache-key [:a :b])}
@@ -52,8 +52,8 @@
      (is (not= (get-or-make-reporter data cd) r0))))
 
 (deftest cache-calculator-test
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         r0 (make-reporter :name :r0 :value 1)
         r1 (apply make-reporter
                   :name :r1
@@ -126,7 +126,7 @@
 ;;; Test that caching is working by doing a recursive computation that would
 ;;; take a very long time if it weren't cached.
 (deftest fib-cache-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [cd (make-calculator-data (make-priority-task-queue 0))
         base (make-reporter :value 0)]
     (letfn [(fib [n] (if (<= n 1)
                        base
@@ -165,7 +165,7 @@
         r (let-R [s1 (seq-R (app-R map dependency-introducer rs))
                   s2 (seq-R (app-R map dependency-introducer s1))]
             s2)
-        cd (new-calculator-data (new-priority-task-queue 0))]
+        cd (make-calculator-data (make-priority-task-queue 0))]
     (is (= (computation-value r cd) [3 4 5]))
     (is (= @counter 4))
     (set-value! rs [1 2 3 4])

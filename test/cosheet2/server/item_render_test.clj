@@ -14,8 +14,8 @@
                             ->ItemId]]
              store-impl
              mutable-store-impl
-             [calculator :refer [new-calculator-data computation-value]]
-             [task-queue :refer [new-priority-task-queue]]
+             [calculator :refer [make-calculator-data computation-value]]
+             [task-queue :refer [make-priority-task-queue]]
              [store-utils :refer [add-element add-object
                                   add-universal-objects
                                   add-label-object]]
@@ -80,8 +80,8 @@
   "Run the renderer on the output of the data getter, then run the
   resulting dom-R, to get the final dom."
   [renderer spec mutable-store]
-  (let [queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
         dom-R (renderer spec mutable-store)]
     (computation-value dom-R cd)))
 

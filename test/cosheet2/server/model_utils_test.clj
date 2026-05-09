@@ -20,8 +20,8 @@
                                      not-query]]
                       entity-impl
                       [reporter :refer [reporter-value]]
-                      [calculator :refer [request compute new-calculator-data]]
-                      [task-queue :refer [new-priority-task-queue]]
+                      [calculator :refer [request compute make-calculator-data]]
+                      [task-queue :refer [make-priority-task-queue]]
                       [canonical :refer [canonicalize]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
@@ -222,7 +222,7 @@
                                              `(~(make-object-list []))
                                              non-selector-root)))
         ordered-tab-ids (ordered-tabs-ids-R s)
-        cd (new-calculator-data (new-priority-task-queue 0))]
+        cd (make-calculator-data (make-priority-task-queue 0))]
     (request ordered-tab-ids cd)
     (compute cd)
     (let [first-tab (id->entity

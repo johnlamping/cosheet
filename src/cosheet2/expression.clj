@@ -1,56 +1,20 @@
 (ns cosheet2.expression
   (:require (cosheet2
              [reporter :refer [new-reporter reporter? universal-category]]
-             [application-calculator :refer [application-calculator]]
+             [application-calculator :refer [make-application-R]]
              [cache-calculator :refer [data-for-forwarding-reporter]]
              [category-change-calculator :refer [category-change-calculator]])))
 
-;;; Code for creating reporters that contain expressions.
-
-(defn new-application
-  "Takes an application, and optionally a trace thunk, and a calculator,
-  and additional arguments, and returns a new expression reporter.
-  But if it has the application calculator, and none of the parts
-  are reporters, then it just evaluates the expression.
-  The trace thunk should be a function that calls its one argument. It
-  should be created at the point in the code where an application is
-  generated. It will be placed on the stack by
-  calculator/current-value, so that the stack backtrace will contain a
-  record of where applications were created. Without the trace, stack
-  will just contain a bunch of recursive calls to current-value."
-  [application & {:keys [trace calculator]
-                  :as args
-                  :or {calculator application-calculator}}]
-  ;; Catch some errors that leave no stack trace.
-  (assert ((some-fn ifn? reporter?) (first application)))
-  (if (and (not (some reporter? application))
-           (= calculator application-calculator))
-    ;; In this case, none of the arguments are reporters, and we have
-    ;; an application calculator, so just run the application now.  No
-    ;; need to make a reporter for it.  (Of course, the application
-    ;; might return a reporter.)
-    (apply (first application) (rest application))
-    ;; In this case, either we can't run the application yet, or it
-    ;; might have a caching calculator.  If it has a caching
-    ;; calculator, we don't want to run the application now, even if
-    ;; we could, because we want to cache its computation.  That way,
-    ;; if the computation returns an application reporter, all calls
-    ;; will return the identical reporter, from the cache, so that
-    ;; reporter's computation won't be duplicated either.
-    (apply new-reporter
-           :application application
-           :trace trace
-           :calculator calculator
-           (apply concat (dissoc args :trace :calculator)))))
+;;; Convenient syntax for accepting and creating reporters, mostly macros.
 
 (defmacro app-R
   "Takes a function and a series of arguments, and produces an
   application reporter with a tracing thunk. Extra information to be
   recorded in the reporter can be added as meta on the function."
   [& args]
-  `(new-application ~(vec args)
-                    :trace (fn [thunk#] (thunk#))
-                    ~@(apply concat (seq (meta (first args))))))
+  `(make-application-R ~(vec args)
+                       :trace (fn [thunk#] (thunk#))
+                       ~@(apply concat (seq (meta (first args))))))
 
 (defmacro cache-R
   "Takes a function and a series of arguments, and produces a cached
@@ -58,17 +22,18 @@
   the reporter can be added as meta on the function."
   [& args]
   `(let [application# ~(vec args)]
-     (apply new-application
+     (apply make-application-R
             application#
             :trace (fn [thunk#] (thunk#))
             ~@(apply concat (seq (meta (first args))))
             (data-for-forwarding-reporter application#))))
 
+;;; TODO: Move this to category-change-calculator, so we have only macros.
 (defn category-change
   "Takes a set of categories and a reporter and returns a reporter that
-  tracks its value, but only when it has a change in any of the given
-  categories; the tracking reporter is only guaranteed to be up to
-  date as of the last such change."
+  tracks the input reporter's value, but only when it has a change in
+  any of the given categories; the tracking reporter is only
+  guaranteed to be up to date as of the last such change."
   [categories reporter]
   (assert (reporter? reporter))
   (if (or (nil? categories)
@@ -138,5 +103,5 @@
   [sequence]
   `(let-R [sequence# ~sequence]
      (when (not (empty? sequence#))
-       (new-application (cons vector sequence#)
-                        :trace (fn [thunk#] (thunk#))))))
+       (make-application-R (cons vector sequence#)
+                           :trace (fn [thunk#] (thunk#))))))

@@ -1,5 +1,6 @@
 (ns cosheet2.application-calculator
-  (:require (cosheet2 [reporter :refer [reporter? valid? data-valid? invalid
+  (:require (cosheet2 [reporter :refer [new-reporter
+                                        reporter? valid? data-valid? invalid
                                         reporter-data data-value
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
@@ -443,3 +444,38 @@
    (:queue cd) (:priority (reporter-data reporter))
    do-application-calculate reporter cd))
 
+(defn make-application-R
+  "Takes an application, and optionally a trace thunk, and a calculator,
+  and additional arguments, and returns a new application reporter.
+  But if no calculator is specified and none of the parts are
+  reporters, then just evaluates the expression.
+  The trace thunk should be a function that calls its one argument. It
+  should be created at the point in the code where an application is
+  generated. It will be placed on the stack by
+  calculator/current-value, so that the stack backtrace will contain a
+  record of where applications were created. Without the trace, stack
+  will just contain a bunch of recursive calls to current-value."
+  [application & {:keys [trace calculator]
+                  :as args
+                  :or {calculator application-calculator}}]
+  ;; Catch some errors that leave no stack trace.
+  (assert ((some-fn ifn? reporter?) (first application)))
+  (if (and (not (some reporter? application))
+           (= calculator application-calculator))
+    ;; In this case, none of the arguments are reporters, and we have
+    ;; an application calculator, so just run the application now.  No
+    ;; need to make a reporter for it.  (Of course, the application
+    ;; might return a reporter.)
+    (apply (first application) (rest application))
+    ;; In this case, either we can't run the application yet, or it
+    ;; might have a caching calculator.  If it has a caching
+    ;; calculator, we don't want to run the application now, even if
+    ;; we could, because we want to cache its computation.  That way,
+    ;; if the computation returns an application reporter, all calls
+    ;; will return the identical reporter, from the cache, so that
+    ;; reporter's computation won't be duplicated either.
+    (apply new-reporter
+           :application application
+           :trace trace
+           :calculator calculator
+           (apply concat (dissoc args :trace :calculator)))))

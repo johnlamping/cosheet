@@ -6,7 +6,6 @@
                                         reporter?
                                         reporter-value-when-valid valid?
                                         value-category]]
-                      [expression :refer [new-application category-change]]
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [item-id? id->string string->id
                                      mutable-store?]]

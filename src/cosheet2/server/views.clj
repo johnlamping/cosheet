@@ -16,7 +16,7 @@
      [task-queue :refer [make-priority-task-queue finished-all-tasks?]]
      [hiccup-utils :refer [dom-attributes add-attributes]]
      [reporter :as reporter]
-     [map-state :refer [map-state-reset! map-state-get-current]]
+     [map-reporter :refer [map-reporter-reset! map-reporter-get-current]]
      [debug :refer [profile-and-print-reporters]])
     (cosheet2.server
       [dom-manager :refer [request-client-refresh
@@ -262,9 +262,9 @@
              (let [new-store (data-to-store (current-store store) content)]
                (store-reset! store new-store))
              (compute calculator-data 100000))
-    :opened (map-state-reset! (:client-state session-state)
+    :opened (map-reporter-reset! (:client-state session-state)
                               {:last-action 0})
-    :initialize (map-state-reset! (:client-state session-state)
+    :initialize (map-reporter-reset! (:client-state session-state)
                                   {:last-action 0})
     :request (replay-request session-state content)
     :error nil)
@@ -344,23 +344,23 @@
   ;; want to have done some computation, so if we need to send back
   ;; a select request, the dom we want to select will be more likely to be
   ;; going to the client.
-  (let [in-sync (map-state-get-current client-state :in-sync)
+  (let [in-sync (map-reporter-get-current client-state :in-sync)
         {:keys [select if-selected]} client-info
-        select-store-ids (map-state-get-current
+        select-store-ids (map-reporter-get-current
                           client-state :select-store-ids)
         [doms store-select] (when in-sync
                               (get-response-doms
                                dom-manager select-store-ids 100))
         if-selected (if select
                       if-selected
-                      (map-state-get-current client-state :if-selected))
+                      (map-reporter-get-current client-state :if-selected))
         select (or select store-select)
         answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
                  select (assoc :select [select if-selected])
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
-    (when select (map-state-reset! client-state {:select-store-ids nil
+    (when select (map-reporter-reset! client-state {:select-store-ids nil
                                                  :if-selected nil}))
     (when (not= answer {})
       (let [stripped (update
@@ -405,7 +405,7 @@
         (when clean
           (println "Client is clean.")
           (request-client-refresh dom-manager)
-          (map-state-reset! client-state {:in-sync true
+          (map-reporter-reset! client-state {:in-sync true
                                           :last-action nil}))
         (when replay
           (do-replay session-state replay))
@@ -417,7 +417,7 @@
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
             (when (:select-store-ids client-info)
-              (map-state-reset!
+              (map-reporter-reset!
                client-state
                (into {:if-selected nil}
                      (select-keys client-info

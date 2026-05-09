@@ -12,7 +12,7 @@
              [reporter :refer [reporter-data reporter-value]]
              [query :refer [matching-items]]
              [canonical :refer [canonicalize]]
-             [map-state :refer [new-map-state map-state-get-current]]
+             [map-reporter :refer [make-map-reporter map-reporter-get-current]]
              [calculator :refer [make-calculator-data compute]]
              [task-queue :refer [make-priority-task-queue]])
             (cosheet2.server
@@ -71,19 +71,19 @@
 
 (deftest get-session-state-test
   (reset! session-info
-          {:sessions {123 {:client-state (new-map-state {})}}})
+          {:sessions {123 {:client-state (make-map-reporter {})}}})
   (let [state (get-session-state 123)
         diff (- (System/currentTimeMillis)
-                (map-state-get-current (:client-state state) :last-time))]
+                (map-reporter-get-current (:client-state state) :last-time))]
     (is (#{0 1} diff))))
 
 (deftest prune-old-sessions-test
   (let [now (System/currentTimeMillis)
         queue (make-priority-task-queue 0)]
     (reset! session-info
-            {:sessions {123 {:client-state (new-map-state
+            {:sessions {123 {:client-state (make-map-reporter
                                             {:last-time (- now 10000)})}
-                        789 {:client-state (new-map-state
+                        789 {:client-state (make-map-reporter
                                             {:last-time (- now 100000)})}}}))
   (prune-old-sessions 200000)
   (is (check (keys (:sessions @session-info)) (as-set [123 789])))

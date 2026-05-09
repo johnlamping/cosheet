@@ -5,8 +5,8 @@
             (cosheet2
              [utils :refer [dissoc-in]]
              [orderable :refer [initial split earlier?]]
-             [map-state :refer [new-map-state map-state-get-current
-                                map-state-reset!]]
+             [map-reporter :refer [make-map-reporter map-reporter-get-current
+                                map-reporter-reset!]]
              [entity :as entity :refer [id->entity id->object to-list
                                         content elements label->element
                                         label->elements label->content
@@ -105,7 +105,7 @@
 
 (def session-state {:session-temporary-id temporary-id
                     :store (new-mutable-store store)
-                    :client-state (new-map-state {})})
+                    :client-state (make-map-reporter {})})
 
 ;;; TODO: !!! This is the new format for table rows, where each is an object.
 ;;;       Replace the previous store by this.
@@ -147,7 +147,7 @@
 
 (def new-session-state {:session-temporary-id new-temporary-id
                         :store (new-mutable-store new-store)
-                        :client-state (new-map-state {})})
+                        :client-state (make-map-reporter {})})
 
 (deftest current-source-matches-from?-test
   ;; Test numbers
@@ -739,7 +739,7 @@
         manager (make-dom-manager mutable-store cd)
         session-state {:dom-manager manager
                        :store mutable-store
-                       :client-state (new-map-state {:last-action nil})}]
+                       :client-state (make-map-reporter {:last-action nil})}]
     (add-root-dom
      manager
      {:relative-id :root

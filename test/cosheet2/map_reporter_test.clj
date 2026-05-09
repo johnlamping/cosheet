@@ -1,7 +1,7 @@
-(ns cosheet2.map-state-test
+(ns cosheet2.map-reporter-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [map-state :refer :all]
+            (cosheet2 [map-reporter :refer :all]
                       [task-queue :refer [make-priority-task-queue]]
                       [calculator :refer [make-calculator-data
                                           compute
@@ -14,17 +14,17 @@
             ; :reload
             ))
 
-(deftest map-state-test
+(deftest map-reporter-test
   (let [cd (make-calculator-data (make-priority-task-queue 0))
         r1 (make-reporter :value 1)
-        ms (new-map-state {:a r1 :b 2})
-        ra (map-state-get ms :a)
-        rb (map-state-get ms :b)
-        rc (map-state-get ms :c)
+        ms (make-map-reporter {:a r1 :b 2})
+        ra (map-reporter-get ms :a)
+        rb (map-reporter-get ms :b)
+        rc (map-reporter-get ms :c)
         history (atom [])
         callback (fn [& {:keys [key reporter]}]
                    (swap! history #(conj % [key (reporter-value reporter)])))]
-    (is (= (map-state-get-current ms :a) 1))
+    (is (= (map-reporter-get-current ms :a) 1))
     (propagate-calculator-data! ra cd)
     (propagate-calculator-data! rb cd)
     (propagate-calculator-data! rc cd)
@@ -49,22 +49,22 @@
     (is (check @history
                [(any) (any) (any)
                 [:ra 2]]))
-    (map-state-change-value! ms :b (fn [x] (+ x 9)))
+    (map-reporter-change-value! ms :b (fn [x] (+ x 9)))
     (compute cd)
     (is (check @history
                [(any) (any) (any)
                 [:ra 2]
                 [:rb invalid]
                 [:rb 11]]))
-    (map-state-reset! ms {:a 3 :c 5})
-    (is (= (map-state-get-current ms :c) 5))
+    (map-reporter-reset! ms {:a 3 :c 5})
+    (is (= (map-reporter-get-current ms :c) 5))
     (compute cd)
     (is (check (nthrest @history 6)
                (as-set [[:ra invalid]
                         [:rc invalid]
                         [:ra 3]
                         [:rc 5]])))
-    (is (= (map-state-change-value-control-return!
+    (is (= (map-reporter-change-value-control-return!
             ms :c (fn [x] [[x "hi"] "there"]))
            "there"))
     (compute cd)

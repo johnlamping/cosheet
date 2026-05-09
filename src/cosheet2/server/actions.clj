@@ -5,9 +5,9 @@
     [utils :refer [parse-string-as-number thread-map truncate-at-value
                    swap-control-return!]]
     [canonical :refer [equivalent-primitives?]]
-    [map-state :refer [map-state-get-current map-state-reset!
-                       map-state-change-value!
-                       map-state-change-value-control-return!]]
+    [map-reporter :refer [map-reporter-get-current map-reporter-reset!
+                       map-reporter-change-value!
+                       map-reporter-change-value-control-return!]]
     [store :refer [update-source
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
@@ -30,8 +30,7 @@
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
     query-impl
-    [orderable :refer [initial split]]
-    [map-state :refer [map-state-get-current]])
+    [orderable :refer [initial split]])
    (cosheet2.server
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data
@@ -365,7 +364,7 @@
 (defn do-expand
     [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
-    (let [root-id (map-state-get-current (:client-state session-state) :root-id)
+    (let [root-id (map-reporter-get-current (:client-state session-state) :root-id)
           target (id->target store subject-id)
           ;; In two cases we want to show the target of the
           ;; subject, rather than the subject, itself:
@@ -449,7 +448,7 @@
 
 (defn do-quit-batch-edit
   [mutable-store session-state]
-  (map-state-reset! (:client-state session-state)
+  (map-reporter-reset! (:client-state session-state)
                     {:batch-editing false})
   {})
 
@@ -534,7 +533,7 @@
                                    arguments)]
                      (normalize-handler-response response store))))]
             (when (contains? result :batch-editing)
-              (map-state-reset! (:client-state session-state)
+              (map-reporter-reset! (:client-state session-state)
                                 {:batch-editing (:batch-editing result)}))
             (dissoc result :batch-editing)))))
 
@@ -561,7 +560,7 @@
                        @dom-manager client-id :select
                        (current-store mutable-store))
           {:keys [tab-id]} action-data]
-      (map-state-reset! client-state {:select-store-ids nil
+      (map-reporter-reset! client-state {:select-store-ids nil
                                       :if-selected nil})
       (store-update!
        mutable-store
@@ -573,7 +572,7 @@
            store)))
       (when tab-id
         (do
-          (map-state-reset! client-state {:root-id tab-id})
+          (map-reporter-reset! client-state {:root-id tab-id})
           {:set-url (str (:url-path session-state)
                          "?root=" (id->string tab-id))})))))
 
@@ -648,7 +647,7 @@
                                           :open :set-url]))))
                   {} action-sequence)]
       (let [{:keys [client-state]} session-state
-            root-id (map-state-get-current client-state :root-id)]
+            root-id (map-reporter-get-current client-state :root-id)]
         ;; If the root id has become invalid, set our copy to nil, and
         ;; tell the client to set its url back to no root
         ;; id. Otherwise, if creating a new tab is undone, the client
@@ -658,7 +657,7 @@
                  (not (:set-url client-info))
                  (not (id-valid-link? (current-store mutable-store) root-id)))
           (do
-            (map-state-change-value! client-state :root-id (constantly nil))
+            (map-reporter-change-value! client-state :root-id (constantly nil))
             (assoc client-info :set-url (str (:url-path session-state) "?")))
           client-info)))
     (catch Exception e
@@ -672,7 +671,7 @@
   last-action to reflect that these actions have
   been done, and return the sequence of actions to be done."
   [actions client-state]
-  (map-state-change-value-control-return!
+  (map-reporter-change-value-control-return!
    client-state :last-action
    (fn [last-action]
      (let [later-times (cond->> (sort (keys actions))

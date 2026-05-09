@@ -3,6 +3,7 @@
              utils mutable-map reporter reporter-macros calculator
              task-queue reporter canonical orderable
              application-calculator cache-calculator category-change-calculator
+             map-reporter
              store store-impl mutable-store-impl store-utils
              entity entity-impl
              query query-impl)

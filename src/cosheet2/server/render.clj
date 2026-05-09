@@ -8,7 +8,7 @@
                       [reporter-macros :refer [app-R let-R seq-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [calculator :refer [current-value]]
-                      [map-state :refer [map-state-get]]
+                      [map-reporter :refer [map-reporter-get]]
                       [hiccup-utils :refer [add-attributes into-attributes]])
             (cosheet2.server
              [order-utils :refer [semantic-element?]]
@@ -405,7 +405,7 @@
 (defn top-level-id-R
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
-  (let-R [id (map-state-get client-state :root-id)
+  (let-R [id (map-reporter-get client-state :root-id)
           id-valid (id-valid-link? store id)]
     (or (when id-valid id)
         (app-R first (ordered-tabs-ids-R store)))))
@@ -430,7 +430,7 @@
   component."
   [store temporary-id client-state id-R]
   (let-R [id id-R
-          batch-editing (map-state-get client-state :batch-editing)]
+          batch-editing (map-reporter-get client-state :batch-editing)]
     (println "top level DOM id:" id "  Batch editing:" batch-editing)
     (if batch-editing
       (batch-editing-component store temporary-id)

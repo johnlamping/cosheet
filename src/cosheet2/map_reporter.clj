@@ -1,4 +1,4 @@
-(ns cosheet2.map-state
+(ns cosheet2.map-reporter
   (:require (cosheet2
              [reporter :refer [make-reporter reporter-value
                                change-data! change-data-control-return!
@@ -10,25 +10,27 @@
 ;;; Support a reporter that holds a map. The entries in the map may
 ;;; themselves be reporters.
 
-(defn new-map-state
+;;; Unlike mutable-map, map-reporter gives all the reporter functionality. But it doesn't support as much parallelism as mutable-map.
+
+(defn make-map-reporter
   [initial]
   (assert (map? initial))
   (make-reporter :value initial))
 
-(defn map-state-get-current [map-state key]
+(defn map-reporter-get-current [map-state key]
   (reporter-value (key (reporter-value map-state))))
 
-(defn map-state-get [map-state key]
+(defn map-reporter-get [map-state key]
   (app-R key (category-change-R [key] map-state)))
 
-(defn map-state-change-value! [map-state key fun]
+(defn map-reporter-change-value! [map-state key fun]
   (change-data! map-state
                 (fn [data]
                   [(assoc-in data [:value key] (fun (key (:value data))))
                    [key]
                    [key]])))
 
-(defn map-state-change-value-control-return! [map-state key fun]
+(defn map-reporter-change-value-control-return! [map-state key fun]
   (change-data-control-return!
    map-state
    (fn [data] (let [[new-val result] (fun (key (:value data)))]
@@ -37,10 +39,9 @@
                  [key]
                  result]))))
 
-(defn map-state-reset! [map-state map]
+(defn map-reporter-reset! [map-state map]
   (change-value! map-state
                  (fn [data]
                    [(into data map)
                     (vec (keys map))
                     (vec (keys map))])))
-

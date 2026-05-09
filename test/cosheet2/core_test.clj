@@ -11,7 +11,7 @@
              application-calculator-test
              cache-calculator-test
              category-change-calculator-test
-             map-state-test
+             map-reporter-test
              canonical-test
              orderable-test
              store_test

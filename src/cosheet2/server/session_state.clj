@@ -16,8 +16,8 @@
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     [calculator :refer [compute propagate-calculator-data!]]
-    [map-state :refer [new-map-state map-state-get-current
-                       map-state-reset!]])
+    [map-reporter :refer [make-map-reporter map-reporter-get-current
+                       map-reporter-reset!]])
    (cosheet2.server
     [order-utils :refer [order-element-for-item]]
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
@@ -332,7 +332,7 @@
         id (or root-id
                (first (ordered-tabs-ids-R immutable-store)))]
     (println "Created client state with root id" id)
-    (new-map-state {:last-time (System/currentTimeMillis)
+    (make-map-reporter {:last-time (System/currentTimeMillis)
                     :root-id id
                     :last-action nil
                     :batch-editing false
@@ -357,7 +357,7 @@
 
 (defn get-session-state [session-id]
   (when-let [state ((:sessions @session-info) session-id)]
-    (map-state-reset! (:client-state state)
+    (map-reporter-reset! (:client-state state)
                       {:last-time (System/currentTimeMillis)})
     state))
 
@@ -368,7 +368,7 @@
      (let [last-time-to-keep (- (System/currentTimeMillis) delay-millis)]
        (assoc session-info :sessions
               (reduce-kv (fn [accum id state]
-                           (if (< (map-state-get-current
+                           (if (< (map-reporter-get-current
                                    (:client-state state) :last-time)
                                   last-time-to-keep)
                              accum

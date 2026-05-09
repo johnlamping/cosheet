@@ -6,7 +6,7 @@
              [query :refer [extended-by?]]
              query-impl
              [debug :refer [simplify-for-print]]
-             [expression :refer [let-R]])
+             [reporter-macros :refer [let-R]])
             (cosheet2.server
              [model-utils :refer [entity->canonical-semantic
                                   entity->fixed-term-with-negations

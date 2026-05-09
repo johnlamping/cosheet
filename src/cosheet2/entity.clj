@@ -1,6 +1,6 @@
 (ns cosheet2.entity
   (:require (cosheet2 [calculator :refer [current-value]]
-                      [expression :refer [let-R]]
+                      [reporter-macros :refer [let-R]]
                       [store :refer [make-item-id item-id?
                                      link-id? object-id?
                                      generic-name?

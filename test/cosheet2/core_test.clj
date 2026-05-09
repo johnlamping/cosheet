@@ -7,7 +7,7 @@
              reporter-test
              canonical-test
              calculator-test
-             expression-test
+             reporter-macros-test
              application-calculator-test
              cache-calculator-test
              category-change-calculator-test

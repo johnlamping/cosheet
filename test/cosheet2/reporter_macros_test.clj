@@ -1,10 +1,10 @@
-(ns cosheet2.expression-test
+(ns cosheet2.reporter-macros-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [reporter :refer [new-reporter reporter-data
                                         universal-category invalid]]
-                      [expression :refer :all]
+                      [reporter-macros :refer :all]
                       [application-calculator :refer [application-calculator]]
                       [cache-calculator :refer [cache-calculator]]
                       [category-change-calculator
@@ -13,7 +13,7 @@
             ; :reload
             ))
 
-(deftest expression-test
+(deftest reporter-macros-test
   (let [r (new-reporter)]
     (is (= (dissoc (reporter-data (app-R r 2 3)) :trace)
            {:application [r 2 3]
@@ -38,7 +38,7 @@
             :priority Double/MAX_VALUE}))
     (is (= (category-change-R nil r) r))
     (is (= (category-change-R [universal-category] r) r)))
-  
+
   ;; Try cases where the expression should evaluate to a constant.
   (is (= (app-R + (app-R inc 1) 3)
          5))
@@ -56,7 +56,7 @@
                        (fn [x] (app-R inc x))
                        [1 (app-R inc 1) 3]))
          [2 3 4]))
-  
+
   ;; Try cases where the expression references a reporter.
   (let [r3 (new-reporter :value 3)]
     (is (= (current-value (app-R + (app-R inc 1) r3))
@@ -77,8 +77,3 @@
                                         (fn [x] (app-R inc x))
                                         [1 (app-R inc 1) r3])))
            [2 3 4]))))
-
-
-
-
-

@@ -15,7 +15,7 @@
              [calculator :as calculator :refer [new-calculator-data compute
                                                 current-value]]
              [application-calculator :as application-calculator]
-             [expression :refer [app-R let-R]]
+             [reporter-macros :refer [app-R let-R]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]

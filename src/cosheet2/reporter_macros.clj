@@ -1,9 +1,9 @@
-(ns cosheet2.expression
+(ns cosheet2.reporter-macros
   (:require (cosheet2
              [application-calculator :refer [make-application-R]]
              [cache-calculator :refer [data-for-forwarding-reporter]])))
 
-;;; Convenient syntax for accepting and creating reporters, mostly macros.
+;;; Convenient macros for accepting and creating reporters.
 
 (defmacro app-R
   "Takes a function and a series of arguments, and produces an

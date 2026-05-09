@@ -4,7 +4,7 @@
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
-                      [expression :refer [let-R seq-R]]
+                      [reporter-macros :refer [let-R seq-R]]
                       [canonical :refer [canonical-set-to-list]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-by-selected-elements

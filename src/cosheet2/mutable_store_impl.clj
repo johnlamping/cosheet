@@ -6,7 +6,7 @@
                                         reporter-value
                                         universal-category Reporter
                                         new-reporter-data]]
-                      [expression :refer [cache-R]]
+                      [reporter-macros :refer [cache-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [utils :refer [call-with-latest-value union-seqs
                                      update-in-clean-up

@@ -3,7 +3,7 @@
             (cosheet2 [orderable :as orderable]
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
-                      [expression :refer [let-R]]
+                      [reporter-macros :refer [let-R]]
                       [store :refer [add-link make-item-id get-new-object-id
                                      new-element-store new-mutable-store
                                      track-modified-ids

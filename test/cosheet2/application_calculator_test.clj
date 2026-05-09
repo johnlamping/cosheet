@@ -12,7 +12,7 @@
                                         universal-category]]
                       [calculator :refer [new-calculator-data current-value
                                           compute request]]
-                      [expression :refer [app-R]]
+                      [reporter-macros :refer [app-R]]
                       [utils :refer :all]
                       [application-calculator :refer :all]
                       [test-utils :refer [check any]]

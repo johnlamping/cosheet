@@ -1,6 +1,6 @@
 (ns cosheet2.core
   (:require (cosheet2
-             utils mutable-map reporter expression calculator
+             utils mutable-map reporter reporter-macros calculator
              task-queue reporter canonical orderable
              application-calculator cache-calculator category-change-calculator
              store store-impl mutable-store-impl store-utils

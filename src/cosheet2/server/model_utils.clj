@@ -5,7 +5,7 @@
     [utils :refer [thread-map replace-in-seqs
                    extract-first]]
     [orderable :refer [initial split]]
-    [expression :refer [app-R let-R]]
+    [reporter-macros :refer [app-R let-R]]
     [canonical :refer [canonicalize]]
     [store :refer [new-element-store
                    update-source add-link declare-temporary-id

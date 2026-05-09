@@ -5,7 +5,7 @@
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
-                      [expression :refer [app-R let-R seq-R]]
+                      [reporter-macros :refer [app-R let-R seq-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [calculator :refer [current-value]]
                       [map-state :refer [map-state-get]]

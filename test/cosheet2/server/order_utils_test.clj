@@ -9,7 +9,7 @@
              [orderable :as orderable]
              [reporter :refer [reporter-value new-reporter invalid
                                set-value!]]
-             [expression :refer [app-R]]
+             [reporter-macros :refer [app-R]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
              [debug :refer [profile-and-print-reporters

@@ -3,7 +3,7 @@
              [reporter :refer [new-reporter reporter-value
                                change-data! change-data-control-return!
                                change-value!]]
-             [expression :refer [app-R]]
+             [reporter-macros :refer [app-R]]
              [category-change-calculator :refer [category-change-calculator
                                                  category-change-R]])))
 

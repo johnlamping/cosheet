@@ -11,7 +11,7 @@
                       [debug :refer [simplify-for-print]]
                       [utils :refer [separate-by disjoint-combinations]]
                       [hiccup-utils :refer [add-attributes]]
-                      [expression :refer [let-R]])
+                      [reporter-macros :refer [let-R]])
             (cosheet2.server
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants

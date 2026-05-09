@@ -12,7 +12,7 @@
                       [calculator :refer [current-value]]
                       [orderable :as orderable]
                       [entity :refer :all]
-                      [expression :refer [seq-R let-R]]
+                      [reporter-macros :refer [seq-R let-R]]
                       [category-change-calculator :refer [category-change-R]])))
 
 (defn endpoint->entity

@@ -4,7 +4,7 @@
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
-                      [expression :refer [let-R app-seq-R]]
+                      [expression :refer [let-R seq-R]]
                       [canonical :refer [canonical-set-to-list]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-by-selected-elements
@@ -42,9 +42,8 @@
   its children. The component must already have get-action-data
   that targets each of the tab items, and :tab-id if there
   is only one tab item."
-  (let-R [example-elements (app-seq-R
-                                map #(id->updating-entity-R % store)
-                                example-element-ids)]
+  (let-R [example-elements (seq-R (map #(id->updating-entity-R % store)
+                                       example-element-ids))]
     (if (seq example-element-ids)
       (let [dom (labels-and-elements-DOM
                  example-elements nil false false :vertical

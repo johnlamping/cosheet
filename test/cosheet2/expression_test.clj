@@ -56,10 +56,6 @@
                        (fn [x] (app-R inc x))
                        [1 (app-R inc 1) 3]))
          [2 3 4]))
-  (is (= (app-seq-R map
-                   (fn [x] (app-R inc x))
-                   [1 (app-R inc 1) 3])
-         [2 3 4]))
   
   ;; Try cases where the expression references a reporter.
   (let [r3 (new-reporter :value 3)]
@@ -80,10 +76,6 @@
     (is (= (current-value (seq-R (app-R map
                                         (fn [x] (app-R inc x))
                                         [1 (app-R inc 1) r3])))
-           [2 3 4]))
-    (is (= (current-value (app-seq-R map
-                                    (fn [x] (app-R inc x))
-                                    [1 (app-R inc 1) r3]))
            [2 3 4]))))
 
 

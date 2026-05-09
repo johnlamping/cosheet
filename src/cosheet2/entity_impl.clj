@@ -12,7 +12,7 @@
                       [calculator :refer [current-value]]
                       [orderable :as orderable]
                       [entity :refer :all]
-                      [expression :refer [app-seq-R let-R app-R
+                      [expression :refer [seq-R let-R
                                           category-change]])))
 
 (defn endpoint->entity
@@ -197,7 +197,7 @@
     (let-R [forward-elements (forward-elements this)]
       (if (object-id? item-id)
         (let-R [element-ids (source->ids store item-id)
-                   targets (app-seq-R map #(id->target store %) element-ids)]
+                targets (seq-R (map #(id->target store %) element-ids))]
           (seq (concat
                 forward-elements
                 (->> (map vector element-ids targets)
@@ -235,7 +235,7 @@
                                       (id->element element-id store)))]
           (if (object-id? item-id)
             (let-R [element-ids (source-label->ids store item-id label-key)
-                       targets (app-seq-R map #(id->target store %) element-ids)]
+                    targets (seq-R (map #(id->target store %) element-ids))]
               (seq (concat
                    forward-elements
                    (->> (map vector element-ids targets)

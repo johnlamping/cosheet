@@ -5,7 +5,7 @@
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
-                      [expression :refer [app-R let-R app-seq-R
+                      [expression :refer [app-R let-R seq-R
                                           category-change]]
                       [calculator :refer [current-value]]
                       [map-state :refer [map-state-get]]
@@ -553,7 +553,7 @@
     ;;       about which items changed, not just that something it cared about
     ;;       changed.
     (let-R [labels (matching-items '(nil :tag) store)
-               contents (app-seq-R map content labels)]
+            contents (seq-R (map content labels))]
       (let [content-names (map str contents)
             sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
                                                      content-names)

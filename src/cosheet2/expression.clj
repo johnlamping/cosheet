@@ -121,7 +121,7 @@
            ~@(if (empty? suffix) body [`(let-R ~(vec suffix) ~@body)]))
          ~@values)))
 
-;;; TODO: These are eager. Consider adding support for lazy sequences
+;;; TODO: This are eager. Consider adding support for lazy sequences
 ;;; of reporters. That requires adding a lazy cons operation, which
 ;;; just takes two possible reporters, doesn't give them demand, and
 ;;; can return either one. Whenevethe lazy cons is accessed, it has to
@@ -140,16 +140,3 @@
      (when (not (empty? sequence#))
        (new-application (cons vector sequence#)
                         :trace (fn [thunk#] (thunk#))))))
-
-(defmacro app-seq-R
-  "Given an expression that may evaluate to a sequence of reporters, make
-   a reporter whose value is the sequence of corresponding values."
-  [& args]
-  `(let-R
-       [sequence# ~(list* 'cosheet2.expression/app-R args)]
-     (when (not (empty? sequence#))
-       (new-application (cons vector sequence#)
-                        :trace (fn [thunk#] (thunk#))))))
-
-
-

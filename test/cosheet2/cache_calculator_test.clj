@@ -11,7 +11,7 @@
                       [calculator :refer [new-calculator-data current-value
                                           compute request unrequest
                                           computation-value]]
-                      [expression :refer [app-R cache-R app-seq-R let-R]]
+                      [expression :refer [app-R cache-R seq-R let-R]]
                       [utils :refer :all]
                       [cache-calculator :refer :all]
                       [test-utils :refer [check any]]                      
@@ -162,8 +162,8 @@
                         (swap! counter inc)
                         (+ x y))
         dependency-introducer (fn [x] (cache-R counting-plus r1 x))
-        r (let-R [s1 (app-seq-R map dependency-introducer rs)
-                     s2 (app-seq-R map dependency-introducer s1)]
+        r (let-R [s1 (seq-R (app-R map dependency-introducer rs))
+                  s2 (seq-R (app-R map dependency-introducer s1))]
             s2)
         cd (new-calculator-data (new-priority-task-queue 0))]
     (is (= (computation-value r cd) [3 4 5]))

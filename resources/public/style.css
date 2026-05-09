@@ -440,9 +440,6 @@ body {
 .horizontal-labels-element.narrow > :first-child {
     border-bottom-left-radius: 7px;
     border-top-left-radius: 7px;
-}
-
-.horizontal-labels-element.narrow > :first-child {
     width: 12px;
 }
 
@@ -541,6 +538,11 @@ body {
     display: flex;
     flex-direction: row;
     border-left-width: 2px;
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
 }
 
 .horizontal-header > :first-child {
@@ -606,14 +608,6 @@ body {
     margin-bottom: 0px;
 }
 
-.horizontal-header{
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
 /* Label pairs, horizontal format */
 
 .vertical-labels-element {
@@ -641,7 +635,6 @@ body {
 /* --- Horizontal lists of elements, with labels on the left. --- */
 
 .horizontal-labeled-element-list {
-    flex: none;
     display: flex;
     flex: 1 0 auto;
     align-items: center;

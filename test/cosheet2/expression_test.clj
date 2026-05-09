@@ -56,9 +56,6 @@
                    (fn [x] (app-R inc x))
                    [1 (app-R inc 1) 3])
          [2 3 4]))
-  (is (= (expr-filter #(= (mod % 3) 0)
-                      [1 2 3 4 5 6])
-         [3 6]))
   
   ;; Try cases where the expression references a reporter.
   (let [r3 (new-reporter :value 3)]
@@ -79,14 +76,7 @@
     (is (= (current-value (app-seq-R map
                                     (fn [x] (app-R inc x))
                                     [1 (app-R inc 1) r3]))
-           [2 3 4]))
-    
-    (is (= (current-value (expr-filter #(app-R = (app-R mod % r3) 0)
-                                       [1 2 r3 4 5 6]))
-           [3 6]))
-    (is (= (current-value (expr-filter #(app-R not= % 1)
-                                       [1 2 r3 nil false]))
-           [2 3 nil false]))))
+           [2 3 4]))))
 
 
 

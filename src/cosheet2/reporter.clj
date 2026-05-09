@@ -277,7 +277,7 @@
   ([r description categories]
   ;; Since the only guarantee is eventual callback, we can fetch the
   ;; attendees map outside of any lock, since anything that changed
-  ;; the attendees will also request callbacks for new attendees.
+  ;; The attendees will also request callbacks for new attendees.
   ;; This does mean that an attendee may be called after it has cancelled
   ;; its request.
    (let [data (reporter-data r) 

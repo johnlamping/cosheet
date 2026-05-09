@@ -127,7 +127,7 @@
 ;;; can return either one. Whenevethe lazy cons is accessed, it has to
 ;;; be done as one of the arguments to an app-R, so the app-R can deal
 ;;; with giving the reporter demand, and waiting for its value. This
-;;; means that operaations over the sequences, like map or filter,
+;;; means that operations over the sequences, like map or filter,
 ;;; would need versions that include those app-R forms.
 
 (defmacro app-seq-R
@@ -138,16 +138,7 @@
        [sequence# ~(list* 'cosheet2.expression/app-R args)]
      (when (not (empty? sequence#))
        (new-application (cons vector sequence#)
-                       :trace (fn [thunk#] (thunk#))))))
+                        :trace (fn [thunk#] (thunk#))))))
 
-(defn expr-filter
-  "Given a function that might return a reporter, and a sequence that
-  may contain reporters, return a reporter whose value is the
-  subsequence of values for which the filter is truthy."
-  [condition items]
-  (let-R [passed (app-seq-R map #(let-R [passes (condition %)]
-                                     (if passes % ::fail))
-                              items)]
-    (filter #(not= % ::fail) passed)))
 
 

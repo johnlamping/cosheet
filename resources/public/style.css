@@ -15,6 +15,10 @@
     --shimmer-up:    linear-gradient(to top,    hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
 }
 
+@layer base, overrides;
+
+@layer base {
+
 * {
     border-style: solid;
     border-width: 0px;
@@ -58,12 +62,6 @@ body {
     margin: 0;
 }
 
-/* need to override box shadow for selectors */
-.selected.selected.selected.selected {
-    box-shadow: inset 0 0 5px 3px var(--selection-color);
-    border-radius: 5px;
-}
-
 /* In general, if there is a border, there is a matching negative margin
    on the right and bottom. That allows boxes to stack. Containment may
    require additional negative margins on the top and left.
@@ -101,19 +99,6 @@ body {
     min-height: 15px; /* Make no-content cells have minimum height */
     min-width: 7px;
     font-size: small;
-}
-
-/* Override other min-width values. */
-.content-text.content-text.content-text.content-text {
-    min-height: 25px;
-    min-width: 50px;
-    overflow-wrap: break-word;
-    font-family: sans-serif;
-}
-
-/* Override other min-width values. */
-.content-text.content-text.content-text.content-text.placeholder {
-    min-height: 14px;
 }
 
 .content-text.placeholder {
@@ -271,11 +256,6 @@ body {
     padding-top: 2px;
 }
 
-.tab.empty-child.empty-child.empty-child.empty-child {
-    background-color: transparent;
-    width: 40px;
-}
-
 .tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after {
      background-color: var(--bg-subtle);
 }
@@ -304,12 +284,6 @@ body {
 .tab.with-elements > :first-child.content-text {
     padding-top: 0px;
     margin-top: 3px;
-}
-
-.tab.chosen.selected.selected.selected.selected {
-    box-shadow: inset 0px 2px 2px var(--border-color),
-    0px 2px hsl(0, 0%, 100%),
-    inset 0 0 5px 3px var(--selection-color);
 }
 
  /* Put the selected box shadow on the select holder, because the :left and
@@ -355,28 +329,11 @@ body {
     margin-bottom: 2px;
 }
 
-/* Three copies, so our definition of margin wins out. */
-.batch-stack.batch-stack.batch-stack {
-    box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
-                4px 4px white, 6px 6px hsl(220, 70%, 65%),
-                8px 8px white, 10px 10px hsl(220, 40%, 60%);
-    margin: 10px 16px 16px 8px;
-    z-index: 1;
-}
-
 .batch-query-match-counts {
     margin: 4px 8px 4px 6px;
     text-align: center;
     color: hsl(220, 100%, 45%);
     font-weight: bold;
-}
-
-.horizontal-labels-element.narrow.narrow.narrow.batch-stack > * {
-    margin-bottom: 0px;
-}
-
-.horizontal-labels-element.narrow.narrow.narrow.batch-stack > :last-child {
-    margin-right: 0px;
 }
 
 .batch-stack {
@@ -416,15 +373,10 @@ body {
     background-color: hsl(194, 100%, 88%);
 }
 
-.label > .label.label.label {
-    background-color: transparent;
-}
-
 .item:not(.label), .content-text:not(.label), .vertical-stack:not(.label) {
     background-color: white;
 }
 
-.label.virtual.virtual.virtual.virtual:not(.merge-with-parent),
 .label.virtual:not(.merge-with-parent)+.indent-wrapper {
     background-color: hsl(194, 50%, 88%);
 }
@@ -520,7 +472,6 @@ body {
 .vertical-stack.has-border > .horizontal-labels-element:first-child {
     margin-top: var(--nbw);
 }
-
 
 .horizontal-header {
     flex: 1;
@@ -710,11 +661,6 @@ body {
     flex: 0 0 auto;
 }
 
-.column-header > .column-header-sequence
-   > .editable.editable.editable.editable.editable:not(.content-text) {
-    background-color: transparent;
-}
-
 .column-header:not(.label):not(.virtual-column) {
     background-color: white;
 }
@@ -749,7 +695,6 @@ body {
     margin: 0px var(--nbw) var(--nbw) 0px;
     min-height: 25px;
 }
-
 
 /* Make the header fill all the available space, for a better selection box. */
 .column-header > :first-child.editable {
@@ -988,3 +933,64 @@ body {
         color: white;
     }
 }
+
+} /* end @layer base */
+
+@layer overrides {
+
+.selected {
+    box-shadow: inset 0 0 5px 3px var(--selection-color);
+    border-radius: 5px;
+}
+
+.content-text {
+    min-height: 25px;
+    min-width: 50px;
+    overflow-wrap: break-word;
+    font-family: sans-serif;
+}
+
+.content-text.placeholder {
+    min-height: 14px;
+}
+
+.tab.empty-child {
+    background-color: transparent;
+    width: 40px;
+}
+
+.tab.chosen.selected {
+    box-shadow: inset 0px 2px 2px var(--border-color),
+                0px 2px hsl(0, 0%, 100%),
+                inset 0 0 5px 3px var(--selection-color);
+}
+
+.label > .label {
+    background-color: transparent;
+}
+
+.label.virtual:not(.merge-with-parent) {
+    background-color: hsl(194, 50%, 88%);
+}
+
+.batch-stack {
+    box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
+                4px 4px white, 6px 6px hsl(220, 70%, 65%),
+                8px 8px white, 10px 10px hsl(220, 40%, 60%);
+    margin: 10px 16px 16px 8px;
+    z-index: 1;
+}
+
+.horizontal-labels-element.narrow.batch-stack > * {
+    margin-bottom: 0px;
+}
+
+.horizontal-labels-element.narrow.batch-stack > :last-child {
+    margin-right: 0px;
+}
+
+.column-header > .column-header-sequence > .editable:not(.content-text) {
+    background-color: transparent;
+}
+
+} /* end @layer overrides */

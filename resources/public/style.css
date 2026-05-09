@@ -62,7 +62,7 @@ body {
 
 .indent-wrapper {
     display: flex;
-    flex-direction :column;
+    flex-direction: column;
     padding-left: 8px;
 }
 
@@ -72,7 +72,7 @@ body {
 
 /* --- Basic items and stacks of items --- */
 
-.item.editable, .item > .editable { 
+.item.editable, .item > .editable {
     padding: 3px;
 }
 
@@ -117,7 +117,7 @@ body {
     margin: 0px 3px 0px 3px;
 }
 
-.vertical-item-stack > .item.editable, .vertical-stack > .item > .editable { 
+.vertical-item-stack > .item.editable, .vertical-stack > .item > .editable {
     padding: 3px 0px 3px 0px;
 }
 
@@ -224,7 +224,7 @@ body {
     /* Make its background override edges of on other tabs, but not content. */
     width: 30px;
     background-color: white;
-    z-index: -1;    
+    z-index: -1;
     border-style: solid;
     border-color: hsl(0, 0%, 80%);
     box-shadow: inset 0px -1px 0px 0px hsl(0, 0%, 80%);
@@ -259,7 +259,7 @@ body {
     width: 40px;
 }
 
-.tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after { 
+.tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after {
      background-color: hsl(0, 0%, 95%);
 }
 
@@ -282,7 +282,7 @@ body {
     border-bottom: 0px;
 }
 
-/* Keep the content of a tab from hiding the inset box-shadow if it 
+/* Keep the content of a tab from hiding the inset box-shadow if it
    gets chosen */
 .tab.with-elements > :first-child.content-text {
     padding-top: 0px;
@@ -317,7 +317,7 @@ body {
 
 .batch-main {
     min-width: 300px;
-    /* So we can find the position of elements relative to this node 
+    /* So we can find the position of elements relative to this node
     for horizontal scrolling */
     position: relative;
     flex: 0 1 auto;
@@ -400,7 +400,7 @@ body {
 }
 
 /* --- classes -- */
-    
+
 .class {
     background-color: hsl(80, 100%, 88%);
 }
@@ -718,7 +718,7 @@ body {
 
 .table-main {
     min-width: 300px;
-    /* So we can find the position of elements relative to this node 
+    /* So we can find the position of elements relative to this node
     for horizontal scrolling */
     position: relative;
     flex: 0 1 auto;
@@ -736,7 +736,7 @@ body {
     overflow-x: hidden;
     overflow-y: scroll;
     padding-right: 2px; /* Room for the column's margin. */
-    /* So we can find the position of elements relative to this node 
+    /* So we can find the position of elements relative to this node
     for vertical scrolling */
     position: relative;
     min-height: 10px; /* So it will shrink to the screen height */
@@ -813,7 +813,7 @@ body {
 .column-header.with-children {
     border-bottom-width: 0px;
 }
- 
+
 .column-header > .column-header,
 .column-header > .wrapped-element,
 .column-header > .column-header-sequence > :first-child {
@@ -941,7 +941,7 @@ body {
     text-align: center;
     padding: 2px 4px;
     border-radius: 6px;
- 
+
     /* Position the tooltip text */
     position: absolute;
     top: 100%;
@@ -988,15 +988,15 @@ body {
     z-index: 1; /* To make it go in front */
 
     &.active {
-	display: block;
-	position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
-	position-anchor: --selected;
+        display: block;
+        position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
+        position-anchor: --selected;
     }
 }
 
 .editable.selected {
     /* So the popups can find what they are supposed to be next to. */
-    anchor-name: --selected; 
+    anchor-name: --selected;
 }
 
 /* --- select holder --- */
@@ -1008,9 +1008,9 @@ body {
     min-height: fit-content;
 
     &.active {
-	width: max(200px, calc(anchor-size(width) * 1.5));
-	height: calc(anchor-size(height) + 15px);
-	position-area: span-right span-bottom;
+        width: max(200px, calc(anchor-size(width) * 1.5));
+        height: calc(anchor-size(height) + 15px);
+        position-area: span-right span-bottom;
     }
 }
 
@@ -1035,8 +1035,8 @@ body {
     min-height: fit-content;
 
     &.active {
-	position-area: right span-bottom;
-	position-anchor: --selected;
+        position-area: right span-bottom;
+        position-anchor: --selected;
     }
 
 }
@@ -1048,13 +1048,9 @@ body {
     border-radius: 5px;
     margin: 2px;
     padding: 2px;
-    
+
     &:hover {
-	background-color: royalblue;
-	color: white;
+        background-color: royalblue;
+        color: white;
     }
 }
-
-
-
-

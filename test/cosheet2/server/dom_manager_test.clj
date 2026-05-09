@@ -15,7 +15,7 @@
              [calculator :as calculator :refer [new-calculator-data compute
                                                 current-value]]
              [application-calculator :as application-calculator]
-             [expression :refer [expr expr-seq expr-let]]
+             [expression :refer [app-R let-R]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]
@@ -35,7 +35,7 @@
   "Make a dom renderer that when called returns a reporter that appears
   to depend on the store, but actually returns the fixed value."
   [result]
-  (fn [spec store] (expr (fn [store] result) store)))
+  (fn [spec store] (app-R (fn [store] result) store)))
 (def id1 (make-item-id "foo"))
 (def id2 (make-item-id "bar"))
 (def s2 {:relative-id id2
@@ -383,7 +383,7 @@
                       (vec reporters)
                       (let [current
                             (mapv (fn [i]
-                                    (expr ^{:name [d i]}
+                                    (app-R ^{:name [d i]}
                                         nth prev (nth prev i)))
                                   (range width))]
                         (recur (+ d 1) current (conj reporters current)))))
@@ -406,7 +406,7 @@
     (letfn [(layer-reporter [level position]
               (-> reporters (nth level) (nth position)))
             (subdom-values-R [level position]
-              (expr-let [value (layer-reporter level position)]
+              (let-R [value (layer-reporter level position)]
                 (let [num (max 1 (int (/ width (+ value 2))))]
                   (map #(mod % width)
                        (range value (+ value num))))))
@@ -418,7 +418,7 @@
                :render-dom render-dom
                :get-action-data get-action-data})
             (dom-for-position-R [level position]
-              (expr-let [subdom-values (subdom-values-R level position)]
+              (let-R [subdom-values (subdom-values-R level position)]
                 (let [parts (map 
                              (if (= 0 level)
                                (fn [value] [:div (str value)])

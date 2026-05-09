@@ -13,7 +13,7 @@
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
-                      [expression :refer [expr expr-let expr-seq]])
+                      [expression :refer [app-R let-R]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes
@@ -159,7 +159,7 @@
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header"
   [{:keys [relative-id] :as spec} store]
-  (expr-let [row-condition (id->updating-entity-R relative-id store)]
+  (let-R [row-condition (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition)
           spec-down {:template 'anything
                      :width 0.75}
@@ -262,7 +262,7 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [{:keys [hierarchy-R] :as spec} _]
-  (expr-let [hierarchy hierarchy-R]
+  (let-R [hierarchy hierarchy-R]
     (let [doms (map table-header-top-level-subtree-DOM hierarchy)
           virtual-header (table-virtual-column-header-DOM hierarchy)]
       (into [:div {:class "column-header-sequence table-header"}]
@@ -283,7 +283,7 @@
 ;;; labels of its items.
 (defn render-table-cell-DOM-R
   [{:keys [row-id query disqualifications] :as specification} store]
-  (expr-let [row-entity (id->updating-entity-R row-id store)]
+  (let-R [row-entity (id->updating-entity-R row-id store)]
     (let [matches (matching-elements query row-entity)
           entities (if (seq disqualifications)
                      (filter (fn [element] (not (some #(extended-by? % element)
@@ -336,7 +336,7 @@
   "Generate dom for a table row.
   The specification must have column-descriptions-R"
   [{:keys [row-id column-descriptions-R] :as specification} store]
-  (expr-let [column-descriptions column-descriptions-R]
+  (let-R [column-descriptions column-descriptions-R]
     (let [spec (-> specification
                    (dissoc :column-descriptions-R)
                    (assoc :class "table-cell has-border"))]
@@ -376,7 +376,7 @@
 (defn render-table-virtual-row-DOM-R
   "Generate dom for a table's virtual row."
   [{:keys [column-descriptions-R]} store]
-  (expr-let [column-descriptions column-descriptions-R]
+  (let-R [column-descriptions column-descriptions-R]
     (let [cells (map table-virtual-row-cell-DOM-component
                      ;; Don't make a cell for the virtual column.
                      (butlast column-descriptions))]
@@ -390,7 +390,7 @@
 (defn table-virtual-row-DOM-component-R
   "Generate the component for a table's virtual row."
   [row-template-R column-descriptions-R adjacent-id]
-  (expr-let [row-template row-template-R]
+  (let-R [row-template row-template-R]
     (make-component
      {:relative-id :virtual-row
       :class "table-row"
@@ -410,13 +410,13 @@
    store]
   ;; We get the current values of the information that is needed for
   ;; all rows.
-  (expr-let [row-ids row-ids-R]
+  (let-R [row-ids row-ids-R]
     (let [row-spec (dissoc specification
                            :row-ids-R :row-template-R
                            :get-action-data :alternate-row-sibling)
           non-virtual-rows (map #(table-row-component % row-spec)
                                 row-ids)]
-      (expr-let [virtual-row (table-virtual-row-DOM-component-R
+      (let-R [virtual-row (table-virtual-row-DOM-component-R
                               row-template-R
                               column-descriptions-R
                               (or (last row-ids)
@@ -428,14 +428,14 @@
 (defn table-hierarchy-R
   "Return a reporter whose value is the hierarchy of the table header."
   [column-headers-R]
-  (expr-let [current-headers column-headers-R]
+  (let-R [current-headers column-headers-R]
     (let [columns (ordered-entities (semantic-elements current-headers))]
       (replace-hierarchy-leaves-by-nodes (hierarchy-by-labels columns)))))
 
 (defn table-row-ids-R
   "Return a reporter whose value is the row ids for the table, in order."
   [row-template-R mutable-store]
-  (expr-let [current-template row-template-R]
+  (let-R [current-template row-template-R]
     (let [row-query (pattern-to-fixed-term current-template)
           matching-ids-R (matching-item-ids-R row-query mutable-store)]
       (ordered-ids-R matching-ids-R mutable-store))))
@@ -496,13 +496,13 @@
   (println "Generating DOM for table" (simplify-for-print table-id))
   ;; We first get just the ids of the main parts of the table
   ;; description.
-  (expr-let [[row-condition-id column-headers-id]
+  (let-R [[row-condition-id column-headers-id]
              ;; Even though this computation will be redone whenever
              ;; the table description changes, its result won't
              ;; change, because the identities of the main parts don't
              ;; change once they are created. So that won't trigger
              ;; recomputation of the main body of the function.
-             (expr-let [table-item (id->updating-entity-R
+             (let-R [table-item (id->updating-entity-R
                                     table-id store)]
                [(:item-id (table-row-condition-element table-item))
                 (:item-id (table-column-headers-element table-item))])]
@@ -538,7 +538,7 @@
             ;; reconstructed whenever part of the table description
             ;; changes. That makes computations that depend on them
             ;; not depend on changes elsewhere in the table entity.
-            row-template-R (expr table-row-condition->row-template
+            row-template-R (app-R table-row-condition->row-template
                                  (id->updating-entity-R
                                   row-condition-id store))
             column-headers-R (id->updating-entity-R
@@ -548,7 +548,7 @@
             virtual-column-description {:column-id :virtualColumn}
             ;; TODO: Add an "other" column if a table requests it.
             column-descriptions-R
-            (expr-let [hierarchy hierarchy-R]
+            (let-R [hierarchy hierarchy-R]
               (concat
                (mapcat #(table-hierarchy-node-column-descriptions nil %)
                        hierarchy)

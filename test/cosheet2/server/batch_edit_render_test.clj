@@ -16,7 +16,6 @@
              [entity :as entity  :refer [id->entity
                                          label->elements elements
                                          make-object-list link-type name-label]]
-             [expression :refer [expr-let]]
              [debug :refer [simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set]])

@@ -10,24 +10,24 @@ the time a notification was generated and when it is delivered. But in
 that case, a subsequent notification will be generated.
 
 The preferred way to work with reporters is with the macros: 
-expr, expr-seq and expr-let.
+app-R, app-seq-R and let-R.
 
-The expr macro's arguments are the function and values of an
+The app-R macro's arguments are the function and values of an
 application. The macro returns a reporter whose value will track the
 value of the application, but using the current values of any
 reporters it mentions, in place of the reporters themselves. This is
 the way to let a function that isn't aware of reporters use their
 values.
 
-The expr-seq macro adds one additional behavior to the expr macro: if
+The app-seq-R macro adds one additional behavior to the app-R macro: if
 the value of the reporter it returns would be a sequence of reporters,
 it will instead be the sequence of their current values. This is often
 used when mapping a function that can return reporters.
 
-The exper-let macro returns a reporter whose value will track the
+The let-R macro returns a reporter whose value will track the
 value of its body, but with any its variables that would be bound to a
 reporter bound instead to the reporter's current value. It is
-syntactic sugar for the expr macro, in the same way that let is
+syntactic sugar for the app-R macro, in the same way that let is
 syntactic sugar for an application.
 
 In unit tests, rather than use (is (= ...)) when comparing large

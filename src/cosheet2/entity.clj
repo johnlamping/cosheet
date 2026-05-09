@@ -1,6 +1,6 @@
 (ns cosheet2.entity
   (:require (cosheet2 [calculator :refer [current-value]]
-                      [expression :refer [expr-let]]
+                      [expression :refer [let-R]]
                       [store :refer [make-item-id item-id?
                                      link-id? object-id?
                                      generic-name?
@@ -480,7 +480,7 @@
     ;; We want to run with updating-immutable, relative to an
     ;; immutable store, but for objects, we want to return the
     ;; corresponding object from the mutable store.
-    (expr-let [immutable (updating-immutable entity)]
+    (let-R [immutable (updating-immutable entity)]
       ((immutable-to-list-generator
         (fn [object skipped-element] (if (stored-entity? object)
                                        (in-different-store object entity)
@@ -513,7 +513,7 @@
   "Return the element with the given label.
   There must be at most one such element."
   [entity label]
-  (expr-let [elements (label->elements entity label)]
+  (let-R [elements (label->elements entity label)]
     (when elements
       (assert (= (count elements) 1)
               (apply str "entity "  (:id (:item-id entity))
@@ -528,6 +528,6 @@
   "Return the content of the element with the given label.
    There must be at most one such element."
   [entity label]
-  (expr-let [element (label->element entity label)]
+  (let-R [element (label->element entity label)]
     (content element)))
 

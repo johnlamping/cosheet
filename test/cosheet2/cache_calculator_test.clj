@@ -11,7 +11,7 @@
                       [calculator :refer [new-calculator-data current-value
                                           compute request unrequest
                                           computation-value]]
-                      [expression :refer [expr cache expr-seq expr-let]]
+                      [expression :refer [app-R cache-R app-seq-R let-R]]
                       [utils :refer :all]
                       [cache-calculator :refer :all]
                       [test-utils :refer [check any]]                      
@@ -71,7 +71,7 @@
     ;; With demand, the cached reporter should be created.
     (request r1 cd)
     (is (contains? (reporter-data r1) :value-source))
-    ;; And we should pick it up for the other reporter with the same expr.
+    ;; And we should pick it up for the other reporter with the same app-R.
     (request r2 cd)
     (is (= (:value-source (reporter-data r1))
            (:value-source (reporter-data r2))))
@@ -96,7 +96,7 @@
       (is (= (:value-source (reporter-data r1))
              orig-source))
       ;; Now, lose interest in both reporters with that application.
-      ;; The cache should drop it.
+      ;; The cache-R should drop it.
       (unrequest r1)
       (unrequest r2)
       (is (not (valid? r1)))
@@ -130,7 +130,7 @@
         base (new-reporter :value 0)]
     (letfn [(fib [n] (if (<= n 1)
                        base
-                       (expr + (cache fib (- n 1)) (cache fib (- n 2)))))]
+                       (app-R + (cache-R fib (- n 1)) (cache-R fib (- n 2)))))]
       ;; Since the base is 0, fib should be 0 everywhere, and since
       ;; the computations should be cached, this should be fast.
       (let [f45 (fib 45)] ; fib(45) is the largest that fits in 64 bits.
@@ -161,9 +161,9 @@
         counting-plus (fn counting-plus [x y]
                         (swap! counter inc)
                         (+ x y))
-        dependency-introducer (fn [x] (cache counting-plus r1 x))
-        r (expr-let [s1 (expr-seq map dependency-introducer rs)
-                     s2 (expr-seq map dependency-introducer s1)]
+        dependency-introducer (fn [x] (cache-R counting-plus r1 x))
+        r (let-R [s1 (app-seq-R map dependency-introducer rs)
+                     s2 (app-seq-R map dependency-introducer s1)]
             s2)
         cd (new-calculator-data (new-priority-task-queue 0))]
     (is (= (computation-value r cd) [3 4 5]))

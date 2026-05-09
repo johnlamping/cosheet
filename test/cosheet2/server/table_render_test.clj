@@ -12,7 +12,6 @@
                                          label->elements elements to-list
                                          make-object-list
                                          link-type name-label]]
-             [expression :refer [expr expr-let expr-seq]]
              [calculator :refer [new-calculator-data computation-value]]
              [task-queue :refer [new-priority-task-queue]]
              [store :refer [->ItemId]]

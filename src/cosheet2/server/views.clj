@@ -12,7 +12,6 @@
      [query :refer [matching-elements]]
      [debug :refer [simplify-for-print]]
      query-impl
-     [expression :refer [expr expr-let]]
      [calculator :refer [new-calculator-data compute]]
      [task-queue :refer [new-priority-task-queue finished-all-tasks?]]
      [hiccup-utils :refer [dom-attributes add-attributes]]

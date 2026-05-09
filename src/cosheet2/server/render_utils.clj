@@ -16,8 +16,7 @@
                                          canonical-extended-by?
                                          canonical-have-common-elaboration?]]
                       [hiccup-utils
-                       :refer [into-attributes add-attributes]]
-                      [expression :refer [expr expr-let expr-seq expr-filter]])
+                       :refer [into-attributes add-attributes]])
             (cosheet2.server
              [model-utils :refer [semantic-elements semantic-elements
                                   entity->fixed-term

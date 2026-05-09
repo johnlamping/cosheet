@@ -3,7 +3,7 @@
             (cosheet2 [orderable :as orderable]
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
-                      [expression :refer [expr-let]]
+                      [expression :refer [let-R]]
                       [store :refer [add-link make-item-id get-new-object-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
@@ -298,7 +298,7 @@
            nil))
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
-          updating-immutable-result (expr-let [current-item (updating-immutable
+          updating-immutable-result (let-R [current-item (updating-immutable
                                                              item99)] 
                                       (is (not (mutable-entity? current-item)))
                                       (let [value (to-list current-item)]

@@ -12,7 +12,7 @@
                       [calculator :refer [current-value]]
                       [orderable :as orderable]
                       [entity :refer :all]
-                      [expression :refer [expr-seq expr-let expr
+                      [expression :refer [app-seq-R let-R app-R
                                           category-change]])))
 
 (defn endpoint->entity
@@ -161,12 +161,12 @@
 
   (target-entity [this]
     (when (not (object-id? item-id))
-      (expr-let [target-id (id->target store item-id)]
+      (let-R [target-id (id->target store item-id)]
         (endpoint->entity target-id store))))
 
   (containing-elements [this]
     (assert (object-id? item-id) this)
-    (expr-let [link-ids (source->ids store item-id)]
+    (let-R [link-ids (source->ids store item-id)]
       (map #(endpoint->entity % store)
            link-ids)))
 
@@ -188,16 +188,16 @@
   (content [this]
     (when (not (object-id? item-id))
       (if (= orientation :target)
-        (expr-let [content (id->target store item-id)]
+        (let-R [content (id->target store item-id)]
           (endpoint->entity content store :target))
-        (expr-let [content (id->source store item-id)]
+        (let-R [content (id->source store item-id)]
           (endpoint->entity content store)))))
 
   (elements [this]
-    (expr-let [forward-elements (forward-elements this)]
+    (let-R [forward-elements (forward-elements this)]
       (if (object-id? item-id)
-        (expr-let [element-ids (source->ids store item-id)
-                   targets (expr-seq map #(id->target store %) element-ids)]
+        (let-R [element-ids (source->ids store item-id)
+                   targets (app-seq-R map #(id->target store %) element-ids)]
           (seq (concat
                 forward-elements
                 (->> (map vector element-ids targets)
@@ -208,7 +208,7 @@
         forward-elements)))
 
   (forward-elements [this]
-    (expr-let [element-ids (target->ids store item-id)]
+    (let-R [element-ids (target->ids store item-id)]
       (seq (for [element-id element-ids]
              (id->element element-id store)))))
 
@@ -217,7 +217,7 @@
 
   (content->elements [this content-value]
     (let [content-key (entity-key content-value)]
-      (expr-let [element-ids (target-source->ids
+      (let-R [element-ids (target-source->ids
                               store item-id content-key)
                  reverse-element-ids (when (and (object-id? item-id)
                                                 (object-id? content-key))
@@ -230,12 +230,12 @@
 
   (label->elements [this label]
     (let [label-key (entity-key label)]
-      (expr-let [element-ids (target-label->ids store item-id label-key)]
+      (let-R [element-ids (target-label->ids store item-id label-key)]
         (let [forward-elements (seq (for [element-id element-ids]
                                       (id->element element-id store)))]
           (if (object-id? item-id)
-            (expr-let [element-ids (source-label->ids store item-id label-key)
-                       targets (expr-seq map #(id->target store %) element-ids)]
+            (let-R [element-ids (source-label->ids store item-id label-key)
+                       targets (app-seq-R map #(id->target store %) element-ids)]
               (seq (concat
                    forward-elements
                    (->> (map vector element-ids targets)
@@ -252,7 +252,7 @@
     item-id)
 
   (updating-immutable [this]
-    (expr-let [immutable-store (category-change [item-id] store)]
+    (let-R [immutable-store (category-change [item-id] store)]
       (in-different-store this immutable-store))))
 
 (defn- equivalent-entities?

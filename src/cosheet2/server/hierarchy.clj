@@ -6,7 +6,7 @@
              [query :refer [extended-by?]]
              query-impl
              [debug :refer [simplify-for-print]]
-             [expression :refer [expr-let expr-seq]])
+             [expression :refer [let-R]])
             (cosheet2.server
              [model-utils :refer [entity->canonical-semantic
                                   entity->fixed-term-with-negations
@@ -241,7 +241,7 @@
 (defn hierarchy-by-labels
   "Given a sequence of items, generate a hierarchy based on all their labels."
   [items]
-  (expr-let
+  (let-R
       [items-labels (map semantic-label-elements items)
        item-maps (item-maps-by-elements items items-labels)]
     (hierarchy-by-canonical-info item-maps)))

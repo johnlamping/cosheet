@@ -10,7 +10,6 @@
                                      target-label->ids]] 
                       [store-utils :refer [add-element]]
                       [query :refer [matching-elements]]
-                      [expression :refer [expr expr-let expr-seq]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
             (cosheet2.server [action-data :refer :all]

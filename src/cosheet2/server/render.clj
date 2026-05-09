@@ -5,7 +5,7 @@
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value universal-category]]
-                      [expression :refer [expr expr-let expr-seq cache
+                      [expression :refer [app-R let-R app-seq-R
                                           category-change]]
                       [calculator :refer [current-value]]
                       [map-state :refer [map-state-get]]
@@ -126,7 +126,7 @@
 ;;; for the specification.
 
 ;;; As a rule, rendering functions get the information they need our
-;;; of the store, with an expr-let, and then run with the immutable
+;;; of the store, with an let-R, and then run with the immutable
 ;;; information it retrieved. This lets their subsidiary functions
 ;;; work on immutable data. In the case they the need to generate dom
 ;;; that further depends on the store, they can create components,
@@ -357,7 +357,7 @@
     "Make a dom for an item, testing the item to see what sort of dom to make."
     [item referent inherited]
     (let [inherited (into starting-inherited inherited)]
-      (expr-let [table (matching-elements :table item)
+      (let-R [table (matching-elements :table item)
                  top-level (matching-elements :top-level item)
                  tags (matching-elements :tag item)]
         (if (empty? table)
@@ -380,7 +380,7 @@
                                 :referent referent
                                 :must-show-label (empty? tags)
                                 :do-not-show-content (not (empty? top-level)))]
-            (expr-let [dom dom]
+            (let-R [dom dom]
               (cond-> dom
                 (seq tags)
                 (add-attributes {:class "tag"}))))
@@ -390,12 +390,12 @@
 ;;; return the batch edit selector items.
 (comment
   (defn batch-editing-selector-items [store session-temporary-id client-state]
-    (expr-let [batch-editing (state-map-get client-state :batch-editing)]
+    (let-R [batch-editing (state-map-get client-state :batch-editing)]
       (when batch-editing
         (let [temporary-item (id->entity session-temporary-id store)]
-          (expr-let [selector-items (label->elements
+          (let-R [selector-items (label->elements
                                      temporary-item :batch-selector)
-                     row-selector (expr first
+                     row-selector (app-R first
                                     (label->elements
                                      temporary-item :batch-row-selector))
                      query-content (semantic-to-list row-selector)]
@@ -405,10 +405,10 @@
 (defn top-level-id-R
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
-  (expr-let [id (map-state-get client-state :root-id)
+  (let-R [id (map-state-get client-state :root-id)
              id-valid (id-valid-link? store id)]
     (or (when id-valid id)
-        (expr first (ordered-tabs-ids-R store)))))
+        (app-R first (ordered-tabs-ids-R store)))))
 
 (defn batch-editing-component
   [store temporary-id]
@@ -429,13 +429,13 @@
   "Return a reporter whose value is the DOM for tabs and the top level
   component."
   [store temporary-id client-state id-R]
-  (expr-let [id id-R
+  (let-R [id id-R
              batch-editing (map-state-get client-state :batch-editing)]
     (println "top level DOM id:" id "  Batch editing:" batch-editing)
     (if batch-editing
       (batch-editing-component store temporary-id)
       (when id
-        (expr-let [immutable-store (category-change [id] store)]
+        (let-R [immutable-store (category-change [id] store)]
           (let [immutable-item (id->entity id immutable-store)
                 is-tab (seq (matching-elements :tab immutable-item))]
             [:div {}
@@ -500,11 +500,11 @@
   ;; NOTE: subject-referent in here is obsolete.
   (defn top-level-DOM-R
     [store session-temporary-id client-state]
-    (expr-let [batch-editing-items (batch-editing-selector-items
+    (let-R [batch-editing-items (batch-editing-selector-items
                                     store session-temporary-id client-state)]
       (if (seq batch-editing-items)
         (batch-edit-DOM-R batch-editing-items store starting-inherited)
-        (expr-let [referent (state-map-get client-state :referent)
+        (let-R [referent (state-map-get client-state :referent)
                    subject-referent (state-map-get client-state
                                                    :subject-referent)
                    immutable-item (call-dependent-on-id
@@ -519,13 +519,13 @@
                   inherited (cond-> starting-inherited
                               subject-referent
                               (assoc :subject-referent subject-referent))]
-              (expr-let [tab-tags (matching-elements :tab item)
+              (let-R [tab-tags (matching-elements :tab item)
                          content (content item)]
                 (if (empty? tab-tags)
                   ;; Show just the item.
                   (top-level-item-DOM-R item referent inherited)
                   ;; Show a selection of tabs.
-                  (expr-let [topic (expr first (label->elements item :tab-topic))
+                  (let-R [topic (app-R first (label->elements item :tab-topic))
                              target (target-entity item)]
                     [:div {:class "tabbed"}
                      (make-component {:key [:tabs]}
@@ -536,7 +536,7 @@
                        (assoc inherited :key-prefix [:tab])])]))))
             ;; Show a virtual tab.
             (do (println "showing virtual")
-                (expr-let [holder (tabs-holder-item-R store)]
+                (let-R [holder (tabs-holder-item-R store)]
                   [:div {:class "tabbed"}
                    (make-component
                     {:key [:tabs]}
@@ -552,8 +552,8 @@
     ;;       the changed items. (The store needs a way to tell a reporter
     ;;       about which items changed, not just that something it cared about
     ;;       changed.
-    (expr-let [labels (matching-items '(nil :tag) store)
-               contents (expr-seq map content labels)]
+    (let-R [labels (matching-items '(nil :tag) store)
+               contents (app-seq-R map content labels)]
       (let [content-names (map str contents)
             sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
                                                      content-names)
@@ -564,7 +564,7 @@
   (defn spec-for-client-R
     "Return a specification for the DOM indicated by the client."
     [store session-temporary-id client-state]
-    (expr-let [dom (top-level-DOM-spec
+    (let-R [dom (top-level-DOM-spec
                     store session-temporary-id client-state)]
       (into dom [(make-component {:key [:label-values]}
                                  [label-datalist-DOM-R store])]))))

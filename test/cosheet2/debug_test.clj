@@ -11,7 +11,7 @@
              [calculator :refer [new-calculator-data current-value
                                  propagate-calculator-data!
                                  compute request]]
-             [expression :refer [expr cache]]
+             [expression :refer [app-R cache-R]]
              [test-utils :refer [check any as-set]])
             ; :reload
             ))
@@ -19,11 +19,11 @@
 (deftest reporters-profile-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r0 (new-reporter :name :r0 :value 3)
-        indirect (fn indirect [arg] (expr max arg r0))
-        r1 (expr indirect r0)
-        r-inc (expr inc (cache min r1))
-        r-dec (expr dec (cache min r1))
-        rs (expr + r-inc r-dec)]
+        indirect (fn indirect [arg] (app-R max arg r0))
+        r1 (app-R indirect r0)
+        r-inc (app-R inc (cache-R min r1))
+        r-dec (app-R dec (cache-R min r1))
+        rs (app-R + r-inc r-dec)]
     (propagate-calculator-data! rs cd)
     (let [profile (reporters-profile [rs])
           expected{nil {'_PLUS_ 1 'inc 1 'dec 1 'min 1 'max 1

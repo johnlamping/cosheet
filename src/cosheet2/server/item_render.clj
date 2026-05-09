@@ -19,7 +19,7 @@
     [debug :refer [simplify-for-print]]
     [hiccup-utils :refer [dom-attributes into-attributes add-attributes
                           merge-classes]]
-    [expression :refer [expr expr-let expr-seq expr-filter]])
+    [expression :refer [app-R let-R expr-filter]])
    (cosheet2.server
     [model-utils :refer [semantic-elements
                          semantic-non-label-elements semantic-label-elements
@@ -556,7 +556,7 @@
   an auxiliary-item-id that gives the id of the object."
   [{:keys [auxiliary-item-id relative-id] :as specification} store]
   (assert (= relative-id :content))
-  (expr-let [object (id->updating-entity-R auxiliary-item-id store)]
+  (let-R [object (id->updating-entity-R auxiliary-item-id store)]
     (let [names (-> (label->elements object name-label)
                     ordered-entities)
           num-names (count names)
@@ -628,7 +628,7 @@
   "Render a dom spec for only the content of an item."
   [{:keys [relative-id auxiliary-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
-  (expr-let [item (id->updating-entity-R auxiliary-item-id store)]
+  (let-R [item (id->updating-entity-R auxiliary-item-id store)]
     (item-content-DOM
      item (select-keys specification [:class :width :immutable :template]))))
 
@@ -709,7 +709,7 @@
   (assert (not (:auxiliary-item-id specification))
           [specification
            (semantic-to-list (id->entity relative-id store))])
-  (expr-let [entity (id->updating-entity-R
+  (let-R [entity (id->updating-entity-R
                      (specification-item-id specification) store)]
     (entity-DOM entity specification)))
 

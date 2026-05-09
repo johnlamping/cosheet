@@ -9,7 +9,7 @@
              [orderable :as orderable]
              [reporter :refer [reporter-value new-reporter invalid
                                set-value!]]
-             [expression :refer [expr]]
+             [expression :refer [app-R]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
              [debug :refer [profile-and-print-reporters
@@ -116,7 +116,7 @@
         mutable-store (new-mutable-store store)
         elements-R (new-reporter :value joe-semantic-element-ids)
         ordered-R (ordered-ids-R elements-R mutable-store)
-        copy-of-ordered-R (expr identity ordered-R)
+        copy-of-ordered-R (app-R identity ordered-R)
         cd (new-calculator-data (new-priority-task-queue 0))]
     (request copy-of-ordered-R cd)
     (is (= (reporter-value ordered-R) invalid))

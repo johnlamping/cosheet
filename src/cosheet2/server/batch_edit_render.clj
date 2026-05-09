@@ -11,7 +11,7 @@
                       [debug :refer [simplify-for-print]]
                       [utils :refer [separate-by disjoint-combinations]]
                       [hiccup-utils :refer [add-attributes]]
-                      [expression :refer [expr-let]])
+                      [expression :refer [let-R]])
             (cosheet2.server
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
@@ -35,12 +35,12 @@
   "Return a reporter whose value is the number of matches to the query
   given by the reporter, with the qualifier added."
   [query-R query-qualifier mutable-store]
-  (expr-let [query-entity query-R]
+  (let-R [query-entity query-R]
     (let [query (-> query-entity
                     semantic-to-list
                     pattern-to-fixed-term
                     (add-elements-to-entity [query-qualifier]))]
-      (expr-let [matches (matching-item-ids-R query mutable-store)]
+      (let-R [matches (matching-item-ids-R query mutable-store)]
         (count matches)))))
 
 (defn get-batch-count-rendering-data

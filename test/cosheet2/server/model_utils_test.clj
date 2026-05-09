@@ -22,7 +22,6 @@
                       [reporter :refer [reporter-value]]
                       [calculator :refer [request compute new-calculator-data]]
                       [task-queue :refer [new-priority-task-queue]]
-                      [expression :refer [expr expr-let expr-seq]]
                       [canonical :refer [canonicalize]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])

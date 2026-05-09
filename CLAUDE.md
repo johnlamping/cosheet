@@ -50,7 +50,7 @@ Most functions that may return a Reporter are named with a `-R` suffix (e.g., `o
 
 `dom_manager.clj` coordinates a tree of **components**. A component is like a reporter but notifies the client (via AJAX diff) instead of other code. When a component's underlying reporter fires, the dom manager recomputes only that subtree and sends the delta.
 
-Render functions (e.g., `render-item-DOM`, `render-table-DOM-R`) take a spec map and a store and return hiccup DOM or a reporter of hiccup DOM. They use `expr-let` to reactively depend on store data. Component specs pass render functions by reference (`:render-dom render-item-DOM`) so the dom manager calls them lazily and can share subtrees across updates.
+Render functions (e.g., `render-item-DOM`, `render-table-DOM-R`) take a spec map and a store and return hiccup DOM or a reporter of hiccup DOM. They use `let-R` to reactively depend on store data. Component specs pass render functions by reference (`:render-dom render-item-DOM`) so the dom manager calls them lazily and can share subtrees across updates.
 
 `action_data.clj` attaches action descriptors to component specs. When the client interacts with a DOM node, the descriptor tells the server what action to take. `actions.clj` processes those actions (`:set-content`, `:add-element`, `:delete`, etc.) by mutating the store.
 

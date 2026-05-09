@@ -5,7 +5,7 @@
     [utils :refer [thread-map replace-in-seqs
                    extract-first]]
     [orderable :refer [initial split]]
-    [expression :refer [expr expr-let expr-seq expr-filter]]
+    [expression :refer [app-R let-R expr-filter]]
     [canonical :refer [canonicalize]]
     [store :refer [new-element-store
                    update-source add-link declare-temporary-id
@@ -581,13 +581,13 @@
 (defn tabs-holder-id-R
   "Return the entity that holds all the tabs."
   [store]
-  (expr-let [holders (matching-item-ids-R '(nil :tabs) store)]
+  (let-R [holders (matching-item-ids-R '(nil :tabs) store)]
     (first holders)))
 
 (defn ordered-tabs-ids-R
   "Return the ids of the tabs, in order."
   [store]
-  (expr-let [holder-id (tabs-holder-id-R store)]
+  (let-R [holder-id (tabs-holder-id-R store)]
     (ordered-ids-R (target-label->ids store holder-id :tab)
                    store)))
 

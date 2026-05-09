@@ -43,7 +43,7 @@
            :calculator calculator
            (apply concat (dissoc args :trace :calculator)))))
 
-(defmacro expr
+(defmacro app-R
   "Takes a function and a series of arguments, and produces an
   application reporter with a tracing thunk. Extra information to be
   recorded in the reporter can be added as meta on the function."
@@ -52,8 +52,8 @@
                     :trace (fn [thunk#] (thunk#))
                     ~@(apply concat (seq (meta (first args))))))
 
-(defmacro cache
-  "Takes a function and a series of arguments, and produces a cache
+(defmacro cache-R
+  "Takes a function and a series of arguments, and produces a cached
   reporter with a tracing thunk. Extra information to be recorded in
   the reporter can be added as meta on the function."
   [& args]
@@ -104,38 +104,38 @@
           [(cons binding-form binding-forms) (cons value values) suffix])
         [nil nil bindings]))))
 
-(defmacro expr-let
+(defmacro let-R
   "A let like construct that turns the body into a function that is called
-   with the arguments, all inside an expr."
+   with the arguments, all inside an app-R."
   [bindings & body]
   (assert (even? (count bindings))
           "Bindings must have an even number of forms")
   ;; We can't necessarily evaluate all the values at once, because
   ;; later ones might depend on earlier ones. Instead, we evaluate
   ;; values that don't depend on earlier ones, and then use an inner
-  ;; expr-let to handle any remaining ones.
+  ;; let-R to handle any remaining ones.
   (let [[binding-forms values suffix] (split-bindings #{} bindings)]
-    `(expr
+    `(app-R
          (fn ~(symbol (str binding-forms)) ; a name for the function.
            ~(vec binding-forms)
-           ~@(if (empty? suffix) body [`(expr-let ~(vec suffix) ~@body)]))
+           ~@(if (empty? suffix) body [`(let-R ~(vec suffix) ~@body)]))
        ~@values)))
 
 ;;; TODO: These are eager. Consider adding support for lazy sequences
 ;;; of reporters. That requires adding a lazy cons operation, which
 ;;; just takes two possible reporters, doesn't give them demand, and
 ;;; can return either one. Whenevethe lazy cons is accessed, it has to
-;;; be done as one of the arguments to an expr, so the expr can deal
+;;; be done as one of the arguments to an app-R, so the app-R can deal
 ;;; with giving the reporter demand, and waiting for its value. This
 ;;; means that operaations over the sequences, like map or filter,
-;;; would need versions that include those expr forms.
+;;; would need versions that include those app-R forms.
 
-(defmacro expr-seq
+(defmacro app-seq-R
   "Given an expression that may evaluate to a sequence of reporters, make
    a reporter whose value is the sequence of corresponding values."
   [& args]
-  `(expr-let
-       [sequence# ~(list* 'cosheet2.expression/expr args)]
+  `(let-R
+       [sequence# ~(list* 'cosheet2.expression/app-R args)]
      (when (not (empty? sequence#))
        (new-application (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))
@@ -145,7 +145,7 @@
   may contain reporters, return a reporter whose value is the
   subsequence of values for which the filter is truthy."
   [condition items]
-  (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
+  (let-R [passed (app-seq-R map #(let-R [passes (condition %)]
                                      (if passes % ::fail))
                               items)]
     (filter #(not= % ::fail) passed)))

@@ -15,7 +15,6 @@
                     id->entity make-element-list make-object-list
                     element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
-    [expression :refer [expr-let expr-seq]]
     [utils :refer [thread-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 

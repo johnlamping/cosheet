@@ -12,7 +12,7 @@
                                         universal-category]]
                       [calculator :refer [new-calculator-data current-value
                                           compute request]]
-                      [expression :refer [expr]]
+                      [expression :refer [app-R]]
                       [utils :refer :all]
                       [application-calculator :refer :all]
                       [test-utils :refer [check any]]
@@ -270,8 +270,8 @@
   ;; This tests that it is fixed.
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r0 (new-reporter :name :r0)
-        r1 (expr identity r0)
-        r2 (expr identity r1)]
+        r1 (app-R identity r0)
+        r2 (app-R identity r1)]
     (request r2 cd)
     (compute cd)
     (is (= (reporter-value r2) invalid))
@@ -303,7 +303,7 @@
                       (vec reporters)
                       (let [current
                             (mapv (fn [i]
-                                    (expr ^{:name [d i]}
+                                    (app-R ^{:name [d i]}
                                         nth prev (nth prev i)))
                                   (range width))]
                         (recur (+ d 1) current (conj reporters current)))))

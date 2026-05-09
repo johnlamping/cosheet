@@ -15,13 +15,13 @@
 
 (deftest expression-test
   (let [r (new-reporter)]
-    (is (= (dissoc (reporter-data (expr r 2 3)) :trace)
+    (is (= (dissoc (reporter-data (app-R r 2 3)) :trace)
            {:application [r 2 3]
             :calculator application-calculator
             :value invalid
             :valid false
             :priority Double/MAX_VALUE}))
-    (is (= (dissoc (reporter-data (cache r 2 3)) :trace)
+    (is (= (dissoc (reporter-data (cache-R r 2 3)) :trace)
            {:application [r 2 3]
             :calculator cache-calculator
             :value invalid
@@ -40,21 +40,21 @@
     (is (= (category-change [universal-category] r) r)))
   
   ;; Try cases where the expression should evaluate to a constant.
-  (is (= (expr + (expr inc 1) 3)
+  (is (= (app-R + (app-R inc 1) 3)
          5))
-  (is (= (expr-let [x 1 y 2]
+  (is (= (let-R [x 1 y 2]
            (+ (* 3 x) y))
          5))
-  (is (= (expr-let [x 1 y x]
+  (is (= (let-R [x 1 y x]
            (* 3 y))
          3))
-  (is (= (expr-let [[x y] [1 3]
+  (is (= (let-R [[x y] [1 3]
                     z (+ x y)]
            z)
          4))
-  (is (= (expr-seq map
-                   (fn [x] (expr inc x))
-                   [1 (expr inc 1) 3])
+  (is (= (app-seq-R map
+                   (fn [x] (app-R inc x))
+                   [1 (app-R inc 1) 3])
          [2 3 4]))
   (is (= (expr-filter #(= (mod % 3) 0)
                       [1 2 3 4 5 6])
@@ -62,29 +62,29 @@
   
   ;; Try cases where the expression references a reporter.
   (let [r3 (new-reporter :value 3)]
-    (is (= (current-value (expr + (expr inc 1) r3))
+    (is (= (current-value (app-R + (app-R inc 1) r3))
            5))
-    (is (= (current-value (cache + (cache inc 1) r3))
+    (is (= (current-value (cache-R + (cache-R inc 1) r3))
            5))
-    (is (= (current-value (expr-let [x 1 y 2]
-                            (expr + (expr * r3 x) y)))
+    (is (= (current-value (let-R [x 1 y 2]
+                            (app-R + (app-R * r3 x) y)))
            5))
-    (is (= (current-value (expr-let [x 1 y x]
-                            (expr * r3 y)))
+    (is (= (current-value (let-R [x 1 y x]
+                            (app-R * r3 y)))
            3))
-    (is (= (current-value (expr-let [[x y] (expr vector 1 r3)
+    (is (= (current-value (let-R [[x y] (app-R vector 1 r3)
                                      z (+ x y)]
                             z))
            4))
-    (is (= (current-value (expr-seq map
-                                    (fn [x] (expr inc x))
-                                    [1 (expr inc 1) r3]))
+    (is (= (current-value (app-seq-R map
+                                    (fn [x] (app-R inc x))
+                                    [1 (app-R inc 1) r3]))
            [2 3 4]))
     
-    (is (= (current-value (expr-filter #(expr = (expr mod % r3) 0)
+    (is (= (current-value (expr-filter #(app-R = (app-R mod % r3) 0)
                                        [1 2 r3 4 5 6]))
            [3 6]))
-    (is (= (current-value (expr-filter #(expr not= % 1)
+    (is (= (current-value (expr-filter #(app-R not= % 1)
                                        [1 2 r3 nil false]))
            [2 3 nil false]))))
 

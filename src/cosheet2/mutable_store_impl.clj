@@ -6,7 +6,7 @@
                                         reporter-value
                                         universal-category Reporter
                                         new-reporter-data]]
-                      [expression :refer [cache category-change]]
+                      [expression :refer [cache-R category-change]]
                       [utils :refer [call-with-latest-value union-seqs
                                      update-in-clean-up
                                      swap-control-return!]])))
@@ -171,7 +171,7 @@
   "Return the result of the operation on the store, caching, and using
    the given categories."
   [categories operation store & args]
-  `(cache ~operation (category-change ~categories ~store) ~@args))
+  `(cache-R ~operation (category-change ~categories ~store) ~@args))
 
 (defn description-of-change
   "Given an old state, the new state, and a list of modified ids, return a
@@ -409,7 +409,7 @@
         [id] id->marked-as-type? this id))
 
   (candidate-matching-ids [this template]
-    (cache candidate-matching-ids this template))
+    (cache-R candidate-matching-ids this template))
 
   (mutable-store? [this] true)
   

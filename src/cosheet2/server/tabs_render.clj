@@ -4,7 +4,7 @@
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
-                      [expression :refer [expr expr-let expr-seq cache]]
+                      [expression :refer [let-R app-seq-R]]
                       [canonical :refer [canonical-set-to-list]])
             (cosheet2.server
              [hierarchy :refer [hierarchy-by-selected-elements
@@ -42,7 +42,7 @@
   its children. The component must already have get-action-data
   that targets each of the tab items, and :tab-id if there
   is only one tab item."
-  (expr-let [example-elements (expr-seq
+  (let-R [example-elements (app-seq-R
                                 map #(id->updating-entity-R % store)
                                 example-element-ids)]
     (if (seq example-element-ids)
@@ -129,7 +129,7 @@
   "Return a reporter giving the DOM for the elements of the given
   item as tabs."
   [{:keys [relative-id chosen-tab-id] :as specification} store]
-  (expr-let [tabs-entity (id->updating-entity-R
+  (let-R [tabs-entity (id->updating-entity-R
                           relative-id store)]
     (let [;; The template starts out with an empty name
           tabs-spec {:template `("" :tab "" ~new-tab-table-element)

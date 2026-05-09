@@ -1,0 +1,454 @@
+(ns cosheet.utils
+  (:require clojure.set))
+
+;;; A pseudo-set is an implementation of a set that is much more
+;;; storage efficient when the set has no items or just one item. It
+;;; is either nil, a non-nil atom, or a set, representing either the
+;;; empty set, a singleton item, or a set with multiple items.
+
+(defn pseudo-set-set [pseudo-set]
+  (cond (nil? pseudo-set)
+        #{}
+        (set? pseudo-set)
+        pseudo-set
+        true
+        #{pseudo-set}))
+
+(defn pseudo-set-seq [pseudo-set]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (seq pseudo-set)
+        true
+        (seq [pseudo-set])))
+
+(defn pseudo-set-contains? [pseudo-set item]
+  (cond (nil? pseudo-set)
+        false
+        (set? pseudo-set)
+        (contains? pseudo-set item)
+        true
+        (= pseudo-set item)))
+
+(defn pseudo-set-conj [pseudo-set item]
+  (cond (or (nil? pseudo-set) (= pseudo-set item))
+        item
+        (set? pseudo-set)
+        (conj pseudo-set item)
+        true
+        #{pseudo-set item}))
+
+(defn pseudo-set-disj [pseudo-set item]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (let [result (disj pseudo-set item)]
+          (cond (empty? result)
+                nil
+                (= (count result) 1)
+                (first result)
+                true
+                result))
+        (= item pseudo-set)
+        nil
+        true
+        pseudo-set))
+
+(defn pseudo-set-set-membership
+  "Ensure the item is in or out of the pseudo-set, based on the value
+  of member?"
+  [pseudo-set item member?]
+  (if member?
+    (pseudo-set-conj pseudo-set item)
+    (pseudo-set-disj pseudo-set item)))
+
+;;; Simple multiset operations.
+
+(defn multiset-conj
+  "Add an item (with optional multiplicity) to a multiset,
+   represented as a map from items to multiplicities."
+  ([ms item]
+   (multiset-conj ms item 1))
+  ([ms item count]
+   (update-in ms [item] #((fnil + 0) % count))))
+
+(defn multiset
+  "Turn a seq into a multiset."
+  [items]
+  (reduce multiset-conj {} items))
+
+(defn multiset-diff
+  "Given two multisets, return a triple of multisets,
+   of what is in the first, but not the second, what is in the second,
+   but not the first, and what is in both."
+  [first second]
+  (reduce (fn [[first-only second-only both] key]
+            (let [first-count (get first key 0)
+                  second-count (get second key 0)]
+              [(cond-> first-only
+                 (> first-count second-count)
+                 (assoc key (- first-count second-count)))
+               (cond-> second-only
+                 (> second-count first-count)
+                 (assoc key (- second-count first-count)))
+               (cond-> both
+                 (and (pos? first-count) (pos? second-count))
+                 (assoc key (min first-count second-count)))]))
+          [{} {} {}]
+          (clojure.set/union (keys first) (keys second))))
+
+(defn multiset-sum
+  "Return the sum of two multisets."
+  [first second]
+  (let [keys (clojure.set/union (keys first) (keys second))]
+    (zipmap keys
+            (map (fn [key] (+ (get first key 0) (get second key 0)))
+                 keys))))
+
+(defn multiset-to-generating-values
+  "Given
+  * a multi-set,
+  * a list of keys that, as a multiset, would be a superset of the multiset,
+  * a list of values, one for each item in the list of keys.
+  Return a list of values whose paired keys add up to the multi-set."
+  [multiset keys values]
+  (let [;; A map from key to a vector of values with that key.
+        key-values-map (reduce (fn [map [value key]]
+                                 (update-in map [key] #(conj % value)))
+                               {} (map vector values keys))]
+    (reduce (fn [result [key count]]
+              (concat result (take count (key-values-map key))))
+            [] multiset)))
+
+;;; Disjoint sequences
+
+(defn conj-disjoint-combinations
+  "Given a sequence of tuples of elements, and a sequence of elements,
+  Return a sequence of all ways of appending one of the elements to
+  one of the tuples that doesn't have that element."
+  [combinations elements]
+  (mapcat (fn [combination]
+            (keep (fn [element] (when (not (some (partial = element)
+                                                 combination))
+                                  (conj combination element)))
+                  elements))
+          combinations))
+
+(defn disjoint-combinations
+  "Given a sequence of sequences of elements,
+   return all disjoint combinations of one element from each sequence.
+   If a sequence has a repeated element, a matching element from an
+   earlier sequence will take out both; it's generally best to avoid
+   repetitions in sequences."
+  [sequences]
+  (cond (empty? sequences)
+        [[]]
+        (some empty? sequences)
+        []
+        true
+        (reduce conj-disjoint-combinations
+                (map vector (first sequences))
+                (rest sequences))))
+
+;;; Utilities for making maps, while cleaning up empty values.
+
+(defn dissoc-in
+  "Remove (get-in map keys), and if that creates an empty map one
+  level up, keep removing."
+  [map keys]
+  (if (empty? keys)
+    nil
+    (let [key (first keys)
+          lower (dissoc-in (get map key) (rest keys))]
+      (if (and (empty? lower) (not (record? map)))
+        ;; We don't want to dissoc in a record, because that turns it
+        ;; into a map.
+        (dissoc map key)
+        (assoc map key lower)))))
+
+(defn assoc-if-non-empty
+  "Like assoc, but does a dissoc if the value is empty."
+  [m k value]
+  (if (or (nil? value)
+          (and (coll? value) (empty? value)))
+    (dissoc m k)
+    (assoc m k value)))
+
+(defn assoc-in-if-non-empty
+  "Like assoc-in, but does a dissoc-in if the value is empty."
+  [m keys value]
+  (if (or (nil? value)
+          (and (coll? value) (empty? value)))
+    (dissoc-in m keys)
+    (assoc-in m keys value)))
+
+(defn update-in-clean-up
+  "Like update-in, but removes empty collections."
+  [map keys fn]
+  (let [result (fn (get-in map keys))]
+    (assoc-in-if-non-empty map keys result)))
+
+;; Utils for working with atoms in a lock free way.
+
+(defn swap-control-return!
+  "Like swap!, except f should return two values:
+   * a new value for the atom to hold
+   * the value to return from the swap."
+  [cell f & args]
+  (loop []
+    (let [old @cell
+          [new return-value] (apply f old args)]
+      (if (compare-and-set! cell old new)
+        return-value
+        (recur)))))
+
+(defn swap-returning-both!
+  "Swap, and return a vector of the old and new values."
+  [cell f & args]
+  (swap-control-return! cell
+                        (fn [old]
+                          (let [new (apply f old args)]
+                            [new [old new]]))))
+
+(defn update-new-further-action
+  "Given a map, add an action to the further actions.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
+  [data & action]
+  (update-in data [:further-actions] (fnil conj []) (vec action)))
+
+(defn update-new-further-actions
+  "Given a map, add each argument as a further action.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
+  [data actions]
+  (if (empty? actions)
+    data
+    (update-in data [:further-actions] #(concat % (map vec actions)))))
+
+(defn swap-and-act!
+  "Atomically call the function on the atom's content.
+   The function should return the new content for the atom, which may
+  contain a temporary field, :further-actions with a list of actions
+  of the form [function argument ... argument], which will be run
+  immediately after the swap."
+  [atom f]
+  (let [actions (swap-control-return!
+                 atom
+                 (fn [data] (let [new-data (f data)
+                                  actions (:further-actions new-data)]
+                              (if actions
+                                ;; We assoc with nil, rather than
+                                ;; dissoc, so we won't turn a record
+                                ;; into a map.
+                                [(assoc new-data :further-actions nil)
+                                 actions]
+                                [new-data
+                                 nil]))))]
+    (doseq [action actions]
+      (apply (first action) (rest action)))))
+
+(defn swap-and-act-control-return!
+  "Atomically call the function on the atom's content.
+  The function should return the new content for the atom, and a
+  return value. The new content may contain a temporary
+  field, :further-actions with a list of actions of the form [function
+  argument ... argument], which will be run immediately after the
+  swap."
+  [atom f]
+  (let [[actions return-value]
+        (swap-control-return!
+         atom
+         (fn [data] (let [[new-data return-value] (f data)
+                          actions (:further-actions new-data)]
+                      (if actions
+                        ;; We assoc with nil, rather than
+                        ;; dissoc, so we won't turn a record
+                        ;; into a map.
+                        [(assoc new-data :further-actions nil)
+                         [actions return-value]]
+                        [new-data
+                         [nil return-value]]))))]
+    (doseq [action actions]
+      (apply (first action) (rest action)))
+    return-value))
+
+(defn call-with-latest-value
+  "Call the function with the current value of the thunk,
+   and the other arguments, repeating until the value of the thunk after the
+   call matches the value used in the call. This is good for registering a
+   current state with some other place that needs to track it."
+  [thunk f & args]
+  (loop [value (thunk)]
+    (apply f value args)
+    (let [latest-value (thunk)]
+      (when (not= value latest-value) (recur latest-value)))))
+
+(defmacro with-latest-value
+  "Run body with the current value of expression,
+  repeating until the value of the expression after it has been run
+  is the same as it was before."
+  [[var expression] & body]
+  `(call-with-latest-value
+    (fn [] ~expression)
+    (fn [~var] ~@body)))
+
+;;; Threading state through map style operations
+
+(defn thread-map
+  "Call f on each element of the sequence, passing it the current state
+  as its second argument. f must return a pair of a value and the new state.
+  Return the sequence of values and the final state.
+  If the initial items are a seq, have the returned sequence be a seq."
+  [f items state]
+  (let [[mapped state]
+        (reduce (fn [[accum state] item]
+                  (let [[value state] (f item state)]
+                    [(conj accum value) state]))
+                [[] state] items)]
+    [(if (seq? items) (list* mapped) mapped) state]))
+
+(defn thread-recursive-map
+  "Walk the possibly nested sequence, calling f on each element,
+  passing it the current state as its first argument. f must return a
+  pair of a value and the new state
+  Return the nested sequence of values the final state."
+  [f items state]
+  (if (sequential? items)
+    (thread-map (fn [items state] (thread-recursive-map f items state))
+                items state)
+    (f items state)))
+
+;;; Parsing
+
+(defn parse-string-as-number
+  "Parse user entered characters into a number if possible.
+  Otherwise return the characters as a string."
+  ;; NOTE: This is not compatible with ClojureScript.
+  [str]
+  (try (let [x (Float/parseFloat (clojure.string/trim str))
+             int-x (int x)]
+         (if (== x int-x) int-x x))
+       (catch Exception e str)))
+
+;;; Misc
+
+(defn union-seqs
+  "Given two seqs, return the seq of their union."
+  [s1 s2]
+  (cond (empty? s1) s2
+        (empty? s2) s1
+        true (distinct (concat s1 s2))))
+
+(defn remove-first
+  "Remove the first item of the seq that matches the pred"
+  [pred coll]
+  ((fn inner [coll]
+     (lazy-seq
+      (when-let [[x & xs] (seq coll)]
+        (if (pred x)
+          xs
+          (cons x (inner xs))))))
+   coll))
+
+(defn extract-first [pred coll]
+  "Return the first item of the seq that matches the pred,
+   plus the sequence with that item removed."
+  (let [[before remaining] (split-with (complement pred) coll)]
+    (if (seq remaining)
+      [(first remaining) (concat before (rest remaining))]
+      [nil coll])))
+
+(defn truncate-at-value
+  "Given a seq, return its prefix before the first occurrence of the
+  given value."
+  [s value]
+  (when (seq s)
+    (let [f (first s)]
+      (when (not= f value)
+        (cons f (truncate-at-value (rest s) value))))))
+
+(defn separate-by
+  "Split a seq into those where the predicate is true, and those where it
+  is false."
+  [fun x]
+  (let [groups (group-by #(if (fun %) true false) x)]
+    [(groups true) (groups false)]))
+
+(defn unzip
+  "Splits a sequence of pairs into a vector of two vectors."
+  [coll]
+  (reduce (fn [[v1 v2] [x y]]
+            [(conj v1 x) (conj v2 y)])
+          [[] []]
+          coll))
+
+(defn update-last
+  "Update the last element of a vector."
+  [vec fun]
+  (if (empty? vec)
+    [(fun nil)]
+    (update-in vec [(dec (count vec))] fun)))
+
+(defn map-map
+  "Map two levels down."
+  [fun x]
+  (map #(map fun %) x))
+
+(defn map-with-first-last
+  "Map, but also call the function with whether or not the item
+  is first in the list and whether or not it is last."
+  [fun x]
+  (when (seq x)
+    (let [falses (repeat (- (count x) 1) false)]
+      (map fun x (concat [true] falses) (concat falses [true])))))
+
+(defn replace-in-seqs
+  "Replace from with to recursively through the sequence."
+  [x from to]
+  (cond (sequential? x) (map #(replace-in-seqs % from to) x)
+        (= x from) to
+        true x))
+
+(defn ensure-in-map
+  "Given a map, if the map has a value for the key, 
+   return the map and that value. If not, call the function with the key,
+   put its result into the map, and return the new map and the result."
+  [map key fun]
+  (if (contains? map key)
+    [map (map key)]
+    (let [val (fun key)]
+      [(assoc map key val) val])))
+
+(defn ensure-in-atom-map!
+  "Given an atom holding a map, if the map has a value for the key, 
+   return that value. If not, call the function with the key,
+   put its result into the map, and the result."
+  [atom-map key fun]
+  (swap-control-return! atom-map
+                        #(ensure-in-map % key fun)))
+
+(defn call-pseudo-closure
+  "A pseudo closure is either a function or a sequence of a function and
+  some extra arguments. Call the function with the arguments given in
+  the call followed by the pseudo closure's extra arguments, if any.
+  Pseudo closures are easier to debug than actual closures, because
+  they print something understandable. Also, they put the closed over
+  arguments at the end, which can be more convenient."
+  [closure & args]
+  (if (sequential? closure)
+    (apply (first closure) (concat args (rest closure)))
+    (apply closure args)))
+
+(defn pseudo-closure-application
+  "A pseudo closure is either a function or a sequence of a function and
+  some extra arguments. Make a seq of the function, followed by the
+  arguments to this call, followed by the pseudo closure's extra
+  arguments, if any."
+  [closure & args]
+  (if (sequential? closure)
+    (concat [(first closure)] args (rest closure))
+    (concat [closure] args)))
+

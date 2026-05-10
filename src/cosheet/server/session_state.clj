@@ -181,11 +181,6 @@
             (update-equivalent-undo-point true))
         id]))))
 
-(defn temporary-element-id [store]
-  (let [matches (matching-items :root-temporary (current-store store))]
-    (assert (not (empty? matches)))
-    (:item-id (first matches))))
-
 (defn get-store
   "Read the store if possible; otherwise create one. Return the immutable
    store. If the store can't be made, return nil."

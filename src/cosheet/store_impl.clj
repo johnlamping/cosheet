@@ -24,7 +24,7 @@
 (declare add-link-from-triple)
 (declare add-or-defer-link)
 (declare candidate-matching-ids-and-estimate)
-(declare all-temporary-ids)
+(declare all-ephemeral-ids)
 (declare add-modified-id)
 (declare index-all)
 
@@ -40,8 +40,8 @@
     ;;; Map from a link's ItemId to its source
     id->source
 
-    ;;; A set of ids that have been declared temporary.
-    temporary-ids
+    ;;; A set of ids that have been declared ephemeral.
+    ephemeral-ids
 
     ;;; A derived map from ItemId to a pseudo-set of the ids of the links
     ;;; that target it.
@@ -285,9 +285,9 @@
     ;; not a store record.
     [(assoc this :further-actions nil) (:further-actions this)])
 
-  (declare-temporary-id [this id]
+  (declare-ephemeral-id [this id]
     (assert (:id->source this))
-    (update this :temporary-ids #(conj % id)))
+    (update this :ephemeral-ids #(conj % id)))
 
   (store-to-data [this]
     "Extract just the essential data from the store, in preparation for
@@ -297,11 +297,11 @@
        ItemId [:id (:id ?])
        Orderable [:ord (left ?) (right ?)]
        Vector [:vec * ?]"
-    (let [temporary-ids (all-temporary-ids this)]
+    (let [ephemeral-ids (all-ephemeral-ids this)]
       [(:next-number this)
        (for [[id source]
              (seq (:id->source this))
-             :when (not (temporary-ids id))]
+             :when (not (ephemeral-ids id))]
          [(:id id)
           (:id (get-in this [:id->target id]))
           (cond (item-id? source)
@@ -566,9 +566,9 @@
                        (not (interned-object-id? store content)))
               (descendant-ids store content)))))
 
-(defn all-temporary-ids [store]
-  "Return a set of all declared temporary ids and their descendant elements."
-  (set (mapcat #(descendant-ids store %) (:temporary-ids store))))
+(defn all-ephemeral-ids [store]
+  "Return a set of all declared ephemeral ids and their descendant elements."
+  (set (mapcat #(descendant-ids store %) (:ephemeral-ids store))))
 
 (defn add-or-defer-link
   ;; Utility function for read-store.  The links may have been
@@ -721,7 +721,7 @@
                           :marked-as-type #{}
                           :target->label->label-ids {}
                           :source->label->label-ids {}
-                          :temporary-ids #{}
+                          :ephemeral-ids #{}
                           :next-number 1
                           :modified-ids nil
                           :equivalent-undo-point false}))

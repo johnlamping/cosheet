@@ -18,7 +18,7 @@
              [action-data :refer [default-get-action-data
                                   get-id-action-data]]
              [model-utils :refer [starting-store]]
-             [session-state :refer [update-add-session-temporary-element
+             [session-state :refer [update-add-session-ephemeral-element
                                     create-client-state]])
             ; :reload
             ))
@@ -38,13 +38,13 @@
 
 (deftest initial-top-level-item-DOM-R-test
   (let [store (starting-store "Tab")
-        [store temporary-id] (update-add-session-temporary-element store)
+        [store ephemeral-id] (update-add-session-ephemeral-element store)
         mutable-store (new-mutable-store store)
         client-state (create-client-state mutable-store nil)
         top-level-id (top-level-id-R mutable-store client-state)
         queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)
-        DOM-R (top-level-DOM-R mutable-store temporary-id
+        DOM-R (top-level-DOM-R mutable-store ephemeral-id
                                client-state top-level-id)
         dom (computation-value DOM-R cd)]
     (is (check

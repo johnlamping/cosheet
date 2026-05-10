@@ -389,15 +389,15 @@
 ;;; If we are batch editing and there is a non-trivial batch edit selector,
 ;;; return the batch edit selector items.
 (comment
-  (defn batch-editing-selector-items [store session-temporary-id client-state]
+  (defn batch-editing-selector-items [store session-ephemeral-id client-state]
     (let-R [batch-editing (state-map-get client-state :batch-editing)]
       (when batch-editing
-        (let [temporary-item (id->entity session-temporary-id store)]
+        (let [ephemeral-item (id->entity session-ephemeral-id store)]
           (let-R [selector-items (label->elements
-                                  temporary-item :batch-selector)
+                                  ephemeral-item :batch-selector)
                   row-selector (app-R first
                                  (label->elements
-                                  temporary-item :batch-row-selector))
+                                  ephemeral-item :batch-row-selector))
                   query-content (semantic-to-list row-selector)]
             (when (and query-content (not= query-content 'anything))
               selector-items)))))))
@@ -411,13 +411,13 @@
         (app-R first (ordered-tabs-ids-R store)))))
 
 (defn batch-editing-component
-  [store temporary-id]
+  [store ephemeral-id]
   ;; The batch edit ids never change, so we can pick them out of the
   ;; current store.
   (let [immutable-store (current-value store)
-        temporary-item (id->entity temporary-id immutable-store)
-        query-item (label->element temporary-item :batch-query)
-        stack-item (label->element temporary-item :batch-stack)]
+        ephemeral-item (id->entity ephemeral-id immutable-store)
+        query-item (label->element ephemeral-item :batch-query)
+        stack-item (label->element ephemeral-item :batch-stack)]
     (make-component {:relative-id :batch-edit
                      :query-id (:item-id query-item)
                      :stack-id (:item-id stack-item)
@@ -428,12 +428,12 @@
 (defn top-level-DOM-R
   "Return a reporter whose value is the DOM for tabs and the top level
   component."
-  [store temporary-id client-state id-R]
+  [store ephemeral-id client-state id-R]
   (let-R [id id-R
           batch-editing (map-reporter-get client-state :batch-editing)]
     (println "top level DOM id:" id "  Batch editing:" batch-editing)
     (if batch-editing
-      (batch-editing-component store temporary-id)
+      (batch-editing-component store ephemeral-id)
       (when id
         (let-R [immutable-store (category-change-R [id] store)]
           (let [immutable-item (id->entity id immutable-store)
@@ -486,12 +486,12 @@
   (.write w "rep-DOM"))
 
 (defn top-level-DOM-spec
-  [store session-temporary-id client-state]
+  [store session-ephemeral-id client-state]
   (let [id-R (top-level-id-R store client-state)]
     (assoc basic-dom-specification
            :relative-id :root
            :reporter (top-level-DOM-R
-                      store session-temporary-id client-state id-R)
+                      store session-ephemeral-id client-state id-R)
            :id-R id-R ; used by top-level-get-action-data
            :get-action-data top-level-get-action-data
            :render-dom reporter-specification-render-dom)))
@@ -499,9 +499,9 @@
 (comment ;; Copy stuff out of here as we support more kinds of top levels.
   ;; NOTE: subject-referent in here is obsolete.
   (defn top-level-DOM-R
-    [store session-temporary-id client-state]
+    [store session-ephemeral-id client-state]
     (let-R [batch-editing-items (batch-editing-selector-items
-                                store session-temporary-id client-state)]
+                                store session-ephemeral-id client-state)]
       (if (seq batch-editing-items)
         (batch-edit-DOM-R batch-editing-items store starting-inherited)
         (let-R [referent (state-map-get client-state :referent)
@@ -563,8 +563,8 @@
 (comment
   (defn spec-for-client-R
     "Return a specification for the DOM indicated by the client."
-    [store session-temporary-id client-state]
+    [store session-ephemeral-id client-state]
     (let-R [dom (top-level-DOM-spec
-                store session-temporary-id client-state)]
+                store session-ephemeral-id client-state)]
       (into dom [(make-component {:key [:label-values]}
                                  [label-datalist-DOM-R store])]))))

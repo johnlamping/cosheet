@@ -8,7 +8,7 @@
     [reporter-macros :refer [app-R let-R]]
     [canonical :refer [canonicalize]]
     [store :refer [new-element-store
-                   update-source add-link declare-temporary-id
+                   update-source add-link declare-ephemeral-id
                    target-label->ids get-new-object-id]]
     [entity :refer [primitive? object?
                     link-type-object? object-type-object?
@@ -359,13 +359,13 @@
         (match-terms-and-targets unmatched-object-elements templates-to-add)]
     [templates-to-add (map first object-term-pairs)]))
 
-(def update-add-element-with-order-and-temporary)
+(def update-add-element-with-order-and-ephemeral)
 
 (defn add-elements-with-order
   [store target-id elements order position]
   (let [[s id order]
         (reduce (fn [[store _ order] element]
-                  (update-add-element-with-order-and-temporary
+                  (update-add-element-with-order-and-ephemeral
                    store target-id element order position false))
                 [store nil order]
                 (case position
@@ -429,7 +429,7 @@
         (update-add-object-with-given-elements-and-order
          store (elements template) order position)))
 
-(defn update-add-element-with-order-and-temporary
+(defn update-add-element-with-order-and-ephemeral
   "Add an element, described in list form, to the store, with the given
   target.  Add ordering information to the element and each part of it,
   except for :label or :category specifiers and non-semantic elements,
@@ -437,12 +437,12 @@
   piece of it.  Put the new entity in the specified position (:before
   or :after) of the returned order, and make the entity use the bigger
   piece if use-bigger is true, otherwise use the smaller piece.  If
-  the template has a :temporary element, mark it temporary in the store.
+  the template has a :ephemeral element, mark it ephemeral in the store.
   Return the new store, the id of the item, and the remaining order."
   [store target-id template order position use-bigger]
   (let [template-content (content template)
         template-elements (elements template)
-        is-temporary (some (fn [element] (= (content element) :temporary))
+        is-ephemeral (some (fn [element] (= (content element) :ephemeral))
                            template-elements)]
     (if (not (orderable-entity? template))
       (let [[s id] (add-element store target-id template)]
@@ -475,7 +475,7 @@
             [s3 _] (add-element
                     s2 id `(~(if use-bigger bigger-order smaller-order)
                             :order))]
-        [(if is-temporary (declare-temporary-id s3 id) s3)
+        [(if is-ephemeral (declare-ephemeral-id s3 id) s3)
          id
          (if use-bigger smaller-order bigger-order)]))))
 
@@ -487,7 +487,7 @@
   [store target-id element adjacent-to position use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
-        [store id remainder] (update-add-element-with-order-and-temporary
+        [store id remainder] (update-add-element-with-order-and-ephemeral
                               store target-id element
                               order position use-bigger)]
     [(update-source store (:item-id order-element) remainder) id]))

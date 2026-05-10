@@ -346,8 +346,8 @@
                         (make-object-list [`("Tony" (~name-label))])
                         s7))))))
 
-(deftest update-add-element-with-order-and-temporary-test
-  (let [[s id order] (update-add-element-with-order-and-temporary
+(deftest update-add-element-with-order-and-ephemeral-test
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id 6
                       unused-orderable :before true)
         joe (id->entity joe-id s)
@@ -357,7 +357,7 @@
            `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id 6
                       unused-orderable :before false)
         joe (id->entity joe-id s)
@@ -367,7 +367,7 @@
            `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))    
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id 6
                       unused-orderable :after true)
         joe (id->entity joe-id s)
@@ -377,7 +377,7 @@
            `(6 (~o6 :order))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id '(6 ("height" :label))
                       unused-orderable :before true)
         joe (id->entity joe-id s)
@@ -391,7 +391,7 @@
                                   (~o6 :order))))))
     (is (= order o5)))
    ;; Try adding something that requires adding an non-identified object.
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id `(6 (~(make-object-list
                                           [1 2])))
                       unused-orderable :before true)
@@ -401,7 +401,7 @@
     (is (check (ordered-semantic-to-list new-entity)
                `(6 (~(make-object-list [1 2]))))))
   ;; Try adding something that requires adding an identified object.
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id `(6 (~(make-object-list
                                           [`("Tina" (~name-label)) 1 2])))
                       unused-orderable :before true)
@@ -416,7 +416,7 @@
                         (make-object-list [`("Tina" (~name-label)) 1 2])
                         s))))
     ;; Now try adding another element that references the same object.
-    (let [[s1 id1 order1] (update-add-element-with-order-and-temporary
+    (let [[s1 id1 order1] (update-add-element-with-order-and-ephemeral
                            s joe-id `(7 (~(make-object-list
                                            [`("Tina" (~name-label)) 2 3])))
                            order :before true)
@@ -436,11 +436,11 @@
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.
   ;; Also check and that non-semantic elements don't get order information
-  ;; and that the entity is marked temporary, if requested.
-  (let [[s id order] (update-add-element-with-order-and-temporary
+  ;; and that the entity is marked ephemeral, if requested.
+  (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id '(6 ("height" :label)
                                        ("" :label)
-                                       :temporary
+                                       :ephemeral
                                        (:other ""))
                       unused-orderable :after false)
         joe (id->entity joe-id s)
@@ -453,9 +453,9 @@
                 `(6 (~o5 :order)
                     ("height" :label (~o7 :order))
                     ("" :label (~o6 :order))
-                    :temporary
+                    :ephemeral
                     (:other "")))))
-    (is ((:temporary-ids s) id))
+    (is ((:ephemeral-ids s) id))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
 

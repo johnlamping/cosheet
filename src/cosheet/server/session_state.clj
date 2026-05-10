@@ -8,7 +8,7 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   store-update-control-return! declare-temporary-id
+                   store-update-control-return! declare-ephemeral-id
                    store-update! id-valid-link? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
@@ -157,10 +157,10 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn update-add-session-temporary-element
+(defn update-add-session-ephemeral-element
   [immutable-store]
   (add-element immutable-store nil
-               '(:root-temporary
+               '(:root-ephemeral
                  ;; These hold the data that control batch edit mode.
                  (anything :batch-query :selector)
                  (anything :batch-stack :selector)
@@ -169,15 +169,15 @@
                  ;; current selection.
                  (nothing :current-selection))))
 
-(defn add-session-temporary-element!
-  "Add a session temporary element to the store, and return its id."
+(defn add-session-ephemeral-element!
+  "Add a session ephemeral element to the store, and return its id."
   [store]
   (store-update-control-return!
    store
    (fn [immutable-store]
-     (let [[store id] (update-add-session-temporary-element immutable-store)]
+     (let [[store id] (update-add-session-ephemeral-element immutable-store)]
        [(-> store
-            (declare-temporary-id id)
+            (declare-ephemeral-id id)
             (update-equivalent-undo-point true))
         id]))))
 
@@ -290,7 +290,7 @@
 ;;;            :file-path  The file path (with suffix omitted) corresponding
 ;;;                        to the store.
 ;;;                :store  The mutable store that holds the data.
-;;; :session-temporary-id  The id of the root temporary item in the store used
+;;; :session-ephemeral-id  The id of the root ephemeral item in the store used
 ;;;                        for holding information specific to this session.
 ;;;          :dom-manager  The dom manager for the session.
 ;;;         :client-state  A map-state holding these keys:
@@ -335,8 +335,8 @@
 
 (defn create-manager
   "Create the dom manager, and give it its root dom."
-  [store temporary-id client-state calculator-data]
-  (let [spec (top-level-DOM-spec store temporary-id client-state)
+  [store ephemeral-id client-state calculator-data]
+  (let [spec (top-level-DOM-spec store ephemeral-id client-state)
         manager (make-dom-manager store calculator-data)]
     (assert (:reporter spec))
     (propagate-calculator-data! (:reporter spec) calculator-data)
@@ -396,7 +396,7 @@
   (println "Creating session with root id string" root-id-string)
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
-          session-temporary-id (add-session-temporary-element! store)
+          session-ephemeral-id (add-session-ephemeral-element! store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -408,9 +408,9 @@
                              {:file-path (:without-suffix store-info)
                               :id id
                               :store store
-                              :session-temporary-id session-temporary-id
+                              :session-ephemeral-id session-ephemeral-id
                               :dom-manager (create-manager
-                                            store session-temporary-id
+                                            store session-ephemeral-id
                                             client-state calculator-data)
                               :client-state client-state})
                    id])))]
@@ -443,11 +443,11 @@
          ;; attach to a new session.
          (do (remove-all-doms (:dom-manager state))
              (Thread/sleep 100)
-             (let [session-temporary-id (:session-temporary-id state)]
+             (let [session-ephemeral-id (:session-ephemeral-id state)]
                (store-update!
                 (:store state)
-                (fn [store] (if (id-valid-link? store session-temporary-id)
-                              (remove-entity-by-id store session-temporary-id)
+                (fn [store] (if (id-valid-link? store session-ephemeral-id)
+                              (remove-entity-by-id store session-ephemeral-id)
                               store))))
              (assoc session-info :sessions
                     (dissoc session-map session-id)))

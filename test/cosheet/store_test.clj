@@ -63,7 +63,7 @@
      (make-link-id 10) :order
      (make-link-id 11) "bar"
      (make-link-id 12) :label}
-    :temporary-ids  #{}
+    :ephemeral-ids  #{}
     :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
@@ -261,7 +261,7 @@
      (make-link-id 4) (make-item-id "name")
      (make-link-id 6) (make-object-id "object")
      (make-link-id 7) (make-object-id -8)}
-    :temporary-ids  #{}
+    :ephemeral-ids  #{}
     :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
@@ -609,16 +609,16 @@
     (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
                [nil true]))))
 
-(deftest declare-temporary-id-test
-  (is (= (:temporary-ids test-store) #{}))
-  (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-link-id 3))
+(deftest declare-ephemeral-id-test
+  (is (= (:ephemeral-ids test-store) #{}))
+  (let [ephemeral-store (-> test-store
+                            (declare-ephemeral-id (make-link-id 3))
                             (add-link (make-link-id 1) "hi")
                             first
-                            (declare-temporary-id (make-link-id 8)))]
-    (is (= (:temporary-ids temporary-store)
+                            (declare-ephemeral-id (make-link-id 8)))]
+    (is (= (:ephemeral-ids ephemeral-store)
            #{(make-link-id 3) (make-link-id 8)}))
-    (is (= (all-temporary-ids temporary-store)
+    (is (= (all-ephemeral-ids ephemeral-store)
            #{(make-link-id 3) (make-link-id 6) (make-link-id 8)}))))
 
 (deftest new-element-store-test
@@ -630,20 +630,20 @@
              (into {} (data-to-store (new-element-store)
                                      (store-to-data test-store)))))
   ;; Now try it with some items not serialized
-  (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-link-id 3))
-                            (declare-temporary-id (make-link-id 8)))
+  (let [ephemeral-store (-> test-store
+                            (declare-ephemeral-id (make-link-id 3))
+                            (declare-ephemeral-id (make-link-id 8)))
         smaller-store (-> test-store
                           (remove-link (make-link-id 8))
                           (remove-link (make-link-id 6)) ; Points to id 3
                           (remove-link (make-link-id 3)))]
     (is (check (into {} smaller-store)
                (into {} (data-to-store (new-element-store)
-                                       (store-to-data temporary-store))))))
+                                       (store-to-data ephemeral-store))))))
   ;; Try with obj-2 being non-interned.
-  (let [temporary-store (-> test-store
-                            (declare-temporary-id (make-link-id 3))
-                            (declare-temporary-id (make-link-id 8))
+  (let [ephemeral-store (-> test-store
+                            (declare-ephemeral-id (make-link-id 3))
+                            (declare-ephemeral-id (make-link-id 8))
                             ;; Make id -2 non-interned
                             (remove-link (make-link-id 72)))
         smaller-store (-> test-store
@@ -656,7 +656,7 @@
                           )]
     (is (check (into {} smaller-store)
                (into {} (data-to-store (new-element-store)
-                                       (store-to-data temporary-store)))))))
+                                       (store-to-data ephemeral-store)))))))
 
 (deftest write-read-test
   (let [store (first

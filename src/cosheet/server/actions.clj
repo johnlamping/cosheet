@@ -43,7 +43,7 @@
                          label-object-template
                          table-row-template table-column-headers-id
                          unspecified-column-header-template
-                         update-add-element-with-order-and-temporary
+                         update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
                          object-semantic-to-list]]
     [render-utils :refer [sequential-template?]]
@@ -55,12 +55,12 @@
 ;;; TODO: Replace the asserts with log messages, so things are robust.
 
 (defn update-selected
-  "Store the client id of the currently selected dom as a temporary in
+  "Store the client id of the currently selected dom as an ephemeral in
   the store. (We put it in the store, because that way, when
   there is an undo, we can undo to the last selection.)"
-  [store temporary-id client-id]
+  [store ephemeral-id client-id]
   (if-let [element-id (first (target-label->ids
-                              store temporary-id :current-selection))]
+                              store ephemeral-id :current-selection))]
     ;; We store the client id as a keyword, rather than a string, so it
     ;; is not semantic.
     (update-source store element-id (keyword client-id))
@@ -69,9 +69,9 @@
 (defn get-selected
   "Retrieve the client id of the currently selected dom, as stored by
   update-selected."
-  [store temporary-id]
+  [store ephemeral-id]
   (when-let [element-id (first (target-label->ids
-                                store temporary-id :current-selection))]
+                                store ephemeral-id :current-selection))]
     (let [source (id->source store element-id)]
       (when (keyword? source)
         (name source)))))
@@ -153,9 +153,9 @@
   ;; views/ajax-response defauts to using the current selection from
   ;; the client state.
   [response ids session-state]
-  (let [temporary-id (:session-temporary-id session-state)
+  (let [ephemeral-id (:session-ephemeral-id session-state)
         response (ensure-response-map response)
-        current-selection (get-selected (:store response) temporary-id)]
+        current-selection (get-selected (:store response) ephemeral-id)]
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
 
@@ -395,17 +395,17 @@
   [store {:keys [query-ids stack-ids
                  selected-index selection-sequence must-show-label
                  session-state]}]
-  (let [temporary-id (:session-temporary-id session-state)
-        temporary-item (id->entity temporary-id store)]
+  (let [ephemeral-id (:session-ephemeral-id session-state)
+        ephemeral-item (id->entity ephemeral-id store)]
     (if query-ids
       (let [[new-ids [store _]]
             ;; For each of query-id and stack-id, replace the
-            ;; temporary item's elements with the new elements.
+            ;; ephemeral item's elements with the new elements.
             (reduce
              ;; This function returns a list of new ids, plus a new
              ;; [store order] pair.
              (fn [[_ [store order]] [item-label ids]]
-               (let [item (label->element temporary-item item-label)
+               (let [item (label->element ephemeral-item item-label)
                      target-id (:item-id item)
                      new-lists (map #(ordered-semantic-to-list
                                       (id->entity % store))
@@ -414,7 +414,7 @@
                  (thread-map
                   (fn [new-list [store order]]
                     (let [[store id remainder]
-                          (update-add-element-with-order-and-temporary
+                          (update-add-element-with-order-and-ephemeral
                            store target-id new-list
                            order :before :false)]
                       [id [store remainder]]))
@@ -441,7 +441,7 @@
       ;; doesn't have batch editing information. Check for no selection before
       ;; doing this.
       (when (seq (semantic-elements
-                  (label->element temporary-item :batch-query)))
+                  (label->element ephemeral-item :batch-query)))
         ;; Reuse the last batch edit specification.
         {:store store
          :batch-editing true}))))
@@ -539,12 +539,12 @@
 
 (defn request-selection-from-store
    "Return a client request asking it to select the target saved in the
-   temporary item of the store."
+   ephemeral item of the store."
     [mutable-store old-store session-state]
     (let [store (current-store mutable-store)
-          temporary-id (:session-temporary-id session-state)]
-      {:select (get-selected store temporary-id)
-       :if-selected (when-let [former (get-selected old-store temporary-id)]
+          ephemeral-id (:session-ephemeral-id session-state)]
+      {:select (get-selected store ephemeral-id)
+       :if-selected (when-let [former (get-selected old-store ephemeral-id)]
                       [former])}))
 
 ;;; While do-selected takes a client id, like a contextual action
@@ -555,7 +555,7 @@
 (defn do-selected
   [mutable-store session-state client-id & _]
   (when client-id
-    (let [{:keys [client-state session-temporary-id dom-manager]} session-state
+    (let [{:keys [client-state session-ephemeral-id dom-manager]} session-state
           action-data (client-id->action-data
                        @dom-manager client-id :select
                        (current-store mutable-store))
@@ -565,9 +565,9 @@
       (store-update!
        mutable-store
        (fn [store]
-         (if (not= client-id (get-selected store session-temporary-id))
+         (if (not= client-id (get-selected store session-ephemeral-id))
            (-> store
-               (update-selected session-temporary-id client-id)
+               (update-selected session-ephemeral-id client-id)
                (update-equivalent-undo-point true))
            store)))
       (when tab-id

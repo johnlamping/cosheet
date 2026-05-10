@@ -46,8 +46,8 @@
                                   pattern-to-fixed-term
                                   label-object-template
                                   update-add-object-with-order
-                                  update-add-element-with-order-and-temporary]]
-             [session-state :refer [update-add-session-temporary-element]]
+                                  update-add-element-with-order-and-ephemeral]]
+             [session-state :refer [update-add-session-ephemeral-element]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]])
             ; :reload
@@ -86,8 +86,8 @@
 (def joe-id (second t1))
 (def t2 (add-element (first t1) nil jane-list))
 (def jane-id (second t2))
-(def t3 (update-add-session-temporary-element (first t2)))
-(def temporary-id (second t3))
+(def t3 (update-add-session-ephemeral-element (first t2)))
+(def ephemeral-id (second t3))
 (def store (first t3))
 (def headers-id (first (target-label->ids
                        store table-id :column-headers)))
@@ -103,7 +103,7 @@
 (def jane-female (first (matching-elements "female" jane)))
 (def jane-age (first (matching-elements 45 jane)))
 
-(def session-state {:session-temporary-id temporary-id
+(def session-state {:session-ephemeral-id ephemeral-id
                     :store (new-mutable-store store)
                     :client-state (make-map-reporter {})})
 
@@ -128,8 +128,8 @@
 (def new-joe-id (second new-t1))
 (def new-t2 (add-object (first new-t1) new-jane-object-list))
 (def new-jane-id (second new-t2))
-(def new-t3 (update-add-session-temporary-element (first new-t2)))
-(def new-temporary-id (second new-t3))
+(def new-t3 (update-add-session-ephemeral-element (first new-t2)))
+(def new-ephemeral-id (second new-t3))
 (def new-store (first new-t3))
 (def new-headers-id (first (target-label->ids
                        new-store new-table-id :column-headers)))
@@ -145,7 +145,7 @@
 (def new-jane-female (first (matching-elements "female" new-jane)))
 (def new-jane-age (first (matching-elements 45 new-jane)))
 
-(def new-session-state {:session-temporary-id new-temporary-id
+(def new-session-state {:session-ephemeral-id new-ephemeral-id
                         :store (new-mutable-store new-store)
                         :client-state (make-map-reporter {})})
 
@@ -196,11 +196,11 @@
 (deftest selected-test
   (let [client-id1 "root_1"
         client-id2 "root_2"
-        store1 (update-selected store temporary-id client-id1)
-        recovered-id1 (get-selected store1 temporary-id)
+        store1 (update-selected store ephemeral-id client-id1)
+        recovered-id1 (get-selected store1 ephemeral-id)
         ;; Now, try overwriting an existing id.
-        store2 (update-selected store1 temporary-id client-id2)
-        recovered-id2 (get-selected store2 temporary-id)] 
+        store2 (update-selected store1 ephemeral-id client-id2)
+        recovered-id2 (get-selected store2 ephemeral-id)] 
     (is (= client-id1 recovered-id1))
     (is (= client-id2 recovered-id2))))
 
@@ -267,7 +267,7 @@
                              (add-universal-objects (new-element-store))
                              (make-object-list `(("Fred" (~name-label)) "foo"))
                              initial :after)
-        [s2 fred-holder-id order] (update-add-element-with-order-and-temporary
+        [s2 fred-holder-id order] (update-add-element-with-order-and-ephemeral
                                    s1 nil
                                    `(~(id->object fred-oid s1))
                                    initial :after false)
@@ -356,7 +356,7 @@
                           "foo"]))))))
 
 (deftest do-add-twin-test
-  (let [store (update-selected store temporary-id "old selection")
+  (let [store (update-selected store ephemeral-id "old selection")
         result (do-add-twin store
                             {:subject-ids [(:item-id joe-age)
                                            (:item-id jane-age)]
@@ -383,7 +383,7 @@
                   :if-selected ["old selection"]})))))
 
 (deftest do-add-element-test
-  (let [store (update-selected store temporary-id "old selection")
+  (let [store (update-selected store ephemeral-id "old selection")
         result (do-add-element store
                                {:subject-ids [(:item-id joe-age)
                                               (:item-id jane-age)]
@@ -404,7 +404,7 @@
 
 (deftest do-add-label-test
   ;; Test for adding a label when there is more than one subject id. 
-  (let [store (update-selected store temporary-id "old selection")
+  (let [store (update-selected store ephemeral-id "old selection")
         result (do-add-label store
                                {:subject-ids [(:item-id joe-age)
                                               (:item-id jane-age)]
@@ -556,9 +556,9 @@
                   :selected-index 0
                   :selection-sequence [(:item-id jane-age)]
                   :session-state session-state})
-        session-temporary (id->entity temporary-id (:store updated))
-        query-item (first (label->elements session-temporary :batch-query))
-        stack-item (first (label->elements session-temporary :batch-stack))]
+        session-ephemeral (id->entity ephemeral-id (:store updated))
+        query-item (first (label->elements session-ephemeral :batch-query))
+        stack-item (first (label->elements session-ephemeral :batch-stack))]
     (is (check (canonicalize (semantic-to-list query-item))
                (canonicalize '(anything ("Joe"
                                               "male"
@@ -581,9 +581,9 @@
                      {:query-ids [jane-id joe-id]
                       :stack-ids []
                       :session-state session-state})
-          session-temporary (id->entity temporary-id (:store reupdated))
-          query-item (label->element session-temporary :batch-query)
-          stack-item (label->element session-temporary :batch-stack)]
+          session-ephemeral (id->entity ephemeral-id (:store reupdated))
+          query-item (label->element session-ephemeral :batch-query)
+          stack-item (label->element session-ephemeral :batch-stack)]
       (is (check (semantic-to-list stack-item)
                  'anything))
       (is (check (canonicalize (semantic-to-list query-item))
@@ -604,8 +604,8 @@
       (let [rereupdated (do-batch-edit
                          (:store reupdated)
                          {:session-state session-state})
-            new-session-temporary (id->entity temporary-id (:store reupdated))
-            new-query-item (first (label->elements session-temporary
+            new-session-ephemeral (id->entity ephemeral-id (:store reupdated))
+            new-query-item (first (label->elements session-ephemeral
                                                    :batch-query))]
         (is (= new-query-item query-item))))))
 
@@ -620,7 +620,7 @@
                            :render-dom (fn [& _] [:div])
                            :get-action-data [get-id-action-data :Larry]})
     (let [for-client (do-selected ms ss "Larry")]
-      (is (= (get-selected (current-store ms) temporary-id)
+      (is (= (get-selected (current-store ms) ephemeral-id)
              "Larry"))
       (is (nil? for-client)))))
 

@@ -99,7 +99,7 @@
       (is (= (reporter-value source) 99))
       (let [[store1 e] (add-link store element "foo")
             [store2 _] (add-link store1 e :label)
-            store3 (declare-temporary-id store2 e)
+            store3 (declare-ephemeral-id store2 e)
             revised-store (update-source store3 element "S3")
             me (store-update-control-return!
                 mutable-store #(add-link % element "foo"))
@@ -109,7 +109,7 @@
             s1 (current-store mutable-store)
             _ (store-update! mutable-store
                              #(-> %
-                                  (declare-temporary-id me)
+                                  (declare-ephemeral-id me)
                                   (update-source element "S1a")
                                   (update-equivalent-undo-point true)))
             s1a (current-store mutable-store)

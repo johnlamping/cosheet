@@ -269,8 +269,8 @@
      point. This state persists through all updates until it is
      explicitly changed.")
 
-  (declare-temporary-id [this id]
-    "Declare the id to be temporary. It and all its descendant elements
+  (declare-ephemeral-id [this id]
+    "Declare the id to be ephemeral. It and all its descendant elements
      will not be written when the store is written out. And neither will
      anonymous objects that it leads to.
      Returns the new store.")

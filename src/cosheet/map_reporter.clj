@@ -41,7 +41,9 @@
                  [key]
                  result]))))
 
-(defn map-reporter-reset! [map-state map]
+(defn map-reporter-reset!
+  "Change the state to agree with the provided map on its values."
+  [map-state map]
   (change-value! map-state
                  (fn [data]
                    [(into data map)

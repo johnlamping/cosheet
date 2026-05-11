@@ -114,7 +114,7 @@
   (.write w "pass-AD"))
 
 (defn get-id-action-data
-  "Return a single item id as the target ids. This is only suitable
+  "Return a single item id as the subject ids. This is only suitable
   for doms in a simple context where they can't possibly refer to
   several ids."
   [specification inherited-action-data action immutable-store id]

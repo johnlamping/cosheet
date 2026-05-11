@@ -361,7 +361,7 @@
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
     (when select (map-reporter-reset! client-state {:select-store-ids nil
-                                                 :if-selected nil}))
+                                                    :if-selected nil}))
     (when (not= answer {})
       (let [stripped (update
                       answer :doms

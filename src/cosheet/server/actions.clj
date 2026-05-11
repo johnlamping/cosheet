@@ -148,7 +148,7 @@
   "Add a :select-store-ids instruction to a response, to select an item
   showing one of the specified ids, provided the current selection is
   what we have recorded in the session state. The ajax reply handler
-  will translate that to a :select instruction."
+  will translate that to a :select instruction to the client."
   ;; TODO: !!! We probably don't need to add if-selected, because
   ;; views/ajax-response defauts to using the current selection from
   ;; the client state.
@@ -170,8 +170,7 @@
       client-id (assoc :if-selected [client-id]))))
 
 (defn do-set-content
-  [store {:keys [subject-ids past-subject-ids template is-object-name
-                 client-id from to]}]
+  [store {:keys [subject-ids template is-object-name client-id from to]}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
@@ -561,7 +560,7 @@
                        (current-store mutable-store))
           {:keys [tab-id]} action-data]
       (map-reporter-reset! client-state {:select-store-ids nil
-                                      :if-selected nil})
+                                         :if-selected nil})
       (store-update!
        mutable-store
        (fn [store]

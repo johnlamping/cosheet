@@ -41,7 +41,15 @@
     id->source
 
     ;;; A set of ids that have been declared ephemeral.
+    ;;; Ephemeral ids are for recording ephemeral information that needs
+    ;;; to be structured as entities. Ephemeral-data (below) provides
+    ;;; more convenient access to ephemeral information that doesn't
+    ;;; need to be stored as entities.
     ephemeral-ids
+
+    ;;; A map holding ephemeral information that doesn't need entity
+    ;;; structure.
+    ephemeral-data
 
     ;;; A derived map from ItemId to a pseudo-set of the ids of the links
     ;;; that target it.
@@ -722,6 +730,7 @@
                           :target->label->label-ids {}
                           :source->label->label-ids {}
                           :ephemeral-ids #{}
+                          :ephemeral-data {}
                           :next-number 1
                           :modified-ids nil
                           :equivalent-undo-point false}))

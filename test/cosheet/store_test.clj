@@ -64,6 +64,7 @@
      (make-link-id 11) "bar"
      (make-link-id 12) :label}
     :ephemeral-ids  #{}
+    :ephemeral-data {}
     :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
@@ -262,6 +263,7 @@
      (make-link-id 6) (make-object-id "object")
      (make-link-id 7) (make-object-id -8)}
     :ephemeral-ids  #{}
+    :ephemeral-data {}
     :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
@@ -620,6 +622,11 @@
            #{(make-link-id 3) (make-link-id 8)}))
     (is (= (all-ephemeral-ids ephemeral-store)
            #{(make-link-id 3) (make-link-id 6) (make-link-id 8)}))))
+
+(deftest ephemeral-data-test
+  (is (= (:ephemeral-data test-store) {}))
+  (let [store (assoc test-store :ephemeral-data {:foo 1})]
+    (is (= (:ephemeral-data store) {:foo 1}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]

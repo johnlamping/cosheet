@@ -493,7 +493,12 @@
                 (store-update-control-return!
                  mutable-store
                  (fn [store]
-                   (let [action-data (client-id->action-data
+                   (let [store (update
+                                store :ephemeral-data
+                                #(-> %
+                                     (dissoc :following-selection
+                                             :following-selection-store-ids)))
+                         action-data (client-id->action-data
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys spec [:template])
@@ -512,26 +517,23 @@
                                    arguments)
                          [updated-store client-info]
                          (normalize-handler-response response store)
-                         updated-store (assoc-in
-                                        updated-store
-                                        [:ephemeral-data :preceding-selection]
-                                        client-id)
-                         {:keys [following-selection following-selection-store-ids]}
+                         {:keys [following-selection
+                                 following-selection-store-ids]}
                          (:ephemeral-data updated-store)
+                         selected-client-id (get-selected store ephemeral-id)
+                         if-selected (when
+                                         (and (or following-selection
+                                                  following-selection-store-ids)
+                                              (= client-id selected-client-id ))
+                                       [client-id])
                          client-info
-                         (cond-> client-info
-                           following-selection
-                           (assoc :select following-selection)
-                           following-selection-store-ids
-                           (assoc :select-store-ids following-selection-store-ids)
-                           ;; If we are changing what was selected,
-                           ;; but the user changes the selection
-                           ;; before we get back to them, leave their
-                           ;; new selection.
-                           (and (or following-selection
-                                    following-selection-store-ids)
-                                (= client-id (get-selected store ephemeral-id)))
-                           (assoc :if-selected [client-id]))]
+                         (assoc client-info
+                                :select following-selection
+                                :select-store-ids following-selection-store-ids
+                                :if-selected if-selected)]
+                     (println "SELECTION INFO"
+                              following-selection following-selection-store-ids
+                              if-selected)
                      [updated-store client-info])))]
             (when (contains? result :batch-editing)
               (map-reporter-reset! (:client-state session-state)

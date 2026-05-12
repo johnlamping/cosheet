@@ -764,8 +764,10 @@
                         :from "Joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
       (is (= (id->source new-store joe-id) "Joseph"))
-      (is (= for-client {:select-store-ids [joe-id]
-                         :if-selected [joe-client-id]}))
+      (is (check for-client
+                 {:select nil
+                  :select-store-ids [joe-id]
+                  :if-selected [joe-client-id]}))
       (is (= (:following-selection-store-ids (:ephemeral-data new-store)) [joe-id]))
       (is (= (:preceding-selection (:ephemeral-data new-store)) joe-client-id))
       ;; TODO: Once we support selected, check that undo and redo ask
@@ -778,5 +780,6 @@
       ;; Check redo.
       (do-actions mutable-store session-state [[:redo]])
       (is (check (current-store mutable-store) new-store))
-      (is (= (:following-selection-store-ids (:ephemeral-data (current-store mutable-store)))
+      (is (= (:following-selection-store-ids
+              (:ephemeral-data (current-store mutable-store)))
              [joe-id])))))

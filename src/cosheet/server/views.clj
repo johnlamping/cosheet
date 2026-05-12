@@ -4,7 +4,7 @@
     [ring.util.response :refer [response]]
     [clojure.java.io :as io]
     (cosheet
-     [store :refer [current-store data-to-store store-reset!]]
+     [store :refer [current-store data-to-store store-reset! store-update!]]
      store-impl
      mutable-store-impl
      [entity :refer [in-different-store content label->elements]]
@@ -338,7 +338,7 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
-(defn ajax-response [dom-manager client-state actions client-info]
+(defn ajax-response [dom-manager mutable-store client-state actions client-info]
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we
   ;; want to have done some computation, so if we need to send back
@@ -351,6 +351,18 @@
         [doms store-select] (when in-sync
                               (get-response-doms
                                dom-manager select-store-ids 100))
+        _ (when store-select
+            (store-update! mutable-store
+                           (fn [store]
+                             (if (= (get-in store
+                                            [:ephemeral-data
+                                             :following-selection-store-ids])
+                                    select-store-ids)
+                               (update store :ephemeral-data
+                                       #(-> %
+                                            (assoc :following-selection store-select)
+                                            (dissoc :following-selection-store-ids)))
+                               store))))
         if-selected (if select
                       if-selected
                       (map-reporter-get-current client-state :if-selected))
@@ -427,5 +439,5 @@
             ;; some more.
             (when (empty? (get-response-doms dom-manager nil 1))
               (compute calculator-data 10000))
-            (ajax-response dom-manager client-state actions client-info))))
+            (ajax-response dom-manager store client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

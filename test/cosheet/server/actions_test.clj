@@ -319,9 +319,9 @@
     ;; Test changing Fred to Sally.
     (let [[new-store for-client] (run-set-name "Fred" "Sally" bare-template)]
       (is (= (id->source new-store fred-holder-id) sally-oid))
-      (is (= (dissoc-in new-store [:ephemeral-data :following-select-store-ids])
+      (is (= (dissoc-in new-store [:ephemeral-data :following-selection-store-ids])
              (update-source store fred-holder-id sally-oid)))
-      (is (= (:following-select-store-ids (:ephemeral-data new-store))
+      (is (= (:following-selection-store-ids (:ephemeral-data new-store))
              [sally-name-id])))
 
     ;; Test changing Fred to Sally, with a template that requires more.
@@ -331,7 +331,7 @@
                  (as-set (make-object-list `(("Sally" (~(in-different-store
                                                          name-label new-store)))
                                              "foo")))))
-      (is (= (:following-select-store-ids (:ephemeral-data new-store))
+      (is (= (:following-selection-store-ids (:ephemeral-data new-store))
              [sally-name-id])))
 
     ;; Test changing Fred to Fred.
@@ -348,7 +348,7 @@
     
     ;; Test changing to an object that had to be created.
     (let [[new-store for-client] (run-set-name "Fred" "Bob" foo-template)
-          new-name-id (first (:following-select-store-ids (:ephemeral-data new-store)))
+          new-name-id (first (:following-selection-store-ids (:ephemeral-data new-store)))
           new-object-id (id->target new-store new-name-id)
           new-object (id->entity new-object-id new-store)]
       (is (= (id->source new-store new-name-id) "Bob"))
@@ -379,7 +379,7 @@
     (let [new-joe-element (first (matching-elements "" new-joe))
           new-jane-element (first (matching-elements 'anything new-jane))]
       (is (check (:ephemeral-data new-store)
-                 {:following-select-store-ids
+                 {:following-selection-store-ids
                   (as-set [(:item-id new-joe-element)
                            (:item-id new-jane-element)])})))))
 
@@ -398,7 +398,7 @@
     (let [new-joe-element (first (matching-elements "" new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (:ephemeral-data new-store)
-                 {:following-select-store-ids
+                 {:following-selection-store-ids
                   (as-set [(:item-id new-joe-element)
                            (:item-id new-jane-element)])})))))
 
@@ -427,7 +427,7 @@
           new-jane-element (first (matching-elements `(~generic-label)
                                                      new-jane-age))]
       (is (check (:ephemeral-data new-store)
-                 {:following-select-store-ids
+                 {:following-selection-store-ids
                   (as-set [(:item-id new-joe-element)
                            (:item-id new-jane-element)])}))))
   ;; Test that adding a label to a label does nothing.
@@ -481,7 +481,7 @@
     (let [new-id (first (clojure.set/difference (set (map :item-id new-rows))
                                                 (set (map :item-id rows))))]
       (is (check (client-id->relative-ids
-                  (:following-select (:ephemeral-data new-store)))
+                  (:following-selection (:ephemeral-data new-store)))
                  [table-id new-id first-header-id])))))
 
 (deftest do-add-column-test
@@ -502,7 +502,7 @@
     (let [new-id (first (clojure.set/difference (set (map :item-id new-headers))
                                                 (set header-ids)))]
       (is (check (client-id->relative-ids
-                  (:following-select (:ephemeral-data new-store)))
+                  (:following-selection (:ephemeral-data new-store)))
                  [table-id jane-id new-id])))))
 
 ()
@@ -570,7 +570,7 @@
                                          (45 ("age" :label))
                                          "female")))))
     (is (check (:ephemeral-data (:store updated))
-               {:following-select-store-ids
+               {:following-selection-store-ids
                   [(:item-id (first
                        (matching-elements
                         45 (first (matching-elements
@@ -735,9 +735,12 @@
 (deftest do-actions-test
   (let [queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)
-        mutable-store (new-mutable-store store)
+        joe-client-id (str "root_" (:id (:item-id joe)))
+        store-with-selection (update-selected store ephemeral-id joe-client-id)
+        mutable-store (new-mutable-store store-with-selection)
         manager (make-dom-manager mutable-store cd)
-        session-state {:dom-manager manager
+        session-state {:session-ephemeral-id ephemeral-id
+                       :dom-manager manager
                        :store mutable-store
                        :client-state (make-map-reporter {:last-action nil})}]
     (add-root-dom
@@ -755,8 +758,7 @@
                                                            [:div 45])}]])
                             :get-action-data [get-id-action-data (:item-id joe)]
                             }]])})
-    (let [joe-client-id (str "root_" (:id (:item-id joe)))
-          for-client (do-actions
+    (let [for-client (do-actions
                       mutable-store session-state
                       [[:set-content joe-client-id
                         :from "Joe" :to "Joseph"]])
@@ -764,16 +766,17 @@
       (is (= (id->source new-store joe-id) "Joseph"))
       (is (= for-client {:select-store-ids [joe-id]
                          :if-selected [joe-client-id]}))
-      (is (= (:following-select-store-ids (:ephemeral-data new-store)) [joe-id]))
+      (is (= (:following-selection-store-ids (:ephemeral-data new-store)) [joe-id]))
+      (is (= (:preceding-selection (:ephemeral-data new-store)) joe-client-id))
       ;; TODO: Once we support selected, check that undo and redo ask
       ;; for the old selection.
 
       ;; Check undo.
       (let [for-client (do-actions mutable-store session-state [[:undo]])])
       (is (check (current-store mutable-store)
-                 (assoc store :modified-ids #{})))
+                 (assoc store-with-selection :modified-ids #{})))
       ;; Check redo.
       (do-actions mutable-store session-state [[:redo]])
       (is (check (current-store mutable-store) new-store))
-      (is (= (:following-select-store-ids (:ephemeral-data (current-store mutable-store)))
+      (is (= (:following-selection-store-ids (:ephemeral-data (current-store mutable-store)))
              [joe-id])))))

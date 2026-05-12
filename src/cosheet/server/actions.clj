@@ -83,11 +83,11 @@
     {:store response}
     response))
 
-(defn add-following-select-store-ids
-  "Record ids as :following-select-store-ids in the store's ephemeral-data.
+(defn add-following-selection-store-ids
+  "Record ids as :following-selection-store-ids in the store's ephemeral-data.
   do-contextual-action will copy this to :select-store-ids in the response."
   [store ids]
-  (assoc-in store [:ephemeral-data :following-select-store-ids] ids))
+  (assoc-in store [:ephemeral-data :following-selection-store-ids] ids))
 
 (defn current-source-matches-from?
   "Return true if the store's source for the id matches the from value
@@ -220,7 +220,7 @@
               (if-let [name-element-id
                        (first (target-label->ids
                                store object-id name-label-id))]
-                (add-following-select-store-ids store [name-element-id])
+                (add-following-selection-store-ids store [name-element-id])
                 store))))
         (let [to (parse-string-as-number (clojure.string/trim to))]
           (println "Setting" (count subject-ids) "items from" from "to"
@@ -234,7 +234,7 @@
             store subject-ids)
            ;; We might have set the source on a virtual item.
            ;; This will make sure any newly created item is selected.
-           (add-following-select-store-ids subject-ids)))))))
+           (add-following-selection-store-ids subject-ids)))))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template is-object-name session-state]}]
@@ -248,14 +248,14 @@
                       (map #(id->target store %) subject-ids)
                       subject-ids
                       :after true store)]
-      (add-following-select-store-ids store ids))))
+      (add-following-selection-store-ids store ids))))
 
 (defn do-add-element
   [store {:keys [subject-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
                      'anything subject-ids subject-ids
                      :before false store)]
-    (add-following-select-store-ids store ids)))
+    (add-following-selection-store-ids store ids)))
 
 (defn do-add-label
   [store {:keys [subject-ids session-state]}]
@@ -264,7 +264,7 @@
     (let [[ids store] (create-possible-selector-elements
                        `(~label-object-template) subject-ids subject-ids
                        :before false store)]
-      (add-following-select-store-ids store ids))))
+      (add-following-selection-store-ids store ids))))
 
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]
@@ -284,7 +284,7 @@
               new-cell-client-id (relative-ids->client-id
                                   (concat prefix-ids
                                           [(first ids) (first column-ids)]))]
-          (assoc-in store [:ephemeral-data :following-select]
+          (assoc-in store [:ephemeral-data :following-selection]
                     new-cell-client-id))
         store))))
 
@@ -305,7 +305,7 @@
               new-cell-client-id (relative-ids->client-id
                                   (concat prefix-ids
                                           [row-id (first ids)]))]
-          (assoc-in store [:ephemeral-data :following-select]
+          (assoc-in store [:ephemeral-data :following-selection]
                     new-cell-client-id))
         store))))
 
@@ -412,7 +412,7 @@
                             selection-sequence))]
         {:store (-> store
                     (update-equivalent-undo-point true)
-                    (assoc-in [:ephemeral-data :following-select-store-ids]
+                    (assoc-in [:ephemeral-data :following-selection-store-ids]
                               selected-ids))
          :batch-editing true})
       ;; TODO: This can be confusing when the user has something selected that
@@ -478,7 +478,8 @@
   are :batch-editing."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [handler (get-contextual-handler action-type) 
-        manager (:dom-manager session-state)]
+        manager (:dom-manager session-state)
+        ephemeral-id (:session-ephemeral-id session-state)]
     (cond (not handler)
           (println "Unhandled action type:" action-type)
           (not client-id)
@@ -511,15 +512,26 @@
                                    arguments)
                          [updated-store client-info]
                          (normalize-handler-response response store)
-                         {:keys [following-select following-select-store-ids]}
+                         updated-store (assoc-in
+                                        updated-store
+                                        [:ephemeral-data :preceding-selection]
+                                        client-id)
+                         {:keys [following-selection following-selection-store-ids]}
                          (:ephemeral-data updated-store)
                          client-info
                          (cond-> client-info
-                           following-select
-                           (assoc :select following-select)
-                           following-select-store-ids
-                           (assoc :select-store-ids following-select-store-ids
-                                  :if-selected [client-id]))]
+                           following-selection
+                           (assoc :select following-selection)
+                           following-selection-store-ids
+                           (assoc :select-store-ids following-selection-store-ids)
+                           ;; If we are changing what was selected,
+                           ;; but the user changes the selection
+                           ;; before we get back to them, leave their
+                           ;; new selection.
+                           (and (or following-selection
+                                    following-selection-store-ids)
+                                (= client-id (get-selected store ephemeral-id)))
+                           (assoc :if-selected [client-id]))]
                      [updated-store client-info])))]
             (when (contains? result :batch-editing)
               (map-reporter-reset! (:client-state session-state)

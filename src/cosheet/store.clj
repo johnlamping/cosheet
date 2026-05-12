@@ -223,7 +223,20 @@
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
-   from which higher levels functions are built."
+   from which higher levels functions are built.
+
+   Immutable stores also have an :ephemeral-data field, which holds a
+   map. It is primarily used to store what should be selected after an
+   undo or redo, in order to put the focus on the change. These are
+   stored in:
+       :preceding-selection  Select this after an undo *from* this state.
+       :following-selection  Select this after an redo *to* this state.
+   In addition, a selection put in :following-selection by an action
+   handler will be passed on to the client. Finaly, if the action
+   handler doesn't know the client id, but only a store id, it can fill
+   in :following-selection-store-ids, instead of :following-selection,
+   and the AJAX handler will find the client id, give that to the
+   client, and record it in :following-selection."
 
   (add-link [this target source]
     "Add an item with the given target and source. The target must be an

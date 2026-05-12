@@ -77,6 +77,16 @@ A concise summary of key Clojure style conventions for LLM context.
 - Use sets as predicates: `(filter #{:a :b} coll)`
 - Prefer `vec` over `into []`
 - Avoid Java collections/arrays
+- Prefer `assoc-in`/`dissoc-in` over `update` when the update function would be `assoc` or `dissoc`:
+  ```clojure
+  ;; Preferred
+  (assoc-in m [:a :b] v)
+  (dissoc-in m [:a :b])
+
+  ;; Avoid
+  (update m :a assoc :b v)
+  (update m :a dissoc :b)
+  ```
 
 ## Common Idioms
 

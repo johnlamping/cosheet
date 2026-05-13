@@ -319,10 +319,11 @@
     ;; Test changing Fred to Sally.
     (let [[new-store for-client] (run-set-name "Fred" "Sally" bare-template)]
       (is (= (id->source new-store fred-holder-id) sally-oid))
-      (is (= (dissoc-in new-store [:ephemeral-data :following-selection-store-ids])
+      (is (= (dissoc-in new-store
+                        [:ephemeral-data :following-selection-store-ids])
              (update-source store fred-holder-id sally-oid)))
-      (is (= (:following-selection-store-ids (:ephemeral-data new-store))
-             [sally-name-id])))
+      (is (check (:ephemeral-data new-store)
+                 {:following-selection-store-ids [sally-name-id]})))
 
     ;; Test changing Fred to Sally, with a template that requires more.
     ;; Also test the template being an element.
@@ -331,8 +332,8 @@
                  (as-set (make-object-list `(("Sally" (~(in-different-store
                                                          name-label new-store)))
                                              "foo")))))
-      (is (= (:following-selection-store-ids (:ephemeral-data new-store))
-             [sally-name-id])))
+      (is (check (:ephemeral-data new-store)
+                    {:following-selection-store-ids [sally-name-id]})))
 
     ;; Test changing Fred to Fred.
     (let [[new-store for-client] (run-set-name "Fred" "Fred" foo-template)]
@@ -348,7 +349,8 @@
     
     ;; Test changing to an object that had to be created.
     (let [[new-store for-client] (run-set-name "Fred" "Bob" foo-template)
-          new-name-id (first (:following-selection-store-ids (:ephemeral-data new-store)))
+          new-name-id (first (:following-selection-store-ids
+                              (:ephemeral-data new-store)))
           new-object-id (id->target new-store new-name-id)
           new-object (id->entity new-object-id new-store)]
       (is (= (id->source new-store new-name-id) "Bob"))
@@ -768,8 +770,9 @@
                  {:select nil
                   :select-store-ids [joe-id]
                   :if-selected [joe-client-id]}))
-      (is (= (:following-selection-store-ids (:ephemeral-data new-store)) [joe-id]))
-      (is (= (:preceding-selection (:ephemeral-data new-store)) joe-client-id))
+      (is (check (:ephemeral-data new-store)
+                 {:following-selection-store-ids [joe-id]
+                  :preceding-selection joe-client-id}))
       ;; TODO: Once we support selected, check that undo and redo ask
       ;; for the old selection.
 

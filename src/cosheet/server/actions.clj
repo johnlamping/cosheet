@@ -496,6 +496,7 @@
                    (let [store (update
                                 store :ephemeral-data
                                 #(-> %
+                                     (assoc :preceding-selection client-id)
                                      (dissoc :following-selection
                                              :following-selection-store-ids)))
                          action-data (client-id->action-data

@@ -25,7 +25,8 @@
                             current-store id-valid-link?
                             id->source id->target
                             get-new-object-id
-                            update-source]]
+                            update-source store-update!
+                            update-equivalent-undo-point]]
              [store-utils :refer [add-element add-object
                                   add-universal-objects]]
              [task-queue :refer [make-priority-task-queue]]
@@ -626,6 +627,87 @@
              "Larry"))
       (is (nil? for-client)))))
 
+(deftest do-undo-redo-test
+  (let [preceding-client-id "preceding-client-id"
+        following-client-id "following-client-id"
+        ms (new-mutable-store store)
+        initial-store (current-store ms)
+        ;; Create an undoable state with :preceding-selection and
+        ;; :following-selection set.
+        _ (store-update! ms
+                   (fn [s]
+                     (-> (update-equivalent-undo-point s false)
+                         (update-source joe-id "Joseph")
+                         (assoc :ephemeral-data
+                                {:preceding-selection preceding-client-id
+                                 :following-selection following-client-id}))))
+        following-store (current-store ms)]
+    ;; do-undo should select the :preceding-selection from before the undo.
+    (is (check (do-undo ms nil) {:select preceding-client-id}))
+    (is (= (current-store ms) initial-store))
+    ;; No more history to undo, so do-undo returns nil.
+    (is (nil? (do-undo ms nil)))
+    (is (= (current-store ms) initial-store))
+    ;; do-redo should select the :following-selection from after the redo.
+    (is (check (do-redo ms nil) {:select following-client-id}))
+    (is (= (current-store ms) following-store))
+    ;; No more future to redo, so do-redo returns nil.
+    (is (nil? (do-redo ms nil)))
+    (is (= (current-store ms) following-store))))
+
+(deftest do-actions-test
+  (let [queue (make-priority-task-queue 0)
+        cd (make-calculator-data queue)
+        joe-client-id (str "root_" (:id (:item-id joe)))
+        store-with-selection (update-selected store ephemeral-id joe-client-id)
+        mutable-store (new-mutable-store store-with-selection)
+        manager (make-dom-manager mutable-store cd)
+        session-state {:session-ephemeral-id ephemeral-id
+                       :dom-manager manager
+                       :store mutable-store
+                       :client-state (make-map-reporter {:last-action nil})}]
+    (add-root-dom
+     manager
+     {:relative-id :root
+      :get-action-data [get-id-action-data :root]
+      :render-dom (fn [spec store]
+                    [:div [:component
+                           {:relative-id (:item-id joe)
+                            :render-dom (fn [spec store]
+                                          [:div
+                                           [:component
+                                            {:relative-id (:item-id joe-age)
+                                             :render-dom (fn [spec store]
+                                                           [:div 45])}]])
+                            :get-action-data [get-id-action-data (:item-id joe)]
+                            }]])})
+    (let [for-client (do-actions
+                      mutable-store session-state
+                      [[:set-content joe-client-id
+                        :from "Joe" :to "Joseph"]])
+          new-store (current-store mutable-store)]
+      (is (= (id->source new-store joe-id) "Joseph"))
+      (is (check for-client
+                 {:select nil
+                  :select-store-ids [joe-id]
+                  :if-selected [joe-client-id]}))
+      (is (check (:ephemeral-data new-store)
+                 {:following-selection-store-ids [joe-id]
+                  :preceding-selection joe-client-id}))
+      ;; TODO: Once we support selected, check that undo and redo ask
+      ;; for the old selection.
+
+      ;; Check undo.
+      (let [for-client (do-actions mutable-store session-state [[:undo]])])
+      (is (check (current-store mutable-store)
+                 (assoc store-with-selection :modified-ids #{})))
+      ;; Check redo.
+      (do-actions mutable-store session-state [[:redo]])
+      (is (check (current-store mutable-store) new-store))
+      (is (= (:following-selection-store-ids
+              (:ephemeral-data (current-store mutable-store)))
+             [joe-id])))))
+
 (comment
   (deftest do-add-twin-test
     (let [result (do-add-twin
@@ -734,55 +816,3 @@
       (is (= (state-map-get-current-value client-state :last-action) 4))))
   )
 
-(deftest do-actions-test
-  (let [queue (make-priority-task-queue 0)
-        cd (make-calculator-data queue)
-        joe-client-id (str "root_" (:id (:item-id joe)))
-        store-with-selection (update-selected store ephemeral-id joe-client-id)
-        mutable-store (new-mutable-store store-with-selection)
-        manager (make-dom-manager mutable-store cd)
-        session-state {:session-ephemeral-id ephemeral-id
-                       :dom-manager manager
-                       :store mutable-store
-                       :client-state (make-map-reporter {:last-action nil})}]
-    (add-root-dom
-     manager
-     {:relative-id :root
-      :get-action-data [get-id-action-data :root]
-      :render-dom (fn [spec store]
-                    [:div [:component
-                           {:relative-id (:item-id joe)
-                            :render-dom (fn [spec store]
-                                          [:div
-                                           [:component
-                                            {:relative-id (:item-id joe-age)
-                                             :render-dom (fn [spec store]
-                                                           [:div 45])}]])
-                            :get-action-data [get-id-action-data (:item-id joe)]
-                            }]])})
-    (let [for-client (do-actions
-                      mutable-store session-state
-                      [[:set-content joe-client-id
-                        :from "Joe" :to "Joseph"]])
-          new-store (current-store mutable-store)]
-      (is (= (id->source new-store joe-id) "Joseph"))
-      (is (check for-client
-                 {:select nil
-                  :select-store-ids [joe-id]
-                  :if-selected [joe-client-id]}))
-      (is (check (:ephemeral-data new-store)
-                 {:following-selection-store-ids [joe-id]
-                  :preceding-selection joe-client-id}))
-      ;; TODO: Once we support selected, check that undo and redo ask
-      ;; for the old selection.
-
-      ;; Check undo.
-      (let [for-client (do-actions mutable-store session-state [[:undo]])])
-      (is (check (current-store mutable-store)
-                 (assoc store-with-selection :modified-ids #{})))
-      ;; Check redo.
-      (do-actions mutable-store session-state [[:redo]])
-      (is (check (current-store mutable-store) new-store))
-      (is (= (:following-selection-store-ids
-              (:ephemeral-data (current-store mutable-store)))
-             [joe-id])))))

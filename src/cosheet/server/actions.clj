@@ -541,16 +541,6 @@
                                 {:batch-editing (:batch-editing result)}))
             (dissoc result :batch-editing)))))
 
-(defn request-selection-from-store
-   "Return a client request asking it to select the target saved in the
-   ephemeral item of the store."
-    [mutable-store old-store session-state]
-    (let [store (current-store mutable-store)
-          ephemeral-id (:session-ephemeral-id session-state)]
-      {:select (get-selected store ephemeral-id)
-       :if-selected (when-let [former (get-selected old-store ephemeral-id)]
-                      [former])}))
-
 ;;; While do-selected takes a client id, like a contextual action
 ;;; does, it doesn't rely on what that client id references. In
 ;;; particular, it does not want to create more items if a virtual id
@@ -585,14 +575,18 @@
   (let [old-store (current-store mutable-store)]
     (undo! mutable-store)
     (when (not= old-store (current-store mutable-store))
-      (request-selection-from-store mutable-store old-store session-state))))
+      (when-let [preceding (get-in old-store
+                                   [:ephemeral-data :preceding-selection])]
+        {:select preceding}))))
 
 (defn do-redo
   [mutable-store session-state & _]
   (let [old-store (current-store mutable-store)]
     (redo! mutable-store)
     (when (not= old-store (current-store mutable-store))
-      (request-selection-from-store mutable-store old-store session-state))))
+      (when-let [following (get-in (current-store mutable-store)
+                                   [:ephemeral-data :following-selection])]
+        {:select following}))))
 
 ;;; TODO: Check for :handle-action, and do what it says. In
 ;;; particular, there should be a version that takes keyword arguments

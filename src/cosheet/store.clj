@@ -232,11 +232,13 @@
        :preceding-selection  Select this after an undo *from* this state.
        :following-selection  Select this after an redo *to* this state.
    In addition, a selection put in :following-selection by an action
-   handler will be passed on to the client. Finaly, if the action
-   handler doesn't know the client id, but only a store id, it can fill
-   in :following-selection-store-ids, instead of :following-selection,
-   and the AJAX handler will find the client id, give that to the
-   client, and record it in :following-selection."
+   handler will be passed on to the client. This is primarily useful
+   when the action handler has created a new entity, so it is natural
+   for the selection to go there.
+   Finaly, if the action handler doesn't know the client id, but only
+   a store id, it can fill in :following-selection-store-ids, instead
+   of :following-selection, and the AJAX handler will find the client
+   id, give that to the client, and record it in :following-selection."
 
   (add-link [this target source]
     "Add an item with the given target and source. The target must be an

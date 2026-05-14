@@ -65,7 +65,7 @@
                            ; dom is what gets sent to the client, but
                            ; under the id of the containing dom. (That
                            ; dom's container refers to it by that id,
-                           ; so that's the id that has to be senf.)
+                           ; so that's the id that has to be sent.)
                            ; If elided-from present, our component is
                            ; elided, and elided-from is the nearest
                            ; non-elided containing component. Our dom
@@ -637,68 +637,73 @@
       (assert (= (:client-id @result) client-id))
       result)))
 
-(defn action-data-to-providing-dom
-  "Given the action data for the component atom, get it for the
-  component that provides its dom."
-  [component-atom action-data action immutable-store]
-  (loop [component component-atom
-         action-data action-data]
-    (when component
-      (let [{:keys [id->subcomponent]} @component]
-        (if (= (count id->subcomponent) 1)
-          (let [subcomponent (first (vals id->subcomponent))]
-            (if (:elided-from @subcomponent)
-              (recur subcomponent
-                     (update-action-data-for-component
-                      subcomponent action-data action immutable-store))
-              action-data))
-          action-data)))))
-
-(defn action-data-up-to-client-id
-  "Returns the action data map for the component with the specified id."
-  [manager-data client-id action immutable-store]
+(defn components-up-to-client-id
+  "Return the sequence of components from the root to the component with
+  the specified client-id, or nil if the path cannot be followed."
+  [manager-data client-id]
   (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
-    (reduce (fn [action-data id]
-              (when action-data
-                (let [component-data @(:component action-data)
-                      {:keys [dom-R id->subcomponent]} component-data
-                      dom (reporter-value-when-valid dom-R)]
-                  (when dom
-                    (when-let [subcomponent (id->subcomponent id)]
-                      (update-action-data-for-component
-                       subcomponent action-data action immutable-store))))))
+    (when root
+      (reduce (fn [components id]
+                (when components
+                  (let [{:keys [dom-R id->subcomponent]} @(last components)
+                        dom (reporter-value-when-valid dom-R)]
+                    (when dom
+                      (when-let [subcomponent (id->subcomponent id)]
+                        (conj components subcomponent))))))
+              [root]
+              (rest id-sequence)))))
+
+(defn elided-subcomponent-chain
+  "Return the sequence of sub-components starting from component-atom,
+  following through each single elided-from sub-component."
+  [component-atom]
+  (loop [component component-atom
+         chain []]
+    (let [{:keys [id->subcomponent]} @component]
+      (if (= (count id->subcomponent) 1)
+        (let [subcomponent (first (vals id->subcomponent))]
+          (if (:elided-from @subcomponent)
+            (recur subcomponent (conj chain subcomponent))
+            chain))
+        chain))))
+
+(defn action-data-for-component-chain
+  "Reduce over a sequence of components to accumulate action-data."
+  [chain action-data action immutable-store]
+  (reduce (fn [ad component]
             (update-action-data-for-component
-             root {} action immutable-store)
-            (rest id-sequence))))
+             component ad action immutable-store))
+          action-data
+          chain))
 
 (defn client-id->action-data
   "Returns the action data map for the component that generated the
   final dom for the given client id."
   [manager-data client-id action immutable-store]
-  (let [up-to-client-id (action-data-up-to-client-id
-                         manager-data client-id action immutable-store)]
-    (when up-to-client-id
-      (action-data-to-providing-dom
-       (:component up-to-client-id) up-to-client-id action immutable-store))))
+  (when-let [components (components-up-to-client-id manager-data client-id)]
+    (action-data-for-component-chain
+     (concat components (elided-subcomponent-chain (last components)))
+     {} action immutable-store)))
 
 (defn longer-string
   [s1 s2]
   (if (>= (count s1) (count s2)) s1 s2))
 
 (defn component-is-monitored?
-  "Return true if the component targets one of the monitored ids, or
-  shows the content of one of them. This function doesn't go through
-  elided components."
+  "Return true if the component, or any of its elided sub-components,
+  targets one of the monitored ids or shows the content of one of them."
   [component-atom monitored-ids]
-  (let [{:keys [auxiliary-item-id relative-id]}
-        (:dom-specification @component-atom)]
-    ;; We check for auxiliary-item-id first, because relative-id can
-    ;; be :content, or other markers that don't indicate an item.
-    (when-let [target (or auxiliary-item-id relative-id)]
-      (assert (not= :content target)
-              (:dom-specification @component-atom))
-      (some #{target} monitored-ids))))
+  (some (fn [c]
+          (let [{:keys [auxiliary-item-id relative-id]}
+                (:dom-specification @c)]
+            ;; We check for auxiliary-item-id first, because relative-id can
+            ;; be :content, or other markers that don't indicate an item.
+            (when-let [target (or auxiliary-item-id relative-id)]
+              (assert (not= :content target)
+                      (:dom-specification @c))
+              (some #{target} monitored-ids))))
+        (cons component-atom (elided-subcomponent-chain component-atom))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its component,
@@ -730,45 +735,36 @@
                    (rest (rest dom)))))))
 
 (defn find-displayed-dom
-  "Find the displayed dom corresponding to the given component. (The
-  last of the contained chain of elided doms.) Return the displayed
-  dom, with all classes along the path added and with the :id of all
-  its subcomponents set to their client ids. Don't set the overall
-  dom's :id, or :version though. They depend on whether this component
-  gets elided. Also return whether some dom in the path displays a
-  monitored id."
-  [component-atom monitored-ids]
-  (let [{:keys [dom-R id->subcomponent]
-         :as component-data}
-        @component-atom 
+  "Find the displayed dom for the given component: the dom of the last
+  component in its elided-subcomponent chain, with classes from all
+  preceding components added."
+  [component-atom]
+  (let [chain (elided-subcomponent-chain component-atom)
+        full-path (cons component-atom chain)
+        providing-component (last full-path)
+        {:keys [dom-R] :as component-data} @providing-component
         ;; We get whatever the latest reporter value is. It is possible
-        ;; That our reporter is temporarily invalid, in which case
+        ;; that our reporter is temporarily invalid, in which case
         ;; we will have no dom for now.
         ;; The dom-R reporter may have gotten ahead of the current
         ;; dom-version number, but that is OK. Worst case, we will
         ;; send the same dom more than once, until the version number
         ;; catches up with it.
         dom (when (= (component-data-state component-data) :active)
-              (reporter-value-when-valid dom-R))
-        monitored (component-is-monitored? component-atom monitored-ids)]
+              (reporter-value-when-valid dom-R))]
     (when dom
-      (if (= (first dom) :component)
-        ;; It's possible that id->subcomponent isn't up to date with the dom.
-        ;; If it doesn't match, we'll get called again.
-        (when (= (count id->subcomponent) 1)
-          (let [class-attribute (select-keys (dom-attributes dom) [:class])
-                [inner-dom _ inner-monitored] (find-displayed-dom
-                                               (first (vals id->subcomponent))
-                                               monitored-ids)]
-            [(add-attributes inner-dom class-attribute)
-             (or monitored inner-monitored)]))
-        [(adjust-dom-for-client component-atom dom)
-         monitored]))))
+      ;; Add in any classes that were elided out.
+      (reduce (fn [d c]
+                (if-let [c-dom (reporter-value-when-valid (:dom-R @c))]
+                  (add-attributes d (select-keys (dom-attributes c-dom)
+                                                 [:class]))
+                  d))
+              (adjust-dom-for-client providing-component dom)
+              (butlast full-path)))))
 
 (defn prepare-dom-for-client
-  "Given a component-atom, prepare its dom to send to the client. Also
-  return whether it presents one of the monitored ids."
-  [component-atom monitored-ids]
+  "Given a component-atom, prepare its dom to send to the client."
+  [component-atom]
   ;; We have to get the dom after getting the dom version. That's
   ;; because it's OK to assign an older version to a new dom, but bad
   ;; to assign a newer version to an old dom.
@@ -777,12 +773,8 @@
     ;; the unit test can do that sometimes, since it can have a record
     ;; of a client-id that it is no longer getting.
     (when (not elided-from)
-      (let [[dom monitored] (find-displayed-dom
-                             component-atom monitored-ids)]
-        (when dom
-          [(add-attributes dom {:id client-id
-                                :version dom-version})
-           monitored])))))
+      (when-let [dom (find-displayed-dom component-atom)]
+        (add-attributes dom {:id client-id :version dom-version})))))
 
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
@@ -824,8 +816,8 @@
                          (fn [component-data]
                            (update component-data :dom-version
                                    #(or % starting-dom-version)))))
-                (let [[dom monitored] (prepare-dom-for-client
-                                       component monitored-ids)]
+                (let [dom (prepare-dom-for-client component)
+                      monitored (component-is-monitored? component monitored-ids)]
                   (recur
                    ;; The dom might be temporarily invalid.
                    (cond-> response

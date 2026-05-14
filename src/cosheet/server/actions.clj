@@ -522,10 +522,24 @@
                                  following-selection-store-ids]}
                          (:ephemeral-data updated-store)
                          selected-client-id (get-selected store ephemeral-id)
+                         ;; If the user is typing into a field, and
+                         ;; then clicks somewhere else, we are told
+                         ;; about the changed selection, and then
+                         ;; about the new content for the original
+                         ;; field. We don't want our filling in the
+                         ;; content to change the new selection. So we
+                         ;; tell the client to make a new selection
+                         ;; only if the current selection is still the
+                         ;; item we are acting on.
+                         ;; TODO: !!! when we add a contextual menu,
+                         ;; we will need to change the selection
+                         ;; before sending the command, so we can end
+                         ;; up with whatever is modified being
+                         ;; selected.
                          if-selected (when
                                          (and (or following-selection
                                                   following-selection-store-ids)
-                                              (= client-id selected-client-id ))
+                                              client-id )
                                        [client-id])
                          client-info
                          (assoc client-info

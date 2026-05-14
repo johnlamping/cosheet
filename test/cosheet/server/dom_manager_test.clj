@@ -529,8 +529,7 @@
               (let [component (client-id->component @dm id)]
                 (when (and component
                            (not (:elided-from @component)))
-                  (let [[dom monitored]
-                        (prepare-dom-for-client component nil)]
+                  (let [dom (prepare-dom-for-client component)]
                     (when dom ; We might have a client-id for an
                               ; obsolete component.
                       (if require-latest
@@ -562,17 +561,23 @@
                                           (not= (dom-location dom)
                                                 (dom-location our-dom))))
                                   false))))))))))
-            (check-one-id-and-subcomponents [id client-data require-latest]
-              (if-let [our-dom (client-data id)]
-                (let [matched (if (check-one-id id our-dom require-latest)
-                                1 0)
-                      sub-specs (subcomponent-specifications our-dom)
-                      sub-ids (map #(:id %) sub-specs)
-                      sub-matches (map #(check-one-id-and-subcomponents
-                                         % client-data require-latest)
-                                       sub-ids)]
-                  (apply + matched sub-matches))
-                0))
+            (check-one-id-and-subcomponents
+              [id client-data require-latest being-checked]
+              (if (being-checked id)
+                ;; A higher call is already considering this id. There
+                ;; is a race. Return success.
+                0
+                (if-let [our-dom (client-data id)]
+                  (let [matched (if (check-one-id id our-dom require-latest)
+                                  1 0)
+                        sub-specs (subcomponent-specifications our-dom)
+                        sub-ids (map #(:id %) sub-specs)
+                        sub-matches (map #(check-one-id-and-subcomponents
+                                           % client-data require-latest
+                                           (conj being-checked id))
+                                         sub-ids)]
+                    (apply + matched sub-matches))
+                  0)))
             ;; Check that all of the information we have recorded on
             ;; the reachable components accords with the manager. If
             ;; require-latest is true, require an exact
@@ -584,7 +589,7 @@
                 (apply + (map #(check-one-id-and-subcomponents
                                 (id-subpart->client-id-subpart
                                  (value->keyword %))
-                                client-data require-latest)
+                                client-data require-latest #{})
                               (range width)))))
             (component-and-subcomponent-ids [id]
               ;; We can't use our cache, because we want to get the

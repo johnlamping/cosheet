@@ -142,13 +142,12 @@
         (is (= (reporter-value source) "S2"))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        ;; We should be at the last of the sequence of equivalent stores.
-        (is (check (current-store mutable-store) s1b))
+        ;; Undo lands at s1 (equiv stores s1a, s1b are not in history).
+        (is (check (current-store mutable-store) s1))
         (run-all-pending-tasks queue)
-        (is (= (reporter-value source) "S1b"))
+        (is (check (reporter-value source) (id->source s1 element)))
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        ;; We should be at the unequivalent store before them.
         (is (check (current-store mutable-store) s0))
         (run-all-pending-tasks queue)
         (is (= (reporter-value source) 99))
@@ -172,9 +171,10 @@
         (is (check (current-store mutable-store) s0))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        ;; s1 is restored in the future; redo goes to s1.
         (is (check (current-store mutable-store) s1))
         (is (can-redo? mutable-store))
-        ;; Test that an equivalent undo point doesn't take out the future.
+        ;; Test that an equivalent update doesn't take out the future.
         (store-update! mutable-store
                        #(-> %
                             (update-source element 33)
@@ -183,15 +183,16 @@
         (is (= (reporter-value source) 33))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
+        ;; Redo from equiv current pushes s1 (cne) to history; lands at s2.
         (is (check (current-store mutable-store) s2))
         (run-all-pending-tasks queue)
         (is (= (reporter-value source) "S2"))
-        ;; Now test that we can get back to S1b if we undo.
+        ;; Test that undo from s2 goes to s1 (cne, not the equiv state).
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        (is (check (current-store mutable-store) s1b))
+        (is (check (current-store mutable-store) s1))
         (run-all-pending-tasks queue)
-        (is (= (reporter-value source) "S1b"))
+        (is (check (reporter-value source) (id->source s1 element)))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
         (is (check (current-store mutable-store) s2))
@@ -218,7 +219,6 @@
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
-        (undo! mutable-store)
         (undo! mutable-store)
         (undo! mutable-store)
         (undo! mutable-store)

@@ -214,7 +214,18 @@
                (set (candidate-matching-ids revised-store nil))))
         (is (= (reporter-value tracking-store)
                (track-modified-ids revised-store)))
-        
+
+        ;; Test that current-significant is updated when store equals
+        ;; current-significant and modified-ids is empty.
+        (let [data-before (reporter-data mutable-store)
+              _ (is (= (:current-significant data-before)
+                       (current-store mutable-store)))
+              _ (store-update! mutable-store
+                               #(assoc % :ephemeral-data {:test "value"}))
+              s3e (current-store mutable-store)
+              data-after (reporter-data mutable-store)]
+          (is (= (:current-significant data-after) s3e)))
+
         ;; Test that unsubscribe removes tracking by unsubscribing one
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)

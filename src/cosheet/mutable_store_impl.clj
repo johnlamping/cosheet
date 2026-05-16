@@ -287,7 +287,11 @@
              [updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)
-             new-state (change-and-add-to-history state new-store modified-ids)]
+             new-state (change-and-add-to-history state new-store modified-ids)
+             new-state (if (and (= store (:current-significant state))
+                               (empty? modified-ids))
+                         (assoc new-state :current-significant new-store)
+                         new-state)]
          (conj (description-of-change state new-state modified-ids)
                result)))))
 

@@ -298,6 +298,19 @@
         (is (check (:components-to-send @manager)
                    {c1 1 c3 3}))))))
 
+(deftest preferred-selection-test
+  ;; Prefer the candidate with the longer common prefix with current-selection.
+  (is (= (preferred-selection "abcde" "abcx" "abxy") "abcx"))
+  (is (= (preferred-selection "abcde"  "abxy" "abcx") "abcx"))
+  ;; On equal prefix length, prefer the longer string.
+  (is (= (preferred-selection "abc" "abx" "abyz") "abyz"))
+  (is (= (preferred-selection "abc" "abyz" "abx") "abyz"))
+  (is (= (preferred-selection nil "xy" "abc") "abc"))
+  ;; nil arguments are treated as zero-length.
+  (is (= (preferred-selection nil nil "a") "a"))
+  (is (= (preferred-selection nil "a" nil) "a"))
+  (is (nil? (preferred-selection "abc" nil nil))))
+
 (deftest get-response-doms-and-process-acknowledgements-test
   ;; Also tests add-root-dom, request-client-refresh,
   ;; remove-all-doms, prepare-dom-for-client and adjust-subdom-for-client
@@ -311,7 +324,7 @@
       (let [c1 (first (vals (:id->subcomponent @c1-)))
             c2 (first (vals (:id->subcomponent @c1)))]
         (is (:highest-version @manager) 1)
-        (is (check (get-response-doms manager [id2] 3)
+        (is (check (get-response-doms manager [id2] nil 3)
                    [(as-set [[:div {:id "root" :version 2}
                               2
                               [:component {:id "root_Ifoo_Ibar"}]]
@@ -319,11 +332,23 @@
                               3]])
                     "root_Ifoo_Ibar"]))
         (is (:highest-version @manager) 3)
-        (is (check (get-response-doms manager [id2] 1)
+        (is (check (get-response-doms manager [id2] nil 1)
                    [[[:div {:id "root" :version 2}
                       2
                       [:component {:id "root_Ifoo_Ibar"}]]]
                     nil]))
+        ;; With two monitored ids, preferred-selection uses current-selection
+        ;; to pick between candidates. :root monitors "root" (via its elided
+        ;; subcomponent), id2 monitors "root_Ifoo_Ibar" directly. The deeper
+        ;; component has a longer prefix overlap with a current-selection that
+        ;; matches it.
+        (is (= (second (get-response-doms manager [:root id2]
+                                          "root_Ifoo" 3))
+               "root_Ifoo_Ibar"))
+        ;; With nil current-selection, tie breaks by longer string,
+        ;; which still gives the same answer.
+        (is (= (second (get-response-doms manager [:root id2] nil 3))
+               "root_Ifoo_Ibar"))
         (is (:highest-version @manager) 3)
         ;; The client doesn't need to know about the elided dom.
         (is (check (:components-to-send @manager)
@@ -507,7 +532,7 @@
             (get-and-acknowledge-doms []
               ;; Make sure that only one fetch is active at a time.
               (locking client-lock
-                (let [for-client (first (get-response-doms dm nil 20))]
+                (let [for-client (first (get-response-doms dm nil nil 20))]
                   (record-doms for-client)
                   (acknowledge-doms for-client)
                   (count for-client))))

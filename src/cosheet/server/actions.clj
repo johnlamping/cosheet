@@ -150,7 +150,6 @@
       (do (println "Old source doesn't match" from (id->source store id))
           store))))
 
-
 (defn do-set-content
   [store {:keys [subject-ids template is-object-name client-id from to]}]
   (when (and from to (seq subject-ids)
@@ -546,9 +545,6 @@
                                 :select following-selection
                                 :select-store-ids following-selection-store-ids
                                 :if-selected if-selected)]
-                     (println "SELECTION INFO"
-                              following-selection following-selection-store-ids
-                              if-selected)
                      [updated-store client-info])))]
             (when (contains? result :batch-editing)
               (map-reporter-reset! (:client-state session-state)

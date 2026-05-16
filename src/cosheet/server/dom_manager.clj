@@ -686,9 +686,22 @@
      (concat components (elided-subcomponent-chain (last components)))
      {} action immutable-store)))
 
-(defn longer-string
-  [s1 s2]
-  (if (>= (count s1) (count s2)) s1 s2))
+(defn preferred-selection
+  "Return whichever of client-id-1 or client-id-2 has the longest
+  common prefix with current-selection, breaking ties by returning
+  the longer client id."
+  [current-selection client-id-1 client-id-2]
+  (let [prefix-length (fn [s]
+                        (->> (map = current-selection s)
+                             (take-while true?)
+                             count))
+        p1 (prefix-length client-id-1)
+        p2 (prefix-length client-id-2)]
+    (cond
+      (> p1 p2) client-id-1
+      (> p2 p1) client-id-2
+      (>= (count client-id-1) (count client-id-2)) client-id-1
+      :else client-id-2)))
 
 (defn component-is-monitored?
   "Return true if the component, or any of its elided sub-components,
@@ -779,15 +792,12 @@
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
   Also, if any of the monitored ids are the :item-id or :relative-id of any
-  of the components, return the client id of that component.
+  of the components, return the client id of that component, preferring
+  the one with the longest prefix overlap with current-selection and
+  breaking ties by choosing the longer client id.
   Add dom-version to any components sent that don't have one yet. And
   finally, do the side-effect of updating :highest-version."
-  ;; TODO: !!! Be able to pass in a client id of interest, and if
-  ;; there are several monidored ids, return the one closest to the
-  ;; client id. The monitored ids are used to request a selection from
-  ;; the client, and we want to make the one closest to the current
-  ;; selection.
-  [dom-manager monitored-ids num]
+  [dom-manager monitored-ids current-selection num]
   ;; We run this function under a lock. This lets us move dom version
   ;; data between components and the dom manager without race
   ;; conditions, since this is the only function that moves this
@@ -822,8 +832,10 @@
                    ;; The dom might be temporarily invalid.
                    (cond-> response
                      dom (conj dom))
-                   (longer-string monitored-client-id
-                                  (when monitored (:client-id @component)))
+                   (preferred-selection current-selection
+                                        monitored-client-id
+                                        (when monitored
+                                          (:client-id @component)))
                    (max highest-version
                         (if dom (:version (dom-attributes dom)) 0))
                    remaining-components)))))]

@@ -51,17 +51,17 @@
     ;; ajax-response should set :following-selection to the resolved client-id.
     (let [{:keys [ms manager client-state]}
           (make-test-setup item-id [item-id] [item-id])]
-      (ajax-response manager ms client-state nil {})
+      (ajax-response manager ms client-state nil nil {})
       (is (check (:ephemeral-data (current-store ms))
                  {:following-selection item-client-id})))
-    
+
     ;; When the store already has a :following-selection but also has
     ;; :following-selection-store-ids matching the select-store-ids,
     ;; ajax-response should replace the old :following-selection with the
     ;; newly resolved one.
     (let [{:keys [ms manager client-state]}
           (make-test-setup item-id [item-id] [item-id] "old-selection")]
-      (ajax-response manager ms client-state {} {})
+      (ajax-response manager ms client-state nil {} {})
       (is (check (:ephemeral-data (current-store ms))
                  {:following-selection item-client-id})))
 
@@ -70,7 +70,7 @@
     (let [other-id (make-item-id "other")
           {:keys [ms manager client-state]}
           (make-test-setup item-id [other-id] [item-id])]
-      (ajax-response manager ms client-state nil {})
+      (ajax-response manager ms client-state nil nil {})
       (is (check (:ephemeral-data (current-store ms))
                  {:following-selection-store-ids [other-id]})))))
 

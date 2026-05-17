@@ -235,10 +235,18 @@
    handler will be passed on to the client. This is primarily useful
    when the action handler has created a new entity, so it is natural
    for the selection to go there.
-   Finaly, if the action handler doesn't know the client id, but only
-   a store id, it can fill in :following-selection-store-ids, instead
-   of :following-selection, and the AJAX handler will find the client
-   id, give that to the client, and record it in :following-selection."
+  
+   Finally, if an action wants a dom showing a store id to be selected
+   after any redo to this state, but the dom may not have been created
+   yet, they can record a [client-id store-ids] pair
+   in :following-selection-by-ids here, and put the same pair in
+   a :selection-by-ids client request for the ajax handler. The pair
+   asks for a select to be sent to the client when a dom showing one of
+   the store-id pairs is creaated. If several doms qualify, the one
+   whose client id is most similar to the client-id is selected. Once
+   the dom has been made and the handler sends the select request, they
+   replace the :following-selection-by-ids by a :following-selection
+   with the actual client id."
 
   (add-link [this target source]
     "Add an item with the given target and source. The target must be an

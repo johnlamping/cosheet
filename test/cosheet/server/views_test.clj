@@ -15,14 +15,14 @@
 
 (defn make-test-setup
   "Return a map with a mutable store, dom-manager, and client-state set up
-  for ajax-response tests. The store has :following-selection-store-ids set
-  to following-ids in ephemeral-data, and optionally :following-selection
+  for ajax-response tests. The store has :following-selection-by-ids set
+  to [nil following-ids] in ephemeral-data, and optionally :following-selection
   set to initial-following-selection. The dom-manager has a root component
   with a sub-component whose relative-id is item-id."
   [item-id following-ids select-ids & [initial-following-selection]]
   (let [base-store (assoc (new-element-store)
                           :ephemeral-data
-                          (cond-> {:following-selection-store-ids following-ids}
+                          (cond-> {:following-selection-by-ids [nil following-ids]}
                             initial-following-selection
                             (assoc :following-selection
                                    initial-following-selection)))
@@ -30,7 +30,7 @@
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
         client-state (make-map-reporter {:in-sync true
-                                         :select-store-ids select-ids
+                                         :select-by-ids [nil select-ids]
                                          :if-selected nil})]
     (add-root-dom manager
                   {:relative-id :root
@@ -65,12 +65,12 @@
       (is (check (:ephemeral-data (current-store ms))
                  {:following-selection item-client-id})))
 
-    ;; When :following-selection-store-ids does not match the select-store-ids
+    ;; When :following-selection-by-ids does not match the select-by-ids
     ;; used, ajax-response should leave :following-selection unset.
     (let [other-id (make-item-id "other")
           {:keys [ms manager client-state]}
           (make-test-setup item-id [other-id] [item-id])]
       (ajax-response manager ms client-state nil nil {})
       (is (check (:ephemeral-data (current-store ms))
-                 {:following-selection-store-ids [other-id]})))))
+                 {:following-selection-by-ids [nil [other-id]]})))))
 

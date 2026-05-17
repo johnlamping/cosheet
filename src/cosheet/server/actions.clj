@@ -83,11 +83,17 @@
     {:store response}
     response))
 
-(defn add-following-selection-store-ids
-  "Record ids as :following-selection-store-ids in the store's ephemeral-data.
-  do-contextual-action will copy this to :select-store-ids in the response."
-  [store ids]
-  (assoc-in store [:ephemeral-data :following-selection-store-ids] ids))
+(defn add-following-selection-by-ids
+  "Record [client-id store-ids] as :following-selection-by-ids in the
+  store's ephemeral-data. do-contextual-action will copy this
+  to :select-by-ids in the response. And when a dom showing one of the
+  store-ids is created and sent to the client, the AJAX handler will
+  tell the client to select it, and it will replace
+  the :following-selection-by-ids in the store by
+  a :following-selection with the actual client id."
+  [store client-id store-ids]
+  (assoc-in store [:ephemeral-data :following-selection-by-ids]
+            [client-id store-ids]))
 
 (defn current-source-matches-from?
   "Return true if the store's source for the id matches the from value
@@ -219,7 +225,8 @@
               (if-let [name-element-id
                        (first (target-label->ids
                                store object-id name-label-id))]
-                (add-following-selection-store-ids store [name-element-id])
+                (add-following-selection-by-ids store
+                                                client-id [name-element-id])
                 store))))
         (let [to (parse-string-as-number (clojure.string/trim to))]
           (println "Setting" (count subject-ids) "items from" from "to"
@@ -233,10 +240,10 @@
             store subject-ids)
            ;; We might have set the source on a virtual item.
            ;; This will make sure any newly created item is selected.
-           (add-following-selection-store-ids subject-ids)))))))
+           (add-following-selection-by-ids client-id subject-ids)))))))
 
 (defn do-add-twin
-  [store {:keys [subject-ids template is-object-name session-state]}]
+  [store {:keys [subject-ids template is-object-name session-state client-id]}]
   (when (not= template :singular)
     (let [template (cond (not template) 'anything
                          (object? template) (do (assert is-object-name)
@@ -247,23 +254,23 @@
                       (map #(id->target store %) subject-ids)
                       subject-ids
                       :after true store)]
-      (add-following-selection-store-ids store ids))))
+      (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-element
-  [store {:keys [subject-ids session-state]}]
+  [store {:keys [subject-ids session-state client-id]}]
   (let [[ids store] (create-possible-selector-elements
                      'anything subject-ids subject-ids
                      :before false store)]
-    (add-following-selection-store-ids store ids)))
+    (add-following-selection-by-ids store client-id ids)))
 
 (defn do-add-label
-  [store {:keys [subject-ids session-state]}]
+  [store {:keys [subject-ids session-state client-id]}]
   ;; We disallow adding a label to a label.
   (when (not-any? #(label-element? (id->entity % store)) subject-ids)
     (let [[ids store] (create-possible-selector-elements
                        `(~label-object-template) subject-ids subject-ids
                        :before false store)]
-      (add-following-selection-store-ids store ids))))
+      (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]
@@ -369,7 +376,7 @@
 (defn do-batch-edit
   [store {:keys [query-ids stack-ids
                  selected-index selection-sequence must-show-label
-                 session-state]}]
+                 session-state client-id]}]
   (let [ephemeral-id (:session-ephemeral-id session-state)
         ephemeral-item (id->entity ephemeral-id store)]
     (if query-ids
@@ -411,8 +418,7 @@
                             selection-sequence))]
         {:store (-> store
                     (update-equivalent-undo-point true)
-                    (assoc-in [:ephemeral-data :following-selection-store-ids]
-                              selected-ids))
+                    (add-following-selection-by-ids client-id selected-ids))
          :batch-editing true})
       ;; TODO: This can be confusing when the user has something selected that
       ;; doesn't have batch editing information. Check for no selection before
@@ -426,7 +432,7 @@
 (defn do-quit-batch-edit
   [mutable-store session-state]
   (map-reporter-reset! (:client-state session-state)
-                    {:batch-editing false})
+                       {:batch-editing false})
   {})
 
 (defn normalize-handler-response
@@ -497,7 +503,7 @@
                                 #(-> %
                                      (assoc :preceding-selection client-id)
                                      (dissoc :following-selection
-                                             :following-selection-store-ids)))
+                                             :following-selection-by-ids)))
                          action-data (client-id->action-data
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
@@ -518,7 +524,7 @@
                          [updated-store client-info]
                          (normalize-handler-response response store)
                          {:keys [following-selection
-                                 following-selection-store-ids]}
+                                 following-selection-by-ids]}
                          (:ephemeral-data updated-store)
                          selected-client-id (get-selected store ephemeral-id)
                          ;; If the user is typing into a field, and
@@ -537,18 +543,18 @@
                          ;; selected.
                          if-selected (when
                                          (and (or following-selection
-                                                  following-selection-store-ids)
+                                                  following-selection-by-ids)
                                               client-id )
                                        [client-id])
                          client-info
                          (assoc client-info
                                 :select following-selection
-                                :select-store-ids following-selection-store-ids
+                                :select-by-ids following-selection-by-ids
                                 :if-selected if-selected)]
                      [updated-store client-info])))]
             (when (contains? result :batch-editing)
               (map-reporter-reset! (:client-state session-state)
-                                {:batch-editing (:batch-editing result)}))
+                                   {:batch-editing (:batch-editing result)}))
             (dissoc result :batch-editing)))))
 
 ;;; While do-selected takes a client id, like a contextual action
@@ -564,7 +570,7 @@
                        @dom-manager client-id :select
                        (current-store mutable-store))
           {:keys [tab-id]} action-data]
-      (map-reporter-reset! client-state {:select-store-ids nil
+      (map-reporter-reset! client-state {:select-by-ids nil
                                          :if-selected nil})
       (store-update!
        mutable-store
@@ -608,13 +614,17 @@
                   :open  A url to open in a new window
                :set-url  A url to set as the current url
                 :select  A client id to select
-      :select-store-ids  A seq of store ids such that the client should
-                         select a component that represents one of them.
-                         These will get translated to :select before
-                         the response goes to the client.
+  
+         :select-by-ids  A [client-id store-ids] pair that means
+                         that the first time we send a dom to the
+                         client that shows one of the stored-ids, we
+                         would also like to send the client a select
+                         request for it. And if we have a choice of
+                         doms, we prefer to select the one most similar
+                         to the client-id.
            :if-selected  A seq of client ids, one of which must currently
                          be selected by the client for :select or 
-                         :select-store-ids to have an effect."
+                         :select-by-ids to have an effect."
   [mutable-store session-state action]
   (let [[action-type & extra-args] action]
     (println)
@@ -647,11 +657,11 @@
                       (println "for client " (simplify-for-print for-client))
                       (into (cond-> client-info
                               (or (:select for-client)
-                                  (:select-store-ids for-client))
+                                  (:select-by-ids for-client))
                               ;; Get rid of obsolete selection information.
-                              (dissoc :select :select-store-ids :if-selected))
+                              (dissoc :select :select-by-ids :if-selected))
                             (select-keys for-client
-                                         [:select :select-store-ids :if-selected
+                                         [:select :select-by-ids :if-selected
                                           :open :set-url]))))
                   {} action-sequence)]
       (let [{:keys [client-state]} session-state

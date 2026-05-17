@@ -347,24 +347,12 @@
   ;; going to the client.
   (let [in-sync (map-reporter-get-current client-state :in-sync)
         {:keys [select if-selected]} client-info
-        select-store-ids (map-reporter-get-current
-                          client-state :select-store-ids)
+        select-by-ids (map-reporter-get-current client-state :select-by-ids)
+        [prefered-client-id select-store-ids] select-by-ids
         [doms store-select] (when in-sync
                               (get-response-doms
-                               dom-manager select-store-ids
-                               current-selection 100))
-        _ (when store-select
-            (store-update! mutable-store
-                           (fn [store]
-                             (if (= (get-in store
-                                            [:ephemeral-data
-                                             :following-selection-store-ids])
-                                    select-store-ids)
-                               (update store :ephemeral-data
-                                       #(-> %
-                                            (assoc :following-selection store-select)
-                                            (dissoc :following-selection-store-ids)))
-                               store))))
+                               dom-manager select-store-ids prefered-client-id
+                               100))
         if-selected (if select
                       if-selected
                       (map-reporter-get-current client-state :if-selected))
@@ -374,8 +362,23 @@
                  select (assoc :select [select if-selected])
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
-    (when select (map-reporter-reset! client-state {:select-store-ids nil
+    ;; If we ask for a selection, remove any pending :select-by-ids.
+    (when select (map-reporter-reset! client-state {:select-by-ids nil
                                                     :if-selected nil}))
+    ;; If we handled a select-by-ids, and it matches the ephemeral
+    ;; following-select-by-ids in the store, record the select as a
+    ;; following-select, and get rid of following-select-by-ids.
+    (when store-select
+      (store-update!
+       mutable-store
+       (fn [store]
+         (if (= (get-in store [:ephemeral-data :following-selection-by-ids])
+                select-by-ids)
+           (update store :ephemeral-data
+                   #(-> %
+                        (assoc :following-selection store-select)
+                        (dissoc :following-selection-by-ids)))
+           store))))
     (when (not= answer {})
       (let [stripped (update
                       answer :doms
@@ -421,7 +424,7 @@
           (println "Client is clean.")
           (request-client-refresh dom-manager)
           (map-reporter-reset! client-state {:in-sync true
-                                          :last-action nil}))
+                                             :last-action nil}))
         (when replay
           (do-replay session-state replay))
         (process-acknowledgements dom-manager acknowledge)
@@ -431,12 +434,15 @@
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
-            (when (:select-store-ids client-info)
+            ;; We copy a select-by-ids request into the client info,
+            ;; where it can hang around until we generate dom that
+            ;; matches one of the ids.
+            (when (:select-by-ids client-info)
               (map-reporter-reset!
                client-state
                (into {:if-selected nil}
                      (select-keys client-info
-                                  [:select-store-ids :if-selected]))))
+                                  [:select-by-ids :if-selected]))))
             (compute calculator-data 1000)
             ;; If we have no doms ready for the client yet, try computing
             ;; some more.

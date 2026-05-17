@@ -194,17 +194,6 @@
       (is (current-source-matches-from? store a-id "\u00A0A" "B"))
       (is (not (current-source-matches-from? store a-id "\u00A0A" ""))))))
 
-(deftest selected-test
-  (let [client-id1 "root_1"
-        client-id2 "root_2"
-        store1 (update-selected store ephemeral-id client-id1)
-        recovered-id1 (get-selected store1 ephemeral-id)
-        ;; Now, try overwriting an existing id.
-        store2 (update-selected store1 ephemeral-id client-id2)
-        recovered-id2 (get-selected store2 ephemeral-id)] 
-    (is (= client-id1 recovered-id1))
-    (is (= client-id2 recovered-id2))))
-
 (deftest do-set-content-test
   (let [new-store (do-set-content store
                                   {:subject-ids [(:item-id joe-age)]
@@ -361,8 +350,7 @@
                           "foo"]))))))
 
 (deftest do-add-twin-test
-  (let [store (update-selected store ephemeral-id "old selection")
-        new-store (do-add-twin store
+  (let [new-store (do-add-twin store
                                {:subject-ids [(:item-id joe-age)
                                               (:item-id jane-age)]
                                 :session-state session-state
@@ -387,8 +375,7 @@
                                 (:item-id new-jane-element)])]})))))
 
 (deftest do-add-element-test
-  (let [store (update-selected store ephemeral-id "old selection")
-        new-store (do-add-element store
+  (let [new-store (do-add-element store
                                   {:subject-ids [(:item-id joe-age)
                                                  (:item-id jane-age)]
                                    :session-state session-state})
@@ -407,8 +394,7 @@
 
 (deftest do-add-label-test
   ;; Test for adding a label when there is more than one subject id.
-  (let [store (update-selected store ephemeral-id "old selection")
-        new-store (do-add-label store
+  (let [new-store (do-add-label store
                                 {:subject-ids [(:item-id joe-age)
                                                (:item-id jane-age)]
                                  :session-state session-state})
@@ -623,8 +609,6 @@
                            :render-dom (fn [& _] [:div])
                            :get-action-data [get-id-action-data :Larry]})
     (let [for-client (do-selected ms ss "Larry")]
-      (is (= (get-selected (current-store ms) ephemeral-id)
-             "Larry"))
       (is (nil? for-client)))))
 
 (deftest do-undo-redo-test
@@ -659,8 +643,7 @@
   (let [queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)
         joe-client-id (str "root_" (:id (:item-id joe)))
-        store-with-selection (update-selected store ephemeral-id joe-client-id)
-        mutable-store (new-mutable-store store-with-selection)
+        mutable-store (new-mutable-store store)
         manager (make-dom-manager mutable-store cd)
         session-state {:session-ephemeral-id ephemeral-id
                        :dom-manager manager
@@ -700,7 +683,7 @@
       ;; Check undo.
       (let [for-client (do-actions mutable-store session-state [[:undo]])])
       (is (check (current-store mutable-store)
-                 (assoc store-with-selection :modified-ids #{})))
+                 (assoc store :modified-ids #{})))
       ;; Check redo.
       (do-actions mutable-store session-state [[:redo]])
       (is (check (current-store mutable-store) new-store))

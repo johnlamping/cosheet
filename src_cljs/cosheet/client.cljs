@@ -103,6 +103,8 @@
           (if editable
             (select-and-clear-pending editable)
             (deselect))
+          ;; We have to tell the server about the selection, because
+          ;; it needs to know when a different tab has been selected.
           (request-action [:selected (and editable (.-id editable))])))
       (store-and-close-popups))))
 
@@ -142,6 +144,8 @@
                 (open-edit-field editable (dom-text editable))))
           (deselect))
         (when (not= editable @selected)
+          ;; We have to tell the server about the selection, because
+          ;; it needs to know when a different tab has been selected.
           (request-action [:selected (and editable (.-id editable))]))))))
 
 (defn contextmenu-handler

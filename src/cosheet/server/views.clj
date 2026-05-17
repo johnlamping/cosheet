@@ -28,7 +28,7 @@
                              get-session-state queue-to-log update-store-file]]
       [db :refer [get-all-users add-user-to-db remove-user-from-db
                   get-user-pwdhash]]
-      [actions :refer [confirm-actions do-actions get-selected]]))
+      [actions :refer [confirm-actions do-actions]]))
   ; (:import (org.h2.util New))
   )
 
@@ -338,8 +338,7 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
-(defn ajax-response [dom-manager mutable-store client-state current-selection
-                     actions client-info]
+(defn ajax-response [dom-manager mutable-store client-state actions client-info]
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we
   ;; want to have done some computation, so if we need to send back
@@ -448,8 +447,6 @@
             ;; some more.
             (when (empty? (get-response-doms dom-manager nil nil 1))
               (compute calculator-data 10000))
-            (let [current-selection
-                  (get-selected (current-store store) session-ephemeral-id)]
-              (ajax-response dom-manager store client-state current-selection
-                             actions client-info)))))
+            (ajax-response dom-manager store
+                           client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

@@ -163,11 +163,7 @@
                '(:root-ephemeral
                  ;; These hold the data that control batch edit mode.
                  (anything :batch-query :selector)
-                 (anything :batch-stack :selector)
-                 ;; Normally, the selection is stored as a keyword. By
-                 ;; putting in a symbol, we are saying there is no
-                 ;; current selection.
-                 (nothing :current-selection))))
+                 (anything :batch-stack :selector))))
 
 (defn add-session-ephemeral-element!
   "Add a session ephemeral element to the store, and return its id."

@@ -54,28 +54,6 @@
 
 ;;; TODO: Replace the asserts with log messages, so things are robust.
 
-(defn update-selected
-  "Store the client id of the currently selected dom as an ephemeral in
-  the store. (We put it in the store, because that way, when
-  there is an undo, we can undo to the last selection.)"
-  [store ephemeral-id client-id]
-  (if-let [element-id (first (target-label->ids
-                              store ephemeral-id :current-selection))]
-    ;; We store the client id as a keyword, rather than a string, so it
-    ;; is not semantic.
-    (update-source store element-id (keyword client-id))
-    store))
-
-(defn get-selected
-  "Retrieve the client id of the currently selected dom, as stored by
-  update-selected."
-  [store ephemeral-id]
-  (when-let [element-id (first (target-label->ids
-                                store ephemeral-id :current-selection))]
-    (let [source (id->source store element-id)]
-      (when (keyword? source)
-        (name source)))))
-
 (defn ensure-response-map
   "If the response is a store, turn it into a map {:store response}"
   [response]
@@ -526,21 +504,13 @@
                          {:keys [following-selection
                                  following-selection-by-ids]}
                          (:ephemeral-data updated-store)
-                         selected-client-id (get-selected store ephemeral-id)
                          ;; If the user is typing into a field, and
-                         ;; then clicks somewhere else, we are told
-                         ;; about the changed selection, and then
-                         ;; about the new content for the original
-                         ;; field. We don't want our filling in the
-                         ;; content to change the new selection. So we
-                         ;; tell the client to make a new selection
-                         ;; only if the current selection is still the
-                         ;; item we are acting on.
-                         ;; TODO: !!! when we add a contextual menu,
-                         ;; we will need to change the selection
-                         ;; before sending the command, so we can end
-                         ;; up with whatever is modified being
-                         ;; selected.
+                         ;; then clicks somewhere else, we don't want
+                         ;; our filling in the content to change the
+                         ;; new selection. So we tell the client to
+                         ;; make a new selection only if the current
+                         ;; selection is still the item we are acting
+                         ;; on.
                          if-selected (when
                                          (and (or following-selection
                                                   following-selection-by-ids)
@@ -572,14 +542,6 @@
           {:keys [tab-id]} action-data]
       (map-reporter-reset! client-state {:select-by-ids nil
                                          :if-selected nil})
-      (store-update!
-       mutable-store
-       (fn [store]
-         (if (not= client-id (get-selected store session-ephemeral-id))
-           (-> store
-               (update-selected session-ephemeral-id client-id)
-               (update-equivalent-undo-point true))
-           store)))
       (when tab-id
         (do
           (map-reporter-reset! client-state {:root-id tab-id})

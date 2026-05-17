@@ -45,21 +45,21 @@ body {
 #root {
     width: 100vw;
     display: flex;
-    flex-direction: column
-}
+    flex-direction: column;
 
-#root > .table {
-    max-width: 100%;
-    padding-right: 10px;
-    min-height: 10px; /* So it will shrink to the screen height */
-}
+    & > .table {
+        max-width: 100%;
+        padding-right: 10px;
+        min-height: 10px; /* So it will shrink to the screen height */
+    }
 
-#root.wrapped-element, #root.item {
-    width: 100%;
-    flex: 0 1 auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-    margin: 0;
+    &.wrapped-element, &.item {
+        width: 100%;
+        flex: 0 1 auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        margin: 0;
+    }
 }
 
 /* In general, if there is a border, there is a matching negative margin
@@ -79,10 +79,10 @@ body {
     display: flex;
     flex-direction: column;
     padding-left: 8px;
-}
 
-.indent-wrapper > * {
-    flex-grow: 1;
+    & > * {
+        flex-grow: 1;
+    }
 }
 
 /* --- Basic items and stacks of items --- */
@@ -149,25 +149,24 @@ body {
 
 .horizontal-stack {
     display: flex; /* horizontal is default */
-}
 
-.horizontal-stack > *:not(:last-child) {
-    margin-right: 2px;
-}
+    & > *:not(:last-child) {
+        margin-right: 2px;
+    }
 
-.horizontal-stack > .item + .item {
-    border-width: 0px 0px 0px 1px;
-}
+    & > .item + .item {
+        border-width: 0px 0px 0px 1px;
+    }
 
-.horizontal-stack > .vertical-labels-element,
-.horizontal-stack > .wrapped-element {
-    display: flex;
-    flex-direction: column;
-}
+    & > .vertical-labels-element,
+    & > .wrapped-element {
+        display: flex;
+        flex-direction: column;
 
-.horizontal-stack > .vertical-labels-element > :first-child,
-.horizontal-stack > .wrapped-element > :first-child {
-    flex: 1;
+        & > :first-child {
+            flex: 1;
+        }
+    }
 }
 
 /* --- tabs --- */
@@ -219,89 +218,90 @@ body {
     min-width: 20px;
     width: fit-content;
     position: relative;
-}
 
-.tab::before, .tab::after{
-    height: 100%;
-    /* Make its background override edges of on other tabs, but not content. */
-    width: 30px;
-    background-color: white;
-    z-index: -1;
-    border-style: solid;
-    border-color: var(--border-color);
-    box-shadow: inset 0px -1px 0px 0px var(--border-color);
-    display: block;
-    content:" ";
-    top: -2px;
-    position: absolute;
-    transform-origin: top;
-}
+    &::before, &::after {
+        height: 100%;
+        /* Make its background override edges of on other tabs, but not content. */
+        width: 30px;
+        background-color: white;
+        z-index: -1;
+        border-style: solid;
+        border-color: var(--border-color);
+        box-shadow: inset 0px -1px 0px 0px var(--border-color);
+        display: block;
+        content:" ";
+        top: -2px;
+        position: absolute;
+        transform-origin: top;
+    }
 
-.tab::before {
-    border-width: var(--bw) 0px 1px var(--bw);
-    border-top-left-radius: var(--radius);
-    left: -8px;
-    transform:skewX(-15deg);
-}
+    &::before {
+        border-width: var(--bw) 0px 1px var(--bw);
+        border-top-left-radius: var(--radius);
+        left: -8px;
+        transform:skewX(-15deg);
+    }
 
-.tab::after {
-    border-width: var(--bw) var(--bw) 1px 0px;
-    border-top-right-radius: var(--radius);
-    right: -8px;
-    transform:skewX(15deg);
-}
+    &::after {
+        border-width: var(--bw) var(--bw) 1px 0px;
+        border-top-right-radius: var(--radius);
+        right: -8px;
+        transform:skewX(15deg);
+    }
 
-.tab.vertical-stack {
-    /* Leave room for selection box-shadow. */
-    padding-top: 2px;
-}
+    &.vertical-stack {
+        /* Leave room for selection box-shadow. */
+        padding-top: 2px;
+    }
 
-.tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after {
-     background-color: var(--bg-subtle);
-}
+    &.virtualTab {
+        background-color: var(--bg-subtle);
+        position: relative;
 
-.tab.virtualTab {
-    position: relative;
-}
+        &::before, &::after {
+            background-color: var(--bg-subtle);
+        }
+    }
 
-.tab.complex {
-    background-color: transparent;
-    width: 150px;
+    &.complex {
+        background-color: transparent;
+        width: 150px;
+    }
+
+    /* Keep the content of a tab from hiding the inset box-shadow if it
+       gets chosen */
+    &.with-elements > :first-child.content-text {
+        padding-top: 0px;
+        margin-top: 3px;
+    }
+
+    &.chosen {
+        box-shadow: inset 0px 2px 2px var(--border-color),
+                    0px 2px hsl(0, 0%, 100%);
+        border-bottom: 0px;
+
+         /* Put the selected box shadow on the select holder, because the :left and
+            :right of the tab can overlap its contents. */
+        & > .select_holder {
+            box-shadow: inset 0 0 5px 3px var(--selection-color);
+        }
+
+        &::before {
+            box-shadow: 2px 4px 0px -2px hsl(0, 0%, 100%),
+                        inset 2px 2px 2px var(--border-color);
+            border-bottom: 0px;
+        }
+
+        &::after {
+            box-shadow: -2px 4px 0px -2px hsl(0, 0%, 100%),
+                        inset -2px 2px 2px var(--border-color);
+            border-bottom: 0px;
+        }
+    }
 }
 
 .tab.chosen, .tab-tree.chosen {
     z-index: 2;
-}
-
-.tab.chosen {
-    box-shadow: inset 0px 2px 2px var(--border-color),
-                0px 2px hsl(0, 0%, 100%);
-    border-bottom: 0px;
-}
-
-/* Keep the content of a tab from hiding the inset box-shadow if it
-   gets chosen */
-.tab.with-elements > :first-child.content-text {
-    padding-top: 0px;
-    margin-top: 3px;
-}
-
- /* Put the selected box shadow on the select holder, because the :left and
-    :right of the tab can overlap its contents. */
-.tab.chosen > .select_holder {
-    box-shadow: inset 0 0 5px 3px var(--selection-color);
-}
-
-.tab.chosen::before {
-    box-shadow: 2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset 2px 2px 2px var(--border-color);
-    border-bottom: 0px;
-}
-
-.tab.chosen::after {
-    box-shadow: -2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset -2px 2px 2px var(--border-color);
-    border-bottom: 0px;
 }
 
 /* batch editing */
@@ -340,12 +340,12 @@ body {
     border-width: var(--bw);
     border-top-left-radius: var(--radius);
     border-bottom-left-radius: var(--radius);
-}
 
-.batch-stack > :first-child {
-    border-top-left-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
+    & > :first-child {
+        border-top-left-radius: var(--radius);
+        border-bottom-left-radius: var(--radius);
+        background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
+    }
 }
 
 /* --- named objects --- */
@@ -386,22 +386,28 @@ body {
 .horizontal-labels-element {
     display: flex;
     flex-direction: row;
-}
 
-.horizontal-labels-element.narrow > * {
-    border-width: var(--bw);
-    margin-right: var(--nbw);
-    margin-bottom: var(--nbw);
-}
+    &.narrow > * {
+        border-width: var(--bw);
+        margin-right: var(--nbw);
+        margin-bottom: var(--nbw);
+    }
 
-.horizontal-labels-element.narrow > :first-child {
-    border-bottom-left-radius: var(--radius);
-    border-top-left-radius: var(--radius);
-    width: 12px;
-}
+    &.narrow > :first-child {
+        border-bottom-left-radius: var(--radius);
+        border-top-left-radius: var(--radius);
+        width: 12px;
+    }
 
-.horizontal-labels-element.narrow > :last-child {
-    flex: 1;
+    &.narrow > :last-child {
+        flex: 1;
+    }
+
+    & > .elements-wrapper {
+        border-left-width: var(--bw);
+        flex-grow: 1;
+        display: flex;
+    }
 }
 
 .wrapped-element:not(.merge-with-parent) {
@@ -414,16 +420,24 @@ body {
     background-image: var(--shimmer-left), var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
 }
 
-.vertical-stack.has-border > .wrapped-element {
-    margin-left: var(--nbw);
+.vertical-stack.has-border {
+    & > .wrapped-element {
+        margin-left: var(--nbw);
+
+        &:first-child {
+            margin-top: var(--nbw);
+        }
+    }
 }
 
-.vertical-stack.has-border > .wrapped-element:first-child {
-    margin-top: var(--nbw);
-}
+.wrapped-element {
+    & > .indent-wrapper {
+        flex-grow: 0;
+    }
 
-.wrapped-element > .indent-wrapper {
-    flex-grow: 0;
+    & ~ .horizontal-labels-element {
+        margin-top: 2px;
+    }
 }
 
 .indent-wrapper > * {
@@ -437,40 +451,40 @@ body {
     flex-direction: column;
 }
 
-.wrapped-element ~ .horizontal-labels-element {
-    margin-top: 2px;
-}
-
 /* --- label-element pairs: two column format --- */
 
-.horizontal-labels-element.wide > :last-child {
-    width: 70%;
-    border-width: var(--bw);
-    margin: 0px 0px var(--nbw) 0px;
+.horizontal-labels-element {
+    &.wide > :last-child {
+        width: 70%;
+        border-width: var(--bw);
+        margin: 0px 0px var(--nbw) 0px;
+    }
+
+    &.wide > :last-child.horizontal-value-last {
+        border-bottom-width: 4px;
+    }
 }
 
 .horizontal-value-last {
     border-bottom-width: var(--bw);
     display: flex;
     flex-direction: row;
+
+    & > .vertical-stack,
+    & > .content-text,
+    & > .horizontal-value-last {
+        width: 100%;
+    }
 }
 
-.horizontal-value-last > .vertical-stack,
-.horizontal-value-last > .content-text,
-.horizontal-value-last > .horizontal-value-last {
-    width: 100%;
-}
+.vertical-stack.has-border {
+    & > .horizontal-labels-element {
+        margin-left: var(--nbw);
 
-.horizontal-labels-element.wide > :last-child.horizontal-value-last {
-    border-bottom-width: 4px;
-}
-
-.vertical-stack.has-border > .horizontal-labels-element {
-    margin-left: var(--nbw);
-}
-
-.vertical-stack.has-border > .horizontal-labels-element:first-child {
-    margin-top: var(--nbw);
+        &:first-child {
+            margin-top: var(--nbw);
+        }
+    }
 }
 
 .horizontal-header {
@@ -479,24 +493,35 @@ body {
     flex-direction: row;
     border-left-width: var(--bw);
     background-image: var(--shimmer-right);
-}
 
-.horizontal-header > :first-child {
-    flex: 1;
-}
+    & > :first-child {
+        flex: 1;
+    }
 
-.horizontal-header.indent {
-    padding-left: 8px;
-}
+    &.indent {
+        padding-left: 8px;
+    }
 
-.horizontal-header.top-border.bottom-border {
-    background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
-    text-align: right;
-    border-top-width: var(--bw);
-    border-bottom-width: var(--bw);
-    margin-bottom: var(--nbw);
-    border-top-left-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
+    &.top-border.bottom-border {
+        background-image: var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
+        text-align: right;
+        border-top-width: var(--bw);
+        border-bottom-width: var(--bw);
+        margin-bottom: var(--nbw);
+        border-top-left-radius: var(--radius);
+        border-bottom-left-radius: var(--radius);
+    }
+
+    &.bottom-border {
+        background-image: var(--shimmer-right), var(--shimmer-up);
+        border-bottom-width: var(--bw);
+        margin-bottom: var(--nbw);
+        border-bottom-left-radius: var(--radius);
+
+        &.indent > .horizontal-header {
+            margin-bottom: 0px;
+        }
+    }
 }
 
 .horizontal-header.top-border, .query-holder{
@@ -505,39 +530,22 @@ body {
     border-top-left-radius: var(--radius);
 }
 
-.horizontal-header.bottom-border {
-    background-image: var(--shimmer-right), var(--shimmer-up);
-    border-bottom-width: var(--bw);
-    margin-bottom: var(--nbw);
-    border-bottom-left-radius: var(--radius);
-}
-
-.horizontal-header.bottom-border.indent > .horizontal-header {
-    margin-bottom: 0px;
-}
-
 /* Label pairs, horizontal format */
 
 .vertical-labels-element {
     border-width: var(--bw);
     border-top-left-radius: var(--radius);
     border-top-right-radius: var(--radius);
-}
 
-.vertical-labels-element > * {
-    min-width: 20px;
-}
+    & > * {
+        min-width: 20px;
+    }
 
-.vertical-labels-element > :first-child {
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-width: var(--bw);
-}
-
-.horizontal-labels-element > .elements-wrapper {
-    border-left-width: var(--bw);
-    flex-grow: 1;
-    display: flex;
+    & > :first-child {
+        border-top-left-radius: var(--radius);
+        border-top-right-radius: var(--radius);
+        border-bottom-width: var(--bw);
+    }
 }
 
 /* --- Horizontal lists of elements, with labels on the left. --- */
@@ -547,10 +555,10 @@ body {
     flex: 1 0 auto;
     align-items: center;
     position: relative;
-}
 
-.horizontal-labeled-element-list > :first-child.label {
-    align-self:stretch;
+    & > :first-child.label {
+        align-self:stretch;
+    }
 }
 
 /* --- tables --- */
@@ -567,21 +575,21 @@ body {
     margin-right: 3px;
     margin-bottom: 3px;
     z-index: 1;
-}
 
-.query-condition > *:first-child {
-    min-width: 50px;
-    font-size: 115%;
-    padding-right: 10px;
-    padding-left: 6px;
-}
+    & > *:first-child {
+        min-width: 50px;
+        font-size: 115%;
+        padding-right: 10px;
+        padding-left: 6px;
+    }
 
-.query-condition.horizontal-labels-element > *:not(:first-child) {
-    margin-left: 5px;
-}
+    &.horizontal-labels-element > *:not(:first-child) {
+        margin-left: 5px;
+    }
 
-.query-condition.horizontal-labels-element > .horizontal-stack > *:not(:first-child) {
-    margin-left: 5px;
+    &.horizontal-labels-element > .horizontal-stack > *:not(:first-child) {
+        margin-left: 5px;
+    }
 }
 
 /* Make the following ::before elements positionable */
@@ -629,6 +637,10 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     margin-left: 3px;
+
+    & > .column-header-sequence {
+        border-bottom-width: var(--bw);
+    }
 }
 
 .table-rows {
@@ -641,28 +653,24 @@ body {
     for vertical scrolling */
     position: relative;
     min-height: 10px; /* So it will shrink to the screen height */
-}
 
-.table-rows > :first-child {
-    margin-top: var(--nbw);
+    & > :first-child {
+        margin-top: var(--nbw);
+    }
+
+    & > :last-child > .table-cell {
+        margin-bottom: 0px;
+    }
 }
 
 .column-header-sequence, .horizontal-label-sequence {
     flex: none;
     display: flex;
     align-items: stretch;
-}
 
-.table-main > .column-header-sequence {
-    border-bottom-width: var(--bw);
-}
-
-.column-header-sequence > *, .horizontal-label-sequence > * {
-    flex: 0 0 auto;
-}
-
-.column-header:not(.label):not(.virtual-column) {
-    background-color: white;
+    & > * {
+        flex: 0 0 auto;
+    }
 }
 
 .column-header {
@@ -671,69 +679,73 @@ body {
     justify-content: flex-end;
     text-align: center;
     margin-right: var(--nbw);
-}
 
-.column-header.leaf {
-    width: 150px;
-}
+    &:not(.label):not(.virtual-column) {
+        background-color: white;
+    }
 
-.column-header:not(.merge-with-parent) {
-    border-width: var(--bw);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    margin-right: var(--nbw);
-    margin-bottom: var(--nbw);
-    min-height: 25px;
-}
+    &.leaf {
+        width: 150px;
+    }
 
-.column-header.wrapped-element:not(.merge-with-parent) {
-    border-bottom-left-radius: 0px;
-}
+    &:not(.merge-with-parent) {
+        border-width: var(--bw);
+        border-top-left-radius: var(--radius);
+        border-top-right-radius: var(--radius);
+        margin-right: var(--nbw);
+        margin-bottom: var(--nbw);
+        min-height: 25px;
+    }
 
-.column-header.merge-with-parent {
-    padding: var(--bw); /* positions inside stuff as if there were a border */
-    margin: 0px var(--nbw) var(--nbw) 0px;
-    min-height: 25px;
-}
+    &.wrapped-element:not(.merge-with-parent) {
+        border-bottom-left-radius: 0px;
+    }
 
-/* Make the header fill all the available space, for a better selection box. */
-.column-header > :first-child.editable {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    flex-grow: 1;
-    flex-basis: auto;
-}
+    &.merge-with-parent {
+        padding: var(--bw); /* positions inside stuff as if there were a border */
+        margin: 0px var(--nbw) var(--nbw) 0px;
+        min-height: 25px;
+    }
 
-.column-header.with-children {
-    border-bottom-width: 0px;
-}
+    /* Make the header fill all the available space, for a better selection box. */
+    & > :first-child.editable {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        flex-grow: 1;
+        flex-basis: auto;
+    }
 
-.column-header > .column-header,
-.column-header > .wrapped-element,
-.column-header > .column-header-sequence > :first-child {
-    margin-left: var(--nbw);
-}
+    &.with-children {
+        border-bottom-width: 0px;
+    }
 
-.column-header > .wrapped-element,
-.column-header > .column-header:first-child {
-    margin-top: var(--nbw);
+    & > .column-header,
+    & > .wrapped-element,
+    & > .column-header-sequence > :first-child {
+        margin-left: var(--nbw);
+    }
+
+    & > .wrapped-element,
+    & > .column-header:first-child {
+        margin-top: var(--nbw);
+    }
+
+    &.merge-with-parent.label {
+        background-color: transparent;
+    }
+
+    & > .wrapped-element:first-child {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
 }
 
 .column-header:not(.merge-with-parent).label, .query-holder.label,
 .vertical-labels-element > :first-child {
     background-image: var(--shimmer-right), var(--shimmer-left), var(--shimmer-down);
-}
-
-.column-header.merge-with-parent.label {
-    background-color: transparent;
-}
-
-.column-header > .wrapped-element:first-child {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
 }
 
 .query-result-indent.label {
@@ -743,10 +755,6 @@ body {
 .table-row {
     display: flex;
     align-items: stretch;
-}
-
-.table-rows > :last-child > .table-cell {
-    margin-bottom: 0px;
 }
 
 .table-cell {
@@ -802,6 +810,17 @@ body {
     border-color: var(--border-color-dark);
     margin: 0px 7px 0px 7px;
     display: inline-block;
+
+    &:hover {
+        background-color: var(--bg-toolbar);
+        border-color: hsl(0, 0%, 60%);
+        border-width: var(--bw);
+        border-radius: 3px;
+
+        & > img {
+            margin: -1px 0px 0px -1px;
+        }
+    }
 }
 
 .toolgap {
@@ -840,17 +859,6 @@ body {
     top: -10px; /* Above the top of the tooltip */
     left: 50%;
     margin-left: -5px;
-}
-
-.tool:hover{
-    background-color: var(--bg-toolbar);
-    border-color: hsl(0, 0%, 60%);
-    border-width: var(--bw);
-    border-radius: 3px;
-}
-
-.tool:hover > img {
-    margin: -1px 0px 0px -1px;
 }
 
 /* Show the tooltip text when you mouse over the tool */
@@ -948,29 +956,33 @@ body {
     min-width: 50px;
     overflow-wrap: break-word;
     font-family: sans-serif;
+
+    &.placeholder {
+        min-height: 14px;
+    }
 }
 
-.content-text.placeholder {
-    min-height: 14px;
+.tab {
+    &.empty-child {
+        background-color: transparent;
+        width: 40px;
+    }
+
+    &.chosen.selected {
+        box-shadow: inset 0px 2px 2px var(--border-color),
+                    0px 2px hsl(0, 0%, 100%),
+                    inset 0 0 5px 3px var(--selection-color);
+    }
 }
 
-.tab.empty-child {
-    background-color: transparent;
-    width: 40px;
-}
+.label {
+    & > .label {
+        background-color: transparent;
+    }
 
-.tab.chosen.selected {
-    box-shadow: inset 0px 2px 2px var(--border-color),
-                0px 2px hsl(0, 0%, 100%),
-                inset 0 0 5px 3px var(--selection-color);
-}
-
-.label > .label {
-    background-color: transparent;
-}
-
-.label.virtual:not(.merge-with-parent) {
-    background-color: hsl(194, 50%, 88%);
+    &.virtual:not(.merge-with-parent) {
+        background-color: hsl(194, 50%, 88%);
+    }
 }
 
 .batch-stack {

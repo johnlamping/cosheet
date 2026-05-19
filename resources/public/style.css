@@ -348,9 +348,9 @@ body {
     }
 }
 
-/* --- named objects --- */
+/* --- object references --- */
 
-.named-object {
+.object-reference:not(.label):not(.class) {
     border-radius: var(--radius);
     border-width: var(--bw);
 }

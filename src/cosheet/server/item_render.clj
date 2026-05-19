@@ -572,8 +572,8 @@
       (if (= num-names 1)
         (item-component (first names)
                         (into-attributes specification
-                                         {:class "named-object"}))
-        (into [:div {:class "named-object vertical-stack"}]
+                                         {:class "object-reference"}))
+        (into [:div {:class "object-reference vertical-stack"}]
               (map #(item-component % specification) names))))))
 
 (defn content-object-by-name-component

@@ -479,7 +479,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name named-object"
+                            :class "name object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -487,7 +487,7 @@
     (is (check (render-content-object-by-name-DOM
                 spec two-name-store)
                (as-set
-                [:div {:class "named-object vertical-stack"}
+                [:div {:class "object-reference vertical-stack"}
                  [:component {:width 1.5
                               :template template
                               :is-object-name true
@@ -508,7 +508,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name named-object"
+                            :class "name object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -517,7 +517,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name named-object"
+                            :class "name object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM
@@ -559,7 +559,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable item name named-object"
+                            :class "editable item name object-reference"
                             :template (make-object-list [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
@@ -597,7 +597,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable item name named-object"
+                            :class "editable item name object-reference"
                             :template (make-object-list [`("" (~name-label))])
                             :is-object-name true
                             :relative-id anonymous-name-id

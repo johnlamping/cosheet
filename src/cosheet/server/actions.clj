@@ -535,7 +535,7 @@
 (defn do-selected
   [mutable-store session-state client-id & _]
   (when client-id
-    (let [{:keys [client-state session-ephemeral-id dom-manager]} session-state
+    (let [{:keys [client-state dom-manager]} session-state
           action-data (client-id->action-data
                        @dom-manager client-id :select
                        (current-store mutable-store))

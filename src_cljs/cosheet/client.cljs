@@ -98,6 +98,11 @@
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (when (not (target-in-select-holder? effective-target))
+      ;; We have to close popups before selecting, because if the user
+      ;; clicks on a different tab, and the client processes that
+      ;; first, it will no longer be able to find the dom
+      ;; corresponding to the field that had been open.
+      (store-and-close-popups)
       (let [editable (find-editable effective-target event)]
         (when (not= editable @selected)
           (if editable
@@ -105,15 +110,15 @@
             (deselect))
           ;; We have to tell the server about the selection, because
           ;; it needs to know when a different tab has been selected.
-          (request-action [:selected (and editable (.-id editable))])))
-      (store-and-close-popups))))
+          (request-action [:selected (and editable (.-id editable))]))))))
 
 (defn toolbar-click-handler
   [event]
   (let [target (.-target event)] 
     (.log js/console (str "Command click on id " (.-id target) "."))
     (when-let [command-target
-               ;; Many tool clicks are on images. We promote them to the tool.
+               ;; Many tool clicks are on images. We promote them to
+               ;; be on the tool.
                (find-ancestor-with-class target "tool" 1)]
       (store-and-close-popups)
       (command-click-handler command-target))))

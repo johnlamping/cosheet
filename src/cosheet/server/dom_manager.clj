@@ -4,7 +4,7 @@
                       [reporter :refer [remove-attendee! set-attendee!
                                         set-attendee-and-call-if-valid!
                                         reporter?
-                                        reporter-value-when-valid valid?
+                                        reporter-value-when-valid
                                         value-category]]
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [item-id? id->string string->id

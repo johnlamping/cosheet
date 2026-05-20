@@ -4,7 +4,7 @@
     [canonical :refer [canonical-set-to-list]]
     [store :refer [make-item-id]]
     [entity :refer [id->entity id->updating-entity-R
-                    content label-element? primitive? object?
+                    content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object?
                     elements label->elements content->elements
@@ -60,7 +60,7 @@
       :horizontal :vertical
       :vertical :horizontal))
 
-(def render-item-DOM)
+(def render-item-DOM-R)
 
 (defn item-component
   "Make a component dom to display the given item. The item's id becomes
@@ -72,7 +72,7 @@
           (:render-dom specification))
   (make-component (assoc specification
                          :relative-id (:item-id item)
-                         :render-dom render-item-DOM
+                         :render-dom render-item-DOM-R
                          :get-action-data (or (:get-action-data specification)
                                               default-get-action-data))))
 
@@ -285,12 +285,13 @@
       (add-attributes dom {:class "label"}))))
 
 (defn hierarchy-leaf-elements-DOM
-  "Given a hierarchy node with labels as the properties, generate DOM
-  for leaves that are items. The leaves of the node may contain an additional
-  :exclude-elements field that gives more of the item's elements not
-  to show, typically the ones that satisfy the :template of the
-  specification. The specification should be the one for the overall
-  hierarchy."
+  "Given a hierarchy node with labels as the properties and leaves as
+  items of elements, generate DOM for leaf elements, or a virtual DOM
+  if there are no leaves. The leaves of the node may contain an
+  additional :exclude-elements field that gives more of the item's
+  elements not to show, typically the ones that satisfy the :template
+  of the specification. The specification should be the one for the
+  overall hierarchy."
   [hierarchy-node specification]
   (assert (empty? (:excluded-element-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves hierarchy-node)
@@ -315,7 +316,7 @@
                            leaves)]
         (item-stack-DOM items excludeds :vertical leaf-spec)))))
 
-(defn labeled-items-whole-hierarchy-node-DOM
+(defn labeled-elements-whole-hierarchy-node-DOM
   "Return the dom for everything at and under a labeled items hierarchy node.
   orientation gives which way to lay out the contained items.  The
   specification must give :orientation (which is totally different
@@ -354,7 +355,7 @@
 (defn labeled-items-for-horizontal-DOMs
   [hierarchy specification]
   (map #(hierarchy-node-DOM
-         % labeled-items-whole-hierarchy-node-DOM
+         % labeled-elements-whole-hierarchy-node-DOM
          (fn [node specification] (assoc specification :must-show-label false))
          (assoc specification
                 :must-show-label (not (:immutable specification))
@@ -445,7 +446,7 @@
         child-specification-f (fn [_ specification]
                                 (dissoc specification :must-show-label))]
     (map #(hierarchy-node-DOM %
-                              labeled-items-whole-hierarchy-node-DOM
+                              labeled-elements-whole-hierarchy-node-DOM
                               child-specification-f
                               top-level-spec)
          hierarchy)))
@@ -548,12 +549,12 @@
         (seq (content->elements entity object-type)) "class"
         true "name"))
 
-(defn render-content-object-by-name-DOM
-  "Produce dom for a named object in content position. This means that
-  we just show its name, and editing the displayed name doesn't change
-  the object, but selects (or creates) an object with the provided
-  name. The specification should have a :relative-id of :content, and
-  an auxiliary-item-id that gives the id of the object."
+(defn render-object-reference-DOM-R
+  "Produce dom for an object reference. This means that we just show its
+  name, and editing the displayed name doesn't change the object, but
+  selects (or creates) an object with the provided name. The
+  specification should have a :relative-id of :content, and an
+  auxiliary-item-id that gives the id of the object."
   [{:keys [auxiliary-item-id relative-id] :as specification} store]
   (assert (= relative-id :content))
   (let-R [object (id->updating-entity-R auxiliary-item-id store)]
@@ -576,14 +577,15 @@
         (into [:div {:class "object-reference vertical-stack"}]
               (map #(item-component % specification) names))))))
 
-(defn content-object-by-name-component
+(defn object-reference-component
+  "Return a component to display an object in object-reference form."
   [object specification]
   (assert (object? (:template specification))
           (:template specification))
   (make-component (assoc specification
                          :relative-id :content
                          :auxiliary-item-id (:item-id object)
-                         :render-dom render-content-object-by-name-DOM
+                         :render-dom render-object-reference-DOM-R
                          :get-action-data get-pass-through-action-data)))
 
 (defn display-content-object-as-if-interned?
@@ -604,20 +606,20 @@
            (recursively-in-different-store template nil)))))
 
 (defn element-content-DOM
-  "Make dom for the content part of an item."
-  [item {:keys [immutable template] :as specification}]
-  (let [contents (content item)
+  "Make dom for the content of an element."
+  [element {:keys [immutable template] :as specification}]
+  (let [contents (content element)
         editable (not immutable)
         specification (cond-> (-> (select-keys specification [:class :width])
                                   (assoc :template (content template)))
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
-          (element-primitive-content-DOM item contents specification)
+          (element-primitive-content-DOM element contents specification)
           (and (object? contents)
                (or (interned-object? contents)
                    (display-content-object-as-if-interned?
                     (content template) contents)))
-          (content-object-by-name-component contents specification)
+          (object-reference-component contents specification)
           true
           ;; TODO: !!! We don't currently handle ordinary content that
           ;; is itself a structured entity. We will need that for
@@ -625,12 +627,13 @@
           (assert false contents))))
 
 (defn render-content-only-DOM
-  "Render a dom spec for only the content of an item."
+  "Given an item that represents an element, render a dom spec for only
+  its content."
   [{:keys [relative-id auxiliary-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
-  (let-R [item (id->updating-entity-R auxiliary-item-id store)]
+  (let-R [element (id->updating-entity-R auxiliary-item-id store)]
     (element-content-DOM
-     item (select-keys specification [:class :width :immutable :template]))))
+     element (select-keys specification [:class :width :immutable :template]))))
 
 (defmethod print-method
   cosheet.server.item_render$render_content_only_DOM
@@ -638,17 +641,17 @@
   (.write w "content-DOM"))
 
 (defn element-content-and-non-label-elements-DOM
-  "Make a dom for a content and a group of non-label elements."
-  [item elements specification]
+  "Make a DOM for a content and a group of non-label elements."
+  [element elements specification]
   (let [content-dom
         (make-component
          (cond-> (-> (select-keys specification
                                   [:template :class :width])
                      (assoc :relative-id :content
-                            :auxiliary-item-id (:item-id item)
+                            :auxiliary-item-id (:item-id element)
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
-           (label-element? item)
+           (label-element? element)
            (into-attributes {:class "label"})))]
       (if (empty? elements)
         content-dom
@@ -658,14 +661,16 @@
                             (or (:must-show-label specification) true)
                             :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
-                          (label-element? item)
+                          (label-element? element)
                           (merge-classes "label"))}
            content-dom elements-dom]))))
 
 (defn element-content-labels-and-non-label-elements-DOM
-  [entity labels non-labels {:keys [must-show-label] :as specification}]
+  "Given an element, its labels, and its non-label elements, and it dom
+  specification, generate its dom."
+  [element labels non-labels {:keys [must-show-label] :as specification}]
   (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
-        (element-content-DOM entity specification)
+        (element-content-DOM element specification)
         (let [inner-spec (-> specification
                              (dissoc :class)
                              (update :template
@@ -674,14 +679,17 @@
                                        (content %)
                                        ;; We have exactly the required labels.
                                        (map semantic-to-list
-                                            (semantic-label-elements entity)))))
+                                            (semantic-label-elements
+                                             element)))))
               inner-dom (element-content-and-non-label-elements-DOM
-                         entity non-labels inner-spec)]
+                         element non-labels inner-spec)]
           (labels-wrapper-DOM
            inner-dom labels specification)))
       (add-attributes {:class "item"})))
 
-(defn entity-DOM
+(defn element-DOM
+  "Render a dom spec given the immutable entity for an item (which may
+  be an exemplar of a group of items)."
   [entity {:keys [excluded-element-ids] :as specification}]
   "Produce dom for an entity that is not a named object"
   (let [elements (remove
@@ -698,8 +706,8 @@
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
-(defn render-item-DOM
-  "Render a dom spec for an item (which may be an exemplar of a
+(defn render-item-DOM-R
+  "Render a dom spec for a store item (which may be an exemplar of a
   group of items). This is the default renderer."
   [{:keys [relative-id] :as specification}  store]
   (println "Generating DOM for" (simplify-for-print relative-id))
@@ -711,10 +719,13 @@
            (semantic-to-list (id->entity relative-id store))])
   (let-R [entity (id->updating-entity-R
                   (specification-item-id specification) store)]
-    (entity-DOM entity specification)))
+    (cond (element? entity)
+          (element-DOM entity specification)
+          :else
+          (assert false "Can only handle elements."))))
 
 (defmethod print-method
-  cosheet.server.item_render$render_item_DOM
+  cosheet.server.item_render$render_item_DOM_R
   [v ^java.io.Writer w]
   (.write w "item-DOM"))
 

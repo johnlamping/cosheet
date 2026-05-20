@@ -50,7 +50,7 @@
                                   update-add-element-with-order-and-ephemeral]]
              [session-state :refer [update-add-session-ephemeral-element]]
              [render-utils :refer [make-component]]
-             [item-render :refer [render-item-DOM]])
+             [item-render :refer [render-item-DOM-R]])
             ; :reload
             ))
 
@@ -277,8 +277,8 @@
                          :width 2.0
                          :template `(~foo-template)
                          :get-action-data default-get-action-data
-                         :render-dom render-item-DOM}
-        holder-dom (render-item-DOM holder-dom-spec store)
+                         :render-dom render-item-DOM-R}
+        holder-dom (render-item-DOM-R holder-dom-spec store)
         [_ object-dom-spec] holder-dom
         object-dom ((:render-dom object-dom-spec) object-dom-spec store)
         [_ name-dom-spec] object-dom

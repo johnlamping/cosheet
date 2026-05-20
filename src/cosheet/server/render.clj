@@ -15,7 +15,7 @@
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
              [render-utils :refer [make-component]]
-             [item-render :refer [render-item-DOM]]
+             [item-render :refer [render-item-DOM-R]]
              [table-render :refer [render-table-DOM-R get-table-rendering-data]]
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
@@ -29,15 +29,16 @@
 
 ;;; Code to create hiccup style dom for a database entity.
 
-;;; For a basic entity, we show its contents and its semantic
+;;; For a basic element, we show its contents and its semantic
 ;;; elements, but not its non-semantic elements. Semantic elements
 ;;; have a content of a number, a string, 'anything,
 ;;; :label, or :category,
 
-;;; An element may be marked as a label or a category by having an
-;;; element whose content is :label or :category, respectively. It is
-;;; because this affects how the element is displayed that these
-;;; sub-elements are semantic.
+;;; An element is a label or a category if it's content is an object
+;;; that is labeled withs link-type or object-type, respectively. (For
+;;; now, it can also be marked by having an element whose content is
+;;; :label or :category, respectively. It is because this affects how
+;;; the element is displayed that these sub-elements are semantic.)
 
 ;;; Every semantic element that is not :label or :category must have
 ;;; an :order sub-element, to indicate its display position relative
@@ -125,13 +126,18 @@
 ;;; That function returns a reporter whose value is the current dom
 ;;; for the specification.
 
-;;; As a rule, rendering functions get the information they need our
-;;; of the store, with an let-R, and then run with the immutable
+;;; As a rule, rendering functions are named like render-...-DOM-R. They
+;;; get the information they need our
+;;; of the store, with a let-R, and then run with the immutable
 ;;; information it retrieved. This lets their subsidiary functions
-;;; work on immutable data. In the case they the need to generate dom
-;;; that further depends on the store, they can create components,
-;;; which get their own chance to access the store when the dom
-;;; manager calls their renderers.
+;;; work on immutable data.
+
+;;; The subsidiary functions can thus take immutable entities as
+;;; arguments, rather than the store. They are typically named like
+;;; ...-DOM.  In the case they the need to generate dom that further
+;;; depends on the store, they can create components, which get their
+;;; own chance to access the store when the dom manager calls their
+;;; renderers.
 
 ;;; The dom manager registers for the reporter it gets back from the
 ;;; renderer, so whenever the dom changes, the manager can send the
@@ -268,7 +274,7 @@
 ;;;            :render-dom  Optional function that takes this
 ;;;                         specification and the mutable store and returns
 ;;;                         a reporter whose value is the dom.
-;;;                         Defaults to item-render/render-item-DOM
+;;;                         Defaults to item-render/render-item-DOM-R
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
@@ -334,7 +340,7 @@
   [dom-specification]
   (assert (:render-dom dom-specification) dom-specification)
   (or (:render-dom dom-specification)
-      render-item-DOM))
+      render-item-DOM-R))
 
 ;;; NOTE: action-data-getter is defined in action_data.clj, because it
 ;;; both needs a function defined there and is used there. So putting
@@ -458,7 +464,7 @@
                (make-component
                 (assoc basic-dom-specification        
                        :relative-id (:item-id immutable-item)
-                       :render-dom render-item-DOM
+                       :render-dom render-item-DOM-R
                        :get-action-data default-get-action-data
                        :must-show-label true
                        :width 0.75

@@ -26,7 +26,6 @@
                                  run-all-pending-tasks]])
             (cosheet.server
              [dom-manager :refer :all]
-             [item-render :refer [render-item-DOM]]
              [action-data :refer [default-get-action-data]])
             ; :reload
             ))

@@ -12,7 +12,7 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [item-render :refer [render-item-DOM
+             [item-render :refer [render-item-DOM-R
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [model-utils :refer [semantic-to-list]]
@@ -187,11 +187,11 @@
          (render-tab-elements-DOM (second tab3-dom) store)
          (as-set [:div {:class "vertical-stack"}
                   [:component {:relative-id (:item-id t3-baz)
-                               :render-dom render-item-DOM
+                               :render-dom render-item-DOM-R
                                :get-action-data (default-AD)
                                :width 0.75}]
                   [:component {:relative-id (:item-id t3-bletch)
-                               :render-dom render-item-DOM
+                               :render-dom render-item-DOM-R
                                :get-action-data (default-AD)
                                :width 0.75}]])))
     (is (check

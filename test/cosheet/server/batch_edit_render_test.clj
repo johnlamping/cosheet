@@ -20,7 +20,7 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [item-render :refer [render-item-DOM
+             [item-render :refer [render-item-DOM-R
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [action-data :refer [default-get-action-data
@@ -153,7 +153,7 @@
          dom
          [:div {:class "horizontal-stack query-condition"}
           [:component {:relative-id q2-2
-                       :render-dom render-item-DOM
+                       :render-dom render-item-DOM-R
                        :get-action-data (default-AD)
                        :template 'anything
                        :query-id q2
@@ -166,7 +166,7 @@
              :query-id q2
              :stack-id stk1
              :parallel-ids [q2-c1]
-             :render-dom render-item-DOM
+             :render-dom render-item-DOM-R
              :get-action-data (default-AD)
              :class "label"
              :omit-universal-elements true
@@ -179,7 +179,7 @@
                          :template '(anything ("c1" :label))
                          :query-id q2
                          :stack-id stk1
-                         :render-dom render-item-DOM
+                         :render-dom render-item-DOM-R
                          :get-action-data (default-AD)
                          :immutable true
                          :excluded-element-ids [q2-c1-l]
@@ -208,7 +208,7 @@
                      {:relative-id (:item-id q2-element)
                       :excluding-ids nil
                       :query-id q1
-                      :render-dom render-item-DOM
+                      :render-dom render-item-DOM-R
                       :get-action-data (default-AD)
                       :stack-id stk1}
                      {} nil s)
@@ -226,7 +226,7 @@
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
                       :excluding-ids [(:item-id q2-2)]
-                      :render-dom render-item-DOM
+                      :render-dom render-item-DOM-R
                       :get-action-data (default-AD)
                       :query-id q1
                       :stack-id stk1}
@@ -242,7 +242,7 @@
         q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q3-element)
-                      :render-dom render-item-DOM
+                      :render-dom render-item-DOM-R
                       :get-action-data (default-AD)
                       :excluding-ids nil
                       :query-id q3
@@ -268,7 +268,7 @@
                        :stack-id stk1
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
-                       :render-dom render-item-DOM
+                       :render-dom render-item-DOM-R
                        :class "batch-stack label leaf"
                        :width 0.75}]
           [:div {:class "vertical-labels-element label"}

@@ -19,7 +19,7 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [item-render :refer [render-item-DOM
+             [item-render :refer [render-item-DOM-R
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [action-data :refer [default-get-action-data
@@ -323,14 +323,14 @@
                           :class "label"
                           :omit-universal-elements true
                           :relative-id (any)
-                          :render-dom render-item-DOM
+                          :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper"}
               [:component {:template `(~'anything (~age-label-object))
                            :width 0.75
                            :excluded-element-ids [(any)]
                            :relative-id rc1-id
-                           :render-dom render-item-DOM
+                           :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
             ;; A virtual element for more condition.
             [:div {:class "wrapped-element label virtual-column"}
@@ -371,7 +371,7 @@
                        :column-ids [c1-id]
                        :width 0.75
                        :template :singular
-                       :render-dom render-item-DOM
+                       :render-dom render-item-DOM-R
                        :get-action-data (default-AD)
                        :relative-id c1-id
                        :class "column-header leaf"}]
@@ -388,7 +388,7 @@
                           (table-head-do-batch-AD)]
                          (item-do-batch-AD)]
                         :relative-id c2-name-id
-                        :render-dom render-item-DOM
+                        :render-dom render-item-DOM-R
                         :get-action-data (default-AD)
                         :class "label with-children"}]
            [:div {:class "column-header-sequence"}
@@ -417,7 +417,7 @@
                 :width 0.75
                 :template :singular
                 :relative-id c2-id
-                :render-dom render-item-DOM
+                :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
                 :excluded-element-ids [c2-name-id]}]]]
             ;; A column with an additional label
@@ -427,7 +427,7 @@
               :width 0.75
               :template :singular
               :relative-id c3-id
-              :render-dom render-item-DOM
+              :render-dom render-item-DOM-R
               :get-action-data (default-AD)
               :excluded-element-ids [c3-name-id]
               :class "column-header leaf"}]
@@ -455,7 +455,7 @@
                 :competing-ids [c3-id]
                 :width 0.75
                 :template :singular
-                :render-dom render-item-DOM
+                :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
                 :relative-id c4-id
                 :excluded-element-ids [(any)]}]]]]]
@@ -464,7 +464,7 @@
                        :column-ids [c5-id]
                        :width 0.75
                        :template :singular
-                       :render-dom render-item-DOM
+                       :render-dom render-item-DOM-R
                        :get-action-data (default-AD)
                        :relative-id c5-id
                        :class "column-header leaf"}]
@@ -489,7 +489,7 @@
                          :width 0.75
                          :template :singular
                          :relative-id c6-id
-                         :render-dom render-item-DOM
+                         :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
@@ -512,7 +512,7 @@
                          :width 0.75
                          :template :singular
                          :relative-id c7-id
-                         :render-dom render-item-DOM
+                         :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]
           ;; The virtual column.
           [:div {:class "wrapped-element label column-header virtual-column"}
@@ -678,7 +678,7 @@
              :omit-universal-elements true}]
            [:component
             {:relative-id joe-joe-id
-             :render-dom render-item-DOM
+             :render-dom render-item-DOM-R
              :get-action-data (default-AD)
              :template `("" (~name-label-object))
              :width 0.75
@@ -691,7 +691,7 @@
            [:component {:width 0.75
                         :template label-template
                         :parallel-ids [joe-joseph-id]
-                        :render-dom render-item-DOM
+                        :render-dom render-item-DOM-R
                         :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
                         [(comp-AD)
@@ -704,7 +704,7 @@
             [:div {:class "indent-wrapper"}
              [:component
               {:relative-id joe-joseph-id
-               :render-dom render-item-DOM
+               :render-dom render-item-DOM-R
                :get-action-data (default-AD)
                :template `("" (~name-label-object) (~id-label-object))
                :width 0.75

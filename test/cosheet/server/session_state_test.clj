@@ -17,7 +17,7 @@
              [task-queue :refer [make-priority-task-queue]])
             (cosheet.server
              [session-state :refer :all]
-             [item-render :refer [render-item-DOM]]
+             [item-render :refer [render-item-DOM-R]]
              [model-utils :refer [semantic-to-list
                                   starting-store add-table]]
              [dom-manager :refer [relative-ids->client-id
@@ -134,7 +134,7 @@
                                  :template ""
                                  :relative-id (:item-id row1)
                                  :must-show-label true
-                                 :render-dom render-item-DOM
+                                 :render-dom render-item-DOM-R
                                  :get-action-data [get-id-action-data
                                                    (:item-id row1)]}]])))      
       (forget-session (first (keys (:sessions @session-info))))

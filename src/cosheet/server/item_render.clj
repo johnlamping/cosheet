@@ -284,7 +284,7 @@
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 
-(defn hierarchy-leaf-items-DOM
+(defn hierarchy-leaf-elements-DOM
   "Given a hierarchy node with labels as the properties, generate DOM
   for leaves that are items. The leaves of the node may contain an additional
   :exclude-elements field that gives more of the item's elements not
@@ -327,7 +327,7 @@
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
     (let [leaf-dom (when (seq leaves)
-                     (hierarchy-leaf-items-DOM
+                     (hierarchy-leaf-elements-DOM
                       node (dissoc specification :must-show-label)))
           descendants-dom (nest-if-multiple-DOM (if leaf-dom
                                                   (cons leaf-dom child-doms)
@@ -392,14 +392,14 @@
             specification))
          hierarchy))
 
-(defn labeled-items-two-column-items-DOMs
+(defn labeled-elements-two-column-elements-DOMs
   "Return the item doms for the node and all its children."
   [hierarchy specification]
   (one-column-of-two-column-DOMs
-   hierarchy hierarchy-leaf-items-DOM horizontal-value-wrapper
+   hierarchy hierarchy-leaf-elements-DOM horizontal-value-wrapper
    (update specification :width #(* % 0.6875))))
 
-(defn labeled-items-two-column-label-DOMs
+(defn labeled-elements-two-column-label-DOMs
   "The specification should be the one for the items."
   [hierarchy specification]
   (one-column-of-two-column-DOMs
@@ -408,7 +408,7 @@
        transform-specification-for-non-contained-labels
        (update :width #(* % 0.25)))))
 
-(defn labeled-items-for-two-column-DOMs
+(defn labeled-elements-for-two-column-DOMs
   "The specification should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [;; If there is only one item below a top level node, we put
@@ -420,9 +420,9 @@
                                       (= (count leaves) 1))
                              (:item (first leaves))))
                         hierarchy)]
-    (let [label-doms (labeled-items-two-column-label-DOMs
+    (let [label-doms (labeled-elements-two-column-label-DOMs
                       hierarchy specification)
-          items-doms (labeled-items-two-column-items-DOMs
+          items-doms (labeled-elements-two-column-elements-DOMs
                        hierarchy specification)]
       (map
        (fn [label-dom items-dom only-item]
@@ -436,7 +436,7 @@
                             (map (constantly only-item) doms))
                           items-doms only-items))))))
 
-(defn labeled-items-for-one-column-DOMs
+(defn labeled-elements-for-one-column-DOMs
   "The specification should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [top-level-spec (assoc specification
@@ -452,7 +452,7 @@
 
 ;;; The next two functions make stacks of components for entities.
 
-(defn non-label-entities-DOM
+(defn non-label-elements-DOM
   "Make a dom for a sequence of items, all of which must not be labels.
    If implied-template is non-nil, don't show elements implied by it.
    If must-show-label is true, show a space for labels, even if
@@ -480,8 +480,8 @@
                      :vertical
                      ((if (or (< (:width specification) 1.0)
                               (and no-labels (not (= must-show-label :wide))))
-                        labeled-items-for-one-column-DOMs
-                        labeled-items-for-two-column-DOMs)
+                        labeled-elements-for-one-column-DOMs
+                        labeled-elements-for-two-column-DOMs)
                       hierarchy specification)
                      :horizontal
                      (labeled-items-for-horizontal-DOMs
@@ -504,7 +504,7 @@
         (when (or non-labels virtual-dom)
           (let [elements-dom
                 (when non-labels
-                  (non-label-entities-DOM
+                  (non-label-elements-DOM
                    non-labels nil elements-must-show-labels
                    orientation specification))]
             (nest-if-multiple-DOM
@@ -526,7 +526,7 @@
 
 ;;; The next functions handle the parts of the dom for an entity.
 
-(defn item-primitive-content-DOM
+(defn element-primitive-content-DOM
   "Make dom for a primitive that is the content part of an item."
   [item primitive {:keys [class] :as specification}]
   (assert (primitive? primitive) primitive)
@@ -603,7 +603,7 @@
           (entity->canonical-semantic
            (recursively-in-different-store template nil)))))
 
-(defn item-content-DOM
+(defn element-content-DOM
   "Make dom for the content part of an item."
   [item {:keys [immutable template] :as specification}]
   (let [contents (content item)
@@ -612,7 +612,7 @@
                                   (assoc :template (content template)))
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
-          (item-primitive-content-DOM item contents specification)
+          (element-primitive-content-DOM item contents specification)
           (and (object? contents)
                (or (interned-object? contents)
                    (display-content-object-as-if-interned?
@@ -629,7 +629,7 @@
   [{:keys [relative-id auxiliary-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
   (let-R [item (id->updating-entity-R auxiliary-item-id store)]
-    (item-content-DOM
+    (element-content-DOM
      item (select-keys specification [:class :width :immutable :template]))))
 
 (defmethod print-method
@@ -637,7 +637,7 @@
   [v ^java.io.Writer w]
   (.write w "content-DOM"))
 
-(defn item-content-and-non-label-elements-DOM
+(defn element-content-and-non-label-elements-DOM
   "Make a dom for a content and a group of non-label elements."
   [item elements specification]
   (let [content-dom
@@ -653,7 +653,7 @@
       (if (empty? elements)
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
-              elements-dom (non-label-entities-DOM
+              elements-dom (non-label-elements-DOM
                             elements nil
                             (or (:must-show-label specification) true)
                             :vertical elements-spec)]
@@ -662,10 +662,10 @@
                           (merge-classes "label"))}
            content-dom elements-dom]))))
 
-(defn item-content-labels-and-non-label-elements-DOM
+(defn element-content-labels-and-non-label-elements-DOM
   [entity labels non-labels {:keys [must-show-label] :as specification}]
   (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
-        (item-content-DOM entity specification)
+        (element-content-DOM entity specification)
         (let [inner-spec (-> specification
                              (dissoc :class)
                              (update :template
@@ -675,7 +675,7 @@
                                        ;; We have exactly the required labels.
                                        (map semantic-to-list
                                             (semantic-label-elements entity)))))
-              inner-dom (item-content-and-non-label-elements-DOM
+              inner-dom (element-content-and-non-label-elements-DOM
                          entity non-labels inner-spec)]
           (labels-wrapper-DOM
            inner-dom labels specification)))
@@ -692,7 +692,7 @@
         labels (cond->> labels
                  (:omit-universal-elements specification)
                  (remove #(universal-object? (content %))))]
-    (cond-> (item-content-labels-and-non-label-elements-DOM
+    (cond-> (element-content-labels-and-non-label-elements-DOM
              entity labels non-labels
              (dissoc specification :class :omit-universal-elements))
       (:class specification)

@@ -41,10 +41,10 @@
                                   render-virtual-DOM
                                   virtual-entity-and-label-DOM
                                   label-stack-DOM
-                                  item-content-and-non-label-elements-DOM
-                                  item-content-DOM
+                                  element-content-and-non-label-elements-DOM
+                                  element-content-DOM
                                   labels-and-elements-DOM
-                                  non-label-entities-DOM
+                                  non-label-elements-DOM
                                   horizontal-label-hierarchy-node-DOM]]
              [action-data :refer [default-get-action-data
                                   get-id-action-data
@@ -299,7 +299,7 @@
         ;; TODO: Get our left neighbor as an arg, and pass it
         ;; in the sibling for the virtual dom.
         (virtual-DOM-component (assoc spec :relative-id :virtual))
-        (non-label-entities-DOM
+        (non-label-elements-DOM
          entities (:template spec) false :vertical non-virtual-spec)))))
 
 (defmethod print-method

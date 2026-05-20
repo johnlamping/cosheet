@@ -1,7 +1,7 @@
 (ns cosheet.application-calculator
   (:require (cosheet [reporter :refer [make-reporter
-                                        reporter? valid? data-valid? invalid
-                                        reporter-data data-value
+                                        reporter? reporter-valid? data-valid? invalid
+                                        reporter-data data-value-or-invalid
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
                                         data-attended?]]
@@ -178,7 +178,7 @@
 (defn update-remove-unnecessary-former-application-value
   [data reporter cd]
   (cond-> data
-    (valid? (data-value data))
+    (data-valid? data)
     ;; We have finished computing a value, so the old application
     ;; is not holding onto anything useful.
     (update-former-application-value reporter invalid cd)))
@@ -244,13 +244,13 @@
   ;; We must only set to a valid value if there are attendees for our
   ;; value, otherwise, we will create demand when we have none
   ;; ourselves.
-  (assert (or (not (valid? value)) (data-attended? data)))
+  (assert (or (not (reporter-valid? value)) (data-attended? data)))
   (let [recorded-former-value (:former-application-value data)]
     (if (= value recorded-former-value)
       data
       (let [data (-> data
                      (assoc :former-application-value value)
-                     (assoc :arguments-unchanged (valid? value)))]
+                     (assoc :arguments-unchanged (reporter-valid? value)))]
         (reduce
          (fn [data src]
            (update-new-further-action data
@@ -265,7 +265,8 @@
   [reporter from cd]
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter-data from)]
-                        [(data-value data) (or (:dependent-depth data) 0)])]
+                        [(data-value-or-invalid data)
+                         (or (:dependent-depth data) 0)])]
     (modify-and-act!
      reporter
      (fn [data]
@@ -274,14 +275,14 @@
          (if (or (not (data-attended? data))
                  (not (contains? data :needed-values))
                  (if (contains? (:needed-values data) from)
-                   (not (valid? value))
+                   (not (reporter-valid? value))
                    same-value))
            data
            ;; A value that we care about changed.  We are invalid
            ;; until the recomputation runs, which may not be for a
            ;; while.
            (let [last-application-value (or (:value-source data)
-                                            (data-value data))
+                                            (data-value-or-invalid data))
                  newer-data (cond-> (update-value-and-dependent-depth
                                      data reporter invalid nil)
                               (not= last-application-value invalid)
@@ -293,7 +294,7 @@
                                     (update-former-application-value
                                      reporter last-application-value cd)
                                     (update-value-source reporter nil))))]
-             (if (valid? value)
+             (if (reporter-valid? value)
                (let [new-data
                      (cond-> (update-in newer-data [:needed-values] disj from)
                        (not same-value)

@@ -19,7 +19,7 @@
                       [query :refer [matching-items matching-elements
                                      not-query]]
                       entity-impl
-                      [reporter :refer [reporter-value]]
+                      [reporter :refer [reporter-value-or-invalid]]
                       [calculator :refer [request compute make-calculator-data]]
                       [task-queue :refer [make-priority-task-queue]]
                       [canonical :refer [canonicalize]]
@@ -226,7 +226,7 @@
     (request ordered-tab-ids cd)
     (compute cd)
     (let [first-tab (id->entity
-                     (first (reporter-value ordered-tab-ids)) s)]
+                     (first (reporter-value-or-invalid ordered-tab-ids)) s)]
       (is (selector? (first (label->elements
                              (first (label->elements first-tab :tab-topic))
                              :row-condition)))))

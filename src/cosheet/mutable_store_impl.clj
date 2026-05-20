@@ -1,9 +1,10 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
                       [reporter :refer [set-value! change-data!
-                                        data-value reporter-data
+                                        data-latest-value reporter-data
                                         change-data-control-return!
-                                        reporter-value
+                                        reporter-value-or-invalid
+                                        value-valid? data-valid?
                                         universal-category Reporter
                                         merge-default-reporter-data]]
                       [reporter-macros :refer [cache-R]]
@@ -124,7 +125,7 @@
   [new-state
    modified-ids
    (categories-affected-by-ids
-    modified-ids (data-value old-state) (data-value new-state))])
+    modified-ids (data-latest-value old-state) (data-latest-value new-state))])
 
 (defn change-and-add-to-history
   "Given the mutable store's reporter state, the revised store from
@@ -254,9 +255,10 @@
   
   MutableStore
 
-  (current-store [this] (reporter-value this))
+  (current-store [this] (reporter-value-or-invalid this))
 
   (store-reset! [this new-store]
+    (assert (value-valid? new-store))
     (change-data!
      this
      (fn [state]
@@ -283,7 +285,7 @@
     (change-data-control-return!
      this
      (fn [state]
-       (let [store (data-value state)
+       (let [store (data-latest-value state)
              [updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)
@@ -292,6 +294,7 @@
                                (empty? modified-ids))
                          (assoc new-state :current-significant new-store)
                          new-state)]
+         (assert (data-valid? new-state))
          (conj (description-of-change state new-state modified-ids)
                result)))))
 

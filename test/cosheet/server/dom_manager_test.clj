@@ -9,7 +9,7 @@
              [utils :refer [dissoc-in with-latest-value swap-control-return!]]
              [test-utils :refer [check any as-set]]
              [reporter :as reporter :refer [make-reporter set-value!
-                                            reporter-data reporter-value
+                                            reporter-data reporter-value-or-invalid
                                             reporter-value-when-valid
                                             reporter-atom data-attended?]]
              [calculator :as calculator :refer [make-calculator-data compute
@@ -275,16 +275,16 @@
                         "test"]})
     (let [c1 (client-id->component @manager client1)
           ad1 (client-id->action-data
-               @manager client1 nil (reporter-value ms))]
+               @manager client1 nil (reporter-value-or-invalid ms))]
       (is (check ad1 {:component c1
                      :subject-ids [id1 id1]}))
       (compute cd)
       (let [c2 (first (vals (:id->subcomponent @c1)))
             c3 (client-id->component @manager client3)
             ad1 (client-id->action-data
-               @manager client1 nil (reporter-value ms))
+               @manager client1 nil (reporter-value-or-invalid ms))
             ad3 (client-id->action-data
-                @manager client3 nil (reporter-value ms))]
+                @manager client3 nil (reporter-value-or-invalid ms))]
         ;; The containing component should refer its actions to its contained.
         (is (check ad1 {:component c2
                         :subject-ids [id2 id2]

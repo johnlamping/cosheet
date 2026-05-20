@@ -9,11 +9,11 @@
             ))
 
 (deftest valid-test
-  (is (valid? 1))
-  (is (not (valid? invalid))))
+  (is (reporter-valid? 1))
+  (is (not (reporter-valid? invalid))))
 
 (deftest constant-test
-  (is (= (reporter-value 2) 2))
+  (is (= (reporter-value-or-invalid 2) 2))
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))]
     (set-attendee-and-call! 2 :key 5 callback)
@@ -61,12 +61,12 @@
     (is (reporter? r))
     (is (not (reporter? 2)))
     (is (not (attended? r)))
-    (is (= (reporter-value r) invalid))
+    (is (= (reporter-value-or-invalid r) invalid))
     (is (= (reporter-value-when-valid r) nil))
     (set-value! r 2)
     (set-calculator-data! r :cd)
     (set-attendee-and-call! r :foo 1 (partial callback :f))
-    (is (= (reporter-value r) 2))
+    (is (= (reporter-value-or-invalid r) 2))
     (is (= (reporter-value-when-valid r) 2))
     (is (= (:extra (reporter-data r)) :e))
     (is (= (:priority (reporter-data r)) 1))
@@ -74,7 +74,7 @@
                [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-value! r 3)
-    (is (= (reporter-value r) 3))
+    (is (= (reporter-value-or-invalid r) 3))
     (is (= (reporter-value-when-valid r) 3))
     (is (check @history
                [[:c r :cd]
@@ -174,7 +174,7 @@
 
     (set-value! r invalid)
     (is (not (reporter-valid? r)))
-    (is (= (reporter-value r) invalid))
+    (is (= (reporter-value-or-invalid r) invalid))
     (is (= (reporter-latest-value r) 2))
     (is (= (reporter-value-when-valid r) nil))
     (is (check @calculator-history
@@ -195,7 +195,7 @@
     
     (set-value! r 3)
     (is (reporter-valid? r))
-    (is (= (reporter-value r) 3))
+    (is (= (reporter-value-or-invalid r) 3))
     (is (= (reporter-latest-value r) 3))
     (is (= (reporter-value-when-valid r) 3))
     (is (check @calculator-history
@@ -221,7 +221,7 @@
     
     (change-value! r (fn [v] [(+ v 1) :increment [:a]]))
     (is (reporter-valid? r))
-    (is (= (reporter-value r) 4))
+    (is (= (reporter-value-or-invalid r) 4))
     (is (check @calculator-history
                [[r :cd] [r :cd] [r :cd] [r :cd]]))
     (is (check @universal-history
@@ -251,7 +251,7 @@
 
     (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
     (is (reporter-valid? r))
-    (is (= (reporter-value r) 5))
+    (is (= (reporter-value-or-invalid r) 5))
     (is (check @calculator-history
                [[r :cd] [r :cd] [r :cd] [r :cd]]))
     (is (check @universal-history

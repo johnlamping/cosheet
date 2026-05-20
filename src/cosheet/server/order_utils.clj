@@ -4,8 +4,8 @@
     [orderable :refer [split earlier? initial]]
     [reporter :refer [reporter-data set-value! set-attendee!
                       inform-attendees data-attended? remove-attendee!
-                      make-reporter reporter-value reporter?
-                      valid? validity-category]]
+                      make-reporter reporter-value-or-invalid reporter?
+                      reporter-valid? validity-category]]
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
     [store :refer [update-source add-link
@@ -96,9 +96,9 @@
   [reporter]
   (let [data (reporter-data reporter)]
     (when (data-attended? data)
-      (with-latest-value [immutable-ids (reporter-value (:ids data))]
-        (when (valid? immutable-ids)
-          (with-latest-value [immutable-store (reporter-value (:store data))]
+      (with-latest-value [immutable-ids (reporter-value-or-invalid (:ids data))]
+        (when (reporter-valid? immutable-ids)
+          (with-latest-value [immutable-store (reporter-value-or-invalid (:store data))]
             (let [immutable-ids (seq immutable-ids)
                   order-ids (map #(first (target-label->ids
                                           immutable-store % :order))

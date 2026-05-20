@@ -11,7 +11,7 @@
                       [task-queue :refer [make-priority-task-queue]]
                       [reporter :refer [set-calculator-data!
                                         set-attendee-and-call!
-                                        reporter-value valid?]]
+                                        reporter-value-or-invalid reporter-valid?]]
                       [calculator :refer [make-calculator-data compute]]
                       [query :refer [variable-query]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -47,21 +47,21 @@
     (is (check @history
                [{:key :foo :description #{} :categories #{}}
                 {:key :foo :description nil :categories nil}]))
-    (is (not (valid? answer)))
+    (is (not (reporter-valid? answer)))
     (compute cd)
     (is (check @history
                [{:key :foo :description #{} :categories #{}}
                 {:key :foo :description nil :categories nil}
                 {:key :foo :description nil :categories nil}]))
-    (is (check (reporter-value answer)
+    (is (check (reporter-value-or-invalid answer)
                #{id2 id4}))
     (is (check (matching-item-ids-R term (current-store ms))
-               (reporter-value answer)))
+               (reporter-value-or-invalid answer)))
     (let [id6
           (store-update-control-return!
            ms #(add-element % nil '(1 2 3 4)))]
       (compute cd)
-      (is (check (reporter-value answer)
+      (is (check (reporter-value-or-invalid answer)
                  #{id2 id4 id6}))
       (is (check @history
                [{:key :foo :description #{} :categories #{}}
@@ -73,7 +73,7 @@
                              (remove-entity-by-id id6)
                              (remove-entity-by-id id5)))
       (compute cd)
-      (is (check (reporter-value answer)
+      (is (check (reporter-value-or-invalid answer)
                  #{id2}))
       (is (check @history
                [{:key :foo :description #{} :categories #{}}
@@ -85,7 +85,7 @@
                 {:key :foo :description #{id4 id6} :categories #{id4 id6}}]))
       (store-reset! ms s5)
       (compute cd)
-      (is (check (reporter-value answer)
+      (is (check (reporter-value-or-invalid answer)
                  #{id2 id4}))
       (is (check @history
                [{:key :foo :description #{} :categories #{}}

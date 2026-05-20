@@ -1,8 +1,8 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [orderable :as orderable]
-                      [reporter :refer [valid? set-attendee!
-                                        reporter-value]]
+                      [reporter :refer [reporter-valid? set-attendee!
+                                        reporter-value-or-invalid]]
                       [reporter-macros :refer [let-R]]
                       [store :refer [add-link make-item-id get-new-object-id
                                      new-element-store new-mutable-store
@@ -311,14 +311,14 @@
       (propagate-calculator-data! updating-immutable-result cd)
       (propagate-calculator-data! reporter-99 cd)
       (run-all-pending-tasks queue)
-      (is (not (valid? updating-immutable-result)))
+      (is (not (reporter-valid? updating-immutable-result)))
       (set-attendee! updating-immutable-result :a 0 (fn [& _] nil))
       (set-attendee! reporter-99 :a 0 (fn [& _] nil))
-      (is (not (valid? updating-immutable-result)))
+      (is (not (reporter-valid? updating-immutable-result)))
       (run-all-pending-tasks queue)
       (let [orig-99 (to-list (in-different-store item99 (current-store ms)))]
         (is (check (canonicalize
-                    (reporter-value updating-immutable-result))
+                    (reporter-value-or-invalid updating-immutable-result))
                    (canonicalize orig-99)))
         (is (check (map canonicalize @record-of-updates)
                    [(canonicalize orig-99)]))
@@ -330,11 +330,11 @@
         (store-update! ms (fn [s] (update-source s idd "bletch")))
         (run-all-pending-tasks queue)
         (is (check (canonicalize
-                    (reporter-value updating-immutable-result))
+                    (reporter-value-or-invalid updating-immutable-result))
                    (canonicalize
                     (to-list (in-different-store item99 (current-store ms))))))
         (is (check (canonicalize
-                    (to-list (reporter-value reporter-99)))
+                    (to-list (reporter-value-or-invalid reporter-99)))
                    (canonicalize
                     (to-list (in-different-store item99 (current-store ms))))))
         (is (check (map canonicalize @record-of-updates)

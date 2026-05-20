@@ -9,7 +9,7 @@
              [test-utils :refer [check any as-set]]
              [store :refer [->ItemId new-element-store new-mutable-store]]
              store-impl
-             [reporter :refer [reporter-data reporter-value]]
+             [reporter :refer [reporter-data reporter-value-or-invalid]]
              [query :refer [matching-items]]
              [canonical :refer [canonicalize]]
              [map-reporter :refer [make-map-reporter map-reporter-get-current]]
@@ -55,7 +55,7 @@
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state (create-client-state
                (new-mutable-store store) (->ItemId 5))]
-    (is (check (reporter-value state)
+    (is (check (reporter-value-or-invalid state)
                {:last-time (any)
                 :root-id (->ItemId 5)
                 :last-action nil
@@ -128,7 +128,7 @@
       ;; two elements: the element, its content, and its label.
       (is (= (count (:attendees (reporter-data ms))) 9))
       (let [root-component (client-id->component @dom-manager "root")]
-        (is (check (reporter-value (:dom-R @root-component))
+        (is (check (reporter-value-or-invalid (:dom-R @root-component))
                    [:div {}
                     [:component {:width 0.75,
                                  :template ""

@@ -6,8 +6,8 @@
                       [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
                       [reporter :refer [make-reporter reporter-data
-                                        reporter-value
-                                        set-value! valid? invalid]]
+                                        reporter-value-or-invalid
+                                        set-value! reporter-valid? invalid]]
                       [calculator :refer [make-calculator-data current-value
                                           compute request unrequest
                                           computation-value]]
@@ -80,27 +80,27 @@
     (is (= (#'cosheet.cache-calculator/cache-key [r1])
            (#'cosheet.cache-calculator/cache-key [r2])))
     (run-all-pending-tasks queue)
-    (is (= (reporter-value r1) 2))
+    (is (= (reporter-value-or-invalid r1) 2))
     (let [orig-source (:value-source  (reporter-data r1))]
       ;; Lose interest in r1 then get it back, and the same value
       ;; source should come back.
       (unrequest r1)
       (is (not (contains? (reporter-data r1) :value-source)))
-      (is (not (valid? r1)))
-      (is (valid? r2))
+      (is (not (reporter-valid? r1)))
+      (is (reporter-valid? r2))
       (is (= (#'cosheet.cache-calculator/cache-key [r1])
              (#'cosheet.cache-calculator/cache-key [r2])))
       (request r1 cd)
       (run-all-pending-tasks queue)
-      (is (valid? r1))
+      (is (reporter-valid? r1))
       (is (= (:value-source (reporter-data r1))
              orig-source))
       ;; Now, lose interest in both reporters with that application.
       ;; The cache-R should drop it.
       (unrequest r1)
       (unrequest r2)
-      (is (not (valid? r1)))
-      (is (not (valid? r2)))
+      (is (not (reporter-valid? r1)))
+      (is (not (reporter-valid? r2)))
       (is (not= (:value-source (reporter-data r1))
                 orig-source))
       (is (nil? (mm-get (:cache cd) [inc r0])))
@@ -145,7 +145,7 @@
         (check-propagation f45)
         (set-value! base invalid)
         ;; Now it should be invalid.
-        (is (= (not (valid? (computation-value f45 cd)))))
+        (is (= (not (reporter-valid? (computation-value f45 cd)))))
         (check-propagation f45)
         (unrequest f45)
         (compute cd)

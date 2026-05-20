@@ -1,15 +1,18 @@
 (ns cosheet.calculator
-  (:require (cosheet [reporter :refer [reporter? reporter-data reporter-value
-                                        reporter-atom data-value
-                                        value-valid? data-valid?
-                                        validity-category
-                                        valid? attended?
-                                        set-calculator-data-if-needed!
-                                        set-attendee! set-attendee-and-call!
-                                        add-validity-category-if-appropriate
-                                        remove-attendee!
-                                        inform-attendees
-                                        invalid]
+  (:require (cosheet [reporter :refer [reporter? reporter-data
+                                       reporter-value-or-invalid
+                                       reporter-atom
+                                       value-valid? data-valid?
+                                       data-latest-value
+                                       data-value-or-invalid
+                                       validity-category
+                                       reporter-valid? attended?
+                                       set-calculator-data-if-needed!
+                                       set-attendee! set-attendee-and-call!
+                                       add-validity-category-if-appropriate
+                                       remove-attendee!
+                                       inform-attendees
+                                       invalid]
                        :as reporter]
                       [mutable-map :as mm]
                       [task-queue :refer [is_task_queue?
@@ -112,7 +115,7 @@
   notification."
   [data reporter value dependent-depth]
   (let [valid (value-valid? value)
-        same-value (= value (data-value data))
+        same-value (= value (data-latest-value data))
         same-depth (= dependent-depth (:dependent-depth data))]
     (if (and (= valid (data-valid? data))
              (or (not valid) ; We only change anything else if valid.
@@ -139,13 +142,13 @@
   [reporter from data-finalizer]
   (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter-data from)]
-                        [(data-value data) (or (:dependent-depth data) 0)])]
+                        [(data-value-or-invalid data) (or (:dependent-depth data) 0)])]
     (modify-and-act!
      reporter
      (fn [data]
        (let [cd (:calculator-data data)]
          (if (= (:value-source data) from)
-           (let [our-dependent-depth (when (valid? value)
+           (let [our-dependent-depth (when (reporter-valid? value)
                                        (+ (:value-source-priority-delta data)
                                           value-dependent-depth))]
              (cond-> (update-value-and-dependent-depth
@@ -217,7 +220,7 @@
   (if (reporter? r)
     (do (request r cd)
         (compute cd)
-        (reporter-value r))
+        (reporter-value-or-invalid r))
     r))
 
 (defn current-value
@@ -226,11 +229,11 @@
   [reporter]
   (if (reporter? reporter)
     (let [data (reporter-data reporter)
-          value (data-value data)
+          value (data-value-or-invalid data)
           application (:application data)
           value-source (:value-source data)]
       (cond
-        (valid? value)
+        (reporter-valid? value)
         value
         (not (nil? value-source))
         (current-value value-source)
@@ -249,7 +252,7 @@
         ;; Add an attendee, get the value, then take the attendee away.
         (do
           (set-attendee! reporter :request 0 (fn [& _] nil))
-          (let [result (reporter-value reporter)]
+          (let [result (reporter-value-or-invalid reporter)]
             (set-attendee! reporter :request)
             result))
         true

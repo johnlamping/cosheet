@@ -4,7 +4,7 @@
                       [store :refer [id-valid-link?]]
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
-                      [reporter :refer [reporter-value universal-category]]
+                      [reporter :refer [reporter-value-or-invalid universal-category]]
                       [reporter-macros :refer [app-R let-R seq-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [calculator :refer [current-value]]
@@ -468,7 +468,7 @@
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"
   [specification containing-action-data action immutable-store]
-  {:subject-ids [(reporter-value (:id-R specification))]})
+  {:subject-ids [(reporter-value-or-invalid (:id-R specification))]})
 
 (defmethod print-method
   cosheet.server.render$top_level_get_action_data

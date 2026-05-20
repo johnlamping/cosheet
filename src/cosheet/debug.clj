@@ -8,8 +8,8 @@
                       [entity-impl :as entity-impl]
                       [query :as query]
                       [reporter :refer [reporter? attended?
-                                        reporter-data reporter-value
-                                        valid?]]
+                                        reporter-data reporter-value-or-invalid
+                                        reporter-valid?]]
                       [orderable]
                       [task-queue :refer [make-priority-task-queue]]
                       [calculator :refer [current-value computation-value
@@ -133,7 +133,7 @@
                            ;; If there is no value-source, then the
                            ;; initial value wasn't a reporter, so
                            ;; we don't have to run the application.
-                           (let [v (:value data)] (when (valid? v) v))
+                           (let [v (:value data)] (when (reporter-valid? v) v))
                            ((fn [[f & args]] (apply f args)) values))
                 trace (trace-current result)
                 simplified-trace (if (= (first trace) (second trace))
@@ -222,7 +222,7 @@
                       ;; application once.
                       (:application data))
         fun-name (as-> (first application) fun
-                   (if (reporter? fun) (reporter-value fun) fun)
+                   (if (reporter? fun) (reporter-value-or-invalid fun) fun)
                    (when (instance? clojure.lang.Fn fun)
                      (function-name fun)))]
     [application fun-name]))

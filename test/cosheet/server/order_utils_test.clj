@@ -7,7 +7,7 @@
                                         label->elements elements
                                         make-element-list make-object-list]]
              [orderable :as orderable]
-             [reporter :refer [reporter-value make-reporter invalid
+             [reporter :refer [reporter-value-or-invalid make-reporter invalid
                                set-value!]]
              [reporter-macros :refer [app-R]]
              [task-queue :refer [make-priority-task-queue]]
@@ -119,26 +119,26 @@
         copy-of-ordered-R (app-R identity ordered-R)
         cd (make-calculator-data (make-priority-task-queue 0))]
     (request copy-of-ordered-R cd)
-    (is (= (reporter-value ordered-R) invalid))
-    (is (= (reporter-value copy-of-ordered-R) invalid))
+    (is (= (reporter-value-or-invalid ordered-R) invalid))
+    (is (= (reporter-value-or-invalid copy-of-ordered-R) invalid))
     (compute cd)
-    (is (check (reporter-value ordered-R)
+    (is (check (reporter-value-or-invalid ordered-R)
                joe-ordered-semantic-element-ids))
-    (is (check (reporter-value copy-of-ordered-R)
+    (is (check (reporter-value-or-invalid copy-of-ordered-R)
                joe-ordered-semantic-element-ids))
     (set-value! elements-R (conj joe-semantic-element-ids joe-id))
     (compute cd)
-    (is (check (reporter-value copy-of-ordered-R)
+    (is (check (reporter-value-or-invalid copy-of-ordered-R)
                (concat [joe-id] joe-ordered-semantic-element-ids)))
     (set-value! elements-R joe-semantic-element-ids)
     (compute cd)
-    (is (check (reporter-value copy-of-ordered-R)
+    (is (check (reporter-value-or-invalid copy-of-ordered-R)
                joe-ordered-semantic-element-ids))
     (let [joe-39-order (first (matching-elements '(nil :order) joe-39))
           joe-39-order-id (:item-id joe-39-order)]
       (store-update! mutable-store #(remove-entity-by-id % joe-39-order-id)))
     (compute cd)
-    (is (check (reporter-value copy-of-ordered-R)
+    (is (check (reporter-value-or-invalid copy-of-ordered-R)
                (map :item-id [joe-39 joe-male joe-married joe-45])))))
 
 (deftest furthest-item-test

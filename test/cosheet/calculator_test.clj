@@ -1,9 +1,9 @@
 (ns cosheet.calculator-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [reporter :refer [make-reporter reporter-atom reporter-data
-                                        reporter-value set-value!
-                                        data-value 
-                                        valid? reporter?
+                                        reporter-value-or-invalid set-value!
+                                        data-value-or-invalid 
+                                        reporter-valid? reporter?
                                         set-calculator-data-if-needed!
                                         set-attendee! change-data! invalid
                                         validity-category]]
@@ -41,7 +41,7 @@
   (if (reporter? r)
     (let [data (reporter-data r)]
       (and (or (= (:calculator-data data) :cd)
-               (valid? (data-value data)))
+               (reporter-valid? (data-value-or-invalid data)))
            (every? activated? (:application data))))
     true))
 
@@ -117,16 +117,16 @@
                          :calculator-data cd)]
     (register-for-value-source r2 r1 copy-value-callback)
     (compute cd)
-    (is (= (reporter-value r2) :v))
+    (is (= (reporter-value-or-invalid r2) :v))
     (set-value! r1 :w)
     (compute cd)
-    (is (= (reporter-value r2) :w))
+    (is (= (reporter-value-or-invalid r2) :w))
     (swap! (reporter-atom r2) dissoc :value-source)
     (register-for-value-source r2 r1 copy-value-callback)
     (compute cd)
     (set-value! r1 :x)
     (compute cd)
-    (is (= (reporter-value r2) :w))))
+    (is (= (reporter-value-or-invalid r2) :w))))
 
 (deftest current-value-test
   (let [state (make-reporter :value 0)

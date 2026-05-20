@@ -3,14 +3,10 @@
             [clojure.data :refer [diff]]
             (cosheet
              [debug :refer :all]
-             [task-queue :refer [current-tasks make-priority-task-queue]]
-             [reporter :refer [make-reporter reporter-atom reporter-data
-                               reporter-value set-value!
-                               data-value 
-                               valid? reporter?]]
-             [calculator :refer [make-calculator-data current-value
-                                 propagate-calculator-data!
-                                 compute request]]
+             [task-queue :refer [make-priority-task-queue]]
+             [reporter :refer [make-reporter]]
+             [calculator :refer [make-calculator-data
+                                 propagate-calculator-data!]]
              [reporter-macros :refer [app-R cache-R]]
              [test-utils :refer [check any as-set]])
             ; :reload

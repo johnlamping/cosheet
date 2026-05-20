@@ -6,8 +6,8 @@
                       [calculator :refer [make-calculator-data
                                           compute
                                           propagate-calculator-data!]]
-                      [reporter  :refer [make-reporter valid? invalid
-                                         reporter-value set-value!
+                      [reporter  :refer [make-reporter reporter-valid? invalid
+                                         reporter-value-or-invalid set-value!
                                          reporter-data
                                          set-attendee!]]
                       [test-utils :refer [check any as-set]])
@@ -23,17 +23,17 @@
         rc (map-reporter-get ms :c)
         history (atom [])
         callback (fn [& {:keys [key reporter]}]
-                   (swap! history #(conj % [key (reporter-value reporter)])))]
+                   (swap! history #(conj % [key (reporter-value-or-invalid reporter)])))]
     (is (= (map-reporter-get-current ms :a) 1))
     (propagate-calculator-data! ra cd)
     (propagate-calculator-data! rb cd)
     (propagate-calculator-data! rc cd)
-    (is (not (valid? ra)))
+    (is (not (reporter-valid? ra)))
     (set-attendee! ra :ra 1 callback)
     (is (= @history []))
     (compute cd)
-    (is (= (reporter-value ra) 1))
-    (is (not (valid? rb)))
+    (is (= (reporter-value-or-invalid ra) 1))
+    (is (not (reporter-valid? rb)))
     (is (check @history
                [[:ra 1]]))
     (set-attendee! rb :rb 10 callback)
@@ -45,7 +45,7 @@
                 [:rc nil]]))
     (set-value! r1 2)
     (compute cd)
-    (is (= (reporter-value ra) 2))
+    (is (= (reporter-value-or-invalid ra) 2))
     (is (check @history
                [(any) (any) (any)
                 [:ra 2]]))

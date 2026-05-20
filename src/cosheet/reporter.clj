@@ -181,14 +181,18 @@
   @(:data r))
 
 (def invalid
-  "A special value indicating that a value is not valid"
+  "A special value indicating that a value is not valid. This will not
+  be stored as a value, but is returned by some reporter functions to
+  indicate that there is no valid value."
   ::invalid)
 
 (defn data-valid? [data]
   (:valid data))
 
 (defn reporter-valid? [r]
-  (data-valid? @(:data r)))
+  (if (reporter? r)
+    (data-valid? @(:data r))
+    (not= r invalid)))
 
 (defn value-valid? [value]
   (not= value invalid))
@@ -223,27 +227,6 @@
   (if (reporter? r)
     (data-value-when-valid @(:data r) )
     r))
-
-;;; TODO: !!! replace all calls to these with one of the above new
-;;;           functions.
-(defn data-value [data]
-  (if (:valid data)
-    (do (assert (not (= invalid (:value data))))
-        (:value data))
-    invalid))
-
-(defn reporter-value
-  "Return the current value of the reporter. If the argument is not a
-  reporter, treat it as a constant reporter, and return it."
-  [r]
-  (if (reporter? r)
-    (data-value @(:data r))
-    r))
-
-(defn valid? [r]
-  "Return whether a reporter's value is valid. If given a plain value,
-  this returns whether that value is valid."
-  (not= (reporter-value r) invalid))
 
 (defn data-attended? [data]
   (not (empty? (:attendees data))))

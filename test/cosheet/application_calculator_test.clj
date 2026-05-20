@@ -5,7 +5,7 @@
                       [task-queue :refer [current-tasks
                                           make-priority-task-queue]]
                       [reporter :refer [invalid make-reporter
-                                        reporter-data reporter-value
+                                        reporter-data reporter-value-or-invalid
                                         reporter-atom set-value! set-attendee!
                                         set-calculator-data-if-needed!
                                         remove-attendee! inform-attendees
@@ -31,21 +31,21 @@
                          :calculator-data cd)]
     (register-copy-value r2 r1)
     (compute cd)
-    (is (= (reporter-value r2) :v))
+    (is (= (reporter-value-or-invalid r2) :v))
     (set-value! r1 :w)
     (compute cd)
-    (is (= (reporter-value r2) :w))
+    (is (= (reporter-value-or-invalid r2) :w))
     (swap! (reporter-atom r2) dissoc :value-source)
     (register-copy-value r2 r1)
     (compute cd)
     (set-value! r1 :x)
     (compute cd)
-    (is (= (reporter-value r2) :w))
+    (is (= (reporter-value-or-invalid r2) :w))
     (register-demand-former-application-value r3 r1 cd)
     (compute cd)
     ;; r3 had r1 as its old source, so the copy value should throw away
     ;; the result.
-    (is (= (reporter-value r3) invalid))
+    (is (= (reporter-value-or-invalid r3) invalid))
     (is (check
          ((:attendees (reporter-data r1)) [:demand-former-application-value r3])
          [Double/MAX_VALUE [universal-category] null-callback]))))
@@ -76,16 +76,16 @@
     (compute cd)
     (is (= (:needed-values (reporter-data r2)) #{}))
     (is (check (:subordinate-values (reporter-data r2)) {r1 [:v (any)]}))
-    (is (= (reporter-value r2) :v))
+    (is (= (reporter-value-or-invalid r2) :v))
     (set-value! r1 :v1)
     (compute cd)
     (is (= (:needed-values (reporter-data r2)) #{}))
     (is (check (:subordinate-values (reporter-data r2)) {r1 [:v1 (any)]}))
-    (is (= (reporter-value r2) :v1))1
+    (is (= (reporter-value-or-invalid r2) :v1))1
     (inform-attendees r1)
     (is (= (:needed-values (reporter-data r2)) #{}))
     (is (check (:subordinate-values (reporter-data r2)) {r1 [:v1 (any)]}))
-    (is (= (reporter-value r2) :v1))
+    (is (= (reporter-value-or-invalid r2) :v1))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
     (clear-cd-queue)
@@ -94,11 +94,11 @@
     (register-copy-value r2 r0)
     (register-copy-value r3 r2)
     (compute cd)
-    (is (= (reporter-value r3) :r0))
+    (is (= (reporter-value-or-invalid r3) :r0))
     (set-value! r1 invalid)
     (compute cd)
-    (is (= (reporter-value r2) invalid))
-    (is (= (reporter-value r3) invalid))
+    (is (= (reporter-value-or-invalid r2) invalid))
+    (is (= (reporter-value-or-invalid r3) invalid))
     (is (= (:value-source (reporter-data r2)) nil))
     (is (= (:former-application-value
             (reporter-data r2)) r0)) ;; Last known source.
@@ -108,8 +108,8 @@
     (set-value! r1 :v1)
     (compute cd)
     (is (= (:value-source (reporter-data r2)) r0)) ;; Same source.
-    (is (= (reporter-value r2) :r0))
-    (is (= (reporter-value r3) :r0))))
+    (is (= (reporter-value-or-invalid r2) :r0))
+    (is (= (reporter-value-or-invalid r3) :r0))))
 
 (deftest run-application-if-ready-test
   (let [cd (make-calculator-data (make-priority-task-queue 0))
@@ -134,15 +134,15 @@
     (is (= (:priority (reporter-data r)) 7))
    ;; Try when the application is not ready.
     (run-application-if-ready r cd)
-    (is (= (reporter-value r) invalid))
+    (is (= (reporter-value-or-invalid r) invalid))
     (is (= (:dependent-depth (reporter-data r)) nil))
     (swap! (reporter-atom r) assoc :needed-values #{})
     ;; Try when it is ready and computes a constant.
     (run-application-if-ready r cd)
-    (is (= (reporter-value r) 2))
+    (is (= (reporter-value-or-invalid r) 2))
     (is (= (:dependent-depth (reporter-data r)) 1))
     (compute cd)
-    (is (= (reporter-value rc) 2))
+    (is (= (reporter-value-or-invalid rc) 2))
     (is (= (:dependent-depth (reporter-data r)) 1))    
     ;; Try when it is ready and computes a reporter.
     (swap! (reporter-atom r0)
@@ -162,13 +162,13 @@
            #(into % {:value-source nil
                      :valid false}))
     (run-application-if-ready r cd)
-    (is (= (reporter-value rc) 3))
+    (is (= (reporter-value-or-invalid rc) 3))
     (is (= (:attendees (reporter-data r0)) nil))
     (is (= (:calculator-data (reporter-data r1)) cd))
     (run-application-if-ready r1 cd)
-    (is (= (reporter-value r) 3))
+    (is (= (reporter-value-or-invalid r) 3))
     (compute cd)
-    (is (= (reporter-value rc) 3))))
+    (is (= (reporter-value-or-invalid rc) 3))))
 
 (deftest application-calculator-test
   (let [cd (make-calculator-data (make-priority-task-queue 0))
@@ -188,7 +188,7 @@
     ;; Run manager when there is no interest.
     (do-application-calculate r cd)
     (compute cd)
-    (is (= (reporter-value r) invalid))
+    (is (= (reporter-value-or-invalid r) invalid))
     ;; Run when there is interest.
     ;; Give rc priority 6
     (set-attendee! rc :test 6 (fn [& _] nil))
@@ -198,7 +198,7 @@
     (is (= (:needed-values (reporter-data r)) #{}))
     (is (= (:subordinate-values (reporter-data r)) {r0 [1 0]}))
     (run-application-if-ready r cd)
-    (is (= (reporter-value r) 2))
+    (is (= (reporter-value-or-invalid r) 2))
     (is (= (:dependent-depth (reporter-data r)) 1))    
     ;; Run when there is no interest again.
     (remove-attendee! rc :test)
@@ -234,7 +234,7 @@
     (set-calculator-data-if-needed! r-final cd)
     (set-attendee! r-final :notification 0
                    (fn [& {:keys [reporter]}]
-                     (record (reporter-value reporter))))
+                     (record (reporter-value-or-invalid reporter))))
     ;; We should have no history yet.
     (compute cd)
     (is (= @history []))
@@ -274,13 +274,13 @@
         r2 (app-R identity r1)]
     (request r2 cd)
     (compute cd)
-    (is (= (reporter-value r2) invalid))
+    (is (= (reporter-value-or-invalid r2) invalid))
     (set-value! r0 nil)
     (compute cd)
-    (is (= (reporter-value r2) nil))
+    (is (= (reporter-value-or-invalid r2) nil))
     (set-value! r0 1)
     (compute cd)
-    (is (= (reporter-value r2) 1))))
+    (is (= (reporter-value-or-invalid r2) 1))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups
@@ -314,14 +314,14 @@
                 (fn [answers-map [d pos]]
                   (assoc answers-map [d pos]
                          (if (zero? d)
-                           (reporter-value (base pos))
+                           (reporter-value-or-invalid (base pos))
                            (answers-map [(- d 1)
                                          (answers-map [(- d 1) pos])]))))
                 {}
                 arguments))
             (right-results? [requests answers-map]
               (doseq [[[d pos] reporter] requests]
-                (is (= (reporter-value reporter)
+                (is (= (reporter-value-or-invalid reporter)
                        (answers-map [d pos])))))
             (check [requests answers-map]
               (right-results? requests answers-map)

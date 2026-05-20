@@ -1,7 +1,7 @@
 (ns cosheet.propagation-test-utils
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
-            (cosheet [reporter :refer [reporter? valid? invalid
+            (cosheet [reporter :refer [reporter? reporter-valid? invalid
                                         data-valid? same-state?
                                         reporter-data
                                         data-value-or-invalid
@@ -111,7 +111,7 @@
   (let [data (reporter-data reporter)]
     (reduce
      (fn [checked needed]
-       (is (not (valid? (reporter-value-or-invalid needed))))
+       (is (not (reporter-valid? (reporter-value-or-invalid needed))))
        (is (contains? (:attendees (reporter-data needed)) reporter))
        (conj need-checking needed))
      need-checking

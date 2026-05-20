@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [orderable :as orderable]
-             [reporter :refer [make-reporter set-value! reporter-value]]
+             [reporter :refer [make-reporter set-value! reporter-value-or-invalid]]
              [task-queue :refer [make-priority-task-queue]]
              [calculator :refer [make-calculator-data request compute]]
              [store :refer [new-element-store new-mutable-store store-reset!
@@ -119,7 +119,7 @@
      (doseq [[rep dep] data]
        (request rep cd))
        (compute cd)
-       (apply renderer spec (map #(reporter-value (first %)) data)))))
+       (apply renderer spec (map #(reporter-value-or-invalid (first %)) data)))))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -128,13 +128,13 @@
         cd (make-calculator-data (make-priority-task-queue 0))]
     (request count-R cd)
     (compute cd)
-    (is (= (reporter-value count-R) 2))
+    (is (= (reporter-value-or-invalid count-R) 2))
     (set-value! query-R '(nil (2 ("c2" :label))))
     (compute cd)
-    (is (= (reporter-value count-R) 1))
+    (is (= (reporter-value-or-invalid count-R) 1))
     (store-reset! mutable-store (new-element-store))
     (compute cd)
-    (is (= (reporter-value count-R) 0))))
+    (is (= (reporter-value-or-invalid count-R) 0))))
 
 (deftest render-batch-count-DOM-test
   (let [dom (run-renderer (second (batch-count-component q1)) s)]

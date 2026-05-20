@@ -1,6 +1,6 @@
 (ns cosheet.map-reporter
   (:require (cosheet
-             [reporter :refer [make-reporter reporter-value
+             [reporter :refer [make-reporter reporter-value-or-invalid
                                change-data! change-data-control-return!
                                change-value!]]
              [reporter-macros :refer [app-R]]
@@ -20,7 +20,7 @@
   (make-reporter :value initial))
 
 (defn map-reporter-get-current [map-state key]
-  (reporter-value (key (reporter-value map-state))))
+  (reporter-value-or-invalid (key (reporter-value-or-invalid map-state))))
 
 (defn map-reporter-get [map-state key]
   (app-R key (category-change-R [key] map-state)))

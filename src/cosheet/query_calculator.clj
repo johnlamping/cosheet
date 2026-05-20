@@ -1,7 +1,7 @@
 (ns cosheet.query-calculator
-  (:require (cosheet [reporter :refer [reporter-data reporter-value
+  (:require (cosheet [reporter :refer [reporter-data reporter-latest-value
                                         data-value-or-invalid
-                                        valid?
+                                        reporter-valid?
                                         set-attendee-and-call!
                                         remove-attendee!
                                         inform-attendees
@@ -24,7 +24,7 @@
 ;;; set of ids whose items satisfy the term.
 
 ;;; When the reporter's value changes to a valid value, the change's
-;;; description and its changed categories are both the set all ids
+;;; description and its changed categories are both the set or all ids
 ;;; that either got added or removed since the last valid value.
 
 ;;; This manager adds following fields to the reporter:
@@ -38,20 +38,17 @@
   "The function to call asynchronously after the store has changed."
   [reporter store]
   (with-latest-value
-    [immutable (reporter-value store)]
+    [immutable (reporter-latest-value store)]
     (modify-and-act!
      reporter
      (fn [data]
        (let [{:keys [term value ids-to-reevaluate]} data
              value-or-invalid (data-value-or-invalid data)
-             valid-store (valid? store)
              [new-value changed-ids]
              (cond
-               (not valid-store)
-               [invalid #{}]
                (= #{} ids-to-reevaluate)
                [value #{}]
-               (and (valid? value) ids-to-reevaluate)
+               (and (reporter-valid? value) ids-to-reevaluate)
                ;; We have an old value, and we know how the store changed.
                ;; we can do an update, rather than a whole re-query.
                (reduce (fn [[new-value changed-ids] id]
@@ -78,12 +75,9 @@
            data
            (cond-> (-> data
                        (update-new-further-action
-                        inform-attendees reporter changed-ids changed-ids))
-             valid-store
-             (update-value new-value)
-             (not valid-store)
-             (update-to-invalid)
-             (valid? new-value)
+                        inform-attendees reporter changed-ids changed-ids)
+                       (update-value new-value))             
+             (reporter-valid? new-value)
              (assoc :ids-to-reevaluate #{}))))))))
 
 (defn store-change-callback

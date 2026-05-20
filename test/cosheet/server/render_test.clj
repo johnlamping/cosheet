@@ -7,7 +7,7 @@
              [test-utils :refer [check any as-set]]
              [store :refer [new-mutable-store]]
              store-impl
-             [reporter :refer [reporter-data reporter-value]]
+             [reporter :refer [reporter-data reporter-value-or-invalid]]
              [calculator :refer [make-calculator-data computation-value]]
              [task-queue :refer [make-priority-task-queue]]
              [utils :refer [call-pseudo-closure]])

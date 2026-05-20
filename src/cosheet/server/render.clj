@@ -271,10 +271,9 @@
 ;;;                               accept a sequence (for sequential
 ;;;                               sub-elements) with sub-sequenques
 ;;;                               (for parallelism).
-;;;            :render-dom  Optional function that takes this
-;;;                         specification and the mutable store and returns
-;;;                         a reporter whose value is the dom.
-;;;                         Defaults to item-render/render-item-DOM-R
+;;;            :render-dom  Function that takes this specification and
+;;;                         the mutable store and returns a reporter
+;;;                         whose value is the dom.
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
@@ -338,9 +337,9 @@
 
 (defn dom-renderer
   [dom-specification]
-  (assert (:render-dom dom-specification) dom-specification)
-  (or (:render-dom dom-specification)
-      render-item-DOM-R))
+  (if-let [renderer (:render-dom dom-specification)]
+    renderer
+    (assert false dom-specification)))
 
 ;;; NOTE: action-data-getter is defined in action_data.clj, because it
 ;;; both needs a function defined there and is used there. So putting

@@ -380,9 +380,14 @@
     [:div {:class "horizontal-value-last"} body]
     body))
 
-(defn one-column-of-two-column-DOMs
-  [hierarchy node-fn wrapper-fn specification]
-  (map (fn [node]
+(defn one-column-from-hierarchy-DOM
+   "Given a hierarchy of entity info maps for a sequence of elements,
+  organized by their labels, make a column of doms, based on running
+  the given functions on each node, and to wrap each collection of
+  doms."
+  [hierarchy node-fn wrapper-fn specification width-multiplier]
+  (let [specification (update specification :width #(* % width-multiplier))]
+    (map (fn [node]
            (hierarchy-node-DOM
             node
             (fn [node child-doms specification]
@@ -391,26 +396,14 @@
                  wrapper-fn
                  (cons dom (apply concat child-doms)))))
             specification))
-         hierarchy))
+         hierarchy)))
 
-(defn labeled-elements-two-column-elements-DOMs
-  "Return the item doms for the node and all its children."
-  [hierarchy specification]
-  (one-column-of-two-column-DOMs
-   hierarchy hierarchy-leaf-elements-DOM horizontal-value-wrapper
-   (update specification :width #(* % 0.6875))))
-
-(defn labeled-elements-two-column-label-DOMs
-  "The specification should be the one for the items."
-  [hierarchy specification]
-  (one-column-of-two-column-DOMs
-   hierarchy labeled-items-properties-DOM horizontal-label-wrapper
-   (-> specification
-       transform-specification-for-non-contained-labels
-       (update :width #(* % 0.25)))))
-
-(defn labeled-elements-for-two-column-DOMs
-  "The specification should apply to each item the hierarchy is over."
+(defn hierarchical-elements-in-two-column-DOM
+  "Given a hierarchy of entity info maps for a sequence of elements,
+  organized by their labels, make a two column dom for them; one
+  column for the labels, and one for the contents and
+  sub-elements. The specification should apply to each item the
+  hierarchy is over."
   [hierarchy specification]
   (let [;; If there is only one item below a top level node, we put
         ;; any item specific attributes, including labels, on the
@@ -421,10 +414,16 @@
                                       (= (count leaves) 1))
                              (:item (first leaves))))
                         hierarchy)]
-    (let [label-doms (labeled-elements-two-column-label-DOMs
-                      hierarchy specification)
-          items-doms (labeled-elements-two-column-elements-DOMs
-                       hierarchy specification)]
+    (let [label-spec (transform-specification-for-non-contained-labels
+                      specification)
+          label-doms (one-column-from-hierarchy-DOM
+                      hierarchy
+                      labeled-items-properties-DOM horizontal-label-wrapper
+                      label-spec 0.25)          
+          items-doms (one-column-from-hierarchy-DOM
+                      hierarchy
+                      hierarchy-leaf-elements-DOM horizontal-value-wrapper
+                      specification 0.6875)]
       (map
        (fn [label-dom items-dom only-item]
          (cond-> [:div {:class "horizontal-labels-element label wide"}
@@ -437,8 +436,9 @@
                             (map (constantly only-item) doms))
                           items-doms only-items))))))
 
-(defn labeled-elements-for-one-column-DOMs
-  "The specification should apply to each item the hierarchy is over."
+(defn hierarchical-elements-in-one-column-DOM
+  "The specification
+  should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [top-level-spec (assoc specification
                               :must-show-label (not (:immutable specification))
@@ -454,25 +454,25 @@
 ;;; The next two functions make stacks of components for entities.
 
 (defn non-label-elements-DOM
-  "Make a dom for a sequence of items, all of which must not be labels.
+  "Make a dom for a sequence of elements, all of which must not be labels.
    If implied-template is non-nil, don't show elements implied by it.
    If must-show-label is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
-  [entities implied-template must-show-label orientation specification]
-  (let [ordered-entities (ordered-entities entities)
-        all-labels (map semantic-label-elements ordered-entities)
+  [elements implied-template must-show-label orientation specification]
+  (let [ordered-elements (ordered-entities elements)
+        all-labels (map semantic-label-elements ordered-elements)
         excludeds (map (if implied-template
                          #(condition-satisfiers % implied-template)
                          (constantly nil))
-                       ordered-entities)]
+                       ordered-elements)]
     (let [labels (map (fn [all exclusions]
                         (clojure.set/difference (set all) (set exclusions)))
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-label))
-        (item-stack-DOM ordered-entities excludeds orientation specification)
-        (let [item-maps (item-maps-by-elements ordered-entities labels)
+        (item-stack-DOM ordered-elements excludeds orientation specification)
+        (let [item-maps (item-maps-by-elements ordered-elements labels)
               augmented (map (fn [item-map excluded]
                                (assoc item-map :exclude-elements excluded))
                              item-maps excludeds)
@@ -481,8 +481,8 @@
                      :vertical
                      ((if (or (< (:width specification) 1.0)
                               (and no-labels (not (= must-show-label :wide))))
-                        labeled-elements-for-one-column-DOMs
-                        labeled-elements-for-two-column-DOMs)
+                        hierarchical-elements-in-one-column-DOM
+                        hierarchical-elements-in-two-column-DOM)
                       hierarchy specification)
                      :horizontal
                      (labeled-items-for-horizontal-DOMs
@@ -525,7 +525,7 @@
       (virtual-label-DOM-component
        (add-attributes specification {:class "elements-wrapper"})))))
 
-;;; The next functions handle the parts of the dom for an entity.
+;;; The next functions handle the parts of the dom for an element
 
 (defn element-primitive-content-DOM
   "Make dom for a primitive that is the content part of an item."
@@ -543,10 +543,10 @@
      (if anything "\u00A0..." (str primitive))]))
 
 (defn css-class-for-name
-  "Return the class to use in formatting the name of this entity."
-  [entity]
-  (cond (seq (content->elements entity link-type)) "label"
-        (seq (content->elements entity object-type)) "class"
+  "Return the class to use in formatting the name of this object"
+  [object]
+  (cond (seq (content->elements object link-type)) "label"
+        (seq (content->elements object object-type)) "class"
         true "name"))
 
 (defn render-object-reference-DOM-R

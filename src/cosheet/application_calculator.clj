@@ -334,17 +334,19 @@
   for use as an argument of the second."
   [reporter from cd]
   (with-latest-value
-    [[priority callback]
+    [priority
      (let [data (reporter-data reporter)]
        (when (or (contains? (get data :needed-values #{}) from)
                  (contains? (:subordinate-values data) from))
-         ;; We make the priority of calculating our subordinate
-         ;; one worse. That way, shallow computations will finish before
-         ;; deep ones, as their subordinates will have better priorities.
-         [(+ (:priority data) 1) copy-subordinate-callback]))]
-    (if (nil? callback)
+         ;; We make the priority of calculating our subordinate be one
+         ;; worse than ours. That way, shallow computations will
+         ;; finish before deep ones, as their subordinates will have
+         ;; better priorities.
+         (+ (:priority data) 1)))]
+    (if (nil? priority)
       (remove-attendee! from reporter)
-      (set-attendee-and-call! from reporter priority callback))))
+      (set-attendee-and-call! from reporter priority
+                              copy-subordinate-callback))))
 
 (defn request-each-register-copy-subordinate
   "Register all the subordinateds this reporter needs."

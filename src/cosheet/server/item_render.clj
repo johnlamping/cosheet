@@ -255,10 +255,11 @@
           dom])))
     (select-keys specification [:class])))
 
-(defn labeled-items-properties-DOM
-  "Given a hierarchy node for labels, Return DOM for example elements
-  that give rise to the properties of the node, given a specification
-  that applies to the overall node."
+(defn hierarchical-elements-property-elements-DOM
+  "Given a node of a hierarchy of entity info maps for a sequence of
+  elements organized by their labels, Return DOM for example elements
+  that give rise to the properties of the node, which will be
+  labels. The specification should apply to the overall node."
   [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
@@ -285,13 +286,13 @@
       (add-attributes dom {:class "label"}))))
 
 (defn hierarchy-leaf-elements-DOM
-  "Given a hierarchy node with labels as the properties and leaves as
-  items of elements, generate DOM for leaf elements, or a virtual DOM
-  if there are no leaves. The leaves of the node may contain an
-  additional :exclude-elements field that gives more of the item's
-  elements not to show, typically the ones that satisfy the :template
-  of the specification. The specification should be the one for the
-  overall hierarchy."
+  "Given a node of a hierarchy of entity info maps for a sequence of
+  elements organized by their labels, generate DOM for its leaf
+  elements, or a virtual DOM if there are no leaves. The leaves of the
+  node may contain an additional :exclude-elements field that gives
+  more of the item's elements not to show, typically the ones that
+  satisfy the :template of the specification. The specification should
+  be the one for the overall hierarchy."
   [hierarchy-node specification]
   (assert (empty? (:excluded-element-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves hierarchy-node)
@@ -316,11 +317,14 @@
                            leaves)]
         (item-stack-DOM items excludeds :vertical leaf-spec)))))
 
-(defn labeled-elements-whole-hierarchy-node-DOM
-  "Return the dom for everything at and under a labeled items hierarchy node.
-  orientation gives which way to lay out the contained items.  The
-  specification must give :orientation (which is totally different
-  from the :orientation of an element)."
+(defn hierarchical-elements-node-f-DOM
+  "This is a node-f for hierarchy-node-DOM. It takes a node of a
+  hierarchy of entity info maps for a sequence of elements organized
+  by their labels and it takes doms for all its child nodes. It makes
+  the dom for the leaves, and assembles that with the child doms. The
+  specification must give orientation in which to lay out the
+  contained elements. (That is totally different from the orientation
+  of an element, which is either :source or :target)."
   [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
   (assert (empty? (:excluded-element-ids specification)) specification)
@@ -336,7 +340,7 @@
                                                 orientation)
           properties-dom (when (or (seq (:properties node))
                                    must-show-label)
-                           (labeled-items-properties-DOM
+                           (hierarchical-elements-property-elements-DOM
                             node specification))]
       (cond-> (if (empty? (:properties node))
                 (if must-show-label
@@ -352,10 +356,10 @@
         only-item
         (add-attributes (select-keys specification [:class]))))))
 
-(defn labeled-items-for-horizontal-DOMs
+(defn hierarchical-elements-in-horizontal-DOM
   [hierarchy specification]
   (map #(hierarchy-node-DOM
-         % labeled-elements-whole-hierarchy-node-DOM
+         % hierarchical-elements-node-f-DOM
          (fn [node specification] (assoc specification :must-show-label false))
          (assoc specification
                 :must-show-label (not (:immutable specification))
@@ -374,17 +378,17 @@
 
 (defn horizontal-value-wrapper
   "Return a modifier for a value in a horizontal label layout that is 
-  logically part of a larger entity."
+   logically part of a larger entity."
   [body is-first is-last]
   (if (and is-last (not is-first))
     [:div {:class "horizontal-value-last"} body]
     body))
 
-(defn one-column-from-hierarchy-DOM
-   "Given a hierarchy of entity info maps for a sequence of elements,
-  organized by their labels, make a column of doms, based on running
-  the given functions on each node, and to wrap each collection of
-  doms."
+(defn one-column-of-hierarchy-two-column-DOM
+  "Given a hierarchy of entity info maps for a sequence of elements,
+   organized by their labels, make a column of doms, based on running
+   the node-fn on each node, and wrapper-fn on each collection of
+   doms."
   [hierarchy node-fn wrapper-fn specification width-multiplier]
   (let [specification (update specification :width #(* % width-multiplier))]
     (map (fn [node]
@@ -416,11 +420,11 @@
                         hierarchy)]
     (let [label-spec (transform-specification-for-non-contained-labels
                       specification)
-          label-doms (one-column-from-hierarchy-DOM
+          label-doms (one-column-of-hierarchy-two-column-DOM
                       hierarchy
-                      labeled-items-properties-DOM horizontal-label-wrapper
+                      hierarchical-elements-property-elements-DOM horizontal-label-wrapper
                       label-spec 0.25)          
-          items-doms (one-column-from-hierarchy-DOM
+          items-doms (one-column-of-hierarchy-two-column-DOM
                       hierarchy
                       hierarchy-leaf-elements-DOM horizontal-value-wrapper
                       specification 0.6875)]
@@ -437,8 +441,9 @@
                           items-doms only-items))))))
 
 (defn hierarchical-elements-in-one-column-DOM
-  "The specification
-  should apply to each item the hierarchy is over."
+  "Given a hierarchy of entity info maps for a sequence of elements,
+  organized by their labels, make a one column dom for them. The
+  specification should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [top-level-spec (assoc specification
                               :must-show-label (not (:immutable specification))
@@ -446,7 +451,7 @@
         child-specification-f (fn [_ specification]
                                 (dissoc specification :must-show-label))]
     (map #(hierarchy-node-DOM %
-                              labeled-elements-whole-hierarchy-node-DOM
+                              hierarchical-elements-node-f-DOM
                               child-specification-f
                               top-level-spec)
          hierarchy)))
@@ -485,7 +490,7 @@
                         hierarchical-elements-in-two-column-DOM)
                       hierarchy specification)
                      :horizontal
-                     (labeled-items-for-horizontal-DOMs
+                     (hierarchical-elements-in-horizontal-DOM
                       (replace-hierarchy-leaves-by-nodes hierarchy)
                       specification))]
           (nest-if-multiple-DOM doms orientation))))))

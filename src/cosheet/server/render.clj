@@ -189,15 +189,6 @@
 ;;; store as part of its output. For example, it might want to create
 ;;; some items for the action to act on.
 
-;;; There is a default for each of the functions that a dom
-;;; specification can have. For :get-rendering-data, the default
-;;; returns the store and a dependency on the :item-id or
-;;; :relative-id, checking that it is an item id. For :render-dom, the
-;;; default renders the item corresponding to the :relative-id, minus
-;;; any elements in :excluded-element-ids. For :get-action-data, the
-;;; default returns the set of ids that are all represented by the
-;;; displayed item.
-
 ;;; Each component is uniquely identified by a client id, which is
 ;;; added by the dom manager. There must never be two components or
 ;;; doms with the same id, even during the middle of updates, or all
@@ -250,14 +241,17 @@
 ;;;                         all of a named object, we want to show
 ;;;                         the label of the name, so then we don't
 ;;;                         use this.
+;;; :exclude-elements-by-ids  If present, this is a list of ids of
+;;;                         elements of the entity being shown that should
+;;;                         not be displayed.
 ;;;     :auxiliary-item-id  If this is present, :relative-id will be a
 ;;;                         keyword, and this field will give an id
 ;;;                         needed by the component. Its meaning
 ;;;                         depends on :relative-id's keyword:
-;;;                         :content - the id of the element for which
-;;;                         this dom should show the content.
-;;;                         :virtual - the id of the item that the new
-;;;                         item should be adjacent to in the store.
+;;;                         :content - This is the id of the element whose
+;;;                         content should be shown.
+;;;                         :virtual - This is the id of the item that
+;;;                         the new item should be adjacent to in the store.
 ;;;          :parallel-ids  Sometimes a dom pertains to more ids than its
 ;;;                         parent does, like a label dom that wraps
 ;;;                         several items. In that case, :parallel-ids

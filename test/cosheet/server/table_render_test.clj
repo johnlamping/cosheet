@@ -328,7 +328,7 @@
              [:div {:class "indent-wrapper"}
               [:component {:template `(~'anything (~age-label-object))
                            :width 0.75
-                           :excluded-element-ids [(any)]
+                           :exclude-elements-by-ids [(any)]
                            :relative-id rc1-id
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
@@ -419,7 +419,7 @@
                 :relative-id c2-id
                 :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
-                :excluded-element-ids [c2-name-id]}]]]
+                :exclude-elements-by-ids [c2-name-id]}]]]
             ;; A column with an additional label
             [:component
              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -429,7 +429,7 @@
               :relative-id c3-id
               :render-dom render-item-DOM-R
               :get-action-data (default-AD)
-              :excluded-element-ids [c3-name-id]
+              :exclude-elements-by-ids [c3-name-id]
               :class "column-header leaf"}]
             ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
@@ -458,7 +458,7 @@
                 :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
                 :relative-id c4-id
-                :excluded-element-ids [(any)]}]]]]]
+                :exclude-elements-by-ids [(any)]}]]]]]
           ;; One column with two labels
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                        :column-ids [c5-id]
@@ -682,7 +682,7 @@
              :get-action-data (default-AD)
              :template `("" (~name-label-object))
              :width 0.75
-             :excluded-element-ids
+             :exclude-elements-by-ids
              [(:item-id (first (matching-elements
                                 `(~name-label-object) joe-joe)))]
              :get-do-batch-edit-action-data
@@ -708,7 +708,7 @@
                :get-action-data (default-AD)
                :template `("" (~name-label-object) (~id-label-object))
                :width 0.75
-               :excluded-element-ids
+               :exclude-elements-by-ids
                (as-set
                 [(:item-id (first (matching-elements
                                    `(~name-label-object) joe-joseph)))

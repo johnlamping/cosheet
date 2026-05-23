@@ -170,7 +170,7 @@
              :get-action-data (default-AD)
              :class "label"
              :omit-universal-elements true
-             :excluded-element-ids [(any)]
+             :exclude-elements-by-ids [(any)]
              :relative-id q2-c1-l
              :immutable true
              :width 0.75}]
@@ -182,7 +182,7 @@
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)
                          :immutable true
-                         :excluded-element-ids [q2-c1-l]
+                         :exclude-elements-by-ids [q2-c1-l]
                          :width 0.75}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test

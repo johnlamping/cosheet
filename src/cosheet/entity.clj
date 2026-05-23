@@ -337,6 +337,12 @@
       ;; :label no longer marks labels.
       (marked-as-type? entity)))
 
+(defn name-element?
+  "Return whether the entity is an element that counts as a name.
+  Name elements have a sub-element whose content is the name-label object."
+  [entity]
+  (seq (content->elements entity name-label)))
+
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it
   as much as possible without leaving ambiguities. This can turn

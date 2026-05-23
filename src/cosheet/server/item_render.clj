@@ -6,11 +6,11 @@
     [entity :refer [id->entity id->updating-entity-R
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
-                    label-object?
+                    label-object? name-element?
                     elements label->elements content->elements
                     name-label link-type object-type
                     make-object-list recursively-in-different-store
-                    entity-complexity 
+                    entity-complexity
                     add-elements-to-entity]]
     [query :refer [matching-elements]]
     [utils :refer [multiset-diff assoc-if-non-empty
@@ -80,13 +80,13 @@
   "Make a component dom to display the given item, minus the excluded
   elements."
   [item excluded-elements specification]
-  (assert (empty? (:excluded-element-ids specification))
-          [excluded-elements specification])
+  (assert (empty? (:exclude-elements-by-ids specification))
+          [excluded-elements (:exclude-elements-by-ids specification)])
   (assert (not (:get-action-data specification))
           (:get-action-data specification))
   (let [new-spec (cond-> specification
                    (seq excluded-elements)
-                   (assoc :excluded-element-ids
+                   (assoc :exclude-elements-by-ids
                           (vec (map :item-id excluded-elements))))]
     (item-component item new-spec)))
 
@@ -136,6 +136,14 @@
     [labels-dom inner-dom orientation]
   (add-labels-DOM labels-dom inner-dom
                   (if (= orientation :vertical) :vertical-wrapped orientation)))
+
+(defn add-right-labels-DOM
+  "Like add-labels-DOM with :vertical-wrapped, but indents the inner
+  dom on the right rather than the left."
+  [labels-dom inner-dom]
+  [:div {:class "wrapped-element label"}
+   labels-dom
+   [:div {:class "indent-wrapper-right"} inner-dom]])
 
 (defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
@@ -294,7 +302,7 @@
   satisfy the :template of the specification. The specification should
   be the one for the overall hierarchy."
   [hierarchy-node specification]
-  (assert (empty? (:excluded-element-ids specification)) specification)
+  (assert (empty? (:exclude-elements-by-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
@@ -327,7 +335,7 @@
   of an element, which is either :source or :target)."
   [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
-  (assert (empty? (:excluded-element-ids specification)) specification)
+  (assert (empty? (:exclude-elements-by-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
@@ -460,10 +468,10 @@
 
 (defn non-label-elements-DOM
   "Make a dom for a sequence of elements, all of which must not be labels.
-   If implied-template is non-nil, don't show elements implied by it.
-   If must-show-label is true, show a space for labels, even if
-   there are none. If, additionally, it is :wide, show them with substantial
-   space, if there is significant space available."
+  If implied-template is non-nil, don't show their labels implied by
+  it.  If must-show-label is true, show a space for labels, even if
+  there are none. If, additionally, it is :wide, show them with
+  substantial space, if there is significant space available."
   [elements implied-template must-show-label orientation specification]
   (let [ordered-elements (ordered-entities elements)
         all-labels (map semantic-label-elements ordered-elements)
@@ -695,11 +703,11 @@
 (defn element-DOM
   "Render a dom spec given the immutable entity for an item (which may
   be an exemplar of a group of items)."
-  [entity {:keys [excluded-element-ids] :as specification}]
+  [entity {:keys [exclude-elements-by-ids] :as specification}]
   "Produce dom for an entity that is not a named object"
   (let [elements (remove
                   (set (map #(id->entity % (:store entity))
-                            excluded-element-ids))
+                            exclude-elements-by-ids))
                   (semantic-elements entity))
         [labels non-labels] (separate-by label-element? elements)
         labels (cond->> labels
@@ -708,6 +716,33 @@
     (cond-> (element-content-labels-and-non-label-elements-DOM
              entity labels non-labels
              (dissoc specification :class :omit-universal-elements))
+      (:class specification)
+      (add-attributes {:class (:class specification)}))))
+
+(defn object-DOM
+  "Render a dom for an object. Shows labels (classes) wrapping names,
+  then other elements. Labels are indented to the right."
+  [entity {:keys [exclude-elements-by-ids] :as specification}]
+  (let [excluded (set (map #(id->entity % (:store entity))
+                           exclude-elements-by-ids))
+        all-elements (remove excluded (semantic-elements entity))
+        [labels non-labels] (separate-by label-element? all-elements)
+        [names others] (separate-by name-element? non-labels)
+        elem-spec (transform-specification-for-elements specification)
+        names-dom (when (seq names)
+                    (non-label-elements-DOM
+                     names nil false :vertical elem-spec))
+        others-dom (when (seq others)
+                     (non-label-elements-DOM
+                      others nil false :vertical elem-spec))
+        inner-dom (nest-if-multiple-DOM
+                   (remove nil? [names-dom others-dom]) :vertical)]
+    (cond-> (if (seq labels)
+              (add-right-labels-DOM
+               (label-stack-DOM
+                labels (transform-specification-for-labels specification))
+               inner-dom)
+              inner-dom)
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
@@ -726,8 +761,10 @@
                   (specification-item-id specification) store)]
     (cond (element? entity)
           (element-DOM entity specification)
+          (object? entity)
+          (object-DOM entity specification)
           :else
-          (assert false "Can only handle elements."))))
+          (assert false "Can only handle elements and objects."))))
 
 (defmethod print-method
   cosheet.server.item_render$render_item_DOM_R
@@ -736,9 +773,11 @@
 
 (defn horizontal-label-hierarchy-node-DOM
   "Generate the DOM for a node in a hierarchy that groups items by their
-   labels, has at most one leaf per node and doesn't have both leaves and
-   children.
-   Don't generate or include the DOM for its children."
+  labels, has at most one leaf per node and doesn't have both leaves and
+  children.
+  Don't generate or include the DOM for its children.
+  This is used by column headers and the like, child nodes won't be
+  nested inside the nodes of their parents."
   [node {:keys [top-level] :as specification}]
   (let [specification (dissoc specification :top-level)
         example-elements (hierarchy-node-example-elements node)
@@ -756,7 +795,7 @@
                             leaf
                             (cond-> (assoc specification :width 0.75)
                               (seq ancestor-ids)
-                              (assoc :excluded-element-ids ancestor-ids)))))
+                              (assoc :exclude-elements-by-ids ancestor-ids)))))
         descendant-ids (map #(-> % :item :item-id)
                             (hierarchy-node-descendants node)) ]
     (cond

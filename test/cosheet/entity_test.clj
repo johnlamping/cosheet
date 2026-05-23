@@ -578,6 +578,13 @@
     (is (not (label-element? `(~(make-object-list
                          `(("fred" ~(special-object "name"))))))))))
 
+(deftest name-element?-test
+  (let [special-object (fn [id] (id->object (make-item-id id) nil))]
+    (is (name-element? `("foo" (~(special-object "name")))))
+    (is (not (name-element? "foo")))
+    (is (not (name-element? `("foo"))))
+    (is (not (name-element? `(~(special-object "name")))))))
+
 (deftest make-element-list-test
   (is (= (make-element-list :source 1 nil)
          1))

@@ -85,6 +85,16 @@ body {
     }
 }
 
+.indent-wrapper-right {
+    display: flex;
+    flex-direction: column;
+    padding-right: 8px;
+
+    & > * {
+        flex-grow: 1;
+    }
+}
+
 /* --- Basic items and stacks of items --- */
 
 .item.editable, .item > .editable {

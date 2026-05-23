@@ -5,6 +5,11 @@
     --bg-toolbar: hsl(0, 0%, 97%);             /* toolbar and hovered-tool background */
     --tooltip-bg: hsl(0, 0%, 40%);             /* tooltip background */
     --selection-color: hsla(220, 100%, 55%, 1); /* selection highlight */
+    --name-color: hsl(140, 100%, 88%);         /* names that aren't types */
+    --link-type-color: hsl(194, 100%, 88%);    /* link type name */
+    --virtual-link-type-color: hsl(from var(--link-type-color) h 50% l);
+    --object-type-color: hsl(80, 100%, 88%);   /* object type name */
+    --virtual-object-type-color: hsl(from var(--object-type-color) h 50% l);
     --bw: 2px;                                 /* standard border width */
     --nbw: -2px;                               /* border-width margin compensation */
     --radius: 7px;                             /* standard corner radius */
@@ -360,7 +365,7 @@ body {
 
 /* --- object references --- */
 
-.object-reference:not(.link-type):not(.class) {
+.object-reference:not(.link-type):not(.object-type) {
     border-radius: var(--radius);
     border-width: var(--bw);
 }
@@ -368,27 +373,29 @@ body {
 /* --- names --- */
 
 .name {
-    background-color: hsl(140, 100%, 88%);
+    background-color: var(--name-type-color);
 }
-
-/* --- classes -- */
-
-.class {
-    background-color: hsl(80, 100%, 88%);
-}
-
-/* --- labels --- */
 
 .link-type {
-    background-color: hsl(194, 100%, 88%);
+    background-color: var(--link-type-color);
 }
 
-.item:not(.link-type), .content-text:not(.link-type), .vertical-stack:not(.link-type) {
+.object-type {
+    background-color: var(--object-type-color);
+}
+
+.item:not(.link-type):not(.object-type),
+.content-text:not(.link-type):not(.object-type),
+.vertical-stack:not(.link-type):not(.object-type) {
     background-color: white;
 }
 
-.link-type.virtual:not(.merge-with-parent)+.indent-wrapper {
-    background-color: hsl(194, 50%, 88%);
+.link-type.virtual:not(.merge-with-parent)+.indent-wrapper{
+    background-color: var(--virtual-link-type-color);
+}
+
+.object-type.virtual:not(.merge-with-parent)+.indent-wrapper{
+    background-color: var(--virtual-object-type-color);
 }
 
 /* --- label-element pairs: one column format --- */
@@ -690,7 +697,7 @@ body {
     text-align: center;
     margin-right: var(--nbw);
 
-    &:not(.link-type):not(.virtual-column) {
+    &:not(.link-type):not(.object-type):not(.virtual-column) {
         background-color: white;
     }
 
@@ -741,7 +748,8 @@ body {
         margin-top: var(--nbw);
     }
 
-    &.merge-with-parent.link-type {
+    &.merge-with-parent.link-type,
+    &.merge-with-parent.object-type{
         background-color: transparent;
     }
 
@@ -753,12 +761,14 @@ body {
     }
 }
 
-.column-header:not(.merge-with-parent).link-type, .query-holder.link-type,
+.column-header:not(.merge-with-parent).link-type,
+.column-header:not(.merge-with-parent).object-type,
+.query-holder.link-type, .query-holder.object-type
 .vertical-labels-element > :first-child {
     background-image: var(--shimmer-right), var(--shimmer-left), var(--shimmer-down);
 }
 
-.query-result-indent.link-type {
+.query-result-indent.link-type, .query-result-indent.object-type {
     background-image: var(--shimmer-right);
 }
 
@@ -991,7 +1001,7 @@ body {
     }
 
     &.virtual:not(.merge-with-parent) {
-        background-color: hsl(194, 50%, 88%);
+        background-color: var(--virtual-link-type-color);
     }
 }
 

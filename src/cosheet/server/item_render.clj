@@ -559,7 +559,7 @@
   "Return the class to use in formatting the name of this object"
   [object]
   (cond (seq (content->elements object link-type)) "link-type"
-        (seq (content->elements object object-type)) "class"
+        (seq (content->elements object object-type)) "object-type"
         true "name"))
 
 (defn render-object-reference-DOM-R

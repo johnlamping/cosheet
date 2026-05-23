@@ -478,30 +478,30 @@
         excludeds (map (if implied-template
                          #(condition-satisfiers % implied-template)
                          (constantly nil))
-                       ordered-elements)]
-    (let [labels (map (fn [all exclusions]
-                        (clojure.set/difference (set all) (set exclusions)))
-                      all-labels excludeds)
-          no-labels (every? empty? labels)]
-      (if (and no-labels (not must-show-label))
-        (item-stack-DOM ordered-elements excludeds orientation specification)
-        (let [item-maps (item-maps-by-elements ordered-elements labels)
-              augmented (map (fn [item-map excluded]
-                               (assoc item-map :exclude-elements excluded))
-                             item-maps excludeds)
-              hierarchy (hierarchy-by-canonical-info augmented)
-              doms (case orientation
-                     :vertical
-                     ((if (or (< (:width specification) 1.0)
-                              (and no-labels (not (= must-show-label :wide))))
-                        hierarchical-elements-in-one-column-DOM
-                        hierarchical-elements-in-two-column-DOM)
-                      hierarchy specification)
-                     :horizontal
-                     (hierarchical-elements-in-horizontal-DOM
-                      (replace-hierarchy-leaves-by-nodes hierarchy)
-                      specification))]
-          (nest-if-multiple-DOM doms orientation))))))
+                       ordered-elements)
+        labels (map (fn [all exclusions]
+                      (clojure.set/difference (set all) (set exclusions)))
+                    all-labels excludeds)
+        no-labels (every? empty? labels)]
+    (if (and no-labels (not must-show-label))
+      (item-stack-DOM ordered-elements excludeds orientation specification)
+      (let [item-maps (item-maps-by-elements ordered-elements labels)
+            augmented (map (fn [item-map excluded]
+                             (assoc item-map :exclude-elements excluded))
+                           item-maps excludeds)
+            hierarchy (hierarchy-by-canonical-info augmented)
+            doms (case orientation
+                   :vertical
+                   ((if (or (< (:width specification) 1.0)
+                            (and no-labels (not (= must-show-label :wide))))
+                      hierarchical-elements-in-one-column-DOM
+                      hierarchical-elements-in-two-column-DOM)
+                    hierarchy specification)
+                   :horizontal
+                   (hierarchical-elements-in-horizontal-DOM
+                    (replace-hierarchy-leaves-by-nodes hierarchy)
+                    specification))]
+        (nest-if-multiple-DOM doms orientation)))))
 
 (defn labels-and-elements-DOM
   "Generate the dom for a set of elements, some of which may be labels.
@@ -721,7 +721,7 @@
 (defn object-DOM
   "Render a dom for an object. Shows labels (classes) wrapping names,
   then other elements. Labels are indented to the right."
-  [entity {:keys [exclude-elements-by-ids] :as specification}]
+  [entity {:keys [exclude-elements-by-ids template] :as specification}]
   (let [excluded (set (map #(id->entity % (:store entity))
                            exclude-elements-by-ids))
         all-elements (remove excluded (semantic-elements entity))
@@ -733,7 +733,7 @@
                      names nil false :vertical elem-spec))
         others-dom (when (seq others)
                      (non-label-elements-DOM
-                      others nil false :vertical elem-spec))
+                      others template true :vertical elem-spec))
         inner-dom (nest-if-multiple-DOM
                    (remove nil? [names-dom others-dom]) :vertical)]
     (cond-> (if (seq labels)
@@ -775,15 +775,14 @@
   labels, has at most one leaf per node and doesn't have both leaves and
   children.
   Don't generate or include the DOM for its children.
-  This is used by column headers and the like, child nodes won't be
-  nested inside the nodes of their parents."
+  This is used by column headers and the like, where the DOM for child
+  nodes won't be nested inside the DOM of their parents."
   [node {:keys [top-level] :as specification}]
   (let [specification (dissoc specification :top-level)
         example-elements (hierarchy-node-example-elements node)
         leaf-info (first (hierarchy-node-leaves node))
         leaf (:item leaf-info)
         labels (when leaf (semantic-label-elements leaf))
-        non-labels (when leaf (semantic-non-label-elements leaf))
         leaf-component (when leaf
                          (let [ancestor-props
                                (clojure.set/difference

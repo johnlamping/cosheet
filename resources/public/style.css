@@ -616,7 +616,7 @@ body {
 
 .table-header::before, .query-condition:before {
     box-shadow: inset -5px 5px 5px 5px hsla(0, 0%, 100%, 0.6),
-                inset 5px -5px 10px 0px hsla(0, 0%, 0%, 0.2);
+                inset -5px -5px 10px 0px hsla(0, 0%, 0%, 0.2);
     display: inline-block;
     content:" ";
     top: 0px;
@@ -997,11 +997,23 @@ body {
 
 .link-type {
     & > .link-type {
+	 /* Don't override out parent's shimmer */
         background-color: transparent;
     }
 
     &.virtual:not(.merge-with-parent) {
         background-color: var(--virtual-link-type-color);
+    }
+}
+
+.object-type {
+    & > .object-type {
+	 /* Don't override out parent's shimmer */
+        background-color: transparent;
+    }
+
+    &.virtual:not(.merge-with-parent) {
+        background-color: var(--virtual-object-type-color);
     }
 }
 

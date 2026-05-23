@@ -18,7 +18,7 @@
              [task-queue :refer [make-priority-task-queue]]
              [store-utils :refer [add-element add-object
                                   add-universal-objects
-                                  add-label-object]]
+                                  add-link-type-object]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
              [model-utils :refer [semantic-label-elements]]
@@ -92,9 +92,9 @@
   Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 test-label-oid] (add-label-object s "test")
+        [s1 test-label-oid] (add-link-type-object s "test")
         test-label-object (id->object test-label-oid nil)
-        [s2 foo-label-oid] (add-label-object s1 "foo")
+        [s2 foo-label-oid] (add-link-type-object s1 "foo")
         foo-label-object (id->object foo-label-oid nil)
         [s4 joe-id] (add-element s2 nil "Joe")
         [s5 joe-test-id] (add-element s4 joe-id `(~test-label-object))
@@ -116,8 +116,8 @@
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object s "one")
-        [s2 two-oid] (add-label-object s1 "two")
+        [s1 one-oid] (add-link-type-object s "one")
+        [s2 two-oid] (add-link-type-object s1 "two")
         [s3 fred-id] (add-element s2 nil "Fred")
         [s4 label-one-id] (add-element s3 fred-id `(~(id->object one-oid nil)
                                                    (~o1 :order)))
@@ -130,14 +130,14 @@
             :label-two-id label-two-id}]))
 
 (defn make-fred-1-one-2-two-store
-   "Make a store with label objects one-object and two-object and with
+   "Make a store with link-type objects one-object and two-object and with
       [:object 'Fred' (1 one-object) (2 two-object)]
     and with the elements in that order.
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object s "one")
-        [s2 two-oid] (add-label-object s1 "two")
+        [s1 one-oid] (add-link-type-object s "one")
+        [s2 two-oid] (add-link-type-object s1 "two")
         [s3 fred-id] (add-element s2 nil "Fred")
         [s4 element-1-id] (add-element s3 fred-id `(1 (~o1 :order)))
         [s5 label-one-id] (add-element s4 element-1-id
@@ -154,7 +154,7 @@
             :label-two-id label-two-id}]))
 
 (defn make-fred-4-elements-store
-  "Make a store with label objects one-object two-object, zero-object
+  "Make a store with link-type objects one-object two-object, zero-object
    and both-object and with
      [:object 'Fred' (0 zero-object)
                      (1 one-object both-object)
@@ -164,10 +164,10 @@
     Return the store and a map from names of objects and elements to their ids."
   []
   (let [s (add-universal-objects (new-element-store))
-        [s1 one-oid] (add-label-object s "one")
-        [s2 two-oid] (add-label-object s1 "two")
-        [s3 zero-oid] (add-label-object s2 "zero")
-        [s4 both-oid] (add-label-object s3 "both")
+        [s1 one-oid] (add-link-type-object s "one")
+        [s2 two-oid] (add-link-type-object s1 "two")
+        [s3 zero-oid] (add-link-type-object s2 "zero")
+        [s4 both-oid] (add-link-type-object s3 "both")
         [s5 fred-id] (add-element s4 nil "Fred")
         [s6 element-0-id] (add-element s5 fred-id `(0 (~o1 :order)))
         [s7 label-zero-id] (add-element s6 element-0-id
@@ -230,7 +230,7 @@
            :relative-id (:joe-test-id ids)
            :render-dom render-item-DOM-R
            :get-action-data (default-AD)
-           :class "label"}]))
+           :class "link-type"}]))
     ;; A node with a leaf,  properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (first (:child-nodes node))
@@ -245,7 +245,7 @@
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node))
                                               {:width 0.75})
          [:div {:class
-                "label wrapped-element virtual-wrapper merge-with-parent"}
+                "link-type wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template virtual-label-template
                        :is-object-name true
                        :width 0.75
@@ -255,9 +255,9 @@
                                          (virt-AD)]
                        :position :after
                        :relative-id [(:jane-id ids) :nested]
-                       :class "label merge-with-parent"
+                       :class "link-type merge-with-parent"
                        :render-dom (virt-DOM)}]
-          [:div {:class "indent-wrapper label"}
+          [:div {:class "indent-wrapper link-type"}
            [:component {:relative-id (:jane-id ids)
                         :render-dom render-item-DOM-R
                         :get-action-data (default-AD)
@@ -280,20 +280,20 @@
          (labels-and-elements-DOM
           [joe jane] nil false false :vertical
           {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element label"}
+         [:div {:class "wrapped-element link-type"}
           [:component {:width 0.8, :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
-                       :class "label"
+                       :class "link-type"
                        :omit-universal-elements true
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class "vertical-stack"}
-            [:div {:class "wrapped-element label"}
+            [:div {:class "wrapped-element link-type"}
              [:component {:width 0.8, :template label-template
                           :parallel-ids [(:joe-id ids)]
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
@@ -319,22 +319,22 @@
          (labels-and-elements-DOM
           [joe jane] nil false false :horizontal
           {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element label"}
+         [:div {:class "wrapped-element link-type"}
           [:component {:width 0.8
                        :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
-                       :class "label"
+                       :class "link-type"
                        :omit-universal-elements true
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class "horizontal-stack"}
-            [:div {:class "wrapped-element label"}
+            [:div {:class "wrapped-element link-type"}
              [:component {:width 0.8
                           :template label-template
                           :parallel-ids [(:joe-id ids)]
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
@@ -363,25 +363,25 @@
          [:div {:class "vertical-stack"}
           [:component {:template label-template
                        :width 0.8
-                       :class "label"
+                       :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
           [:component {:template label-template
                        :width 0.8
-                       :class "label"
+                       :class "link-type"
                        :relative-id (:joe-foo-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]]))
-    ;; Test a label and a non-label
+    ;; Test a link-type and a non-label
     (is (check
          (labels-and-elements-DOM
           [sally joe-test] nil false false :vertical
           {:template ' anything :width 0.8})
-         [:div {:class "wrapped-element label"}
+         [:div {:class "wrapped-element link-type"}
           [:component {:template label-template
                        :width 0.8
-                       :class "label"
+                       :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
@@ -396,12 +396,12 @@
          (labels-and-elements-DOM
           [sally] nil true true :vertical
           {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element label"}
+         [:div {:class "wrapped-element link-type"}
           [:component {:template virtual-label-template
                        :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
-                       :class "label"
+                       :class "link-type"
                        :render-dom (virt-DOM)
                        :position :after
                        :get-action-data (virt-AD)}]
@@ -418,7 +418,7 @@
                                            (virt-AD)]
                          :render-dom (virt-DOM)
                          :position :after
-                         :class "label"
+                         :class "link-type"
                          :omit-universal-elements true}]
             [:component {:template 'anything
                          :width 0.8
@@ -455,7 +455,7 @@
                 :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)
-                :class "label"
+                :class "link-type"
                 :render-dom (virt-DOM)}]
               [:component {:template `(~(make-object-list ["foo"]))
                            :relative-id :bar
@@ -615,13 +615,13 @@
                                  :exclude-elements-by-ids [(:label-one-id ids)])
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element label item"}
+               [:div {:class "wrapped-element link-type item"}
                 [:component {:template label-template
                              :relative-id (:label-two-id ids)
                              :omit-universal-elements true
                              :render-dom render-item-DOM-R
                              :get-action-data (default-AD)
-                             :class "label"
+                             :class "link-type"
                              :width 1.5}]
                 [:div {:class "indent-wrapper"}
                  [:component {:template (as-set `(""
@@ -651,7 +651,7 @@
                        :position :after
                        :relative-id :virtual-label
                        :omit-universal-elements true
-                       :class "label"
+                       :class "link-type"
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)
                        :width 1.5}]
@@ -664,7 +664,7 @@
 
 (deftest render-item-DOM-R-object-test
   ;; Test that render-item-DOM-R routes to object-DOM for an object.
-  ;; The object has one class label (content = name-label) and one
+  ;; The object has one class link-type (content = name-label) and one
   ;; name element ("Fred" (name-label)).
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-id] (get-new-object-id s0)
@@ -676,9 +676,9 @@
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element label item"}
+               [:div {:class "wrapped-element link-type item"}
                 [:component {:relative-id class-id
-                             :class "label"
+                             :class "link-type"
                              :omit-universal-elements true
                              :render-dom render-item-DOM-R
                              :get-action-data (default-AD)
@@ -720,7 +720,7 @@
                     :get-action-data [(comp-AD)
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
-                    :class "label"
+                    :class "link-type"
                     :position :after
                     :omit-universal-elements true}]
                   [:component {:width 0.9
@@ -740,7 +740,7 @@
                     :get-action-data [(comp-AD)
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
-                    :class "label"
+                    :class "link-type"
                     :position :after
                     :omit-universal-elements true}]
                   [:component {:width 0.9
@@ -765,11 +765,11 @@
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
-                 [:div {:class "wrapped-element label"}
+                 [:div {:class "wrapped-element link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-1-id ids)]
-                               :class "label"
+                               :class "link-type"
                                :omit-universal-elements true
                                :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM-R
@@ -781,11 +781,11 @@
                                 :exclude-elements-by-ids [(:label-one-id ids)]
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
-                 [:div {:class "wrapped-element label"}
+                 [:div {:class "wrapped-element link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-2-id ids)]
-                               :class "label"
+                               :class "link-type"
                                :omit-universal-elements true
                                :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM-R
@@ -797,7 +797,7 @@
                                 :exclude-elements-by-ids [(:label-two-id ids)]
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]]])))
-  ;; Test an item with four elements, with label sharing among them.
+  ;; Test an item with four elements, with link-type sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
         zero-object (id->object (:zero-oid ids) store)
         one-object (id->object (:one-oid ids) store)
@@ -816,11 +816,11 @@
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
-                 [:div {:class "wrapped-element label"}
+                 [:div {:class "wrapped-element link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-0-id ids)]
-                               :class "label"
+                               :class "link-type"
                                :omit-universal-elements true
                                :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM-R
@@ -832,23 +832,23 @@
                                 :relative-id (:element-0-id ids)
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
-                 [:div {:class "wrapped-element label"}
+                 [:div {:class "wrapped-element link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids (as-set [(:element-1-id ids)
                                                       (:element-2-id ids)])
-                               :class "label"
+                               :class "link-type"
                                :omit-universal-elements true
                                :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
                   [:div {:class "indent-wrapper"}
                    [:div {:class "vertical-stack"}
-                    [:div {:class "wrapped-element label"}
+                    [:div {:class "wrapped-element link-type"}
                      [:component {:width 0.9
                                   :template label-template
                                   :parallel-ids[(:element-1-id ids)]
-                                  :class "label"
+                                  :class "link-type"
                                   :omit-universal-elements true
                                   :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM-R
@@ -864,11 +864,11 @@
                                    :relative-id (:element-1-id ids)
                                    :render-dom render-item-DOM-R
                                    :get-action-data (default-AD)}]]]
-                    [:div {:class "wrapped-element label"}
+                    [:div {:class "wrapped-element link-type"}
                      [:component {:width 0.9
                                   :template label-template
                                   :parallel-ids [(:element-2-id ids)]
-                                  :class "label"
+                                  :class "link-type"
                                   :omit-universal-elements true
                                   :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM-R
@@ -895,7 +895,7 @@
                                                 (virt-AD)]
                               :relative-id [(:element-3-id ids) :virtual-label]
                               :render-dom (virt-DOM)
-                              :class "label"
+                              :class "link-type"
                               :position :after
                               :omit-universal-elements true}]
                  [:component {:width 0.9
@@ -932,7 +932,7 @@
             :relative-id :virtual-label
             :omit-universal-elements true
             :position :after
-            :class "label"
+            :class "link-type"
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]
           [:div {:class "with-elements"}
@@ -943,8 +943,8 @@
                         :render-dom render-content-only-DOM
                         :get-action-data (pass-AD)}]
            [:div {:class "vertical-stack"}
-            [:div {:class "horizontal-labels-element label wide"}
-             [:div {:class "label horizontal-header top-border bottom-border"}
+            [:div {:class "horizontal-labels-element link-type wide"}
+             [:div {:class "link-type horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template virtual-label-template
                            :is-object-name true
@@ -954,7 +954,7 @@
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
                            :render-dom (virt-DOM)
-                           :class "label"
+                           :class "link-type"
                            :position :after
                            :omit-universal-elements true}]]
              [:component {:width 1.03125
@@ -962,8 +962,8 @@
                           :relative-id id1
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]
-            [:div {:class "horizontal-labels-element label wide"}
-             [:div {:class "label horizontal-header top-border bottom-border"}
+            [:div {:class "horizontal-labels-element link-type wide"}
+             [:div {:class "link-type horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template virtual-label-template
                            :is-object-name true
@@ -973,7 +973,7 @@
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
                            :render-dom (virt-DOM)
-                           :class "label"
+                           :class "link-type"
                            :position :after
                            :omit-universal-elements true}]]
              [:component {:width 1.03125
@@ -999,12 +999,12 @@
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class (str "label horizontal-header"
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class (str "link-type horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template label-template
                           :parallel-ids [(:element-1-id ids)]
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:label-one-id ids)
                           :render-dom render-item-DOM-R
@@ -1015,12 +1015,12 @@
                          :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class (str "label horizontal-header"
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class (str "link-type horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template label-template
                           :parallel-ids [(:element-2-id ids)]
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:label-two-id ids)
                           :render-dom render-item-DOM-R
@@ -1031,7 +1031,7 @@
                          :relative-id (:element-2-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]])))
-  ;; Test an item with four elements, with label sharing among them.
+  ;; Test an item with four elements, with link-type sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
         zero-object (id->object (:zero-oid ids) store)
         one-object (id->object (:one-oid ids) store)
@@ -1051,12 +1051,12 @@
                        :render-dom render-content-only-DOM
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header top-border bottom-border"}
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class "link-type horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template label-template
                           :parallel-ids [(:element-0-id ids)]
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:label-zero-id ids)
                           :render-dom render-item-DOM-R
@@ -1067,13 +1067,13 @@
                          :relative-id (:element-0-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header top-border"}
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class "link-type horizontal-header top-border"}
              [:component {:width 0.375
                           :template label-template
                           :parallel-ids (as-set [(:element-1-id ids)
                                                  (:element-2-id ids)])
-                          :class "label"
+                          :class "link-type"
                           :omit-universal-elements true
                           :relative-id (:label-1-both-id ids)
                           :render-dom render-item-DOM-R
@@ -1085,13 +1085,13 @@
                          :sibling true
                          :render-dom (virt-DOM)
                          :get-action-data (virt-AD)}]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header indent"}
-             [:div {:class "label horizontal-header top-border bottom-border"}
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class "link-type horizontal-header indent"}
+             [:div {:class "link-type horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template label-template
                            :parallel-ids [(:element-1-id ids)]
-                           :class "label"
+                           :class "link-type"
                            :omit-universal-elements true
                            :relative-id (:label-one-id ids)
                            :render-dom render-item-DOM-R
@@ -1106,13 +1106,13 @@
                          :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header indent bottom-border"}
-             [:div {:class "label horizontal-header top-border bottom-border"}
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class "link-type horizontal-header indent bottom-border"}
+             [:div {:class "link-type horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template label-template
                            :parallel-ids [(:element-2-id ids)]
-                           :class "label"
+                           :class "link-type"
                            :omit-universal-elements true
                            :relative-id (:label-two-id ids)
                            :render-dom render-item-DOM-R
@@ -1128,8 +1128,8 @@
                           :relative-id (:element-2-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header top-border bottom-border"}
+           [:div {:class "horizontal-labels-element link-type wide"}
+            [:div {:class "link-type horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template virtual-label-template
                           :is-object-name true
@@ -1139,7 +1139,7 @@
                           :get-action-data [(comp-AD)
                                             [(parallel-AD) (item-AD)]
                                             (virt-AD)]
-                          :class "label"
+                          :class "link-type"
                           :position :after
                           :omit-universal-elements true}]]
             [:component {:width 1.03125

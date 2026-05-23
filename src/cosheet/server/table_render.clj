@@ -220,7 +220,7 @@
                 is-leaf (str " leaf"))]
     (if is-leaf
       (add-attributes node-dom {:class class})
-      [:div {:class (str class " label")}
+      [:div {:class (str class " link-type")}
        (add-attributes node-dom {:class "with-children"})
        (into [:div {:class "column-header-sequence"}]
              child-doms)])))

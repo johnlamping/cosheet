@@ -160,7 +160,7 @@
                        :immutable true
                        :stack-id stk1
                        :width 0.75}]
-          [:div {:class "wrapped-element label"}
+          [:div {:class "wrapped-element link-type"}
            [:component
             {:template label-template
              :query-id q2
@@ -168,7 +168,7 @@
              :parallel-ids [q2-c1]
              :render-dom render-item-DOM-R
              :get-action-data (default-AD)
-             :class "label"
+             :class "link-type"
              :omit-universal-elements true
              :exclude-elements-by-ids [(any)]
              :relative-id q2-c1-l
@@ -269,12 +269,12 @@
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
                        :render-dom render-item-DOM-R
-                       :class "batch-stack label leaf"
+                       :class "batch-stack link-type leaf"
                        :width 0.75}]
-          [:div {:class "vertical-labels-element label"}
+          [:div {:class "vertical-labels-element link-type"}
            [:component {:relative-id :stack-virtual-label
                         :query-id q1
-                        :stack-id stk1 :class "label"
+                        :stack-id stk1 :class "link-type"
                         :render-dom (virt-DOM)
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 

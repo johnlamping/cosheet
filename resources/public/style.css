@@ -360,7 +360,7 @@ body {
 
 /* --- object references --- */
 
-.object-reference:not(.label):not(.class) {
+.object-reference:not(.link-type):not(.class) {
     border-radius: var(--radius);
     border-width: var(--bw);
 }
@@ -379,15 +379,15 @@ body {
 
 /* --- labels --- */
 
-.label {
+.link-type {
     background-color: hsl(194, 100%, 88%);
 }
 
-.item:not(.label), .content-text:not(.label), .vertical-stack:not(.label) {
+.item:not(.link-type), .content-text:not(.link-type), .vertical-stack:not(.link-type) {
     background-color: white;
 }
 
-.label.virtual:not(.merge-with-parent)+.indent-wrapper {
+.link-type.virtual:not(.merge-with-parent)+.indent-wrapper {
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -566,7 +566,7 @@ body {
     align-items: center;
     position: relative;
 
-    & > :first-child.label {
+    & > :first-child.link-type {
         align-self:stretch;
     }
 }
@@ -690,7 +690,7 @@ body {
     text-align: center;
     margin-right: var(--nbw);
 
-    &:not(.label):not(.virtual-column) {
+    &:not(.link-type):not(.virtual-column) {
         background-color: white;
     }
 
@@ -741,7 +741,7 @@ body {
         margin-top: var(--nbw);
     }
 
-    &.merge-with-parent.label {
+    &.merge-with-parent.link-type {
         background-color: transparent;
     }
 
@@ -753,12 +753,12 @@ body {
     }
 }
 
-.column-header:not(.merge-with-parent).label, .query-holder.label,
+.column-header:not(.merge-with-parent).link-type, .query-holder.link-type,
 .vertical-labels-element > :first-child {
     background-image: var(--shimmer-right), var(--shimmer-left), var(--shimmer-down);
 }
 
-.query-result-indent.label {
+.query-result-indent.link-type {
     background-image: var(--shimmer-right);
 }
 
@@ -985,8 +985,8 @@ body {
     }
 }
 
-.label {
-    & > .label {
+.link-type {
+    & > .link-type {
         background-color: transparent;
     }
 

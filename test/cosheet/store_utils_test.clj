@@ -95,3 +95,14 @@
          (as-set [`(~object-type-in-s)
                   `("class" (~name-label-in-s))])))))
 
+(deftest add-object-type-object-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [store oid] (add-object-type-object s0 "foo")
+        obj (in-different-store (id->object oid store) store)
+        name-label-in-s (in-different-store name-label store)
+        object-type-in-s (in-different-store object-type store)]
+    (is (check
+         (map to-list (forward-elements obj))
+         (as-set [`("foo" (~name-label-in-s))
+                  `(~object-type-in-s)])))))
+

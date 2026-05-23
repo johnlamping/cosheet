@@ -129,11 +129,17 @@
         [s6 _] (add-element s5 object-type-id `(~object-type))]
     s6))
 
-(defn add-label-object
+(defn add-link-type-object
   "Add a label object with the given name to the store.
    Return the updated store and the id of the label object."
   [store name]
   (add-object store (make-object-list [`(~name (~name-label)) `(~link-type)])))
+
+(defn add-object-type-object
+  "Add an object-type object with the given name to the store.
+   Return the updated store and the id of the object-type object."
+  [store name]
+  (add-object store (make-object-list [`(~name (~name-label)) `(~object-type)])))
 
 (defn- links-to-remove
   "Return a list of ids of links to remove in order to remove the entity

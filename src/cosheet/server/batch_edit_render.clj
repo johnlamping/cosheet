@@ -150,7 +150,7 @@
                   node
                   (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))
-        class (cond-> "batch-stack label"
+        class (cond-> "batch-stack link-type"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
       (add-attributes node-dom {:class class})

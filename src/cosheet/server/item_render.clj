@@ -122,11 +122,11 @@
   label above the inner dom, but with an indentation on the left too."
     [labels-dom inner-dom orientation]
     (if (= orientation :vertical-wrapped)
-      [:div {:class "wrapped-element label"}
+      [:div {:class "wrapped-element link-type"}
        labels-dom
        [:div {:class "indent-wrapper"} inner-dom]]
       [:div {:class (case orientation
-                      :vertical "vertical-labels-element label"
+                      :vertical "vertical-labels-element link-type"
                       :horizontal "horizontal-labels-element")}
        labels-dom inner-dom]))
 
@@ -141,7 +141,7 @@
   "Like add-labels-DOM with :vertical-wrapped, but indents the inner
   dom on the right rather than the left."
   [labels-dom inner-dom]
-  [:div {:class "wrapped-element label"}
+  [:div {:class "wrapped-element link-type"}
    labels-dom
    [:div {:class "indent-wrapper-right"} inner-dom]])
 
@@ -175,7 +175,7 @@
               :position :after
               :template (make-virtual-label-template template)
               :is-object-name true)
-       (into-attributes {:class "label"}))))
+       (into-attributes {:class "link-type"}))))
 
 (defn virtual-entity-and-label-DOM
   "Return the dom for a virtual entity and a virtual label for it.
@@ -237,7 +237,7 @@
     (item-stack-DOM ordered-labels label-tags :vertical
                     (-> specification
                         (update :template ensure-label-object-content)
-                        (into-attributes {:class "label"})))))
+                        (into-attributes {:class "link-type"})))))
 
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
@@ -290,8 +290,8 @@
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (add-parallel-item-ids-for-label labels-spec descendant-ids)))]
-      ;; Even if stacked, we need to mark the stack as "label" too.
-      (add-attributes dom {:class "label"}))))
+      ;; Even if stacked, we need to mark the stack as "link-type" too.
+      (add-attributes dom {:class "link-type"}))))
 
 (defn hierarchy-leaf-elements-DOM
   "Given a node of a hierarchy of entity info maps for a sequence of
@@ -378,7 +378,7 @@
   "Return a modifier for a horizontal label dom that is logically part of
   a possibly larger entity."
   [body is-first is-last]
-  [:div {:class (cond-> "label horizontal-header"
+  [:div {:class (cond-> "link-type horizontal-header"
                   is-first (str " top-border")
                   (not is-first) (str " indent")
                   is-last (str " bottom-border"))}
@@ -438,7 +438,7 @@
                       specification 0.6875)]
       (map
        (fn [label-dom items-dom only-item]
-         (cond-> [:div {:class "horizontal-labels-element label wide"}
+         (cond-> [:div {:class "horizontal-labels-element link-type wide"}
                   label-dom items-dom]
            only-item
            (add-attributes (select-keys specification [:class]))))
@@ -550,7 +550,7 @@
                    {:class (cond-> "content-text"
                              anything (str " placeholder"))})
             (label-element? item)
-            (into-attributes (:class "label"))
+            (into-attributes (:class "link-type"))
             anything
             (into-attributes (:class "placeholder")))
      (if anything "\u00A0..." (str primitive))]))
@@ -558,7 +558,7 @@
 (defn css-class-for-name
   "Return the class to use in formatting the name of this object"
   [object]
-  (cond (seq (content->elements object link-type)) "label"
+  (cond (seq (content->elements object link-type)) "link-type"
         (seq (content->elements object object-type)) "class"
         true "name"))
 
@@ -665,7 +665,7 @@
                             :render-dom render-content-only-DOM
                             :get-action-data get-pass-through-action-data))
            (label-element? element)
-           (into-attributes {:class "label"})))]
+           (into-attributes {:class "link-type"})))]
       (if (empty? elements)
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
@@ -675,7 +675,7 @@
                             :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
                           (label-element? element)
-                          (merge-classes "label"))}
+                          (merge-classes "link-type"))}
            content-dom elements-dom]))))
 
 (defn element-content-labels-and-non-label-elements-DOM
@@ -704,7 +704,6 @@
   "Render a dom spec given the immutable entity for an item (which may
   be an exemplar of a group of items)."
   [entity {:keys [exclude-elements-by-ids] :as specification}]
-  "Produce dom for an entity that is not a named object"
   (let [elements (remove
                   (set (map #(id->entity % (:store entity))
                             exclude-elements-by-ids))
@@ -812,11 +811,11 @@
                         (not top-level)
                         (add-attributes {:class "merge-with-parent"}))]
         (assert leaf leaf)
-        [:div {:class (cond-> "label wrapped-element virtual-wrapper"
+        [:div {:class (cond-> "link-type wrapped-element virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
          label-dom
-         [:div {:class "indent-wrapper label"} leaf-component]])
+         [:div {:class "indent-wrapper link-type"} leaf-component]])
       
       (empty? (:child-nodes node))
       leaf-component

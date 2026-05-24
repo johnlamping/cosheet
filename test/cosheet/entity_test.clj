@@ -544,15 +544,33 @@
     (is (label-object? (special-object "name")))
     (is (label-object? (make-object-list
                         `((~(special-object "link-type"))))))
+    (is (link-type-object? (make-object-list
+                            `((~(special-object "link-type"))))))
+    (is (not (object-type-object? (make-object-list
+                                    `((~(special-object "link-type")))))))
+    (is (not (non-type-object? (make-object-list
+                                    `((~(special-object "link-type")))))))
     (is (label-object? (make-object-list
                         `((~(special-object "object-type"))))))
+    (is (not (link-type-object? (make-object-list
+                                 `((~(special-object "object-type")))))))
+    (is (object-type-object? (make-object-list
+                              `((~(special-object "object-type"))))))
+    (is (not (non-type-object? (make-object-list
+                                `((~(special-object "object-type")))))))
     (is (label-object? (make-object-list
                         `(("fred" ~(special-object "name"))
                           (~(special-object "link-type"))))))
     (is (not (label-object? (make-object-list
                              `((~(special-object "name")))))))
     (is (not (label-object? (make-object-list
-                             `(("fred" ~(special-object "name")))))))))
+                             `(("fred" ~(special-object "name")))))))
+    (is (not (link-type-object? (make-object-list
+                                 `(("fred" ~(special-object "name")))))))
+    (is (not (object-type-object? (make-object-list
+                                   `(("fred" ~(special-object "name")))))))
+    (is (non-type-object? (make-object-list
+                           `(("fred" ~(special-object "name"))))))))
 
 (deftest label-element?-test
   (let [special-object (fn [id] (id->object (make-item-id id) nil))]

@@ -83,10 +83,17 @@ body {
 .indent-wrapper {
     display: flex;
     flex-direction: column;
-    padding-left: 8px;
 
     & > * {
         flex-grow: 1;
+    }
+
+    &.left-indent {
+        padding-left: 8px;
+    }
+
+    &.right-indent {
+        padding-right: 8px;
     }
 }
 

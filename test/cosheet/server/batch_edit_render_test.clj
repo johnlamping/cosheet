@@ -174,7 +174,7 @@
              :relative-id q2-c1-l
              :immutable true
              :width 0.75}]
-           [:div {:class "indent-wrapper"}
+           [:div {:class "indent-wrapper left-indent"}
             [:component {:relative-id q2-c1
                          :template '(anything ("c1" :label))
                          :query-id q2

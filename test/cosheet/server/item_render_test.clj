@@ -288,7 +288,7 @@
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper"}
+          [:div {:class "indent-wrapper left-indent"}
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element link-type"}
              [:component {:width 0.8, :template label-template
@@ -298,7 +298,7 @@
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper"}
+             [:div {:class "indent-wrapper left-indent"}
               [:component {:template (as-set `(~'anything
                                                (~test-label-object)
                                                (~foo-label-object)))
@@ -328,7 +328,7 @@
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper"}
+          [:div {:class "indent-wrapper left-indent"}
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element link-type"}
              [:component {:width 0.8
@@ -339,7 +339,7 @@
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper"}
+             [:div {:class "indent-wrapper left-indent"}
               [:component {:template (as-set `(~'anything
                                                (~test-label-object)
                                                (~foo-label-object)))
@@ -385,7 +385,7 @@
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper"}
+          [:div {:class "indent-wrapper left-indent"}
            [:component {:template 'anything
                           :width 0.8
                         :relative-id sally-id
@@ -405,7 +405,7 @@
                        :render-dom (virt-DOM)
                        :position :after
                        :get-action-data (virt-AD)}]
-          [:div {:class "indent-wrapper"}
+          [:div {:class "indent-wrapper left-indent"}
            [:div {:class
                   "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
@@ -623,7 +623,7 @@
                              :get-action-data (default-AD)
                              :class "link-type"
                              :width 1.5}]
-                [:div {:class "indent-wrapper"}
+                [:div {:class "indent-wrapper left-indent"}
                  [:component {:template (as-set `(""
                                                   (~one-object)
                                                   (~two-object)))
@@ -664,27 +664,65 @@
 
 (deftest render-item-DOM-R-object-test
   ;; Test that render-item-DOM-R routes to object-DOM for an object.
-  ;; The object has one class link-type (content = name-label) and one
-  ;; name element ("Fred" (name-label)).
+  ;; obj-id contains inner-obj-id (as elem-id) and a "test" element.
+  ;; inner-obj-id has a class label (class-id) and a name element (name-id).
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-id] (get-new-object-id s0)
-        [s2 class-id] (add-element s1 obj-id `(~name-label))
-        [store name-id] (add-element s2 obj-id `("Fred" (~name-label)))
+        [s2 inner-obj-id] (get-new-object-id s1)
+        [s3 elem-id] (add-element s2 obj-id `(~(id->object inner-obj-id s2)))
+        [s4 class-id] (add-element s3 inner-obj-id `(~name-label))
+        [s5 name-id] (add-element s4 inner-obj-id `("Fred" (~name-label)))
+        [store test-id] (add-element s5 obj-id `("test"))
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id obj-id
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element link-type item"}
-                [:component {:relative-id class-id
-                             :class "link-type"
-                             :omit-universal-elements true
-                             :render-dom render-item-DOM-R
-                             :get-action-data (default-AD)
-                             :width 1.5
-                             :template (any)}]
-                [:div {:class "indent-wrapper-right"} (any)]]))))
+               [:div {:class "vertical-stack item"}
+                [:div {}]
+                [:div {:class "indent-wrapper-right"}
+                 [:div {:class "vertical-stack"}
+                  [:div {:class
+                         "horizontal-labels-element virtual-wrapper narrow"}
+                   [:component
+                    {:is-object-name true
+                     :omit-universal-elements true
+                     :width 1.5
+                     :template virtual-label-template
+                     :render-dom (virt-DOM)
+                     :get-action-data [(comp-AD)
+                                       [(parallel-AD) (item-AD)]
+                                       (virt-AD)]
+                     :class "link-type"
+                     :position :after
+                     :parallel-ids [test-id]
+                     :relative-id [test-id :virtual-label]}]
+                   [:component {:width 1.5
+                                :template 'anything
+                                :relative-id test-id
+                                :render-dom render-item-DOM-R
+                                :get-action-data (default-AD)}]]
+                  [:div {:class
+                         "horizontal-labels-element virtual-wrapper narrow"}
+                   [:component
+                    {:is-object-name true
+                     :omit-universal-elements true
+                     :width 1.5
+                     :template virtual-label-template
+                     :render-dom (virt-DOM)
+                     :get-action-data [(comp-AD)
+                                       [(parallel-AD) (item-AD)]
+                                       (virt-AD)]
+                     :class "link-type"
+                     :position :after
+                     :parallel-ids [elem-id]
+                     :relative-id [elem-id :virtual-label]}]
+                   [:component {:width 1.5
+                                :template 'anything
+                                :relative-id elem-id
+                                :render-dom render-item-DOM-R
+                                :get-action-data (default-AD)}]]]]]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
@@ -774,7 +812,7 @@
                                :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper"}
+                  [:div {:class "indent-wrapper left-indent"}
                    [:component {:width 0.9
                                 :template `(~'anything (~one-object))
                                 :relative-id (:element-1-id ids)
@@ -790,7 +828,7 @@
                                :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper"}
+                  [:div {:class "indent-wrapper left-indent"}
                    [:component {:width 0.9
                                 :template `(~'anything (~two-object))
                                 :relative-id (:element-2-id ids)
@@ -825,7 +863,7 @@
                                :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper"}
+                  [:div {:class "indent-wrapper left-indent"}
                    [:component {:width 0.9
                                 :template `(~'anything (~zero-object))
                                 :exclude-elements-by-ids [(:label-zero-id ids)]
@@ -842,7 +880,7 @@
                                :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper"}
+                  [:div {:class "indent-wrapper left-indent"}
                    [:div {:class "vertical-stack"}
                     [:div {:class "wrapped-element link-type"}
                      [:component {:width 0.9
@@ -853,7 +891,7 @@
                                   :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
-                     [:div {:class "indent-wrapper"}
+                     [:div {:class "indent-wrapper left-indent"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
                                                        (~one-object)
@@ -873,7 +911,7 @@
                                   :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
-                     [:div {:class "indent-wrapper"}
+                     [:div {:class "indent-wrapper left-indent"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
                                                        (~two-object)

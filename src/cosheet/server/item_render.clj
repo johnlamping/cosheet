@@ -121,22 +121,27 @@
   between the doms. It can also be :vertical-wrapped, which puts the
   label above the inner dom, but with an indentation on the left too."
     [labels-dom inner-dom orientation]
-    (if (= orientation :vertical-wrapped)
-      [:div {:class "wrapped-element link-type"}
-       labels-dom
-       [:div {:class "indent-wrapper"} inner-dom]]
-      [:div {:class (case orientation
-                      :vertical "vertical-labels-element link-type"
-                      :horizontal "horizontal-labels-element")}
-       labels-dom inner-dom]))
+  [:div {:class (case orientation
+                  :vertical "vertical-labels-element link-type"
+                  :horizontal "horizontal-labels-element")}
+   labels-dom inner-dom])
 
 (defn wrap-with-labels-DOM
-  "Orientation gives the orientation of the label with respect to the inner dom.
-  :vertical is interpreted as :vertical-wrapped."
-    [labels-dom inner-dom orientation]
-  (add-labels-DOM labels-dom inner-dom
-                  (if (= orientation :vertical) :vertical-wrapped orientation)))
+  "Wrap the inner dom inside the labels. If the orientation is :vertical,
+  indent the inner dom."
+  [labels-dom label-type inner-dom orientation]
+  (assert (#{:link-type :object-type} label-type))
+  (if (= orientation :vertical)
+    [:div {:class (str "wrapped-element " (name label-type))}
+     labels-dom
+     [:div {:class (str "indent-wrapper"
+                        (case label-type
+                          :link-type " left-indent"
+                          :object-type " right-indent"))}
+      inner-dom]]
+    (add-labels-DOM labels-dom inner-dom orientation)))
 
+;; TODO: Get rid of this once we can indent in either direction.
 (defn add-right-labels-DOM
   "Like add-labels-DOM with :vertical-wrapped, but indents the inner
   dom on the right rather than the left."
@@ -187,7 +192,7 @@
                         (dissoc :relative-id)
                         (assoc :template (make-sequential-template
                                           [template 'anything]))))]
-    (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
+    (cond-> (wrap-with-labels-DOM labels-dom :link-type dom orientation)
       class
       (add-attributes {:class class}))))
 
@@ -244,7 +249,7 @@
   list of labels, make a dom that includes the labels wrapping the item."
   [inner-dom label-elements orientation specification]
   (let [stack (label-stack-DOM label-elements specification)]
-    (wrap-with-labels-DOM stack inner-dom orientation)))
+    (wrap-with-labels-DOM stack :link-type inner-dom orientation)))
 
 (defn labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -359,8 +364,8 @@
                     (= orientation :vertical)
                     (add-attributes {:class "narrow"}))
                   descendants-dom)
-                (add-labels-DOM properties-dom descendants-dom
-                                :vertical-wrapped))
+                (wrap-with-labels-DOM properties-dom :link-type
+                                      descendants-dom :vertical))
         only-item
         (add-attributes (select-keys specification [:class]))))))
 
@@ -531,7 +536,8 @@
       (label-stack-DOM elements specification)
       (and must-show-label elements-dom)
       (wrap-with-labels-DOM
-       (virtual-label-DOM-component specification) elements-dom orientation)
+       (virtual-label-DOM-component specification) :link-type
+       elements-dom orientation)
       elements-dom
       elements-dom
       true
@@ -728,14 +734,17 @@
         [labels non-labels] (separate-by label-element? all-elements)
         [names others] (separate-by name-element? non-labels)
         elem-spec (transform-specification-for-elements specification)
-        names-dom (when (seq names)
-                    (non-label-elements-DOM
-                     names nil false :vertical elem-spec))
+        names-dom (non-label-elements-DOM
+                   names nil (boolean (seq others)) :vertical elem-spec)
         others-dom (when (seq others)
                      (non-label-elements-DOM
                       others template true :vertical elem-spec))
-        inner-dom (nest-if-multiple-DOM
-                   (remove nil? [names-dom others-dom]) :vertical)]
+        inner-dom (if (seq others)
+                    (nest-if-multiple-DOM
+                     [names-dom
+                      [:div {:class "indent-wrapper-right"} others-dom]]
+                     :vertical)
+                    names-dom)]
     (cond-> (if (seq labels)
               (add-right-labels-DOM
                (label-stack-DOM

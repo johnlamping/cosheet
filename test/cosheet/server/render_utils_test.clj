@@ -3,9 +3,11 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [store :refer [new-element-store]]
-             [entity :as entity  :refer [to-list id->entity]]
+             [entity :as entity  :refer [to-list id->entity name-label]]
              [canonical :refer [canonicalize]]
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element add-universal-objects
+                                  add-link-type-object
+                                  add-object-type-object]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
@@ -63,5 +65,20 @@
     (let [competing (competing-siblings item-b3)]
       (is (check (map entity/to-list competing)
                  ['(anything 1)])))))
+
+(deftest display-type-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 link-type-oid] (add-link-type-object s0 "foo")
+        [s2 object-type-oid] (add-object-type-object s1 "bar")
+        [s3 name-elem-id] (add-element s2 nil `("Fred" (~name-label)))
+        [store plain-elem-id] (add-element s3 nil '("plain"))
+        link-type-obj (id->entity link-type-oid store)
+        object-type-obj (id->entity object-type-oid store)
+        name-elem (id->entity name-elem-id store)
+        plain-elem (id->entity plain-elem-id store)]
+    (is (= (display-type link-type-obj) :link-type))
+    (is (= (display-type object-type-obj) :object-type))
+    (is (= (display-type name-elem) :name))
+    (is (nil? (display-type plain-elem)))))
  
 

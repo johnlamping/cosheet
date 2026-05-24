@@ -245,7 +245,7 @@
               :template column-header-template
               :width 0.75}]
     (if (empty? hierarchy)
-      (virtual-entity-and-label-DOM spec :vertical-wrapped)
+      (virtual-entity-and-label-DOM spec :vertical)
       (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
             last-column-id (:item-id (:item last-column))]
         (add-attributes
@@ -254,7 +254,7 @@
                  :get-action-data get-item-or-exemplar-action-data
                  :auxiliary-item-id last-column-id
                  :sibling true)
-          :vertical-wrapped)
+          :vertical)
          {:class  "column-header virtual-column"})))))
 
 (defn render-table-header-DOM-R

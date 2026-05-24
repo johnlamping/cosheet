@@ -256,6 +256,12 @@
   [entity]
   (satisfies? StoredEntity entity))
 
+(defn name-element?
+  "Return true if the entity is an element that counts as a name."
+  [entity]
+  (and (element? entity)
+       (seq (content->elements entity name-label))))
+
 (defn universal-object?
   "Return true if the object is one of the universal objects:
   name-label, link-type, and object-type. The object can be in any
@@ -336,12 +342,6 @@
       ;; TODO: !!! Get rid of this marked-as-type? condition once
       ;; :label no longer marks labels.
       (marked-as-type? entity)))
-
-(defn name-element?
-  "Return whether the entity is an element that counts as a name.
-  Name elements have a sub-element whose content is the name-label object."
-  [entity]
-  (seq (content->elements entity name-label)))
 
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it

@@ -1,6 +1,8 @@
 (ns cosheet.server.render-utils
   (:require (cosheet [entity :refer [target-entity elements element?
                                       label-element? object? label-object?
+                                      link-type-object? object-type-object?
+                                      name-element?
                                       link-type name-label make-object-list
                                       label->elements
                                       make-element-list content orientation]]
@@ -53,6 +55,15 @@
   "Return true if the template can match both elements and objects."
   [template]
   (or (= template 'anything) (= template nil)))
+
+(defn display-type
+  "Return :link-type, :object-type, or :name depending on whether the
+  entity satisfies link-type-object?, object-type-object?, or
+  name-element? respectively."
+  [entity]
+  (cond (link-type-object? entity) :link-type
+        (object-type-object? entity) :object-type
+        (name-element? entity) :name))
 
 ;;; TODO: !!! This counts class objects as labels, but only creates
 ;;; label objects. make it consistent.

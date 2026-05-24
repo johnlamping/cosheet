@@ -325,7 +325,7 @@
                           :relative-id (any)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper"}
+             [:div {:class "indent-wrapper left-indent"}
               [:component {:template `(~'anything (~age-label-object))
                            :width 0.75
                            :exclude-elements-by-ids [(any)]
@@ -350,7 +350,7 @@
                                             (virt-AD)]
                           :class "link-type"
                           :render-dom render-virtual-DOM}]
-             [:div  {:class "indent-wrapper"}
+             [:div  {:class "indent-wrapper left-indent"}
               [:component {:template 'anything
                            :sibling true
                            :width 0.75
@@ -515,7 +515,8 @@
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]
           ;; The virtual column.
-          [:div {:class "wrapped-element link-type column-header virtual-column"}
+          [:div {:class (str "wrapped-element link-type"
+                             " column-header virtual-column")}
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
                                    ['anything
@@ -530,7 +531,7 @@
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "link-type"
                         :render-dom (virt-DOM)}]
-           [:div {:class "indent-wrapper"}
+           [:div {:class "indent-wrapper left-indent"}
             [:component {:relative-id :virtual-column
                          :template 'anything
                          :width 0.75
@@ -701,7 +702,7 @@
                         :class "link-type"
                         :omit-universal-elements true
                         :relative-id (any)}]
-            [:div {:class "indent-wrapper"}
+            [:div {:class "indent-wrapper left-indent"}
              [:component
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM-R

@@ -189,11 +189,13 @@
                   [:component {:relative-id (:item-id t3-baz)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)
-                               :width 0.75}]
+                               :width 0.75
+                               :template (any)}]
                   [:component {:relative-id (:item-id t3-bletch)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)
-                               :width 0.75}]])))
+                               :width 0.75
+                               :template (any)}]])))
     (is (check
          (render-virtual-DOM (second virt-tab-dom) store)
          [:div {:class "tab virtualTab editable virtual"}]))

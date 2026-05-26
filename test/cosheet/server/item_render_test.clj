@@ -398,6 +398,7 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element link-type"}
           [:component {:template virtual-label-template
+                       :omit-universal-elements true
                        :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
@@ -438,9 +439,9 @@
                        :get-action-data (default-AD)}]
           [:div "virtual"]]))))
 
-(deftest virtual-entity-and-label-DOM-test
-  (is (check (virtual-entity-and-label-DOM
-              {:template `(~(make-object-list ["foo"]))
+(deftest virtual-element-and-label-DOM-test
+  (is (check (virtual-element-and-label-DOM
+              {:template '(anything "foo")
                :relative-id :bar
                :position :before}
               :horizontal)
@@ -448,16 +449,15 @@
               [:component
                {:relative-id :virtual-label
                 :template (make-sequential-template
-                           [`(~(make-object-list ["foo"]))
+                           ['(anything "foo")
                             '("")
-                            (make-object-list [`(~link-type)
-                                               `("" (~name-label))])])
+                            label-object-template])
                 :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)
                 :class "link-type"
                 :render-dom (virt-DOM)}]
-              [:component {:template `(~(make-object-list ["foo"]))
+              [:component {:template '(anything "foo")
                            :relative-id :bar
                            :position :before
                            :render-dom (virt-DOM)

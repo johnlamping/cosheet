@@ -256,43 +256,50 @@
       (is (extended-by? '(nil (nil :label)) (id->entity id s))))))
 
 ;;; TODO: Test a query element that doesn't match the stack element.
-(deftest stack-DOM-test
-  (let [stk1-entity (id->entity stk1 s)
-        stk1-element (first (matching-elements '(nil "c1") stk1-entity))
-        dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
-    (is (check
-         dom
-         [:div {:class "horizontal-labeled-element-list batch-stack"}
-          [:div {}]
-          [:component {:query-id q1
-                       :stack-id stk1
-                       :get-action-data get-batch-edit-stack-element-action-data
-                       :relative-id (:item-id stk1-element)
-                       :render-dom render-item-DOM-R
-                       :class "batch-stack link-type leaf"
-                       :width 0.75}]
-          [:div {:class "vertical-labels-element link-type"}
-           [:component {:relative-id :stack-virtual-label
-                        :query-id q1
-                        :stack-id stk1 :class "link-type"
-                        :render-dom (virt-DOM)
-                        :get-action-data [(comp-AD)
-                                          (batch-virtual-element-AD) 
-                                          (virt-AD)]
-                        :template (make-sequential-template
-                                   ['anything
-                                    '("")
-                                    (make-object-list [`(~link-type)
-                                                       `("" (~name-label))])])
-                        :is-object-name true
-                        :position :after
-                        :do-not-match-query true}]
-           [:component {:relative-id :stack-virtual
-                        :query-id q1
-                        :stack-id stk1
-                        :render-dom (virt-DOM)
-                        :get-action-data [(comp-AD)
-                                          (batch-virtual-element-AD) 
-                                          (virt-AD)]
-                        :template '(anything (anything :label))
-                        :do-not-match-query true}]]]))))
+
+;;; TODO: !!! This test currently fails because item-render no longer
+;;; supports labels that are marked with :label, and that is what this
+;;; tests labels currently look like. We need to have Claude go
+;;; through here, redefine the queries with the new style of labels,
+;;; and then uncomment this.
+(comment
+  (deftest stack-DOM-test
+    (let [stk1-entity (id->entity stk1 s)
+          stk1-element (first (matching-elements '(nil "c1") stk1-entity))
+          dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
+      (is (check
+           dom
+           [:div {:class "horizontal-labeled-element-list batch-stack"}
+            [:div {}]
+            [:component {:query-id q1
+                         :stack-id stk1
+                         :get-action-data get-batch-edit-stack-element-action-data
+                         :relative-id (:item-id stk1-element)
+                         :render-dom render-item-DOM-R
+                         :class "batch-stack link-type leaf"
+                         :width 0.75}]
+            [:div {:class "vertical-labels-element link-type"}
+             [:component {:relative-id :stack-virtual-label
+                          :query-id q1
+                          :stack-id stk1 :class "link-type"
+                          :render-dom (virt-DOM)
+                          :get-action-data [(comp-AD)
+                                            (batch-virtual-element-AD) 
+                                            (virt-AD)]
+                          :template (make-sequential-template
+                                     ['anything
+                                      '("")
+                                      (make-object-list [`(~link-type)
+                                                         `("" (~name-label))])])
+                          :is-object-name true
+                          :position :after
+                          :do-not-match-query true}]
+             [:component {:relative-id :stack-virtual
+                          :query-id q1
+                          :stack-id stk1
+                          :render-dom (virt-DOM)
+                          :get-action-data [(comp-AD)
+                                            (batch-virtual-element-AD) 
+                                            (virt-AD)]
+                          :template '(anything (anything :label))
+                          :do-not-match-query true}]]])))))

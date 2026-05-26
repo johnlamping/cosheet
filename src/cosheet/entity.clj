@@ -180,6 +180,7 @@
     "Return a seq of items for all our elements with an elaboration with
      the given label.")
 
+  ;;; TODO: Get rid of this once we no longer use :label to mark labels.
   (marked-as-type? [this]
     "Return whether the entity is marked as being a type. (Has an element
      whose content is :label)")
@@ -319,8 +320,10 @@
 
 (defn label-object? [entity]
   "Return whether the entity is an object that makes an element that
-   has the entity as content be a label."
+   has the entity as its content be a label."
   (and (object? entity)
+       ;;; TODO: !!! The first clause here looks redundant, since the
+       ;;; name-label object is also a link-type object.
        (or (= (entity-key entity) name-label-id)
            (link-type-object? entity)
            (object-type-object? entity))))

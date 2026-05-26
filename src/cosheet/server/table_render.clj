@@ -39,7 +39,7 @@
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
-                                  virtual-entity-and-label-DOM
+                                  virtual-element-and-label-DOM
                                   label-stack-DOM
                                   element-content-and-non-label-elements-DOM
                                   element-content-DOM
@@ -157,7 +157,7 @@
 
 (defn render-table-condition-DOM-R
   "Return a hiccup representation for the top of a table, the part that
-  holds its condition. The relative-id should be for the header"
+  holds its condition. The relative-id should be for the header."
   [{:keys [relative-id] :as spec} store]
   (let-R [row-condition (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition)
@@ -167,7 +167,7 @@
                            (remove label-element? condition-elements)))
           virtual-dom
           (add-attributes
-           (virtual-entity-and-label-DOM
+           (virtual-element-and-label-DOM
             (cond-> (assoc spec-down
                            :relative-id :virtual)
               ;; If we have any headers already, put the new one after
@@ -245,11 +245,11 @@
               :template column-header-template
               :width 0.75}]
     (if (empty? hierarchy)
-      (virtual-entity-and-label-DOM spec :vertical)
+      (virtual-element-and-label-DOM spec :vertical)
       (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
             last-column-id (:item-id (:item last-column))]
         (add-attributes
-         (virtual-entity-and-label-DOM
+         (virtual-element-and-label-DOM
           (assoc spec
                  :get-action-data get-item-or-exemplar-action-data
                  :auxiliary-item-id last-column-id

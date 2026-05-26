@@ -7,6 +7,7 @@
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object? name-element?
+                    marked-as-type?
                     elements label->elements content->elements
                     name-label link-type object-type
                     make-object-list recursively-in-different-store
@@ -34,12 +35,14 @@
                        hierarchy-node-example-elements]]
     [order-utils :refer [ordered-entities]]
     [render-utils :refer [make-sequential-template
-                          ensure-label-object-content
+                          display-type
+                          ensure-label-object ensure-label-object-content
                           make-virtual-label-template
                           make-component
                           nest-if-multiple-DOM
                           condition-satisfiers
                           hierarchy-node-DOM
+                          final-template ; TODO: !!! Remove
                           transform-specification-for-elements
                           transform-specification-for-labels
                           transform-specification-for-non-contained-labels
@@ -127,8 +130,8 @@
    labels-dom inner-dom])
 
 (defn wrap-with-labels-DOM
-  "Wrap the inner dom inside the labels. If the orientation is :vertical,
-  indent the inner dom."
+  "Wrap the inner dom so it appears to be surrounded by the labels-dom.
+  If the orientation is :vertical, indent the inner dom."
   [labels-dom label-type inner-dom orientation]
   (assert (#{:link-type :object-type} label-type))
   (if (= orientation :vertical)
@@ -140,15 +143,6 @@
                           :object-type " right-indent"))}
       inner-dom]]
     (add-labels-DOM labels-dom inner-dom orientation)))
-
-;; TODO: Get rid of this once we can indent in either direction.
-(defn add-right-labels-DOM
-  "Like add-labels-DOM with :vertical-wrapped, but indents the inner
-  dom on the right rather than the left."
-  [labels-dom inner-dom]
-  [:div {:class "wrapped-element link-type"}
-   labels-dom
-   [:div {:class "indent-wrapper-right"} inner-dom]])
 
 (defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
@@ -166,32 +160,35 @@
                #(compose-action-data-getter % get-virtual-action-data)))))
 
 (defn virtual-label-DOM-component
-  "Return a dom for a virtual label. The label must occur inside an
-  overall component for the item it modifies. The specification should
-  have a template for what needs to be on the label element, beyond
-  the label. We don't require relative-id, but our callers must use it
-  if there are multiple virtual labels under the same component, to
-  distinguish their ids."
+  "Return a dom for a virtual label. The dom must appear inside an
+  overall dom for the item it modifies. The specification's template must
+  describe a label element. We don't require relative-id, but our
+  callers must use it if there are multiple virtual labels under the
+  same component, to distinguish their ids."
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
+  (assert (label-element? (final-template template)))
   (virtual-DOM-component
    (-> specification
        (assoc :relative-id (or relative-id :virtual-label)
               :position :after
               :template (make-virtual-label-template template)
               :is-object-name true)
-       (into-attributes {:class "link-type"}))))
+       (into-attributes {:class (-> (final-template template)
+                                    content display-type name)}))))
 
-(defn virtual-entity-and-label-DOM
-  "Return the dom for a virtual entity and a virtual label for it.
+(defn virtual-element-and-label-DOM
+  "Return the dom for a virtual element and a virtual label for it.
    The arguments are the same as for virtual-DOM-component."
   [{:keys [template class] :as specification} orientation]
   (let [dom (virtual-DOM-component specification)
         labels-dom (virtual-label-DOM-component
                     (-> specification
                         (dissoc :relative-id)
-                        (assoc :template (make-sequential-template
-                                          [template 'anything]))))]
+                        (assoc :template
+                               (make-sequential-template
+                                [template
+                                 `(~(ensure-label-object 'anything))]))))]
     (cond-> (wrap-with-labels-DOM labels-dom :link-type dom orientation)
       class
       (add-attributes {:class class}))))
@@ -234,6 +231,10 @@
   "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
   (let [ordered-labels (ordered-entities label-elements)
+        label-type (let [example-label (first label-elements)]
+                     (if (marked-as-type? example-label)
+                       :link-type
+                       (display-type (content example-label))))
         ;; TODO: !!! Get rid of this once it's clear it's not
         ;; needed. (Once the :label tags are removed from the tests
         ;; and elsewhere.)
@@ -242,14 +243,17 @@
     (item-stack-DOM ordered-labels label-tags :vertical
                     (-> specification
                         (update :template ensure-label-object-content)
-                        (into-attributes {:class "link-type"})))))
+                        (into-attributes {:class (name label-type)})))))
 
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item."
   [inner-dom label-elements orientation specification]
-  (let [stack (label-stack-DOM label-elements specification)]
-    (wrap-with-labels-DOM stack :link-type inner-dom orientation)))
+  (let [stack (label-stack-DOM label-elements specification)
+        label-type (if (object? (:template specification))
+                     :object-type
+                     :link-type)]
+    (wrap-with-labels-DOM stack label-type inner-dom orientation)))
 
 (defn labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -508,11 +512,19 @@
                     specification))]
         (nest-if-multiple-DOM doms orientation)))))
 
+;;; TODO: !!! This needs to change to be able to support elements of both
+;;; elements or objects, so it needs to know what kind thing they are
+;;; elements of, in order to get the right kind of indentation.
+
+;;; But first, can some commonality in this with other functions here
+;;; be factored out? It seems to overlap their function, once they
+;;; have gotten the elements of an item.
 (defn labels-and-elements-DOM
-  "Generate the dom for a set of elements, some of which may be labels.
-  virtual-dom, if present, will appear after the elements.
-  elements-must-show-labels determines whether the elements must show labels.
-  The specifications should be appropriate for each of the elements."
+  "Generate the dom for a set of elements, some of which may be
+  labels. virtual-dom, if present, will appear after the elements.
+  elements-must-show-labels determines whether the elements must show
+  labels of their own.  The specification should be appropriate for
+  each of the elements."
   ;; This function is only called from outside item-render.
   [elements virtual-dom must-show-label elements-must-show-labels
    orientation specification]
@@ -532,14 +544,19 @@
       (and labels elements-dom)
       (non-empty-labels-wrapper-DOM
        elements-dom labels orientation specification)
+      
       labels
       (label-stack-DOM elements specification)
+      
       (and must-show-label elements-dom)
-      (wrap-with-labels-DOM
-       (virtual-label-DOM-component specification) :link-type
-       elements-dom orientation)
+      (wrap-with-labels-DOM (virtual-label-DOM-component
+                             (transform-specification-for-labels specification))
+                            :link-type
+                            elements-dom orientation)
+      
       elements-dom
       elements-dom
+      
       true
       (virtual-label-DOM-component
        (add-attributes specification {:class "elements-wrapper"})))))
@@ -746,10 +763,12 @@
                      :vertical)
                     names-dom)]
     (cond-> (if (seq labels)
-              (add-right-labels-DOM
+              (wrap-with-labels-DOM
                (label-stack-DOM
                 labels (transform-specification-for-labels specification))
-               inner-dom)
+               :object-type
+               inner-dom
+               :vertical)
               inner-dom)
       (:class specification)
       (add-attributes {:class (:class specification)}))))
@@ -814,7 +833,8 @@
                                (assoc (add-parallel-item-ids specification
                                                              descendant-ids)
                                       :class ""
-                                      :template 'anything
+                                      :template `(~(ensure-label-object
+                                                    'anything))
                                       :relative-id [(:item-id leaf) :nested]))
                         (not top-level)
                         (add-attributes {:class "merge-with-parent"}))]

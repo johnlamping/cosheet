@@ -33,10 +33,10 @@
        requires creating a sequence of items. An item matching the
        first template of the template-sequence must be created, with
        that item used as the target for creating the item matching the
-       next template the sequence, etc. Except if a template is an
-       object, the new object becomes the content of the target. The
-       reference of the whole sequence is the item created for the
-       final template."}
+       next template the sequence, etc. Except if one of the templates
+       is an object, the new object becomes the content of the
+       previous template's item. The reference of the whole sequence
+       is the item created for the final template."}
     SequentialTemplate
     [template-sequence])
 
@@ -51,6 +51,14 @@
   [template]
   (instance? SequentialTemplate template))
 
+(defn final-template
+  "If the argument is a sequential template, return its final
+  template. Otherwise, return the template itself."
+  [template]
+  (if (sequential-template? template)
+    (final-template (last (:template-sequence template)))
+    template))
+
 (defn universal-template?
   "Return true if the template can match both elements and objects."
   [template]
@@ -59,17 +67,19 @@
 (defn display-type
   "Return :link-type, :object-type, or :name depending on whether the
   entity satisfies link-type-object?, object-type-object?, or
-  name-element? respectively."
+  name-element? respectively. If the object is a template, use its
+  final template to determine the type."
   [entity]
-  (cond (link-type-object? entity) :link-type
-        (object-type-object? entity) :object-type
-        (name-element? entity) :name))
+  (let [target (final-template entity)]
+    (cond (link-type-object? target) :link-type
+          (object-type-object? target) :object-type
+          (name-element? target) :name)))
 
-;;; TODO: !!! This counts class objects as labels, but only creates
-;;; label objects. make it consistent.
+;;; TODO: !!! This counts object-type objects as labels, but only creates
+;;; link-type labels objects. make it consistent.
 (defn ensure-label-object
-  "Give a template that can indicate an object, make it be a label object if
-  it isn't already."
+  "Give a template that can indicate an object, expand it as much as
+  necessary to be a named label object."
   [template]
   (assert (not (sequential-template? template)))
   (let [is-label (label-object? template)
@@ -99,9 +109,10 @@
   "Given a template for an element, make a template for a virtual label
   consisting of that element. In other words, pull out the last
   template if there's a sequence. That template should be a template
-  for an element.  Replace it with two templates, one for an identical
+  for an element. Replace it with two templates, one for an identical
   element, except with content of the empty string. and one for a
-  label object that matches the element's content."
+  label object that expands the incoming template's content as much as
+  necessary to make it a named label."
   [template]
   (let [[prefix-templates last-template]
         (if (sequential-template? template)
@@ -167,7 +178,7 @@
                                      :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template (ensure-label-object-content 'anything)
+         :template `(~(ensure-label-object 'anything))
          :omit-universal-elements true))
 
 (defn entity->canonical-term

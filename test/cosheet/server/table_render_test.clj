@@ -312,6 +312,7 @@
                        :relative-id :virtual-label
                        :width 0.75
                        :class "link-type"
+                       :omit-universal-elements true
                        :render-dom render-virtual-DOM
                        :get-action-data (virt-AD)}]
            ;; The condition element.

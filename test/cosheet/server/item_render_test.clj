@@ -55,10 +55,10 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (make-virtual-label-template 'anything))
+(def virtual-label-template (make-virtual-label-template 'anything :link-type))
 (def object-type-label-object-template (ensure-label-object 'anything :object-type))
 (def object-type-virtual-label-template
-  (make-virtual-label-template `(~object-type-label-object-template)))
+  (make-virtual-label-template `(~object-type-label-object-template) :object-type))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.

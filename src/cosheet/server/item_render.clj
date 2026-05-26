@@ -168,14 +168,14 @@
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
   (assert (label-element? (final-template template)))
-  (virtual-DOM-component
-   (-> specification
-       (assoc :relative-id (or relative-id :virtual-label)
-              :position :after
-              :template (make-virtual-label-template template)
-              :is-object-name true)
-       (into-attributes {:class (-> (final-template template)
-                                    content display-type name)}))))
+  (let [label-type (-> (final-template template) content display-type)]
+    (virtual-DOM-component
+     (-> specification
+         (assoc :relative-id (or relative-id :virtual-label)
+                :position :after
+                :template (make-virtual-label-template template label-type)
+                :is-object-name true)
+         (into-attributes {:class (name label-type)})))))
 
 (defn virtual-element-and-label-DOM
   "Return the dom for a virtual element and a virtual label for it.
@@ -288,7 +288,7 @@
         ;;       we take the first of the descendants.
         example-descendant-id (first descendant-ids)
         labels-spec (transform-specification-for-non-contained-labels
-                     specification)]
+                     specification :link-type)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (do
                   (assert (label-object? (content (:template labels-spec)))
@@ -440,10 +440,11 @@
                              (:item (first leaves))))
                         hierarchy)]
     (let [label-spec (transform-specification-for-non-contained-labels
-                      specification)
+                      specification :link-type)
           label-doms (one-column-of-hierarchy-two-column-DOM
                       hierarchy
-                      hierarchical-elements-property-elements-DOM horizontal-label-wrapper
+                      hierarchical-elements-property-elements-DOM
+                      horizontal-label-wrapper
                       label-spec 0.25)          
           items-doms (one-column-of-hierarchy-two-column-DOM
                       hierarchy

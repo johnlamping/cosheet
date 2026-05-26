@@ -116,7 +116,7 @@
   element, except with content of the empty string. and one for a
   label object that expands the incoming template's content as much as
   necessary to make it a named label."
-  [template]
+  [template label-type]
   (let [[prefix-templates last-template]
         (if (sequential-template? template)
           (let [template-sequence (:template-sequence template)]
@@ -128,7 +128,7 @@
        ;; The label.
       [(cons "" (elements last-template))
        ;; It's content.
-       (ensure-label-object (content last-template) :link-type)]))))
+       (ensure-label-object (content last-template) label-type)]))))
 
 (defn specification-item-id
   [specification]
@@ -171,8 +171,8 @@
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
-  [specification]
-  ;; The label is not contained in a component for the items it
+  [specification label-type]
+  ;; The label's dom is not contained in a component for the items it
   ;; applies to. We have to keep the action data functions for the
   ;; items the labels pertain to, and the information they use,
   ;; because the label needs to use them as part of its action data
@@ -181,7 +181,7 @@
                                      :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template `(~(ensure-label-object 'anything :link-type))
+         :template `(~(ensure-label-object 'anything label-type))
          :omit-universal-elements true))
 
 (defn entity->canonical-term

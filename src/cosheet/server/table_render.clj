@@ -180,7 +180,7 @@
            {:class "virtual-column"})
           dom (labels-and-elements-DOM
                condition-elements virtual-dom
-               true true :horizontal spec-down)]
+               true true :horizontal spec-down :link-type)]
       (add-attributes dom {:class "query-condition"}))))
 
 (defn table-hierarchy-node-disqualifications

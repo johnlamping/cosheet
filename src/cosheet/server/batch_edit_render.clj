@@ -76,7 +76,8 @@
     (-> (select-keys specification [:query-id :stack-id])
         (assoc :template 'anything
                :width 0.75
-               :immutable true)))
+               :immutable true))
+    :link-type)
    (add-attributes {:class "query-condition"})))
 
 (defn batch-query-component

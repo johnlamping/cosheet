@@ -3,7 +3,7 @@
                                       label-element? object? label-object?
                                       link-type-object? object-type-object?
                                       name-element?
-                                      link-type name-label make-object-list
+                                      link-type object-type name-label make-object-list
                                       label->elements
                                       make-element-list content orientation]]
                       [store :refer [item-id?]]
@@ -33,10 +33,11 @@
        requires creating a sequence of items. An item matching the
        first template of the template-sequence must be created, with
        that item used as the target for creating the item matching the
-       next template the sequence, etc. Except if one of the templates
-       is an object, the new object becomes the content of the
-       previous template's item. The reference of the whole sequence
-       is the item created for the final template."}
+       next template the sequence, etc. Element and primitive
+       templates become elements of the preceeding target, while
+       object templates become the content of the preceeding
+       target. The reference of the whole sequence is the item created
+       for the final template."}
     SequentialTemplate
     [template-sequence])
 
@@ -75,15 +76,17 @@
           (object-type-object? target) :object-type
           (name-element? target) :name)))
 
-;;; TODO: !!! This counts object-type objects as labels, but only creates
-;;; link-type labels objects. make it consistent.
 (defn ensure-label-object
   "Give a template that can indicate an object, expand it as much as
-  necessary to be a named label object."
-  [template]
+  necessary to be a named label object of the given label-type
+  (:link-type or :object-type)."
+  [template label-type]
   (assert (not (sequential-template? template)))
   (let [is-label (label-object? template)
-        has-name (seq (label->elements template name-label))]
+        has-name (seq (label->elements template name-label))
+        typing-object (case label-type
+                        :link-type link-type
+                        :object-type object-type)]
     (if (and is-label has-name)
       template
       (make-object-list
@@ -92,17 +95,17 @@
                  (do (assert (object? template))
                      (elements template)))
          (not is-label)
-         (conj `(~link-type))
+         (conj `(~typing-object))
          (not has-name)
          (conj `("" (~name-label))))))))
 
 (defn ensure-label-object-content
   "Given a template that can match an element, make its content be a
-  label object, if it isn't already."
-  [template]
+  label object of the given label-type, if it isn't already."
+  [template label-type]
   (assert (or (element? template) (universal-template? template)))
   (make-element-list (orientation template)
-                     (ensure-label-object (content template))
+                     (ensure-label-object (content template) label-type)
                      (elements template)))
 
 (defn make-virtual-label-template
@@ -125,7 +128,7 @@
        ;; The label.
       [(cons "" (elements last-template))
        ;; It's content.
-       (ensure-label-object (content last-template))]))))
+       (ensure-label-object (content last-template) :link-type)]))))
 
 (defn specification-item-id
   [specification]
@@ -162,9 +165,9 @@
          :template 'anything))
 
 (defn transform-specification-for-labels
-  [specification]
+  [specification label-type]
   (assoc (select-keys specification [:width :immutable])
-         :template `(~(ensure-label-object 'anything))
+         :template `(~(ensure-label-object 'anything label-type))
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
@@ -178,7 +181,7 @@
                                      :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template `(~(ensure-label-object 'anything))
+         :template `(~(ensure-label-object 'anything :link-type))
          :omit-universal-elements true))
 
 (defn entity->canonical-term

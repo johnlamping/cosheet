@@ -57,7 +57,7 @@
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
 
-(def label-object-template (ensure-label-object 'anything))
+(def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
 (def virtual-label-template (make-virtual-label-template 'anything))
 

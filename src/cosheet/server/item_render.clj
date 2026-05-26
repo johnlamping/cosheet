@@ -42,7 +42,7 @@
                           nest-if-multiple-DOM
                           condition-satisfiers
                           hierarchy-node-DOM
-                          final-template ; TODO: !!! Remove
+                          final-template
                           transform-specification-for-elements
                           transform-specification-for-labels
                           transform-specification-for-non-contained-labels
@@ -182,13 +182,16 @@
    The arguments are the same as for virtual-DOM-component."
   [{:keys [template class] :as specification} orientation]
   (let [dom (virtual-DOM-component specification)
+        label-type (if (object? (final-template template))
+                     :object-type
+                     :link-type)
         labels-dom (virtual-label-DOM-component
                     (-> specification
                         (dissoc :relative-id)
                         (assoc :template
                                (make-sequential-template
-                                [template
-                                 `(~(ensure-label-object 'anything))]))))]
+                                [template `(~(ensure-label-object
+                                              'anything label-type))]))))]
     (cond-> (wrap-with-labels-DOM labels-dom :link-type dom orientation)
       class
       (add-attributes {:class class}))))
@@ -242,7 +245,7 @@
                         ordered-labels)]
     (item-stack-DOM ordered-labels label-tags :vertical
                     (-> specification
-                        (update :template ensure-label-object-content)
+                        (update :template #(ensure-label-object-content % label-type))
                         (into-attributes {:class (name label-type)})))))
 
 (defn non-empty-labels-wrapper-DOM
@@ -263,7 +266,8 @@
   (add-attributes
    (if (and (empty? label-elements) (not (:must-show-label specification)))
      dom
-     (let [labels-spec (transform-specification-for-labels specification)]
+     (let [labels-spec (transform-specification-for-labels
+                        specification :link-type)]
        (if (not (empty? label-elements))
          (non-empty-labels-wrapper-DOM
           dom label-elements :vertical labels-spec)
@@ -527,7 +531,7 @@
   each of the elements."
   ;; This function is only called from outside item-render.
   [elements virtual-dom must-show-label elements-must-show-labels
-   orientation specification]
+   orientation specification label-type]
   (assert (not (:relative-id specification))
           (:relative-id specification))
   (let [[labels non-labels] (separate-by label-element? elements)
@@ -544,22 +548,25 @@
       (and labels elements-dom)
       (non-empty-labels-wrapper-DOM
        elements-dom labels orientation specification)
-      
+
       labels
       (label-stack-DOM elements specification)
-      
+
       (and must-show-label elements-dom)
-      (wrap-with-labels-DOM (virtual-label-DOM-component
-                             (transform-specification-for-labels specification))
-                            :link-type
-                            elements-dom orientation)
-      
+      (wrap-with-labels-DOM
+       (virtual-label-DOM-component
+        (transform-specification-for-labels specification label-type))
+       label-type
+       elements-dom orientation)
+
       elements-dom
       elements-dom
-      
+
       true
       (virtual-label-DOM-component
-       (add-attributes specification {:class "elements-wrapper"})))))
+       (-> specification
+           (add-attributes {:class "elements-wrapper"})
+           (transform-specification-for-labels label-type))))))
 
 ;;; The next functions handle the parts of the dom for an element
 
@@ -765,7 +772,8 @@
     (cond-> (if (seq labels)
               (wrap-with-labels-DOM
                (label-stack-DOM
-                labels (transform-specification-for-labels specification))
+                labels (transform-specification-for-labels
+                        specification :link-type))
                :object-type
                inner-dom
                :vertical)
@@ -834,7 +842,7 @@
                                                              descendant-ids)
                                       :class ""
                                       :template `(~(ensure-label-object
-                                                    'anything))
+                                                    'anything :link-type))
                                       :relative-id [(:item-id leaf) :nested]))
                         (not top-level)
                         (add-attributes {:class "merge-with-parent"}))]

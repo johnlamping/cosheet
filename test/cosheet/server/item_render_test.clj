@@ -53,9 +53,12 @@
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
 
-(def label-object-template (ensure-label-object 'anything))
+(def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
 (def virtual-label-template (make-virtual-label-template 'anything))
+(def object-type-label-object-template (ensure-label-object 'anything :object-type))
+(def object-type-virtual-label-template
+  (make-virtual-label-template `(~object-type-label-object-template)))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -279,7 +282,7 @@
     (is (check
          (labels-and-elements-DOM
           [joe jane] nil false false :vertical
-          {:template 'anything :width 0.8})
+          {:template 'anything :width 0.8} :object-type)
          [:div {:class "wrapped-element link-type"}
           [:component {:width 0.8, :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
@@ -318,7 +321,7 @@
     (is (check
          (labels-and-elements-DOM
           [joe jane] nil false false :horizontal
-          {:template 'anything :width 0.8})
+          {:template 'anything :width 0.8} :link-type)
          [:div {:class "wrapped-element link-type"}
           [:component {:width 0.8
                        :template label-template
@@ -359,7 +362,7 @@
     (is (check
          (labels-and-elements-DOM
                     [joe-test joe-foo] nil false false :vertical
-          {:template ' anything :width 0.8})
+          {:template ' anything :width 0.8} :object-type)
          [:div {:class "vertical-stack"}
           [:component {:template label-template
                        :width 0.8
@@ -377,7 +380,7 @@
     (is (check
          (labels-and-elements-DOM
           [sally joe-test] nil false false :vertical
-          {:template ' anything :width 0.8})
+          {:template ' anything :width 0.8} :link-type)
          [:div {:class "wrapped-element link-type"}
           [:component {:template label-template
                        :width 0.8
@@ -395,18 +398,18 @@
     (is (check
          (labels-and-elements-DOM
           [sally] nil true true :vertical
-          {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element link-type"}
-          [:component {:template virtual-label-template
+          {:template 'anything :width 0.8} :object-type)
+         [:div {:class "wrapped-element object-type"}
+          [:component {:template object-type-virtual-label-template
                        :omit-universal-elements true
                        :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
-                       :class "link-type"
+                       :class "object-type"
                        :render-dom (virt-DOM)
                        :position :after
                        :get-action-data (virt-AD)}]
-          [:div {:class "indent-wrapper left-indent"}
+          [:div {:class "indent-wrapper right-indent"}
            [:div {:class
                   "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
@@ -430,7 +433,7 @@
     (is (check
          (labels-and-elements-DOM
           [sally] [:div "virtual"] false false :vertical
-          {:template 'anything :width 0.8})
+          {:template 'anything :width 0.8} :link-type)
          [:div {:class "vertical-stack"}
           [:component {:template 'anything
                        :width 0.8

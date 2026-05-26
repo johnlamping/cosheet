@@ -47,7 +47,7 @@
     (if (seq example-element-ids)
       (let [dom (labels-and-elements-DOM
                  example-elements nil false false :vertical
-                 (select-keys specification [:width :template]))
+                 (select-keys specification [:width :template]) :link-type)
             elements-elements (map semantic-elements example-elements)]
         (cond-> dom
           (not (empty? (apply concat elements-elements)))

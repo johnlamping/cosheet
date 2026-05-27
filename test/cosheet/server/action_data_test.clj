@@ -153,7 +153,7 @@
   ;; vector as the template.
   (let [data (get-virtual-action-data
               {:template (make-sequential-template
-                          ['anything '(2 ("name" :label))])}
+                          ['anything `(2 (~age-label-object))])}
               {:subject-ids [jane-id joe-id]} nil store)]
     (println jane-id joe-id)
     (is (check data {:subject-ids [(any) (any)]
@@ -161,19 +161,20 @@
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
-          [new-jane-id new-joe-id] subject-ids]
+          [new-jane-id new-joe-id] subject-ids
+          age-label-obj (in-different-store (content joe-age-label) store)]
       (is (=  (id->target store (id->target store new-joe-id)) joe-id))
       (is (check (semantic-to-list (id->entity new-joe-id store))
-                 '(2 ("name" :label))))
+                 `(2 (~age-label-obj))))
       (is (check (semantic-to-list (id->entity
                                     (id->target store new-joe-id) store))
-                 '("" (2 ("name" :label)))))
+                 `("" (2 (~age-label-obj)))))
       (is (= (id->target store (id->target store new-jane-id)) jane-id))
       (is (check (semantic-to-list (id->entity new-jane-id store))
-                 '(2 ("name" :label))))
+                 `(2 (~age-label-obj))))
       (is (check (semantic-to-list (id->entity
                                     (id->target store new-jane-id) store))
-                 '(anything (2 ("name" :label)))))))
+                 `(~'anything (2 (~age-label-obj)))))))
   ;; Try :sibling true
   (let [data (get-virtual-action-data
               {:template 'anything

@@ -4,11 +4,12 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [orderable :as orderable]
                       [entity :as entity  :refer [id->entity
-                                                  elements to-list]]
+                                                  elements to-list content
+                                                  in-different-store]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
                                      target-label->ids]] 
-                      [store-utils :refer [add-element]]
+                      [store-utils :refer [add-element link-type-object]]
                       [query :refer [matching-elements]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
@@ -53,25 +54,26 @@
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
+(def age-label-object (link-type-object "age"))
 (def joe-list `("Joe"
                 (~o2 :order)
                 ("male" (~o1 :order))
                 (39 (~o3 :order)
-                    ("age" :tag (~o3 :order))
+                    (~age-label-object (~o3 :order))
                     ("doubtful" ("confidence" (~o4 :order))
                                 (~o4 :order)) )
                 ("married" (~o2 :order))
                 (45 (~o4 :order)
-                    ("age" :tag (~o3 :order)))))
+                    (~age-label-object (~o4 :order)))))
 (def jane-list `("Jane" (~o1 :order)
                  (:selector)
                  ("female" (~o2 :order))
                  (45 (~o3 :order)
-                     ("age" :tag (~o3 :order)))))
+                     (~age-label-object (~o3 :order)))))
 (def dup-list `("dup" (~o1 :order)
                 ("female" (~o2 :order))
                 ("female" (~o3 :order))))
-(def age-condition-list '(anything ("age" :tag)))
+(def age-condition-list `(~'anything (~age-label-object)))
 (def t1 (add-element (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-element (first t1) nil jane-list))
@@ -85,11 +87,11 @@
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
-(def joe-age-tag (first (matching-elements "age" joe-age)))
+(def joe-age-label (first (matching-elements `(~age-label-object) joe-age)))
 (def jane (id->entity jane-id store))
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-female (first (matching-elements "female" jane)))
-(def jane-age-tag (first (matching-elements "age" jane-age)))
+(def jane-age-label (first (matching-elements `(~age-label-object) jane-age)))
 (def dup (id->entity dup-id store))
 (def dup-females (matching-elements "female" dup))
 (def dup-female-1 (first dup-females))
@@ -194,7 +196,7 @@
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
               {:template '(anything 2)
-               :adjacent-query '(nil "age")
+               :adjacent-query `(nil (~age-label-object))
                :position :before}
               {:subject-ids [jane-id joe-id]} nil store)]
     (is (check data {:subject-ids [(any) (any)]
@@ -202,7 +204,8 @@
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [subject-ids store]} data
-          [new-jane-id new-joe-id] subject-ids]
+          [new-jane-id new-joe-id] subject-ids
+          age-label-obj (in-different-store (content jane-age-label) store)]
       (is (= (id->target store new-joe-id) joe-id))
       (is (check (semantic-to-list (id->entity new-joe-id store))
                  '("" 2)))
@@ -210,14 +213,17 @@
                       (semantic-elements
                        (order-recursively
                         (id->entity joe-id store))))
-                 '("male" "married"
-                   ("" 2) (39 "age" ("doubtful" "confidence")) (45 "age"))))
+                 `("male"
+                   "married"
+                   ("" 2)
+                   (39 (~age-label-obj) ("doubtful" "confidence"))
+                   (45 (~age-label-obj)))))
       (is (= (id->target store new-jane-id) jane-id))
       (is (check (map semantic-to-list
                       (ordered-entities
                        (semantic-elements
                         (id->entity jane-id store))))
-                 '("female" (anything 2) (45 "age")))))))
+                 (as-set `("female" (~'anything 2) (45 (~age-label-obj)))))))))
 
 (deftest get-item-do-batch-edit-action-data-test
   (is (check (get-item-do-batch-edit-action-data
@@ -263,7 +269,7 @@
               :selected-index 1
               :selection-sequence [(:item-id joe-age)]}))
   (is (check (get-item-do-batch-edit-action-data
-              {:relative-id (:item-id joe-age-tag)}
+              {:relative-id (:item-id joe-age-label)}
               {:query-ids []
                :stack-ids [jane-id joe-id]
                :selected-index 1
@@ -273,7 +279,7 @@
               :stack-ids [jane-id joe-id]
               :selected-index 1
               :selection-sequence [(:item-id joe-age)
-                                   (:item-id joe-age-tag)]})))
+                                   (:item-id joe-age-label)]})))
 
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data
@@ -317,7 +323,7 @@
 (deftest parallel-items-get-do-batch-edit-action-data-test
   (is (check (parallel-items-get-do-batch-edit-action-data
               {:auxiliary-item-id (:item-id joe-age)
-               :parallel-ids [(:item-id joe-age-tag)]}
+               :parallel-ids [(:item-id joe-age-label)]}
               {:query-ids [jane-id]
                :stack-ids [joe-id]
                :selected-index 0
@@ -327,5 +333,5 @@
               :stack-ids [joe-id]
               :selected-index 0
               :selection-sequence [(:item-id joe-age)
-                                   (:item-id joe-age-tag)]})))
+                                   (:item-id joe-age-label)]})))
 

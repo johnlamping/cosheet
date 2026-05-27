@@ -129,11 +129,16 @@
         [s6 _] (add-element s5 object-type-id `(~object-type))]
     s6))
 
+(defn link-type-object
+  "Return the list representation of a link type object with the given name."
+  [name]
+  (make-object-list [`(~name (~name-label)) `(~link-type)]))
+
 (defn add-link-type-object
   "Add a label object with the given name to the store.
    Return the updated store and the id of the label object."
   [store name]
-  (add-object store (make-object-list [`(~name (~name-label)) `(~link-type)])))
+  (add-object store (link-type-object name)))
 
 (defn add-object-type-object
   "Add an object-type object with the given name to the store.

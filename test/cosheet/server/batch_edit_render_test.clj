@@ -10,7 +10,7 @@
                             id->target]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element add-object]]
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
              [entity :as entity  :refer [id->entity
@@ -29,7 +29,8 @@
                                   composed-get-action-data
                                   parallel-items-get-action-data
                                   get-item-or-exemplar-action-data]]
-             [order-utils :refer [ordered-entities add-order-elements]]
+             [order-utils :refer [ordered-entities add-order-elements
+                                  add-order-elements-inside-object]]
              [render-utils :refer [ensure-label-object
                                    make-virtual-label-template
                                    make-sequential-template]]
@@ -81,17 +82,19 @@
                           (anything ("c2" :label) :column)
                           :row-condition))))
 (def h1 (second t0))
-(def t1 (add-element (first t0) nil (add-order-elements
-                                    '(""
-                                      (2 ("c1" :label))
-                                      (2 ("c2" :label))
-                                      :top-level))))
+(def t1 (add-object (first t0)
+                    (first (add-order-elements-inside-object
+                            (make-object-list ['(2 ("c1" :label))
+                                               '(2 ("c2" :label))
+                                               `(~orderable/initial :order)])
+                            orderable/initial))))
 (def r1 (second t1))
-(def t2 (add-element (first t1) nil (add-order-elements
-                                    '(""
-                                      (2 ("c1" :label))
-                                      (3 ("c2" :label))
-                                      :top-level))))
+(def t2 (add-object (first t1)
+                    (first (add-order-elements-inside-object
+                            (make-object-list ['(2 ("c1" :label))
+                                               '(3 ("c2" :label))
+                                               `(~orderable/initial :order)])
+                            orderable/initial))))
 (def r2 (second t2))
 (def t3 (add-element (first t2) nil (add-order-elements
                                     '(anything (anything ("c1" :label))))))
@@ -124,7 +127,7 @@
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
         query-R (make-reporter :value '(nil (nil ("c1" :label))))
-        count-R (match-count-R query-R :top-level mutable-store)
+        count-R (row-match-count-R query-R mutable-store)
         cd (make-calculator-data (make-priority-task-queue 0))]
     (request count-R cd)
     (compute cd)

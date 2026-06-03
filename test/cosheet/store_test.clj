@@ -171,7 +171,19 @@
 
 (deftest id-valid-link?-test
   (is (id-valid-link? test-store (make-link-id 1)))
-  (is (not (id-valid-link? test-store (make-link-id 99)))))
+  (is (not (id-valid-link? test-store (make-link-id 99))))
+  (is (not (id-valid-link? test-store (make-object-id "object")))))
+
+(deftest id-known-object?-test
+  (is (not (id-known-object? test-store (make-link-id 1))))
+  (is (id-known-object? test-store (make-object-id "object")))
+  (is (not (id-known-object? test-store (make-object-id "foo")))))
+
+(deftest id-known?-test
+  (is (id-known? test-store (make-link-id 1)))
+  (is (not (id-known? test-store (make-link-id 99))))
+  (is (id-known? test-store (make-object-id "object")))
+  (is (not (id-known-object? test-store (make-object-id "foo")))))
 
 (deftest id->target-test
   (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))

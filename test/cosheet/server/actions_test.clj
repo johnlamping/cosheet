@@ -79,7 +79,8 @@
 (def table-list (add-order-elements
                  `(:x
                    :selector
-                   (:x :row-condition ~@row-condition-elements)
+                   (~(make-object-list row-condition-elements)
+                    :row-condition)
                    (:x :column-headers ~@column-headers))))
 (def t0 (add-element (new-element-store) nil table-list))
 (def table-id (second t0))
@@ -462,9 +463,10 @@
                                :column-ids [first-header-id]
                                :client-id (relative-ids->client-id
                                            [table-id jane-id first-header-id])})
-        row-condition (pattern-to-fixed-term `(nil ~@row-condition-elements))
-        rows (matching-items row-condition store)
-        new-rows (matching-items row-condition new-store)]
+        row-pattern (pattern-to-fixed-term
+                     (make-object-list row-condition-elements))
+        rows (matching-items row-pattern store)
+        new-rows (matching-items row-pattern new-store)]
     (is (= (count new-rows)
            (+ 1 (count rows))))
     (let [new-id (first (clojure.set/difference (set (map :item-id new-rows))

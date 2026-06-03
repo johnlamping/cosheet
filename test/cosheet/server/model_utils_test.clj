@@ -50,7 +50,7 @@
                 (39 (~o3 :order)
                     ("age" :label (~o3 :order))
                     ("doubtful" ("confidence" (~o4 :order))
-                                (~o4 :order)) )
+                                (~o4 :order)))
                 ("married" (~o2 :order))
                 (45 (~o4 :order)
                     ("age" :label (~o3 :order)))))
@@ -91,10 +91,11 @@
                  :target
                  nil
                  ['(nil (nil :order))
-                  `(~(make-object-list `((~link-type))))
+                  `(~(make-object-list `((~link-type) (nil :order))))
                   `(~(make-object-list `("a"
                                          ~(not-query `(~link-type))
-                                         ~(not-query `(~object-type)))))
+                                         ~(not-query `(~object-type))
+                                         (nil :order))))
                   '(nil :order)])))))
 
 (deftest specialize-generic-test
@@ -227,9 +228,10 @@
     (compute cd)
     (let [first-tab (id->entity
                      (first (reporter-value-or-invalid ordered-tab-ids)) s)]
-      (is (selector? (first (label->elements
-                             (first (label->elements first-tab :tab-topic))
-                             :row-condition)))))
+      (is (selector? (content (first (label->elements
+                                      (first (label->elements first-tab
+                                                              :tab-topic))
+                                      :row-condition))))))
     (is (selector? selector-root))
     (is (selector? selector-child))
     (is (selector? selector-grandchild))
@@ -465,8 +467,8 @@
                                (nil :tab-topic :table))
                              s)
         tab (first tabs)
-        rows (matching-items
-              '(nil :top-level) s)
+        rows (matching-items (pattern-to-fixed-term
+                              (make-object-list [`("hi" :label)])) s)
         table (first (matching-elements '(nil :table) tab))
         row-conditions (matching-elements '(nil :row-condition) table)
         column-headers-list (matching-elements '(nil :column-headers) table)]
@@ -482,9 +484,9 @@
                   ~(as-set
                     `(""
                       ~(as-set
-                        `(~'anything
-                          :selector
-                          ~(as-set `("hi" (~(any) :order) :label))
+                        `(~(make-object-list
+                            [(as-set `("hi" :label (~(any) :order)))
+                             :selector])
                           :row-condition
                           (~(any) :order)))
                       (~(any) :order)
@@ -501,8 +503,8 @@
                       :tab-topic
                       :table))))))
     (is (= rows []))
-    (is (check (semantic-to-list (first row-conditions))
-               '(anything ("hi" :label))))
+    (is (check (object-semantic-to-list (content (first row-conditions)))
+               (as-set (make-object-list ['("hi" :label)]))))
     (is (check (map semantic-to-list
                     (ordered-entities
                      (semantic-elements (first column-headers-list))))
@@ -515,8 +517,8 @@
                                (nil :tab-topic :table))
                              s1)
         tab (first tabs)
-        rows (matching-items
-              '(nil :top-level) s1)
+        rows (matching-items (pattern-to-fixed-term
+                              (make-object-list [`("there" :label)])) s1)
         table (first (matching-elements '(nil :table) tab))
         row-condition (first (matching-elements '(nil :row-condition) table))
         column-headers (first (matching-elements '(nil :column-headers) table))]
@@ -529,12 +531,13 @@
                   ("there" (~(any) :order))
                   ~(as-set
                     `(""
-                       ~(as-set
-                         `(~'anything
-                           (~(any) :order)
-                           :selector
-                           ~(as-set `("there" :label (~(any) :order)))
-                           :row-condition))
+                      ~(as-set `(~(as-set (make-object-list
+                                           [`("there"
+                                              :label
+                                              (~(any) :order))
+                                            :selector]))
+                                 (~(any) :order)
+                                 :row-condition))
                       ~(as-set
                         `(~'anything
                           ~(as-set `(~'anything (~(any) :order)
@@ -549,14 +552,15 @@
                  ))))
     (is (check (map semantic-to-list
                     (ordered-entities rows))
-               [(as-set '(""
-                          ("there" :label)
-                          (1 ("a" :label))
-                          (2 ("b" :label))))
-                (as-set '("" ("there" :label) (3 ("a" :label))))]))
-    (is (check (semantic-to-list row-condition)
-               (as-set
-                '(anything ("there" :label)))))
+               [(as-set (make-object-list
+                         [(as-set '("there" :label))
+                          (as-set '(1 ("a" :label)))
+                          (as-set '(2 ("b" :label)))]))
+                (as-set (make-object-list
+                         [(as-set '("there" :label))
+                          (as-set '(3 ("a" :label)))]))]))
+    (is (check (object-semantic-to-list (content row-condition))
+               (as-set (make-object-list [(as-set '("there" :label))]))))
     (is (check (map semantic-to-list (ordered-entities
                                       (semantic-elements column-headers)))
                [(as-set '(anything ("a" :label)))

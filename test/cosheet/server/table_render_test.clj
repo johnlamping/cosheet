@@ -5,7 +5,8 @@
              [orderable :as orderable]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-element add-universal-objects
+             [store-utils :refer [add-element add-object
+                                  add-universal-objects
                                   add-link-type-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->element id->object
@@ -139,42 +140,41 @@
         temp-single-label-object (id->object single-oid sf)
         temp-height-label-object (id->object height-oid sf)
         temp-other-label-object (id->object other-oid sf)
-        joe-list `("Joe"
-                   :top-level
-                   (~o2 :order)
-                   ("male" (~o1 :order))
-                   ("married" (~o2 :order))
-                   (39 (~o3 :order)
-                       (~temp-age-label-object (~o3 :order))
-                       ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
-                   (45 (~o4 :order)
-                       (~temp-age-label-object (~o3 :order)))
-                   ("Joe" (~o5 :order)
-                    (~temp-name-label-object (~o3 :order)))
-                   ("Joseph" (~o6 :order)
-                    (~temp-name-label-object (~o1 :order))
-                    (~temp-id-label-object (~o2 :order))))
-        jane-list `("Jane"
-                    :top-level
-                    (~o1 :order)
-                    ("plain" (~o2 :order)) ("plain" (~o3 :order)))
-        test-list `("TEST"
-                    :top-level
-                    :test
-                    (~o3 :order)
+        joe-list (make-object-list
+                  [`(~o2 :order)
+                   `("male" (~o1 :order))
+                   `("married" (~o2 :order))
+                   `(39 (~o3 :order)
+                        (~temp-age-label-object (~o3 :order))
+                        ("doubtful" (~o1 :order)
+                                    ("confidence" (~o3 :order))))
+                   `(45 (~o4 :order)
+                        (~temp-age-label-object (~o3 :order)))
+                   `("Joe" (~o5 :order)
+                     (~temp-name-label-object (~o3 :order)))
+                   `("Joseph" (~o6 :order)
+                     (~temp-name-label-object (~o1 :order))
+                     (~temp-id-label-object (~o2 :order)))])
+        jane-list (make-object-list
+                   [`(~o1 :order)
+                    `("plain" (~o2 :order))
+                    `("plain" (~o3 :order))])
+        test-list (make-object-list
+                   [:test
+                    `(~o3 :order)
                     ;; Real data won't have 'anything as content,
                     ;; but we want something that is less specific
                     ;; than the table condition to test that it will
                     ;; cause the condition to be eliminated in batch
                     ;; edits.
-                    (~'anything (~o3 :order) (~temp-age-label-object
-                                              (~o3 :order))))
+                    `(~'anything (~o3 :order) (~temp-age-label-object
+                                               (~o3 :order)))])
         table-list `("table"
-                     (~'anything
-                      :row-condition
-                      (~'anything
-                       (~temp-age-label-object (~o1 :order))
-                       (~o8 :order)))
+                     (~(make-object-list
+                        [`(~'anything
+                           (~temp-age-label-object (~o1 :order))
+                           (~o8 :order))])
+                      :row-condition)
                      (~'anything
                       :column-headers
                       (~'anything (~temp-single-label-object (~o1 :order))
@@ -197,9 +197,9 @@
                        (~o6 :order))
                       ("something" ("child" (~o1 :order))
                        (~o7 :order))))
-        [s1 joe-id] (add-element sf nil joe-list)
-        [s2 jane-id] (add-element s1 nil jane-list)
-        [s3 test-id] (add-element s2 nil test-list)
+        [s1 joe-id] (add-object sf joe-list)
+        [s2 jane-id] (add-object s1 jane-list)
+        [s3 test-id] (add-object s2 test-list)
         [store table-id] (add-element s3 nil table-list)
         age-label-object (id->object age-oid store)
         name-label-object (id->object nickname-oid store)
@@ -207,7 +207,7 @@
         single-label-object (id->object single-oid store)
         height-label-object (id->object height-oid store)
         other-label-object (id->object other-oid store)
-        joe (id->element joe-id store)
+        joe (id->object joe-id store)
         joe-id (:item-id joe)
         joe-joe (first (matching-elements "Joe" joe))
         joe-joe-id (:item-id joe-joe)
@@ -216,7 +216,8 @@
         table (id->element table-id store)
         row-condition (entity/label->element table :row-condition)
         row-condition-id (:item-id row-condition)
-        rc1 (first (matching-elements `(nil ~o8) row-condition))
+        rc1 (first (matching-elements `(nil ~o8)
+                                      (entity/content row-condition)))
         rc1-id (:item-id rc1)
         column-headers (entity/label->element table :column-headers)
         column-headers-id (:item-id column-headers)
@@ -762,8 +763,8 @@
              {:relative-id :body
               :alternate-row-sibling column-headers-id
               :column-descriptions-R (any)
-              :row-template-R `(~'anything (~'anything (~age-label-object))
-                                :top-level)
+              :row-template-R (make-object-list
+                               [`(~'anything (~age-label-object))])
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM-R
               :get-action-data (pass-AD)}]]]))

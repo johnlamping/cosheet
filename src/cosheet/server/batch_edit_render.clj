@@ -2,6 +2,7 @@
   (:require (cosheet [reporter :refer [universal-category]]
                       [entity :refer [id->entity updating-immutable
                                       elements to-list
+                                      make-object-list
                                       label-element? label->elements
                                       add-elements-to-entity
                                       target-entity]]
@@ -21,6 +22,7 @@
                                    make-sequential-template]]
              [model-utils :refer [semantic-elements semantic-non-label-elements
                                   semantic-to-list entity->canonical-semantic
+                                  object-semantic-to-list
                                   pattern-to-fixed-term]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
@@ -31,9 +33,26 @@
              [action-data :refer [best-match
                                   get-pass-through-action-data]])))
 
+(defn row-match-query
+  "Convert a row-condition-like query entity into a fixed-term object pattern
+   that matches row objects."
+  [query-entity]
+  (pattern-to-fixed-term
+   (make-object-list
+    (map semantic-to-list (semantic-elements query-entity)))))
+
+(defn row-match-count-R
+  "Return a reporter whose value is the number of row objects matching
+   the query given by the reporter."
+  [query-R mutable-store]
+  (let-R [query-entity query-R]
+    (let-R [matches (matching-item-ids-R (row-match-query query-entity)
+                                         mutable-store)]
+      (count matches))))
+
 (defn match-count-R
   "Return a reporter whose value is the number of matches to the query
-  given by the reporter, with the qualifier added."
+  given by the reporter, with the qualifier added as an element."
   [query-R query-qualifier mutable-store]
   (let-R [query-entity query-R]
     (let [query (-> query-entity
@@ -46,8 +65,8 @@
 (defn get-batch-count-rendering-data
   [{:keys [query-id]} mutable-store]
   (let [mutable-query-entity (id->entity query-id mutable-store)
-        query-R (updating-immutable mutable-query-entity)] 
-    [[(match-count-R query-R :top-level mutable-store)
+        query-R (updating-immutable mutable-query-entity)]
+    [[(row-match-count-R query-R mutable-store)
       [universal-category]]
      [(match-count-R query-R :row-condition mutable-store)
       [universal-category]]]))
@@ -104,9 +123,8 @@
     (distinct
      (concat
       (when (not do-not-match-query) [query-entity])
-      [stack-entity] 
-      (matching-items (add-elements-to-entity query [:top-level])
-                      store)
+      [stack-entity]
+      (matching-items (row-match-query query-entity) store)
       matching-table-conditions
       (map #(first (label->elements (target-entity %) :column-headers))
            matching-table-conditions)))))

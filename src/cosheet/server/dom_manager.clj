@@ -224,7 +224,7 @@
      (re-matches #"^[a-zA-Z0-9\-]*$" (name id))
      ;; Not a character that an item id's representation
      ;; could start with.
-     (not (re-matches #"^[0-9I].*" (name id))))
+     (not (re-matches #"^[0-9IM].*" (name id))))
     (item-id? id)))
 
 (defn valid-relative-id? [id]
@@ -254,7 +254,8 @@
   "Turn a subpart of a client id into a :relative-id"
   [client-id-subpart]
   (if (and (string? client-id-subpart)
-           (re-matches #"[I0-9]" (subs client-id-subpart 0 1)))
+           ;; Item id numbers can start with any of these letters.
+           (re-matches #"^[0-9IM].*" client-id-subpart))
     (string->id client-id-subpart)
     (keyword client-id-subpart)))
 

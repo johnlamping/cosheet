@@ -1,5 +1,6 @@
 (ns cosheet.store
-  (:require (cosheet [utils :refer [parse-string-as-number]])))
+  (:require (cosheet [utils :refer [parse-string-as-number]]
+                     [reporter-macros :refer [let-R]])))
 
 ;;; TODO: Once store is fully updated, check that all of the below is true.
 
@@ -175,9 +176,10 @@
     "Returns true if the id is a valid link id for the store, one that 
     store has information about.")
 
-  (id-described-object? [this id]
-    "Returns true if the id is an object id that the store has some description
-    for. In other words, one that is the target of some link in the store.")
+  (id-known-object? [this id]
+    "Returns true if the id is an object id that the store has some
+    information about. In other words, one that is the source or
+    target of some link in the store.")
   
   (id->target [this id]
     "Given a link id, return its target. If the target is a link, it
@@ -364,6 +366,13 @@
 ;; Factory that creates a MutableStore initialized to a given store
 (defmulti new-mutable-store
   (constantly true))
+
+(defn id-known?
+  "Return true if the store knows anything about the id."
+  [store id]
+  (let-R [valid-link (id-valid-link? store id)
+          known-object (id-known-object? store id)]
+    (or valid-link known-object)))
 
 (defn generic-name?
   "Return true if the name counts as generic, that is, if it doesn't

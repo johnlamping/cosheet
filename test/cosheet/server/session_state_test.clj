@@ -15,6 +15,8 @@
              [map-reporter :refer [make-map-reporter map-reporter-get-current]]
              [calculator :refer [make-calculator-data compute]]
              [task-queue :refer [make-priority-task-queue]])
+            (cosheet
+             [entity :refer [make-object-list]])
             (cosheet.server
              [session-state :refer :all]
              [item-render :refer [render-item-DOM-R]]
@@ -43,13 +45,18 @@
                                                           1, 2
                                                           3")
                                "Hello")
-        row1 (first (matching-items '(nil (1 ("a" :label))) store))
-        row2 (first (matching-items '(nil (3 ("a" :label))) store))]
+        row1 (first (matching-items
+                     (make-object-list ['(1 ("a" :label))]) store))
+        row2 (first (matching-items
+                     (make-object-list ['(3 ("a" :label))]) store))]
     (is (= (canonicalize (semantic-to-list row1))
            (canonicalize
-            '("" ("Hello" :label) (1 ("a" :label)) (2 ("b" :label))))))
+            (make-object-list ['("Hello" :label)
+                               '(1 ("a" :label))
+                               '(2 ("b" :label))]))))
     (is (= (canonicalize (semantic-to-list row2))
-           (canonicalize '("" ("Hello" :label) (3 ("a" :label))))))))
+           (canonicalize (make-object-list ['("Hello" :label)
+                                            '(3 ("a" :label))]))))))
 
 (deftest create-client-state-test
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
@@ -111,7 +118,8 @@
   (let [stream (new java.io.StringReader "a, b")
         store (add-table (starting-store nil)
                          "Hello" [["a" "b"] [1 2] [3]])
-        row1 (first (matching-items '(nil (1 ("a" :label))) store))
+        row1 (first (matching-items
+                     (make-object-list ['(1 ("a" :label))]) store))
         ms (new-mutable-store store)
         queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)]

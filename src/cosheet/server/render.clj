@@ -1,7 +1,7 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [id-valid-link?]]
+                      [store :refer [id-valid-link? id-known?]]
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value-or-invalid universal-category]]
@@ -405,9 +405,10 @@
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
   (let-R [id (map-reporter-get client-state :root-id)
-          id-valid (id-valid-link? store id)]
-    (or (when id-valid id)
-        (app-R first (ordered-tabs-ids-R store)))))
+          known (id-known? store id)]
+    (if known
+      id
+      (app-R first (ordered-tabs-ids-R store)))))
 
 (defn batch-editing-component
   [store ephemeral-id]

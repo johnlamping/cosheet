@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet
              [orderable :refer [split initial]]
-             [entity :refer [label->elements]]
+             [entity :refer [label->elements make-object-list]]
              [store :refer [new-element-store]]
              store-impl
              [store-utils :refer [add-element]]
@@ -100,15 +100,14 @@
             {:relative-id :virtual-tab
              :auxiliary-item-id (:item-id t3)
              :class "tab virtualTab"
-             :template ['(""
+             :template [`(""
                           :tab
                           ("" :tab-topic :table
-                                  (anything
-                                   :row-condition :selector
-                                   (??? :label))
-                                  (anything
+                                  (~(make-object-list ['(??? :label) :selector])
+                                   :row-condition)
+                                  (~'anything
                                    :column-headers :selector
-                                   (anything (??? :label)))))
+                                   (~'anything (~'??? :label)))))
                         'anything]
              :sibling true
              :use-bigger true
@@ -117,14 +116,13 @@
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
-             :template '("" :tab ""
+             :template `("" :tab ""
                          ("" :tab-topic :table
-                                 (anything
-                                  :row-condition :selector
-                                  (??? :label))
-                                 (anything
+                                 (~(make-object-list ['(??? :label) :selector])
+                                  :row-condition)
+                                 (~'anything
                                   :column-headers :selector
-                                  (anything (??? :label)))))
+                                  (~'anything (~'??? :label)))))
              :render-dom (tab-DOM)
              :get-action-data (item-AD)
              :example-element-ids (as-set [(:item-id t3-baz)
@@ -135,14 +133,13 @@
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
-              :template '("" :tab ""
+              :template `("" :tab ""
                           ("" :tab-topic :table
-                                  (anything
-                                   :row-condition :selector
-                                   (??? :label))
-                                  (anything
+                                  (~(make-object-list ['(??? :label) :selector])
+                                   :row-condition)
+                                  (~'anything
                                    :column-headers :selector
-                                   (anything (??? :label)))))
+                                   (~'anything (~'??? :label)))))
               :render-dom (tab-DOM)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
@@ -154,14 +151,13 @@
              [:component
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
-               :template '("" :tab ""
+               :template `("" :tab ""
                            ("" :tab-topic :table
-                                   (anything
-                                    :row-condition :selector
-                                    (??? :label))
-                                   (anything
+                                   (~(make-object-list ['(??? :label) :selector])
+                                    :row-condition)
+                                   (~'anything
                                     :column-headers :selector
-                                    (anything (??? :label))))
+                                    (~'anything (~'??? :label))))
                            "foo")
                :render-dom (tab-DOM)
                :example-element-ids [(:item-id t2-bar)]

@@ -84,7 +84,7 @@
   (let [row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
         row-condition (id->entity row-condition-id immutable-store)
-        condition-elements (semantic-elements row-condition)
+        condition-elements (semantic-elements (content row-condition))
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
            :query-ids query-ids
@@ -103,7 +103,7 @@
         row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
         row-condition (id->entity row-condition-id immutable-store)
-        condition-elements (semantic-elements row-condition)
+        condition-elements (semantic-elements (content row-condition))
         query-ids (map :item-id condition-elements)
         stack-ids (concat (when (= (count column-ids) 1)
                             competing-ids)
@@ -127,7 +127,7 @@
   (let [row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
         row-condition (id->entity row-condition-id immutable-store)
-        condition-elements (semantic-elements row-condition)
+        condition-elements (semantic-elements (content row-condition))
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
            :query-ids query-ids
@@ -155,12 +155,15 @@
   [v ^java.io.Writer w]
   (.write w "table-cell-item-do-batch-AD"))
 
+;;; TODO: !!! This should be changed to use a horizontal object
+;;; layout, which ought to be able to replace most of this. That would
+;;; get rid of the :link-type, which should be :object-type.
 (defn render-table-condition-DOM-R
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the header."
   [{:keys [relative-id] :as spec} store]
   (let-R [row-condition (id->updating-entity-R relative-id store)]
-    (let [condition-elements (semantic-elements row-condition)
+    (let [condition-elements (semantic-elements (content row-condition))
           spec-down {:template 'anything
                      :width 0.75}
           last-item (last (ordered-entities

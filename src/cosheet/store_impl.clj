@@ -113,9 +113,10 @@
     (and (link-id? id)
          (contains? (:id->source this) id)))
 
-  (id-described-object? [this id]
-    (and (object-id? id))
-    (contains? (:target->ids this) id))
+  (id-known-object? [this id]
+    (and (object-id? id)
+         (or (contains? (:target->ids this) id)
+              (contains? (:source->ids this) id))))
 
   (id->target [this id]
     (when (link-id? id)

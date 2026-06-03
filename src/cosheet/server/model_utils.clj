@@ -37,10 +37,6 @@
                          order-element-for-item]]
     [format-convert :refer [current-format]])))
 
-;;; TODO: !!! Get rid of :top-level on row templates once we start
-;;;           using the fact that they are objects, which implies top
-;;;           level.
-
 ;;; Utilities that know about how information is encoded in terms of the store.
 
 ;;; Creating new labels
@@ -207,13 +203,16 @@
   "Given a pattern, alter it in accordance with the options. Specifically:
     * Replace 'anything by nil.
     * If require-not-type is true and an object is not a type, then
-      require it not to have a link-type or object-type element.
-    * If require-orders is true and an element has nil content, add a
-      '(nil :order) element to make it only match user editable elements."
+      require it not to have a link-type or object-type element, so it
+      won't match those.
+    * If require-orders is true and an element has nil content, or the
+      pattern is an object, add a '(nil :order) element to make it only
+      match user editable items."
   [pattern {:keys [require-not-type require-orders] :as options}]
   (cond
     (primitive? pattern)
     (replace-anything-by-nil pattern)
+    
     (element? pattern)
     (let [new-content
           (let [replaced-content (replace-anything-by-nil (content pattern))]
@@ -227,16 +226,21 @@
                 (elements pattern) options)
          (and (nil? new-content) require-orders)
          (concat ['(nil :order)]))))
+    
     (interned-object? pattern)
     pattern
+    
     (object? pattern)
-    (make-object-list
-     (cond-> (transform-pattern-elements-toward-fixed-term
-              (elements pattern) options)
-       (and require-not-type
-            (not (link-type-object? pattern))
-            (not (object-type-object? pattern)))
-       (concat [(not-query `(~link-type)) (not-query `(~object-type))])))
+    (let [non-type (and (not (link-type-object? pattern))
+                        (not (object-type-object? pattern)))]
+      (make-object-list
+       (cond-> (transform-pattern-elements-toward-fixed-term
+                (elements pattern) options)
+         (and require-not-type non-type)
+         (concat [(not-query `(~link-type)) (not-query `(~object-type))])
+         require-orders
+         (concat ['(nil :order)]))))
+    
     true
     (assert false pattern)))
 
@@ -429,6 +433,36 @@
         (update-add-object-with-given-elements-and-order
          store (elements template) order position)))
 
+(defn update-add-position-and-elements-with-order
+  "Given the id of an already-created entity, add an :order element to
+   it for its own position, and add the given template-elements to it,
+   each with its own order. The provided order is split into a bigger
+   and smaller piece, with the entity getting the bigger piece if
+   use-bigger is true, otherwise the smaller one. Return the new store
+   and the unused part of the order (the piece that did not go to the
+   entity)."
+  [store entity-id template-elements order position use-bigger]
+  ;; First, we split the order into a bigger and a smaller part, putting
+  ;; the bigger part in the correct position. Then, when we recursively
+  ;; add the elements, we take their order from the bigger position,
+  ;; leaving most of the space on the bigger position. Finally, we use
+  ;; the appropriate position for the entity and the return value.
+  (let [entity-order-index (case position :before 0 :after 1)
+        other-position ([:after :before] entity-order-index)
+        split-order (split order (if use-bigger position other-position))
+        bigger-index (if use-bigger
+                       entity-order-index
+                       (- 1 entity-order-index))
+        bigger-order (split-order bigger-index)
+        smaller-order (split-order (- 1 bigger-index))
+        [store bigger-order]
+        (add-elements-with-order
+         store entity-id template-elements bigger-order position)
+        [store _] (add-element
+                   store entity-id
+                   `(~(if use-bigger bigger-order smaller-order) :order))]
+    [store (if use-bigger smaller-order bigger-order)]))
+
 (defn update-add-element-with-order-and-ephemeral
   "Add an element, described in list form, to the store, with the given
   target.  Add ordering information to the element and each part of it,
@@ -447,37 +481,18 @@
     (if (not (orderable-entity? template))
       (let [[s id] (add-element store target-id template)]
         [s id order])
-      (let [[s0 value-to-store order]
+      (let [[store value-to-store order]
             (if (object? template-content)
               (update-add-object-with-order
                store template-content order position)
               [store template-content order])
-            [s1 id] (add-link s0 target-id value-to-store)
-            ;; The next bunch of complication is to split the order up
-            ;; the right way in all cases. First, we split it into a
-            ;; bigger and a smaller part, putting the bigger part in
-            ;; correct position. Then, when we recursively add the
-            ;; elements, we take their order from the bigger position,
-            ;; leaving most of the space on the bigger position. Finally,
-            ;; we use the appropriate position for the entity and the
-            ;; return value.
-            entity-order-index (case position :before 0 :after 1)
-            other-position ([:after :before] entity-order-index)
-            split-order (split order (if use-bigger position other-position))
-            bigger-index (if use-bigger
-                           entity-order-index
-                           (- 1 entity-order-index))
-            bigger-order (split-order bigger-index)
-            smaller-order (split-order (- 1 bigger-index))
-            [s2 bigger-order]
-            (add-elements-with-order
-             s1 id template-elements bigger-order position)
-            [s3 _] (add-element
-                    s2 id `(~(if use-bigger bigger-order smaller-order)
-                            :order))]
-        [(if is-ephemeral (declare-ephemeral-id s3 id) s3)
+            [store id] (add-link store target-id value-to-store)
+            [store remainder]
+            (update-add-position-and-elements-with-order
+             store id template-elements order position use-bigger)]
+        [(if is-ephemeral (declare-ephemeral-id store id) store)
          id
-         (if use-bigger smaller-order bigger-order)]))))
+         remainder]))))
 
 (defn update-add-element-adjacent-to
   "Add an entity with the given target id and contents,
@@ -493,13 +508,21 @@
     [(update-source store (:item-id order-element) remainder) id]))
 
 (defn update-add-object-adjacent-to
-  "Add an object with the given contents,
+  "Add a top-level object matching the template,
    taking its order from the given item, in the given position,
-   and giving the entity the bigger piece if use-bigger is true.
-   Return the updated store and the id of the entity."
-  [store object adjacent-to position use-bigger]
-  (assert (object? object))
-  (update-add-element-adjacent-to nil object adjacent-to position use-bigger))
+   and giving the new object the bigger piece of the order
+   if use-bigger is true.
+   Return the updated store and the id of the new object."
+  [store object-template adjacent-to position use-bigger]
+  (assert (object? object-template))
+  (let [order-element (order-element-for-item adjacent-to store)
+        order (content order-element)
+        [store object-id] (get-new-object-id store)
+        [store remainder] (update-add-position-and-elements-with-order
+                           store object-id (elements object-template)
+                           order position use-bigger)]
+    [(update-source store (:item-id order-element) remainder)
+     object-id]))
 
 ;;; Handling of generics and templates
 
@@ -550,16 +573,21 @@
                                    (selector? (first containing)))))))
 
 (defn create-possible-selector-element
-  "Create an element, modifying the template if the target-id is not a
-   a selector. Return the updated store and the id of the new element."
+  "Create an element (or object, if the template is one), modifying
+   the template if the target-id is not a selector. Return the updated
+   store and the id of the new entity."
   [template target-id adjacent-id position use-bigger store]
   (let [template (if (and target-id
                           (selector? (id->entity target-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
-    (update-add-element-adjacent-to store target-id template
-                                  (id->entity adjacent-id store)
-                                  position use-bigger)))
+    (if (object? template)
+      (update-add-object-adjacent-to store template
+                                     (id->entity adjacent-id store)
+                                     position use-bigger)
+      (update-add-element-adjacent-to store target-id template
+                                      (id->entity adjacent-id store)
+                                      position use-bigger))))
 
 (defn create-possible-selector-elements
   "Create elements, specializing the template as appropriate, depending on
@@ -639,10 +667,10 @@
   (label->element table-item :row-condition))
 
 (defn table-row-condition->row-template
+  "Return the row template from the row condition. The template is the
+   object each row must extend."
   [row-condition]
-  (let [condition-elements (semantic-elements row-condition)
-        elements-as-lists (map semantic-to-list condition-elements)]
-    (concat '(anything) elements-as-lists [:top-level])))
+  (object-semantic-to-list (content row-condition)))
 
 (defn table-row-template
   "Return the row condition as a template."
@@ -657,8 +685,8 @@
   `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
     :table
-    ~(concat '(anything :row-condition :selector)
-              row-condition-elements)
+    (~(make-object-list (conj row-condition-elements :selector))
+     :row-condition)
     ~(concat '(anything :column-headers :selector)
              header-elements)))
 
@@ -739,10 +767,11 @@
 
 (defn add-rows
   "Given a sequence of rows, each of which is a sequence of values,
-  add data corresponding to them to the store, each following the
-  row-template in the order.
+  add data corresponding to them to the store, each as a new top-level
+  object satisfying the row-template (which must be an object).
   Return the store and the column header names."
   [store rows row-template]
+  (assert (object? row-template) row-template)
   (let [num-columns (apply max (map count rows))
         first-row (first rows)
         num-first (count first-row)
@@ -759,8 +788,8 @@
         order-element (order-element-for-item nil store)]
     [(reduce
       (fn [store row]
-        (let [[store row-id] (update-add-element-adjacent-to
-                              store nil row-template
+        (let [[store row-id] (update-add-object-adjacent-to
+                              store row-template
                               order-element :before false)]
           (reduce
            (fn [store [header-value cell-value]]
@@ -795,6 +824,6 @@
   "Given a sequence of rows, each a sequence of values,
   add a table corresponding to them to the store, with its own tab."
   [store table-name rows]
-  (let [rows-template `("" (~table-name :label) :top-level)
+  (let [rows-template (make-object-list [`(~table-name :label)])
         [store headers] (add-rows store rows rows-template)]
     (add-table-tab store table-name headers)))

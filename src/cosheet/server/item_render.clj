@@ -448,7 +448,8 @@
                       label-spec 0.25)          
           items-doms (one-column-of-hierarchy-two-column-DOM
                       hierarchy
-                      hierarchy-leaf-elements-DOM horizontal-value-wrapper
+                      hierarchy-leaf-elements-DOM
+                      horizontal-value-wrapper
                       specification 0.6875)]
       (map
        (fn [label-dom items-dom only-item]

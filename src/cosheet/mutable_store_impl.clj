@@ -212,9 +212,9 @@
     (cache-and-categorize
      [id] id-valid-link? this id))
 
-  (id-described-object? [this id]
+  (id-known-object? [this id]
     (cache-and-categorize
-     [id] id-described-object? this id))
+     [id] id-known-object? this id))
 
   (id->target [this id]
     (cache-and-categorize

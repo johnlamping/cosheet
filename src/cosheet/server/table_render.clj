@@ -27,7 +27,8 @@
                                   table-row-condition-id
                                   table-column-headers-element
                                   table-row-condition-element
-                                  table-row-condition->row-template
+                                  table-row-condition-object
+                                  object-semantic-to-list
                                   semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-fixed-term fixed-term-to-template
@@ -160,10 +161,11 @@
 ;;; get rid of the :link-type, which should be :object-type.
 (defn render-table-condition-DOM-R
   "Return a hiccup representation for the top of a table, the part that
-  holds its condition. The relative-id should be for the header."
+  holds its condition. The relative-id should be for the row-condition
+  object."
   [{:keys [relative-id] :as spec} store]
-  (let-R [row-condition (id->updating-entity-R relative-id store)]
-    (let [condition-elements (semantic-elements (content row-condition))
+  (let-R [row-condition-object (id->updating-entity-R relative-id store)]
+    (let [condition-elements (semantic-elements row-condition-object)
           spec-down {:template 'anything
                      :width 0.75}
           last-item (last (ordered-entities
@@ -507,7 +509,7 @@
           ;; recomputation of the main body of the function.
           (let-R [table-item (id->updating-entity-R
                              table-id store)]
-            [(:item-id (table-row-condition-element table-item))
+            [(:item-id (table-row-condition-object table-item))
              (:item-id (table-column-headers-element table-item))])]
     ;; First check to see if we have the table information filled in yet.
     ;; Render the table only if the table information has been filled in.
@@ -541,7 +543,7 @@
             ;; reconstructed whenever part of the table description
             ;; changes. That makes computations that depend on them
             ;; not depend on changes elsewhere in the table entity.
-            row-template-R (app-R table-row-condition->row-template
+            row-template-R (app-R object-semantic-to-list
                                  (id->updating-entity-R
                                   row-condition-id store))
             column-headers-R (id->updating-entity-R

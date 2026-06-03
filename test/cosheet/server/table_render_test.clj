@@ -39,7 +39,8 @@
                                    make-sequential-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
-             [model-utils :refer [semantic-to-list semantic-elements]]
+             [model-utils :refer [semantic-to-list semantic-elements
+                                  table-row-condition-object]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -214,10 +215,9 @@
         joe-joseph (first (matching-elements "Joseph" joe))
         joe-joseph-id (:item-id joe-joseph)
         table (id->element table-id store)
-        row-condition (entity/label->element table :row-condition)
+        row-condition (table-row-condition-object table)
         row-condition-id (:item-id row-condition)
-        rc1 (first (matching-elements `(nil ~o8)
-                                      (entity/content row-condition)))
+        rc1 (first (matching-elements `(nil ~o8) row-condition))
         rc1-id (:item-id rc1)
         column-headers (entity/label->element table :column-headers)
         column-headers-id (:item-id column-headers)

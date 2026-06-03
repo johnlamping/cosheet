@@ -666,6 +666,11 @@
   [table-item]
   (label->element table-item :row-condition))
 
+(defn table-row-condition-object
+  "Return the object inside the row-condition element of the table."
+  [table-item]
+  (content (table-row-condition-element table-item)))
+
 (defn table-row-condition->row-template
   "Return the row template from the row condition. The template is the
    object each row must extend."
@@ -675,8 +680,8 @@
 (defn table-row-template
   "Return the row condition as a template."
   [table-item]
-  (table-row-condition->row-template
-   (table-row-condition-element table-item)))
+  (object-semantic-to-list
+   (table-row-condition-object table-item)))
 
 (defn tab-table-element
   "Return the element that gives the information for a table in a new tab

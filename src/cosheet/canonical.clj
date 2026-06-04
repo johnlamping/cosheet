@@ -78,7 +78,7 @@
         (canonical-primitive-form entity)
         (object? entity)
         (if (interned-object? entity)
-          entity
+          (in-different-store entity nil)
           ;; Since the object is not interned, we have to expand it
           ;; out, so it can match other non-interned objects.
           [:object

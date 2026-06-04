@@ -5,7 +5,8 @@
                       [store :refer [make-item-id new-element-store]]
                       store-impl
                       [store-utils :refer [add-object add-universal-objects]]
-                      [entity :refer [make-object-list id->object]]
+                      [entity :refer [make-object-list id->object
+                                      in-different-store]]
                       [entity-impl])
             ; :reload
             ))
@@ -42,7 +43,8 @@
                 [:source 39 {[:source "age" {tag 1}] 1
                              [:source "doubtful" {"confidence" 1}] 1}] 1
                 [:source 45 {[:source "age" {tag 1}] 1}] 1}]))
-    (is (= (canonicalize joe-named-object) joe-named-object)))
+    (is (= (canonicalize joe-named-object)
+           (in-different-store joe-named-object nil))))
 
 (deftest canonical-to-list-test
   (let [starting `("starting" ~joe-list ~jane-list ~jane-list)

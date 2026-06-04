@@ -276,8 +276,8 @@
         jane (id->element (:jane-id ids) store)
         jane-test (id->element (:jane-test-id ids) store)
         sally (id->element sally-id store)
-        test-label-object (id->object (:test-label-oid ids) store)
-        foo-label-object (id->object (:foo-label-oid ids) store)]
+        test-label-object (id->object (:test-label-oid ids) nil)
+        foo-label-object (id->object (:foo-label-oid ids) nil)]
     ;; Test two non-labels.
     (is (check
          (labels-and-elements-DOM
@@ -791,8 +791,8 @@
                                :get-action-data (default-AD)}]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
-        one-object (id->object (:one-oid ids) store)
-        two-object (id->object (:two-oid ids) store)
+        one-object (id->object (:one-oid ids) nil)
+        two-object (id->object (:two-oid ids) nil)
         dom (render-item-DOM-R (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 0.9)
@@ -840,10 +840,10 @@
                                 :get-action-data (default-AD)}]]]]])))
   ;; Test an item with four elements, with link-type sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
-        zero-object (id->object (:zero-oid ids) store)
-        one-object (id->object (:one-oid ids) store)
-        two-object (id->object (:two-oid ids) store)
-        both-object (id->object (:both-oid ids) store)
+        zero-object (id->object (:zero-oid ids) nil)
+        one-object (id->object (:one-oid ids) nil)
+        two-object (id->object (:two-oid ids) nil)
+        both-object (id->object (:both-oid ids) nil)
         dom (render-item-DOM-R (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 0.9)
@@ -1024,8 +1024,8 @@
                           :get-action-data (default-AD)}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
-        one-object (id->object (:one-oid ids) store)
-        two-object (id->object (:two-oid ids) store)
+        one-object (id->object (:one-oid ids) nil)
+        two-object (id->object (:two-oid ids) nil)
         dom (render-item-DOM-R (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 1.5)
@@ -1074,10 +1074,10 @@
                          :get-action-data (default-AD)}]]]])))
   ;; Test an item with four elements, with link-type sharing among them.
   (let [[store ids] (make-fred-4-elements-store)
-        zero-object (id->object (:zero-oid ids) store)
-        one-object (id->object (:one-oid ids) store)
-        two-object (id->object (:two-oid ids) store)
-        both-object (id->object (:both-oid ids) store)
+        zero-object (id->object (:zero-oid ids) nil)
+        one-object (id->object (:one-oid ids) nil)
+        two-object (id->object (:two-oid ids) nil)
+        both-object (id->object (:both-oid ids) nil)
         dom (render-item-DOM-R (assoc basic-dom-specification
                                     :relative-id (:fred-id ids)
                                     :width 1.5)

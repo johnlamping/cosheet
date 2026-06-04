@@ -328,7 +328,7 @@
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
              [:div {:class "indent-wrapper left-indent"}
-              [:component {:template `(~'anything (~age-label-object))
+              [:component {:template `(~'anything (~(id->object age-oid nil)))
                            :width 0.75
                            :exclude-elements-by-ids [(any)]
                            :relative-id rc1-id
@@ -709,7 +709,8 @@
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM-R
                :get-action-data (default-AD)
-               :template `("" (~name-label-object) (~id-label-object))
+               :template `("" (~name-label-object)
+                              (~(id->object id-oid nil)))
                :width 0.75
                :exclude-elements-by-ids
                (as-set
@@ -754,8 +755,9 @@
               :hierarchy-R
               [{:cosheet.server.hierarchy/hierarchy-node true
                 :leaves (any)
-                :properties {[:source single-label-object {}] 1}
-                :cumulative-properties {[:source single-label-object {}] 1}}
+                :properties {[:source (id->object single-oid nil) {}] 1}
+                :cumulative-properties {[:source (id->object single-oid nil)
+                                                {}] 1}}
                (any) (any) (any) (any)]
               :render-dom render-table-header-DOM-R
               :get-action-data (default-AD)}]

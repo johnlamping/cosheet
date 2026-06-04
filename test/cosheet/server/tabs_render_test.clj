@@ -5,7 +5,7 @@
              [entity :refer [label->elements make-object-list]]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-element link-type-object]]
              [entity :refer [id->element]]
              [query :refer [matching-elements]]
              [debug :refer [simplify-for-print]]
@@ -103,11 +103,11 @@
              :template [`(""
                           :tab
                           ("" :tab-topic :table
-                                  (~(make-object-list ['(??? :label) :selector])
+                                  (~(make-object-list [`(~(link-type-object '???)) :selector])
                                    :row-condition)
                                   (~'anything
                                    :column-headers :selector
-                                   (~'anything (~'??? :label)))))
+                                   (~'anything (~(link-type-object '???))))))
                         'anything]
              :sibling true
              :use-bigger true
@@ -118,11 +118,11 @@
              :width 0.75
              :template `("" :tab ""
                          ("" :tab-topic :table
-                                 (~(make-object-list ['(??? :label) :selector])
+                                 (~(make-object-list [`(~(link-type-object '???)) :selector])
                                   :row-condition)
                                  (~'anything
                                   :column-headers :selector
-                                  (~'anything (~'??? :label)))))
+                                  (~'anything (~(link-type-object '???))))))
              :render-dom (tab-DOM)
              :get-action-data (item-AD)
              :example-element-ids (as-set [(:item-id t3-baz)
@@ -135,11 +135,11 @@
               :width 1.5
               :template `("" :tab ""
                           ("" :tab-topic :table
-                                  (~(make-object-list ['(??? :label) :selector])
+                                  (~(make-object-list [`(~(link-type-object '???)) :selector])
                                    :row-condition)
                                   (~'anything
                                    :column-headers :selector
-                                   (~'anything (~'??? :label)))))
+                                   (~'anything (~(link-type-object '???))))))
               :render-dom (tab-DOM)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
@@ -153,11 +153,11 @@
                :width 0.75
                :template `("" :tab ""
                            ("" :tab-topic :table
-                                   (~(make-object-list ['(??? :label) :selector])
+                                   (~(make-object-list [`(~(link-type-object '???)) :selector])
                                     :row-condition)
                                    (~'anything
                                     :column-headers :selector
-                                    (~'anything (~'??? :label))))
+                                    (~'anything (~(link-type-object '???)))))
                            "foo")
                :render-dom (tab-DOM)
                :example-element-ids [(:item-id t2-bar)]

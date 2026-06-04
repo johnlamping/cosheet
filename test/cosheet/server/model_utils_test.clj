@@ -15,7 +15,8 @@
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
-                                           find-object-by-name]]
+                                           find-object-by-name
+                                           link-type-object]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
                       entity-impl
@@ -497,7 +498,7 @@
                           ~(as-set
                             `(~'anything
                               (~(any) :order)
-                              ~(as-set `(" A" (~(any) :order) :label))))
+                              (~(any) (~(any) :order))))
                           :column-headers
                           ))
                       :tab-topic
@@ -508,7 +509,7 @@
     (is (check (map semantic-to-list
                     (ordered-entities
                      (semantic-elements (first column-headers-list))))
-               ['(anything (" A" :label))]))))
+               [`(~'anything (~(any)))]))))
 
 (deftest add-table-test
   (let [s (starting-store "hi")

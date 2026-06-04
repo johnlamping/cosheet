@@ -7,7 +7,9 @@
              store-impl
              [store-utils :refer [add-element add-object
                                   add-universal-objects
-                                  add-link-type-object]]
+                                  add-link-type-object
+                                  find-object-by-name
+                                  link-type-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->element id->object
                                          label->elements elements to-list
@@ -121,9 +123,9 @@
               nil store)
         new-store (:store data)
         new-id (first (:subject-ids data))]
-    ;; TODO: !!! This shouldn't be a :label here, but an object list
     (is (= (semantic-to-list (id->element new-id new-store))
-           '("" (" A" :label))))))
+           `("" (~(find-object-by-name new-store " A"
+                                       (link-type-object 'anything))))))))
 
 (deftest table-DOM-test
   (let [specification {:width 3.0

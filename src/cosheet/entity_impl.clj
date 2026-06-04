@@ -334,7 +334,7 @@
   (content [this] nil)
   
   (elements [this]
-    (assert (= (first this) :object))
+    (assert (= (first this) :object) this)
     (seq (rest this)))
 
   (forward-elements [this] (seq (filter #(not= (orientation %) :target)

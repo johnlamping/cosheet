@@ -13,20 +13,23 @@
 ;;; forms are identical.
 
 ;;; The canonical form depends on the type of entity
-;;;   Strings: Their trimmed lower case
-;;;   Other primitives: Themselves
-;;;   Mutable entities: Themselves
-;;;   Interned-objects: Themselves
+;;;                            Strings: Their trimmed lower case
+;;;                   Other primitives: Themselves
+;;;                   Mutable entities: Themselves
+;;;         Immutable interned-objects: Themselves, but with their
+;;;                                     store set to nil.
 ;;;   Immutable non-identified objects: A pair of
-;;;     [:object
-;;;      A multiset of the canonical descriptions of their elements.]
-;;;   Other immutable elements: A triple of
-;;;     [Their orientation.
-;;;      The canonical form of their content.
-;;;      A multiset of the canonical descriptions of their elements.]
+;;;              [:object
+;;;               A multiset of the canonical descriptions of their elements.]
+;;;           Other immutable elements: A triple of
+;;;              [Their orientation.
+;;;               The canonical form of their content.
+;;;               A multiset of the canonical descriptions of their elements.]
 
 ;;; This form makes the description independent of the order of the
-;;; elements and the case of their strings.
+;;; elements and the case of their strings. And, in the case of
+;;; interned objects, it also makes them independent of what store the
+;;; objects refer to, since their identity is independent of store.
 
 ;;; This is an easier way to get order independence than sorting,
 ;;; because Clojure doesn't define a sort order between heterogenous

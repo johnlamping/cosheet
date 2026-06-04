@@ -24,7 +24,8 @@
                     add-elements-to-entity
                     entity-complexity stored-entity?]]
     [store-utils :refer [add-object add-element remove-entity-by-id
-                         find-object-by-name add-universal-objects]]
+                         find-object-by-name add-universal-objects
+                         link-type-object]]
     [query :refer [matching-items matching-elements
                    not-query special-form?
                    special-form-type sub-query
@@ -696,7 +697,8 @@
              header-elements)))
 
 (def new-tab-table-element
-  (tab-table-element ['(??? :label)] ['(anything (??? :label))]))
+  (tab-table-element [`(~(link-type-object '???))]
+                     [`(~'anything (~(link-type-object '???)))]))
 
 (def column-header-template
   ;; The minimum content for a column header.
@@ -708,9 +710,9 @@
 
 (def unspecified-column-header-template
   ;; A header for a newly created column that we don't know anything about.
-  ;; We give it a new label, so that it won't start out match everything.  
+  ;; We give it a new label, so that it won't start out match everything.
   (add-elements-to-entity
-   column-header-template ['(??? :label)]))
+   column-header-template [`(~(link-type-object '???))]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store
@@ -729,7 +731,8 @@
                            ~tab-name
                            :tab
                            ~(tab-table-element
-                             [`(~tab-name :label)] ['(anything (??? :label))]))
+                             [`(~tab-name :label)]
+                             [`(~'anything (~(link-type-object '???)))]))
                          store)]
         (first (update-add-element-adjacent-to
                 store tabs-holder-id tab                   

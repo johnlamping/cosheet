@@ -133,7 +133,8 @@
   meaning that no labels were found; a sequence of labels, any of
   which will work; or a single label, which means a perfect fit: an
   element of an entity will match the query element if and only if it
-  has the right orientation, and has that label."
+  has the right orientation, and has that label. The labels we return
+  are the label values, the contents of label elements."
   [element env]
   (let [[contextualized exact-match] (contextualize-variable element env)
         elems (map #(first (contextualize-variable % env))
@@ -330,7 +331,7 @@
   [term env entity entity-element-filter]
   (assert (not (object? term)))
   (let [labels (labels-for-element term env)]
-    (if (or (nil? labels) (seq? labels) (nil? (content labels)))
+    (if (or (nil? labels) (seq? labels))
       (let [candidates (entity-element-filter
                         (candidate-elements
                          labels (term-orientation term env) entity))

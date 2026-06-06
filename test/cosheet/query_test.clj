@@ -4,7 +4,8 @@
             (cosheet [store :refer [new-element-store make-item-id
                                      get-new-object-id ->ItemId]]
                       store-impl
-                      [store-utils :refer [add-element]]
+                      [store-utils :refer [add-element link-type-object
+                                           add-link-type-object]]
                       [entity :refer [to-list id->element id->object content
                                       recursively-in-different-store
                                       elements label->elements mutable-entity?
@@ -26,8 +27,9 @@
   (into {} (for [[k v] map] [k (to-list v)])))
 
 (deftest extended-by-test
-  (let [element0 '(3 "Foo")
-        element1 '(3 ("foo" :label))
+  (let [element0 `(3 (~(link-type-object "Foo")))
+        element1 `(3 (~(link-type-object "foo")))
+        element2 `(3 (~(link-type-object "bar")))
         itemx `(nil ~element0 ~element1)
         object-foo (id->object (make-item-id "foo") (new-element-store))
         object-bare-foo (id->object (make-item-id "foo") nil)]
@@ -40,9 +42,10 @@
     (is (extended-by? element0 element0))
     (is (extended-by? element1 element1))
     (is (extended-by? element0 element1))
-    (is (not (extended-by? '(nil (nil :label)) element0)))
-    (is (extended-by? '(nil (nil :label)) element1))
-    (is (not (extended-by? element1 element0)))
+    (is (not (extended-by? element1 element2)))
+    (is (not (extended-by? element2 element1)))
+    (is (extended-by? `(nil (~(link-type-object nil))) element0))
+    (is (not (extended-by? `(nil (~(link-type-object nil))) '(3 "foo"))))
     (is (extended-by? itemx itemx))
     (is (extended-by? '(3 ("foo" false))
                       '(3 ("foo" false))))
@@ -275,8 +278,10 @@
 (deftest minimal-label?-test
   (is (minimal-label? :foo))
   (is (not (minimal-label? '(:foo "foo"))))
-  (is (minimal-label? '("foo" :label)))
-  (is (not (minimal-label? '("foo" :label "bar"))))
+  (let [[store foo-oid] (add-link-type-object (new-element-store) "foo")
+        foo-obj (id->object foo-oid store)]
+    (is (minimal-label? `(~foo-obj)))
+    (is (not (minimal-label? `(~foo-obj "bar")))))
   (is (minimal-label? `(~(id->object (->ItemId -2) nil))))
   (is (not (minimal-label? `(~(id->object (->ItemId -2) nil) "bar"))))
   (is (not (minimal-label? `(~(make-object-list '()))))))
@@ -543,7 +548,8 @@
         [s1 id1] (add-element sda ia '(1 ("a" 3)))
         [s2 id2] (add-element s1 ia '(3 (4 5)))
         [s3 id3] (add-element s2 ib '(1 ("a" 4)))
-        [s4 id4] (add-element s3 oid1 '(2 ("C" :label) ("C" :label)))
+        [s4 id4] (add-element s3 oid1 `(2 (~(link-type-object "C"))
+                                          (~(link-type-object "C"))))
         [s5 id5] (add-element s4 ia (make-element-list
                                      :target (id->object ib s4) '("reversed")))
         [s id6] (add-element s5 ia `(~(make-object-list '(1)) 3))]
@@ -603,10 +609,11 @@
     ;; Test a complex term that can match the element more than one
     ;; way.  (There had been a bug where this would return the same
     ;; element multiple times.)
-    (let [matches (matching-elements '(nil ("C" :label))
+    (let [c-obj (first (matching-items (link-type-object "C") s))
+          matches (matching-elements `(nil (~c-obj))
                                      (id->object oid1 s))]
       (is (= (map to-list matches)
-             ['(2 ("C" :label) ("C" :label))])))))
+             [`(2 (~c-obj) (~c-obj))])))))
 
 (deftest query-matches-test
   (let [s0 (new-element-store)

@@ -99,6 +99,14 @@
                                          (nil :order))))
                   '(nil :order)])))))
 
+(deftest add-non-selector-to-fixed-term-test
+  (is (check (add-non-selector-to-fixed-term
+              (make-object-list ['("hi" :label)]))
+             (make-object-list ['("hi" :label)
+                                (not-query '(:selector))])))
+  (is (check (add-non-selector-to-fixed-term '(nil ("hi" :label)))
+             `(nil ("hi" :label) ~(not-query '(:selector))))))
+
 (deftest specialize-generic-test
   (let [[c1 s1] (specialize-generic '("x" (??? :a) (??? 22))
                                      (new-element-store))
@@ -468,8 +476,11 @@
                                (nil :tab-topic :table))
                              s)
         tab (first tabs)
-        rows (matching-items (pattern-to-fixed-term
-                              (make-object-list [`("hi" :label)])) s)
+        rows (matching-items
+              (add-non-selector-to-fixed-term
+               (pattern-to-fixed-term
+                (make-object-list [`("hi" :label)])))
+              s)
         table (first (matching-elements '(nil :table) tab))
         row-conditions (matching-elements '(nil :row-condition) table)
         column-headers-list (matching-elements '(nil :column-headers) table)]
@@ -485,9 +496,10 @@
                   ~(as-set
                     `(""
                       ~(as-set
-                        `(~(make-object-list
-                            [(as-set `("hi" :label (~(any) :order)))
-                             :selector])
+                        `(~(as-set (make-object-list
+                                    [(as-set `("hi" :label (~(any) :order)))
+                                     `(~(any) :order)
+                                     :selector]))
                           :row-condition
                           (~(any) :order)))
                       (~(any) :order)
@@ -518,8 +530,11 @@
                                (nil :tab-topic :table))
                              s1)
         tab (first tabs)
-        rows (matching-items (pattern-to-fixed-term
-                              (make-object-list [`("there" :label)])) s1)
+        rows (matching-items
+              (add-non-selector-to-fixed-term
+               (pattern-to-fixed-term
+                (make-object-list [`("there" :label)])))
+              s1)
         table (first (matching-elements '(nil :table) tab))
         row-condition (first (matching-elements '(nil :row-condition) table))
         column-headers (first (matching-elements '(nil :column-headers) table))]
@@ -533,9 +548,11 @@
                   ~(as-set
                     `(""
                       ~(as-set `(~(as-set (make-object-list
-                                           [`("there"
-                                              :label
-                                              (~(any) :order))
+                                           [(as-set
+                                             `("there"
+                                               :label
+                                               (~(any) :order)))
+                                            `(~(any) :order)
                                             :selector]))
                                  (~(any) :order)
                                  :row-condition))

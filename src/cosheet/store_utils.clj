@@ -12,6 +12,7 @@
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
                     content orientation elements to-list
+                    in-different-store
                     label->elements content->elements
                     make-object-list name-label link-type object-type]]
     [query :refer [matching-items extended-by?]]
@@ -78,11 +79,22 @@
 (defn add-object
   "Add an object to the store, unless it is uniquely identified and is
   already in the store, in which case, check that it satisfies the
-  template.  Return the new store and the id of the object."
+  template.  Return the new store and the id of the object.
+
+  If the template is a stored entity with a nil store, check that the
+  store already has a uniquely identified object with the same id,
+  and return the unmodified store and that id."
   [store template]
   (assert object? template)
   (cond (id-identified-object? template)
         [store (:item-id template)]
+        ;; Accept references to uniquely identified ids that are
+        ;; already in the store.
+        (and (stored-entity? template) (nil? (:store template)))
+        (do (assert (uniquely-identified-object?
+                     (in-different-store template store))
+                    template)
+            [store (:item-id template)])
         (uniquely-identified-object? template)
         ;; The template doesn't have a string id, so it must have a name.
         (let [name (->> (label->elements template name-label)

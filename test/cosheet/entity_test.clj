@@ -62,7 +62,7 @@
     (is (= (content->elements item99 4) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (entity-key item99) id99))
-    (is (= (to-list item0) (make-object-list nil)))
+    (is (= (to-list item0) item0))
     (is (= (to-list item99) item99))
     (is (universal-object? (id->object (make-item-id "name") nil)))
     (is (universal-object? (id->object (make-item-id "link-type") nil)))

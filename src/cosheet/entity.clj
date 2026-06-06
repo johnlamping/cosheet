@@ -296,6 +296,16 @@
   (and (stored-entity? entity)
        (uniquely-identified-object? entity)))
 
+(defn presumed-interned-object?
+  "Return true if the entity, which must be immutable, is a uniquely
+  identified object, and is stored, or is a stored object entity, but
+  with no store given."
+  [entity]
+  (or (interned-object? entity)
+      (and (stored-entity? entity)
+           (object? entity)
+           (nil? (:store entity)))))
+
 (defn link-type-object?
   "Return true if the entity is an object that is a link type."
   [entity]
@@ -408,32 +418,34 @@
 
 (defn pre-walk-entity
   "Recursively run the function on all the elements of the entity, from
-  the top down up, going through non-interned objects. The function
-  must return the same kid of entity as it gets. If the function turns
-  an element into nil, that element will be removed."
+  the top down up, going through objects that are not presumed
+  interned. The function must return the same kid of entity as it
+  gets. If the function turns an element into nil, that element will
+  be removed."
   [f entity]
   (let [entity (f entity)]
     (cond (element? entity)
           (make-element-list (orientation entity)
                              (pre-walk-entity f (content entity))
                              (keep #(pre-walk-entity f %) (elements entity)))
-          (and (object? entity) (not (interned-object? entity)))
+          (and (object? entity) (not (presumed-interned-object? entity)))
           (make-object-list (keep #(pre-walk-entity f %) (elements entity)))
           :else
           entity)))
 
 (defn post-walk-entity
   "Recursively run the function on all the elements of the entity, from
-  the leaves up, going through non-interned objects. The function must
-  return the same kid of entity as it gets. If the function turns
-  an element into nil, that element will be removed."
+  the leaves up, going through objects that are not presumed
+  interned. The function must return the same kid of entity as it
+  gets. If the function turns an element into nil, that element will
+  be removed."
   [f entity]
   (f (cond (element? entity)
            (make-element-list (orientation entity)
                               (post-walk-entity f (content entity))
                               (keep #(post-walk-entity f %)
                                     (elements entity)))
-           (and (object? entity) (not (interned-object? entity)))
+           (and (object? entity) (not (presumed-interned-object? entity)))
            (make-object-list (keep #(post-walk-entity f %) (elements entity)))
            :else
            entity)))
@@ -454,7 +466,7 @@
   skip.
   The element to skip only has an effect when converting an non-interned
   object. In that case, an element of the object with the same key
-  will not be shown. This avoids an infinite loop when an non-interned
+  will not be shown. This avoids an infinite loop when a non-interned
   object has a relation to another non-interned object, and showing all
   elements of both objects would bounce back and forth between them
   forever."
@@ -472,7 +484,7 @@
                                 (map #(recurse % nil) (elements entity)))))))
 
 (defn immutable-object-to-list [object skipped-element]
-  (if (not (interned-object? object))
+  (if (not (presumed-interned-object? object))
     (let [recurse (immutable-to-list-generator immutable-object-to-list)]
       (make-object-list (map #(recurse % nil)
                              ;; We rely on entity-key ignoring

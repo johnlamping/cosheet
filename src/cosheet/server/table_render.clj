@@ -32,6 +32,7 @@
                                   semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-fixed-term fixed-term-to-template
+                                  add-non-selector-to-fixed-term
                                   column-header-template
                                   unspecified-column-header-template
                                   exemplar-to-fixed-term]]
@@ -441,7 +442,8 @@
   "Return a reporter whose value is the row ids for the table, in order."
   [row-template-R mutable-store]
   (let-R [current-template row-template-R]
-    (let [row-query (pattern-to-fixed-term current-template)
+    (let [row-query (-> (pattern-to-fixed-term current-template)
+                        add-non-selector-to-fixed-term)
           matching-ids-R (matching-item-ids-R row-query mutable-store)]
       (ordered-ids-R matching-ids-R mutable-store))))
 

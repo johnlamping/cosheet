@@ -6,11 +6,13 @@
                       store-impl
                       [store-utils :refer [add-element]]
                       [entity :refer [to-list id->element id->object content
+                                      recursively-in-different-store
                                       elements label->elements mutable-entity?
                                       primitive? entity-key
                                       make-object-list make-element-list
                                       immutable-object-to-list
-                                      add-elements-to-entity]]
+                                      add-elements-to-entity
+                                      link-type name-label]]
                       entity-impl
                       [query :as query :refer :all]
                       [query-impl :refer [closest-template minimal-label?]]
@@ -531,13 +533,17 @@
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))
-  (let [[sa ia] (get-new-object-id (new-element-store))
+  (let [blank-label-template `(~(make-object-list [`(~link-type)
+                                                   `("" (~name-label))]))
+        [sa ia] (get-new-object-id (new-element-store))
         ib (make-item-id "ib") ;; a named object
-        [sc ic] (get-new-object-id sa)
-        [s1 id1] (add-element sa ia '(1 ("a" 3)))
+        [sc oid1] (get-new-object-id sa)
+        [sd blank-label-element-id] (add-element sc oid1 blank-label-template)
+        [sda lx] (add-element sd blank-label-element-id blank-label-template)
+        [s1 id1] (add-element sda ia '(1 ("a" 3)))
         [s2 id2] (add-element s1 ia '(3 (4 5)))
         [s3 id3] (add-element s2 ib '(1 ("a" 4)))
-        [s4 id4] (add-element s3 ic '(2 ("C" :label) ("C" :label)))
+        [s4 id4] (add-element s3 oid1 '(2 ("C" :label) ("C" :label)))
         [s5 id5] (add-element s4 ia (make-element-list
                                      :target (id->object ib s4) '("reversed")))
         [s id6] (add-element s5 ia `(~(make-object-list '(1)) 3))]
@@ -569,18 +575,36 @@
     (let [term (make-element-list :source (id->object ib s) nil)]
       (is (= (matching-elements term (id->object ia s))
              nil)))
-    ;; Test matching elements in reversed orientation
+    ;; Test matching elements in reversed orientation.
     (let [term (make-element-list :target (id->object ib s) nil)]
       (is (= (matching-elements term (id->object ia s))
              [(id->element id5 :target s)])))
     (let [term (make-element-list :target (id->object ia s) nil)]
       (is (= (matching-elements term (id->object ib s))
              nil)))
+    ;; Test matching a label template.
+    (is (= (matching-elements blank-label-template (id->object oid1 s))
+           [(id->element blank-label-element-id s)]))
+    ;; Test matching a label template in a store.
+    (is (= (matching-elements (recursively-in-different-store
+                               blank-label-template s)
+                              (id->object oid1 s))
+           [(id->element blank-label-element-id s)]))
+    ;; Test matching a label template in a store.
+    (is (= (matching-elements (recursively-in-different-store
+                               blank-label-template s)
+                              (id->element blank-label-element-id s))
+           [(id->element lx s)]))
+    ;; Test matching a label template in a different store.
+    (is (= (matching-elements (recursively-in-different-store
+                               blank-label-template sa)
+                              (id->object oid1 s))
+           [(id->element blank-label-element-id s)]))
     ;; Test a complex term that can match the element more than one
     ;; way.  (There had been a bug where this would return the same
     ;; element multiple times.)
     (let [matches (matching-elements '(nil ("C" :label))
-                                     (id->object ic s))]
+                                     (id->object oid1 s))]
       (is (= (map to-list matches)
              ['(2 ("C" :label) ("C" :label))])))))
 

@@ -106,3 +106,15 @@
          (as-set [`("foo" (~name-label-in-s))
                   `(~object-type-in-s)])))))
 
+(deftest add-object-with-id-only-template-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [store foo-oid] (add-link-type-object s0 "foo")
+        id-only-template (id->object foo-oid nil)
+        [new-store new-id] (add-object store id-only-template)]
+    ;; The store is unchanged and the id matches.
+    (is (= new-store store))
+    (is (= new-id foo-oid))
+    ;; If the store doesn't have the object, the assertion fails.
+    (is (thrown? AssertionError
+                 (add-object s0 (id->object foo-oid nil))))))
+

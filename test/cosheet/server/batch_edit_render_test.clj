@@ -220,7 +220,7 @@
            #{h1 r1 r2 q1 stk1}))
     (doseq [id subject-ids]
       (is (extended-by? `(nil (~c1-label)) (id->entity id s)))))
-  ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
+  ;; Query 2 requires two elements: 2 and one with (nil (~c1-label))
   ;; But as a stack selector, we only require the `(nil (~c1-label)) to match.
   (let [q2-entity (id->entity q2 s)
         q2-element (first (matching-elements `(nil (~c1-label)) q2-entity))
@@ -239,7 +239,7 @@
     (doseq [id subject-ids]
       (is (extended-by? `(nil (~c1-label)) (id->entity id s)))))
   ;; Test excluding ids. Neither of the rows should match, as their
-  ;; (nil ("c1" :label)) elements are all have content 2
+  ;; (nil (~c1-label)) elements are all have content 2
   (let [q2-entity (id->entity q2 s)
         q2-element (first (matching-elements `(nil (~c1-label)) q2-entity))
         q2-2 (first (matching-elements 2 q2-entity))
@@ -277,49 +277,43 @@
 
 ;;; TODO: Test a query element that doesn't match the stack element.
 
-;;; TODO: !!! This test currently fails because item-render no longer
-;;; supports labels that are marked with :label, and that is what this
-;;; tests labels currently look like. We need to have Claude go
-;;; through here, redefine the queries with the new style of labels,
-;;; and then uncomment this.
-(comment
-  (deftest stack-DOM-test
-    (let [stk1-entity (id->entity stk1 s)
-          stk1-element (first (matching-elements `(nil (~c1-label)) stk1-entity))
-          dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
-      (is (check
-           dom
-           [:div {:class "horizontal-labeled-element-list batch-stack"}
-            [:div {}]
-            [:component {:query-id q1
-                         :stack-id stk1
-                         :get-action-data get-batch-edit-stack-element-action-data
-                         :relative-id (:item-id stk1-element)
-                         :render-dom render-item-DOM-R
-                         :class "batch-stack link-type leaf"
-                         :width 0.75}]
-            [:div {:class "vertical-labels-element link-type"}
-             [:component {:relative-id :stack-virtual-label
-                          :query-id q1
-                          :stack-id stk1 :class "link-type"
-                          :render-dom (virt-DOM)
-                          :get-action-data [(comp-AD)
-                                            (batch-virtual-element-AD) 
-                                            (virt-AD)]
-                          :template (make-sequential-template
-                                     ['anything
-                                      '("")
-                                      (make-object-list [`(~link-type)
-                                                         `("" (~name-label))])])
-                          :is-object-name true
-                          :position :after
-                          :do-not-match-query true}]
-             [:component {:relative-id :stack-virtual
-                          :query-id q1
-                          :stack-id stk1
-                          :render-dom (virt-DOM)
-                          :get-action-data [(comp-AD)
-                                            (batch-virtual-element-AD) 
-                                            (virt-AD)]
-                          :template `(~'anything (~label-object-template))
-                          :do-not-match-query true}]]])))))
+(deftest stack-DOM-test
+  (let [stk1-entity (id->entity stk1 s)
+        stk1-element (first (matching-elements `(nil (~c1-label)) stk1-entity))
+        dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
+    (is (check
+         dom
+         [:div {:class "horizontal-labeled-element-list batch-stack"}
+          [:div {}]
+          [:component {:query-id q1
+                       :stack-id stk1
+                       :get-action-data get-batch-edit-stack-element-action-data
+                       :relative-id (:item-id stk1-element)
+                       :render-dom render-item-DOM-R
+                       :class "batch-stack link-type leaf"
+                       :width 0.75}]
+          [:div {:class "vertical-labels-element link-type"}
+           [:component {:relative-id :stack-virtual-label
+                        :query-id q1
+                        :stack-id stk1 :class "link-type"
+                        :render-dom (virt-DOM)
+                        :get-action-data [(comp-AD)
+                                          (batch-virtual-element-AD) 
+                                          (virt-AD)]
+                        :template (make-sequential-template
+                                   ['anything
+                                    '("")
+                                    (make-object-list [`(~link-type)
+                                                       `("" (~name-label))])])
+                        :is-object-name true
+                        :position :after
+                        :do-not-match-query true}]
+           [:component {:relative-id :stack-virtual
+                        :query-id q1
+                        :stack-id stk1
+                        :render-dom (virt-DOM)
+                        :get-action-data [(comp-AD)
+                                          (batch-virtual-element-AD) 
+                                          (virt-AD)]
+                        :template `(~'anything (~label-object-template))
+                        :do-not-match-query true}]]]))))

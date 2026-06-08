@@ -19,7 +19,8 @@
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels]]
              [render-utils :refer [hierarchy-node-DOM make-component
-                                   make-sequential-template]]
+                                   make-sequential-template
+                                   ensure-label-object]]
              [model-utils :refer [semantic-elements semantic-non-label-elements
                                   semantic-to-list entity->canonical-semantic
                                   object-semantic-to-list
@@ -201,7 +202,8 @@
     (let [dom (virtual-DOM-component
                (assoc specification
                       :relative-id :stack-virtual
-                      :template '(anything (anything :label))
+                      :template `(~'anything
+                                  (~(ensure-label-object 'anything :link-type)))
                       :get-action-data
                       get-batch-edit-stack-virtual-element-subject-action-data
                       :do-not-match-query true))
@@ -209,10 +211,9 @@
                      (assoc
                       specification
                       :template (make-sequential-template
-                                 ;; virtual-label-DOM-component will
-                                 ;; turn the second 'anything into a
-                                 ;; label template.
-                                 ['anything 'anything])
+                                 ['anything
+                                  `(~(ensure-label-object
+                                      'anything :link-type))])
                       :relative-id :stack-virtual-label
                       :get-action-data
                       get-batch-edit-stack-virtual-element-subject-action-data
@@ -240,14 +241,16 @@
         stack-elements (ordered-entities (semantic-elements stack-entity))
         [stack-labels stack-non-labels] (separate-by label-element?
                                                      stack-elements)
-        ;; TODO: If there are no labels, add a virtual one,
-        ;; if the stack entity says to.
-        labels-dom (label-stack-DOM
-                    stack-labels
-                    (assoc specification
-                           :width 0.75
-                           :get-action-data
-                           get-batch-edit-stack-element-action-data))
+        labels-dom (if (empty? stack-labels)
+                     ;; TODO: If there are no labels, add a virtual one,
+                     ;; if the stack entity says to.
+                     [:div {}]
+                     (label-stack-DOM
+                      stack-labels
+                      (assoc specification
+                             :width 0.75
+                             :get-action-data
+                             get-batch-edit-stack-element-action-data)))
         stack-hierarchy (-> (hierarchy-by-labels stack-non-labels)
                             replace-hierarchy-leaves-by-nodes)
         stack-doms (map #(stack-top-level-subtree-DOM % specification)

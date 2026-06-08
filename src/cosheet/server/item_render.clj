@@ -167,15 +167,16 @@
   same component, to distinguish their ids."
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
-  (assert (label-element? (final-template template)))
-  (let [label-type (-> (final-template template) content display-type)]
-    (virtual-DOM-component
-     (-> specification
-         (assoc :relative-id (or relative-id :virtual-label)
-                :position :after
-                :template (make-virtual-label-template template label-type)
-                :is-object-name true)
-         (into-attributes {:class (name label-type)})))))
+  (let [final (final-template template)]
+    (assert (label-element? final) final)
+    (let [label-type (display-type (content final))]      
+      (virtual-DOM-component
+       (-> specification
+           (assoc :relative-id (or relative-id :virtual-label)
+                  :position :after
+                  :template (make-virtual-label-template template label-type)
+                  :is-object-name true)
+           (into-attributes {:class (name label-type)}))))))
 
 (defn virtual-element-and-label-DOM
   "Return the dom for a virtual element and a virtual label for it.

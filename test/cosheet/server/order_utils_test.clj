@@ -21,7 +21,11 @@
                             make-item-id]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element remove-entity-by-id]]
+             [store-utils :refer [add-element remove-entity-by-id
+                                  add-universal-objects
+                                  add-link-type-object
+                                  find-object-by-name
+                                  link-type-object]]
              [canonical :refer [canonicalize]]
              [test-utils :refer [check any]])
             (cosheet.server
@@ -47,10 +51,10 @@
                 ("male" (~o2 :order))
                 ("married" (~o3 :order))
                 (39 (~o4 :order)
-                    ("age" :label (~o6 :order))
+                    (~(link-type-object "age") (~o6 :order))
                     ("doubtful" "confidence" (~o7 :order)))
                 (45 (~o5 :order)
-                    ("age" :label))))
+                    (~(link-type-object "age")))))
 (def t1 (add-element (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def store (first t1))
@@ -62,11 +66,11 @@
 
 (def joe-reversed-list `("Joe"
                          (~o1 :order)
-                         (45 ("age" :label)
+                         (45 (~(link-type-object "age"))
                              (~o5 :order))
                          (39 (~o4 :order)
                              ("doubtful" "confidence" (~o7 :order))
-                             ("age" :label (~o6 :order)))
+                             (~(link-type-object "age") (~o6 :order)))
                          ("married" (~o3 :order))
                          ("male" (~o2 :order))))
 
@@ -151,18 +155,24 @@
   (is (= (furthest-element joe :before) joe-male)))
 
 (deftest add-order-elements-test
-  (let [ordered (add-order-elements
+  ;; Pre-store the link-type-object so add-order-elements does not
+  ;; recurse into it and pollute its internal structure with orders.
+  (let [s0 (-> (new-element-store)
+               add-universal-objects
+               (add-link-type-object "e") first)
+        e-label (find-object-by-name s0 "e" (link-type-object ""))
+        ordered (add-order-elements
                  `("a"
                    ("b" "c")
                    "d"
-                   ("e" :label)
+                   (~e-label)
                    (~(make-object-list `("f")))
                    (~(id->entity (make-item-id "test") nil))))]
     (is (check ordered
                `("a" ("b" ("c" (~(any) :order))
                       (~(any) :order))
                  ("d" (~(any) :order))
-                 ("e" :label (~(any) :order))
+                 (~e-label (~(any) :order))
                  (~(make-object-list `(("f" (~(any) :order))))
                   (~(any) :order))
                  (~(id->entity (make-item-id "test") nil)

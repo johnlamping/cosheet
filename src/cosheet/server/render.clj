@@ -31,24 +31,19 @@
 
 ;;; For a basic element, we show its contents and its semantic
 ;;; elements, but not its non-semantic elements. Semantic elements
-;;; have a content of a number, a string, 'anything,
-;;; :label, or :category,
+;;; have a content of a number, a string, an object, or 'anything.
 
 ;;; An element is a label or a category if it's content is an object
-;;; that is labeled withs link-type or object-type, respectively. (For
-;;; now, it can also be marked by having an element whose content is
-;;; :label or :category, respectively. It is because this affects how
-;;; the element is displayed that these sub-elements are semantic.)
+;;; that is labeled withs link-type or object-type, respectively.
 
-;;; Every semantic element that is not :label or :category must have
-;;; an :order sub-element, to indicate its display position relative
-;;; to the other elements. And only semantic elements can have :order
-;;; sub-elements.
+;;; Every semantic element must have an :order sub-element, to
+;;; indicate its display position relative to the other elements. And
+;;; only semantic elements can have :order sub-elements.
 ;;; So, for example, the entity:
-;;;    ("Joe"
+;;;   ("Joe"
 ;;;        ("married" ((->Orderable 1 2) :order)
 ;;;        (39 ((->Orderable 5 6) :order)
-;;;            ("age" :label ((->Orderable 7 8) :order))
+;;;            ((link-type-object "age") ((->Orderable 7 8) :order))
 ;;;            ("doubtful" ((->Orderable 9 10) :order)))
 ;;; would be rendered to dom that tries to convey:
 ;;;   Joe
@@ -368,13 +363,6 @@
                                         (when (current-value
                                                (semantic-element? target))
                                           (item-referent target))))))
-                inherited (cond-> inherited
-                            subject-ref
-                            (update
-                             :attributes
-                             #(conj (or % [])
-                                    [#{:label :optional} #{:content}
-                                     {:expand {:referent subject-ref}}])))
                 dom (item-DOM-R item tags inherited
                                 :referent referent
                                 :must-show-label (empty? tags)
@@ -560,11 +548,3 @@
                                                 content-names)))]
         (into [:datalist] (map (fn [name] [:option name]) sorted-contents))))))
 
-(comment
-  (defn spec-for-client-R
-    "Return a specification for the DOM indicated by the client."
-    [store session-ephemeral-id client-state]
-    (let-R [dom (top-level-DOM-spec
-                store session-ephemeral-id client-state)]
-      (into dom [(make-component {:key [:label-values]}
-                                 [label-datalist-DOM-R store])]))))

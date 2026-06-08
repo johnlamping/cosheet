@@ -238,15 +238,13 @@
         label-type (let [example-label (first label-elements)]
                      (if (marked-as-type? example-label)
                        :link-type
-                       (display-type (content example-label))))
-        ;; TODO: !!! Get rid of this once it's clear it's not
-        ;; needed. (Once the :label tags are removed from the tests
-        ;; and elsewhere.)
-        label-tags (map #(condition-satisfiers % '(nil :label))
-                        ordered-labels)]
-    (item-stack-DOM ordered-labels label-tags :vertical
+                       (display-type (content example-label))))]
+    (item-stack-DOM ordered-labels
+                    (map (constantly '()) ordered-labels)
+                    :vertical
                     (-> specification
-                        (update :template #(ensure-label-object-content % label-type))
+                        (update :template #(ensure-label-object-content
+                                            % label-type))
                         (into-attributes {:class (name label-type)})))))
 
 (defn non-empty-labels-wrapper-DOM

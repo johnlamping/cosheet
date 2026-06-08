@@ -10,10 +10,14 @@
                             id->target]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element add-object]]
+             [store-utils :refer [add-element add-object
+                                  add-universal-objects
+                                  add-link-type-object
+                                  find-object-by-name
+                                  link-type-object]]
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
-             [entity :as entity  :refer [id->entity
+             [entity :as entity  :refer [id->entity in-different-store
                                          label->elements elements
                                          make-object-list link-type name-label]]
              [debug :refer [simplify-for-print]]
@@ -75,38 +79,50 @@
 (defn batch-virtual-element-AD []
   get-batch-edit-stack-virtual-element-subject-action-data)
 
-(def t0 (add-element (new-element-store) nil
+;; Pre-store the link-type-objects so that add-order-elements does not
+;; recurse into them and pollute their internal structure with orders.
+(def base-store (-> (new-element-store)
+                    add-universal-objects
+                    (add-link-type-object "s1") first
+                    (add-link-type-object "c1") first
+                    (add-link-type-object "c2") first))
+(def s1-label (find-object-by-name base-store "s1" (link-type-object "")))
+(def c1-label (find-object-by-name base-store "c1" (link-type-object "")))
+(def c2-label (find-object-by-name base-store "c2" (link-type-object "")))
+(def t0 (add-element base-store nil
                     (add-order-elements
-                     '(:x ("s1" :label)
-                          (anything ("c1" :label) :column)
-                          (anything ("c2" :label) :column)
+                     `(:x (~s1-label)
+                          (~'anything (~c1-label) :column)
+                          (~'anything (~c2-label) :column)
                           :row-condition))))
 (def h1 (second t0))
 (def t1 (add-object (first t0)
                     (first (add-order-elements-inside-object
-                            (make-object-list ['(2 ("c1" :label))
-                                               '(2 ("c2" :label))
+                            (make-object-list [`(2 (~c1-label))
+                                               `(2 (~c2-label))
                                                `(~orderable/initial :order)])
                             orderable/initial))))
 (def r1 (second t1))
 (def t2 (add-object (first t1)
                     (first (add-order-elements-inside-object
-                            (make-object-list ['(2 ("c1" :label))
-                                               '(3 ("c2" :label))
+                            (make-object-list [`(2 (~c1-label))
+                                               `(3 (~c2-label))
                                                `(~orderable/initial :order)])
                             orderable/initial))))
 (def r2 (second t2))
 (def t3 (add-element (first t2) nil (add-order-elements
-                                    '(anything (anything ("c1" :label))))))
+                                    `(~'anything (~'anything (~c1-label))))))
 (def q1 (second t3))
 (def t4 (add-element (first t3) nil (add-order-elements
-                                    '(anything 2 (anything ("c1" :label))))))
+                                    `(~'anything 2
+                                                 (~'anything (~c1-label))))))
 (def q2 (second t4))
 (def t5 (add-element (first t4) nil (add-order-elements
-                                    '(anything (anything (anything :label))))))
+                                    `(~'anything
+                                      (~'anything (~c1-label))))))
 (def q3 (second t5))
 (def t6 (add-element (first t5) nil (add-order-elements
-                                    '(anything (anything ("c1" :label))))))
+                                    `(~'anything (~'anything (~c1-label))))))
 (def stk1 (second t6))
 (def s (first t6))
 
@@ -126,13 +142,13 @@
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
-        query-R (make-reporter :value '(nil (nil ("c1" :label))))
+        query-R (make-reporter :value `(nil (nil (~c1-label))))
         count-R (row-match-count-R query-R mutable-store)
         cd (make-calculator-data (make-priority-task-queue 0))]
     (request count-R cd)
     (compute cd)
     (is (= (reporter-value-or-invalid count-R) 2))
-    (set-value! query-R '(nil (2 ("c2" :label))))
+    (set-value! query-R `(nil (2 (~c2-label))))
     (compute cd)
     (is (= (reporter-value-or-invalid count-R) 1))
     (store-reset! mutable-store (new-element-store))
@@ -148,9 +164,10 @@
 (deftest render-batch-query-DOM-test
   (let [q2-entity (id->entity q2 s)
         q2-2 (:item-id (first (matching-elements 2 q2-entity)))
-        q2-c1-entity (first (matching-elements '(nil "c1") q2-entity))
+        q2-c1-entity (first (matching-elements `(nil (~c1-label)) q2-entity))
         q2-c1 (:item-id q2-c1-entity)
-        q2-c1-l (:item-id (first (matching-elements "c1" q2-c1-entity)))
+        q2-c1-l (:item-id (first (matching-elements `(~c1-label)
+                                                    q2-c1-entity)))
         dom (render-batch-query-DOM {:query-id q2 :stack-id stk1} s)]
     (is (check
          dom
@@ -173,13 +190,13 @@
              :get-action-data (default-AD)
              :class "link-type"
              :omit-universal-elements true
-             :exclude-elements-by-ids [(any)]
              :relative-id q2-c1-l
              :immutable true
              :width 0.75}]
            [:div {:class "indent-wrapper left-indent"}
             [:component {:relative-id q2-c1
-                         :template '(anything ("c1" :label))
+                         :template `(~'anything
+                                     (~(in-different-store c1-label nil)))
                          :query-id q2
                          :stack-id stk1
                          :render-dom render-item-DOM-R
@@ -190,7 +207,7 @@
 
 (deftest get-batch-edit-stack-element-action-data-test
   (let [q1-entity (id->entity q1 s)
-        q1-element (first (matching-elements '(nil "c1") q1-entity))
+        q1-element (first (matching-elements `(nil (~c1-label)) q1-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q1-element)
                       :excluding-ids nil
@@ -202,11 +219,11 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
+      (is (extended-by? `(nil (~c1-label)) (id->entity id s)))))
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
-  ;; But as a stack selector, we only require the '(nil "c1") to match.
+  ;; But as a stack selector, we only require the `(nil (~c1-label)) to match.
   (let [q2-entity (id->entity q2 s)
-        q2-element (first (matching-elements '(nil "c1") q2-entity))
+        q2-element (first (matching-elements `(nil (~c1-label)) q2-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
                       :excluding-ids nil
@@ -220,11 +237,11 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
+      (is (extended-by? `(nil (~c1-label)) (id->entity id s)))))
   ;; Test excluding ids. Neither of the rows should match, as their
   ;; (nil ("c1" :label)) elements are all have content 2
   (let [q2-entity (id->entity q2 s)
-        q2-element (first (matching-elements '(nil "c1") q2-entity))
+        q2-element (first (matching-elements `(nil (~c1-label)) q2-entity))
         q2-2 (first (matching-elements 2 q2-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
@@ -239,10 +256,10 @@
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 q1 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil ("c1" :label)) (id->entity id s)))))
+      (is (extended-by? `(nil (~c1-label)) (id->entity id s)))))
   ;; Test a query that matches multiple elements in some rows.
   (let [q3-entity (id->entity q3 s)
-        q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
+        q3-element (first (matching-elements `(nil (~c1-label)) q3-entity))
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q3-element)
                       :render-dom render-item-DOM-R
@@ -252,11 +269,11 @@
                       :stack-id stk1}
                      {} nil s)
         subject-ids (:subject-ids action-data)]
-    (is (= (count subject-ids) 8))
+    (is (= (count subject-ids) 5))
     (is (= (set (map #(id->target s %) subject-ids))
            #{h1 r1 r2 q3 stk1}))
     (doseq [id subject-ids]
-      (is (extended-by? '(nil (nil :label)) (id->entity id s))))))
+      (is (extended-by? `(nil (~c1-label)) (id->entity id s))))))
 
 ;;; TODO: Test a query element that doesn't match the stack element.
 
@@ -268,7 +285,7 @@
 (comment
   (deftest stack-DOM-test
     (let [stk1-entity (id->entity stk1 s)
-          stk1-element (first (matching-elements '(nil "c1") stk1-entity))
+          stk1-element (first (matching-elements `(nil (~c1-label)) stk1-entity))
           dom (stack-DOM {:query-id q1 :stack-id stk1} s)]
       (is (check
            dom
@@ -304,5 +321,5 @@
                           :get-action-data [(comp-AD)
                                             (batch-virtual-element-AD) 
                                             (virt-AD)]
-                          :template '(anything (anything :label))
+                          :template `(~'anything (~label-object-template))
                           :do-not-match-query true}]]])))))

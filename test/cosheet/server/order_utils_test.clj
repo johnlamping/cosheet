@@ -78,7 +78,6 @@
   (is (semantic-element? (make-element-list :source 1 [2])))
   (is (semantic-element? (make-element-list :source "1" [2])))
   (is (semantic-element? (make-element-list :source 'anything [2])))
-  (is (semantic-element? (make-element-list :source :label [2])))
   (is (semantic-element? (make-element-list :source :name [2])))
   (is (semantic-element? (make-element-list
                           :source (make-object-list [3]) [2])))

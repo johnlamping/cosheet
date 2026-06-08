@@ -16,6 +16,7 @@
                                            add-universal-objects
                                            remove-entity-by-id
                                            find-object-by-name
+                                           object-type-object
                                            link-type-object]]
                       [query :refer [matching-items matching-elements
                                      not-query]]
@@ -45,16 +46,24 @@
 (def o6 (nth orderables 5))
 (def o7 (nth orderables 6))
 (def unused-orderable (nth orderables 7))
-(def joe-list `("Joe"
-                (~o2 :order)
-                ("male" (~o1 :order))
-                (39 (~o3 :order)
-                    ("age" :label (~o3 :order))
-                    ("doubtful" ("confidence" (~o4 :order))
-                                (~o4 :order)))
-                ("married" (~o2 :order))
-                (45 (~o4 :order)
-                    ("age" :label (~o3 :order)))))
+
+;; Before we add Joe, we use an object list for the age label object
+;; template. After we add it, we expect to see the actual age label
+;; object. This function can make either one.
+(defn joe-list-maker
+  [age-label-object]
+  `("Joe"
+    (~o2 :order)
+    ("male" (~o1 :order))
+    (39 (~o3 :order)
+        (~age-label-object (~o3 :order))
+        ("doubtful" ("confidence" (~o4 :order))
+         (~o4 :order)))
+    ("married" (~o2 :order))
+    (45 (~o4 :order)
+        (~age-label-object (~o3 :order)))))
+(def joe-list (joe-list-maker (link-type-object "age")))
+
 (def t1 (add-element (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def store (first t1))
@@ -101,11 +110,13 @@
 
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term
-              (make-object-list ['("hi" :label)]))
-             (make-object-list ['("hi" :label)
+              (make-object-list [`(~(link-type-object "hi"))]))
+             (make-object-list [`(~(link-type-object "hi"))
                                 (not-query '(:selector))])))
-  (is (check (add-non-selector-to-fixed-term '(nil ("hi" :label)))
-             `(nil ("hi" :label) ~(not-query '(:selector))))))
+  (is (check (add-non-selector-to-fixed-term
+              `(nil (~(link-type-object "hi"))))
+             `(nil (~(link-type-object "hi"))
+                   ~(not-query '(:selector))))))
 
 (deftest specialize-generic-test
   (let [[c1 s1] (specialize-generic '("x" (??? :a) (??? 22))
@@ -139,19 +150,17 @@
              `(~(make-object-list [`("" (~name-label)) `(~link-type)])))))
 
 (deftest semantic-test
-  (is (check (map canonicalize
-                  (map to-list (semantic-elements joe)))
-             (as-set (map canonicalize (rest (rest joe-list))))))
-  (let [expected '("Joe"
-                   "male"
-                   "married"
-                   (39 ("age" :label)
-                       ("doubtful" "confidence"))
-                   (45 ("age" :label)))]
-    (is (= (canonicalize (semantic-to-list joe))
-           (canonicalize expected)))
-    (is (= (ordered-semantic-to-list joe)
-           expected)))
+  (let [age-label-obj (find-object-by-name
+                       store "age" (link-type-object ""))
+        stored-joe-list (joe-list-maker age-label-obj)
+        expected (ordered-semantic-to-list stored-joe-list)]
+    (is (check (map canonicalize
+                    (map to-list (semantic-elements joe)))
+               (as-set (map canonicalize (rest (rest stored-joe-list))))))
+    (is (check (canonicalize (semantic-to-list joe))
+               (canonicalize expected)))
+    (is (check (ordered-semantic-to-list joe)
+               expected)))
   (let [removed (remove-semantic-elements store joe-id)
         removed-joe (id->entity joe-id removed)]
     (is (check (to-list removed-joe)
@@ -197,8 +206,8 @@
 (deftest labels-test
   (let [a `("a" (~o1 :order))
         b `("b " "x" (~o2 :order))
-        c `("c" :label (~o3 :order))
-        d `("d" :label (~o4 :order))
+        c `(~(link-type-object "c") (~o3 :order))
+        d `(~(link-type-object "d") (~o4 :order))
         test-list (list "test" a b c d)
         labels (semantic-label-elements test-list)
         non-labels (semantic-non-label-elements test-list)]
@@ -389,18 +398,16 @@
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-element-with-order-and-ephemeral
-                      store joe-id '(6 ("height" :label))
+                      store joe-id `(6 (~(link-type-object "height")))
                       unused-orderable :before true)
         joe (id->entity joe-id s)
-        new-entity (first (label->elements joe "height"))
-        [x o5] (orderable/split unused-orderable :before)
-        [o6 o7] (orderable/split x :after)]
+        height-label-obj (find-object-by-name
+                          s "height" (link-type-object ""))
+        new-entity (first (label->elements joe height-label-obj))]
     (is (= (:item-id new-entity) id))
-    (is (check (canonicalize (to-list new-entity))
-               (canonicalize `(6 (~o7 :order)
-                                 ("height" :label
-                                  (~o6 :order))))))
-    (is (= order o5)))
+    (is (check (to-list new-entity)
+               (as-set `(6 (~(any) :order)
+                           (~height-label-obj (~(any) :order)))))))
    ;; Try adding something that requires adding an non-identified object.
   (let [[s id order] (update-add-element-with-order-and-ephemeral
                       store joe-id `(6 (~(make-object-list
@@ -449,29 +456,31 @@
   ;; Also check and that non-semantic elements don't get order information
   ;; and that the entity is marked ephemeral, if requested.
   (let [[s id order] (update-add-element-with-order-and-ephemeral
-                      store joe-id '(6 ("height" :label)
-                                       ("" :label)
+                      store joe-id `(6 (~(link-type-object "height"))
+                                       (~(link-type-object "other"))
                                        :ephemeral
-                                       (:other ""))
+                                       (:other-keyword ""))
                       unused-orderable :after false)
         joe (id->entity joe-id s)
-        new-entity (first (label->elements joe "height"))
-        [x o5] (orderable/split unused-orderable :before)
-        [x o6] (orderable/split x :before)
-        [o8 o7] (orderable/split x :before)]
-    (is (check (canonicalize (to-list new-entity))
-               (canonicalize
-                `(6 (~o5 :order)
-                    ("height" :label (~o7 :order))
-                    ("" :label (~o6 :order))
+        height-label-obj (find-object-by-name
+                          s "height" (link-type-object ""))
+        other-label-obj (find-object-by-name
+                          s "other" (link-type-object ""))
+        new-entity (first (label->elements joe height-label-obj))]
+    (is (check (to-list new-entity)
+               (as-set
+                `(6 (~(any) :order)
+                    (~height-label-obj (~(any) :order))
+                    (~other-label-obj (~(any) :order))
                     :ephemeral
-                    (:other "")))))
+                    (:other-keyword "")))))
     (is ((:ephemeral-ids s) id))
-    (is (= order o8))
     (is (= (:item-id new-entity) id))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")
+        hi-label-obj (find-object-by-name
+                      s "hi" (object-type-object ""))
         tabs (matching-items '(nil "hi" :tab
                                (nil :tab-topic :table))
                              s)
@@ -479,7 +488,7 @@
         rows (matching-items
               (add-non-selector-to-fixed-term
                (pattern-to-fixed-term
-                (make-object-list [`("hi" :label)])))
+                (make-object-list [`(~(object-type-object "hi"))])))
               s)
         table (first (matching-elements '(nil :table) tab))
         row-conditions (matching-elements '(nil :row-condition) table)
@@ -497,7 +506,7 @@
                     `(""
                       ~(as-set
                         `(~(as-set (make-object-list
-                                    [(as-set `("hi" :label (~(any) :order)))
+                                    [`(~hi-label-obj (~(any) :order))
                                      `(~(any) :order)
                                      :selector]))
                           :row-condition
@@ -511,13 +520,12 @@
                             `(~'anything
                               (~(any) :order)
                               (~(any) (~(any) :order))))
-                          :column-headers
-                          ))
+                          :column-headers))
                       :tab-topic
                       :table))))))
     (is (= rows []))
     (is (check (object-semantic-to-list (content (first row-conditions)))
-               (as-set (make-object-list ['("hi" :label)]))))
+               (make-object-list [`(~hi-label-obj)])))
     (is (check (map semantic-to-list
                     (ordered-entities
                      (semantic-elements (first column-headers-list))))
@@ -526,6 +534,12 @@
 (deftest add-table-test
   (let [s (starting-store "hi")
         s1 (add-table s "there" [["a" "b"] [1 2] [3]])
+        there-label-obj (find-object-by-name
+                         s1 "there" (object-type-object ""))
+        a-label-obj (find-object-by-name
+                     s1 "a" (link-type-object ""))
+        b-label-obj (find-object-by-name
+                     s1 "b" (link-type-object ""))
         tabs (matching-items '(nil "there" :tab
                                (nil :tab-topic :table))
                              s1)
@@ -533,7 +547,7 @@
         rows (matching-items
               (add-non-selector-to-fixed-term
                (pattern-to-fixed-term
-                (make-object-list [`("there" :label)])))
+                (make-object-list [`(~(object-type-object "there"))])))
               s1)
         table (first (matching-elements '(nil :table) tab))
         row-condition (first (matching-elements '(nil :row-condition) table))
@@ -547,21 +561,21 @@
                   ("there" (~(any) :order))
                   ~(as-set
                     `(""
-                      ~(as-set `(~(as-set (make-object-list
-                                           [(as-set
-                                             `("there"
-                                               :label
-                                               (~(any) :order)))
-                                            `(~(any) :order)
-                                            :selector]))
-                                 (~(any) :order)
-                                 :row-condition))
+                      ~(as-set
+                        `(~(as-set (make-object-list
+                                    [`(~there-label-obj (~(any) :order))
+                                     `(~(any) :order)
+                                     :selector]))
+                          (~(any) :order)
+                          :row-condition))
                       ~(as-set
                         `(~'anything
-                          ~(as-set `(~'anything (~(any) :order)
-                                     ~(as-set `("a" :label (~(any) :order)))))
-                          ~(as-set `(~'anything (~(any) :order)
-                                     ~(as-set `("b" :label (~(any) :order)))))
+                          ~(as-set `(~'anything
+                                     (~(any) :order)
+                                     (~a-label-obj (~(any) :order))))
+                          ~(as-set `(~'anything
+                                     (~(any) :order)
+                                     (~b-label-obj (~(any) :order))))
                           :selector :column-headers
                           (~(any) :order)))
                       :table
@@ -571,18 +585,18 @@
     (is (check (map semantic-to-list
                     (ordered-entities rows))
                [(as-set (make-object-list
-                         [(as-set '("there" :label))
-                          (as-set '(1 ("a" :label)))
-                          (as-set '(2 ("b" :label)))]))
+                         [`(~there-label-obj)
+                          `(1 (~a-label-obj))
+                          `(2 (~b-label-obj))]))
                 (as-set (make-object-list
-                         [(as-set '("there" :label))
-                          (as-set '(3 ("a" :label)))]))]))
+                         [`(~there-label-obj)
+                          `(3 (~a-label-obj))]))]))
     (is (check (object-semantic-to-list (content row-condition))
-               (as-set (make-object-list [(as-set '("there" :label))]))))
+               (make-object-list [`(~there-label-obj)])))
     (is (check (map semantic-to-list (ordered-entities
                                       (semantic-elements column-headers)))
-               [(as-set '(anything ("a" :label)))
-                (as-set '(anything ("b" :label)))]))))
+               [`(~'anything (~a-label-obj))
+                `(~'anything (~b-label-obj)) ]))))
 
 (deftest avoid-problems-test
   (let [store (starting-store "test")

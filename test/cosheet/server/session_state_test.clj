@@ -9,6 +9,8 @@
              [test-utils :refer [check any as-set]]
              [store :refer [->ItemId new-element-store new-mutable-store]]
              store-impl
+             [store-utils :refer [find-object-by-name
+                                  object-type-object link-type-object]]
              [reporter :refer [reporter-data reporter-value-or-invalid]]
              [query :refer [matching-items]]
              [canonical :refer [canonicalize]]
@@ -16,7 +18,8 @@
              [calculator :refer [make-calculator-data compute]]
              [task-queue :refer [make-priority-task-queue]])
             (cosheet
-             [entity :refer [make-object-list]])
+             [entity :refer [make-object-list name-label object-type]]
+             [store-utils :refer [link-type-object]])
             (cosheet.server
              [session-state :refer :all]
              [item-render :refer [render-item-DOM-R]]
@@ -45,18 +48,22 @@
                                                           1, 2
                                                           3")
                                "Hello")
+        hello-name (find-object-by-name
+                    store "Hello" (object-type-object ""))
+        a-label (find-object-by-name store "a" (link-type-object ""))
+        b-label (find-object-by-name store "b" (link-type-object ""))
         row1 (first (matching-items
-                     (make-object-list ['(1 ("a" :label))]) store))
+                     (make-object-list [`(1 (~a-label))]) store))
         row2 (first (matching-items
-                     (make-object-list ['(3 ("a" :label))]) store))]
+                     (make-object-list [`(3 (~a-label))]) store))]
     (is (= (canonicalize (semantic-to-list row1))
            (canonicalize
-            (make-object-list ['("Hello" :label)
-                               '(1 ("a" :label))
-                               '(2 ("b" :label))]))))
+            (make-object-list [`(~hello-name)
+                               `(1 (~a-label))
+                               `(2 (~b-label))]))))
     (is (= (canonicalize (semantic-to-list row2))
-           (canonicalize (make-object-list ['("Hello" :label)
-                                            '(3 ("a" :label))]))))))
+           (canonicalize (make-object-list [`(~hello-name)
+                                            `(3 (~a-label))]))))))
 
 (deftest create-client-state-test
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
@@ -118,8 +125,9 @@
   (let [stream (new java.io.StringReader "a, b")
         store (add-table (starting-store nil)
                          "Hello" [["a" "b"] [1 2] [3]])
+        a-label (find-object-by-name store "a" (link-type-object ""))
         row1 (first (matching-items
-                     (make-object-list ['(1 ("a" :label))]) store))
+                     (make-object-list [`(1 (~a-label))]) store))
         ms (new-mutable-store store)
         queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)]
@@ -132,9 +140,9 @@
                                 queue cd)
           dom-manager (:dom-manager state)]
       (is (= (vals (:sessions @session-info)) [state]))
-      ;; Two attendees for the overall DOM, and three for each of the
-      ;; two elements: the element, its content, and its label.
-      (is (= (count (:attendees (reporter-data ms))) 9))
+      ;; Attendees for the overall DOM, plus the row's content
+      ;; and its label elements (with stored link-type-objects).
+      (is (= (count (:attendees (reporter-data ms))) 15))
       (let [root-component (client-id->component @dom-manager "root")]
         (is (check (reporter-value-or-invalid (:dom-R @root-component))
                    [:div {}

@@ -106,6 +106,17 @@
          (as-set [`("foo" (~name-label-in-s))
                   `(~object-type-in-s)])))))
 
+(deftest add-link-type-object-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [store oid] (add-link-type-object s0 "foo")
+        obj (in-different-store (id->object oid store) store)
+        name-label-in-s (in-different-store name-label store)
+        link-type-in-s (in-different-store link-type store)]
+    (is (check
+         (map to-list (forward-elements obj))
+         (as-set [`("foo" (~name-label-in-s))
+                  `(~link-type-in-s)])))))
+
 (deftest add-object-with-id-only-template-test
   (let [s0 (add-universal-objects (new-element-store))
         [store foo-oid] (add-link-type-object s0 "foo")

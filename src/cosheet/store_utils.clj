@@ -152,11 +152,16 @@
   [store name]
   (add-object store (link-type-object name)))
 
+(defn object-type-object
+  "Return the list representation of a link type object with the given name."
+  [name]
+  (make-object-list [`(~name (~name-label)) `(~object-type)]))
+
 (defn add-object-type-object
   "Add an object-type object with the given name to the store.
    Return the updated store and the id of the object-type object."
   [store name]
-  (add-object store (make-object-list [`(~name (~name-label)) `(~object-type)])))
+  (add-object store (object-type-object name)))
 
 (defn- links-to-remove
   "Return a list of ids of links to remove in order to remove the entity

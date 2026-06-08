@@ -26,7 +26,7 @@
                     in-different-store]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects
-                         link-type-object]]
+                         link-type-object object-type-object]]
     [query :refer [matching-items matching-elements
                    not-query special-form?
                    special-form-type sub-query
@@ -702,8 +702,10 @@
    (table-row-condition-object table-item)))
 
 (defn tab-table-element
-  "Return the element that gives the information for a table in a new tab
-  with the given row condition and header elements."
+  "Return the element that gives the information for a table in a new
+  tab with the given row condition elements and header elements. One
+  of the row condition elements should be an object type, which will
+  give the kind of object the rows should contain"
   [row-condition-elements header-elements]
   `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
@@ -714,7 +716,7 @@
              header-elements)))
 
 (def new-tab-table-element
-  (tab-table-element [`(~(link-type-object '???))]
+  (tab-table-element [`(~(object-type-object '???))]
                      [`(~'anything (~(link-type-object '???)))]))
 
 (def column-header-template
@@ -748,7 +750,7 @@
                            ~tab-name
                            :tab
                            ~(tab-table-element
-                             [`(~tab-name :label)]
+                             [`(~(object-type-object tab-name))]
                              [`(~'anything (~(link-type-object '???)))]))
                          store)]
         (first (update-add-element-adjacent-to
@@ -819,7 +821,12 @@
           (reduce
            (fn [store [header-value cell-value]]
              (first (update-add-element-adjacent-to
-                     store row-id `(~cell-value (~header-value :label))
+                     store row-id
+                     ;; TODO: This is inefficient, since it looks up
+                     ;; the header link-type-object every
+                     ;; time. Instead, make a list of all the header
+                     ;; objects once, then use them here.
+                     `(~cell-value (~(link-type-object header-value)))
                      order-element :before false)))
            store
            (map vector headers row))))
@@ -839,8 +846,9 @@
                            :tab
                            ~table-name
                            ~(tab-table-element
-                             [`(~table-name :label)]
-                             (map (fn [header] `(~'anything (~header :label)))
+                             [`(~(object-type-object table-name))]
+                             (map (fn [header]
+                                    `(~'anything (~(link-type-object header))))
                                   headers)))
                          last-tab :after true)]
     store))
@@ -849,6 +857,7 @@
   "Given a sequence of rows, each a sequence of values,
   add a table corresponding to them to the store, with its own tab."
   [store table-name rows]
-  (let [rows-template (make-object-list [`(~table-name :label)])
+  (let [rows-template (make-object-list
+                       [`(~(object-type-object table-name))])
         [store headers] (add-rows store rows rows-template)]
     (add-table-tab store table-name headers)))

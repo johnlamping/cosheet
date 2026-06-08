@@ -28,7 +28,10 @@
                             update-source store-update!
                             update-equivalent-undo-point]]
              [store-utils :refer [add-element add-object
-                                  add-universal-objects]]
+                                  add-universal-objects
+                                  add-link-type-object
+                                  find-object-by-name
+                                  link-type-object]]
              [task-queue :refer [make-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
@@ -65,24 +68,34 @@
 (def o4 (nth orderables 3))
 (def o5 (nth orderables 4))
 (def unused-orderable (nth orderables 4))
+;; Pre-store the link-type-objects so that add-order-elements does not
+;; recurse into them and pollute their internal structure with orders.
+(def base-store (-> (new-element-store)
+                    add-universal-objects
+                    (add-link-type-object "age") first
+                    (add-link-type-object "c2") first
+                    (add-link-type-object "name") first))
+(def age-label (find-object-by-name base-store "age" (link-type-object "")))
+(def c2-label (find-object-by-name base-store "c2" (link-type-object "")))
 (def joe-list (add-order-elements
-               '("Joe"
+               `("Joe"
                  "male"
-                 (39 ("age" :label) ("doubtful" "confidence"))
+                 (39 (~age-label) ("doubtful" "confidence"))
                  "married"
-                 (45 ("age" :label)))))
+                 (45 (~age-label)))))
 (def jane-list (add-order-elements
-                '("Jane" :selector "female" (45 ("age" :label)))))
-(def row-condition-elements ['(anything ("age" :label))])
-(def column-headers ['(anything ("age" :label))
-                     '(anything ("c2" :label))])
+                `("Jane" :selector "female"
+                  (45 (~age-label)))))
+(def row-condition-elements [`(~'anything (~age-label))])
+(def column-headers [`(~'anything (~age-label))
+                     `(~'anything (~c2-label))])
 (def table-list (add-order-elements
                  `(:x
                    :selector
                    (~(make-object-list row-condition-elements)
                     :row-condition)
                    (:x :column-headers ~@column-headers))))
-(def t0 (add-element (new-element-store) nil table-list))
+(def t0 (add-element base-store nil table-list))
 (def table-id (second t0))
 (def t1 (add-element (first t0) nil joe-list))
 (def joe-id (second t1))
@@ -98,7 +111,7 @@
 (def joe (id->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
-(def joe-age-label (first (matching-elements "age" joe-age)))
+(def joe-age-label (first (matching-elements `(~age-label) joe-age)))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
 (def jane (id->entity jane-id store))
@@ -117,13 +130,14 @@
    (map add-order-elements
         `(("Joe" (~name-label))
           "male"
-          (39 ("age" :label) ("doubtful" "confidence"))
+          (39 (~age-label) ("doubtful" "confidence"))
           "married"
-          (45 ("age" :label))))))
+          (45 (~age-label))))))
 (def new-jane-object-list
   (make-object-list
    (map add-order-elements
-        `(("Jane" (~name-label)) :selector "female" (45 ("age" :label))))))
+        `(("Jane" (~name-label)) :selector "female"
+          (45 (~age-label))))))
 (def new-t0 (add-element (new-element-store) nil table-list))
 (def new-table-id (second new-t0))
 (def new-t1 (add-object (first new-t0) new-joe-object-list))
@@ -140,7 +154,7 @@
 (def new-joe (id->entity new-joe-id new-store))
 (def new-joe-age (first (matching-elements 45 new-joe)))
 (def new-joe-bogus-age (first (matching-elements 39 new-joe)))
-(def new-joe-age-label (first (matching-elements "age" new-joe-age)))
+(def new-joe-age-label (first (matching-elements `(~age-label) new-joe-age)))
 (def new-joe-male (first (matching-elements "male" new-joe)))
 (def new-joe-married (first (matching-elements "married" new-joe)))
 (def new-jane (id->entity new-jane-id new-store))
@@ -236,18 +250,19 @@
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything
-                               ("name" :label (~o1 :order))
+                               (~name-label (~o1 :order))
                                (~o1 :order))))
         columns (id->entity columns-id store)
-        column1 (first (matching-elements '(anything "name") columns))
-        name-header (first (matching-elements "name" column1))
+        column1 (first (matching-elements `(~'anything (~name-label))
+                                          columns))
+        name-header (first (matching-elements `(~name-label) column1))
         new-store (do-set-content store
                                   {:subject-ids [(:item-id name-header)]
                                    :from "name"
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source (or new-store store) (:item-id name-header))
-           "name"))))
+           (:item-id name-label)))))
 
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,
@@ -360,14 +375,15 @@
         new-joe (id->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
                (canonicalize
-                '("Joe" "male" "married"
+                `("Joe" "male" "married"
                   ("" 5)
-                  (45 ("age" :label))
-                  (39 ("age" :label) ("doubtful" "confidence"))))))
+                  (45 (~age-label))
+                  (39 (~age-label)
+                      ("doubtful" "confidence"))))))
     (is (check (entity->canonical-semantic new-jane)
-               (canonicalize '("Jane" "female"
-                                    (anything 5)
-                                    (45 ("age" :label))))))
+               (canonicalize `("Jane" "female"
+                                    (~'anything 5)
+                                    (45 (~age-label))))))
     (let [new-joe-element (first (matching-elements "" new-joe))
           new-jane-element (first (matching-elements 'anything new-jane))]
       (is (check (:ephemeral-data new-store)
@@ -383,9 +399,9 @@
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize '(45 ("age" :label) ""))))
+               (canonicalize `(45 (~age-label) ""))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize '(45 ("age" :label) anything))))
+               (canonicalize `(45 (~age-label) ~'anything))))
     (let [new-joe-element (first (matching-elements "" new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (:ephemeral-data new-store)
@@ -409,9 +425,11 @@
                                         `(~link-type)])
                      new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize `(45 ("age" :label) (~blank-label)))))
+               (canonicalize `(45 (~age-label)
+                                  (~blank-label)))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize `(45 ("age" :label) (~generic-label)))))
+               (canonicalize `(45 (~age-label)
+                                  (~generic-label)))))
     (let [new-joe-element (first (matching-elements `(~blank-label)
                                                     new-joe-age))
           new-jane-element (first (matching-elements `(~generic-label)
@@ -434,8 +452,9 @@
         new-joe (id->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
                (canonicalize
-                '("Joe" "male" "married"
-                  (39 ("age" :label) ("doubtful" "confidence"))))))
+                `("Joe" "male" "married"
+                  (39 (~age-label)
+                      ("doubtful" "confidence"))))))
     (is (check (entity->canonical-semantic new-jane)
                (canonicalize '("Jane" "female")))))
   ;; Test that deleting the only element of a column does nothing.
@@ -443,11 +462,12 @@
                             store nil
                             `(~'anything :column-headers :selector
                               (~'anything
-                               ("name" :label (~o1 :order))
+                               (~name-label (~o1 :order))
                                (~o1 :order))))
         columns (id->entity columns-id store)
-        column1 (first (matching-elements '(anything "name") columns))
-        name-header (first (matching-elements "name" column1))
+        column1 (first (matching-elements `(~'anything (~name-label))
+                                          columns))
+        name-header (first (matching-elements `(~name-label) column1))
         new-store (do-delete store
                              {:subject-ids [joe-id
                                             (:item-id name-header)]})]
@@ -550,16 +570,18 @@
         query-item (first (label->elements session-ephemeral :batch-query))
         stack-item (first (label->elements session-ephemeral :batch-stack))]
     (is (check (canonicalize (semantic-to-list query-item))
-               (canonicalize '(anything ("Joe"
-                                         "male"
-                                         "married"
-                                         (39 ("age" :label)
-                                             ("doubtful" "confidence"))
-                                         (45 ("age" :label)))))))
+               (canonicalize `(~'anything
+                               ("Joe"
+                                "male"
+                                "married"
+                                (39 (~age-label)
+                                    ("doubtful" "confidence"))
+                                (45 (~age-label)))))))
     (is (check (canonicalize (semantic-to-list stack-item))
-               (canonicalize '(anything ("Jane"
-                                         (45 ("age" :label))
-                                         "female")))))
+               (canonicalize `(~'anything
+                               ("Jane"
+                                (45 (~age-label))
+                                "female")))))
     (is (check (:ephemeral-data (:store updated))
                {:following-selection-by-ids
                 [nil [(:item-id (first
@@ -578,15 +600,16 @@
       (is (check (semantic-to-list stack-item)
                  'anything))
       (is (check (canonicalize (semantic-to-list query-item))
-                 (canonicalize '(anything ("Joe"
-                                           "male"
-                                           "married"
-                                           (39 ("age" :label)
-                                               ("doubtful" "confidence"))
-                                           (45 ("age" :label)))
-                                          ("Jane"
-                                           (45 ("age" :label))
-                                           "female")))))
+                 (canonicalize `(~'anything
+                                 ("Joe"
+                                  "male"
+                                  "married"
+                                  (39 (~age-label)
+                                      ("doubtful" "confidence"))
+                                  (45 (~age-label)))
+                                 ("Jane"
+                                  (45 (~age-label))
+                                  "female")))))
       (is (earlier? (label->content
                      (first (matching-elements "Jane" query-item)) :order)
                     (label->content
@@ -698,15 +721,15 @@
     (let [result (do-add-twin
                   store
                   {:referent (item-referent jane-age)
-                   :template '(anything ("age" :label))
+                   :template `(~'anything (~age-label))
                    :target-key ["jane" "jane-age"]})
           new-store (:store result)]
       (is (check (item->canonical-semantic
                   (to-list (id->entity (:item-id jane) new-store)))
-                 (canonicalize '("Jane"
-                                      "female"
-                                      (45 ("age" :label))
-                                      (anything ("age" :label))))))
+                 (canonicalize `("Jane"
+                                 "female"
+                                 (45 (~age-label))
+                                 (~'anything (~age-label))))))
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -714,17 +737,17 @@
     (let [result (do-add-virtual
                   store
                   {:referent
-                   (virtual-referent '(anything ("age" :label))
+                   (virtual-referent `(~'anything (~age-label))
                                      (union-referent [(item-referent jane)])
                                      (item-referent jane) :position :after)
                    :select-pattern ["jane" [:pattern]]
                    :target-key ["jane" "jane-age"]})]
       (is (check (item->canonical-semantic
                   (to-list (id->entity (:item-id jane) (:store result))))
-                 (canonicalize '("Jane"
-                                      "female"
-                                      (45 ("age" :label))
-                                      (anything ("age" :label))))))
+                 (canonicalize `("Jane"
+                                 "female"
+                                 (45 (~age-label))
+                                 (~'anything (~age-label))))))
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -771,18 +794,18 @@
         (is (= select [[:jane new-id] [[:jane]]]))
         (is (check (item->canonical-semantic
                     (id->entity (:item-id jane) new-store))
-                   (canonicalize '("Jane" "female"
-                                        (45 ("age" :label))
-                                        anything))))
+                   (canonicalize `("Jane" "female"
+                                   (45 (~age-label))
+                                   ~'anything))))
         (is (check (item->canonical-semantic
                     (id->entity (:item-id joe) new-store))
-                   (canonicalize '("Joe"
-                                        "male" 
-                                        (39 ("age" :label)
-                                            ("doubtful" "confidence"))
-                                        "married"
-                                        (45 ("age" :label))
-                                        ""))))
+                   (canonicalize `("Joe"
+                                   "male"
+                                   (39 (~age-label)
+                                       ("doubtful" "confidence"))
+                                   "married"
+                                   (45 (~age-label))
+                                   ""))))
         (is (= (immutable-semantic-to-list
                 (id->entity new-id new-store))
                'anything)))))

@@ -130,16 +130,15 @@
     [store entity-link]))
 
 (defn add-universal-objects
-  "Add the 'name', 'link-type', and 'object-type' objects to the store,
-  includding their names."
+  "Add the 'name', 'link-type', and 'object-type' objects to the store.
+  Only the name-label object has a name; link-type and object-type
+  are anonymous."
   [store]
   (let [[s1 _] (add-element store name-label-id `("name" (~name-label)))
         [s2 _] (add-element s1 name-label-id `(~link-type))
-        [s3 _] (add-element s2 link-type-id `("label" (~name-label)))
-        [s4 _] (add-element s3 link-type-id `(~object-type))
-        [s5 _] (add-element s4 object-type-id `("class" (~name-label)))
-        [s6 _] (add-element s5 object-type-id `(~object-type))]
-    s6))
+        [s3 _] (add-element s2 link-type-id `(~object-type))
+        [s4 _] (add-element s3 object-type-id `(~object-type))]
+    s4))
 
 (defn link-type-object
   "Return the list representation of a link type object with the given name."

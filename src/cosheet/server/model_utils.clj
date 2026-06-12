@@ -778,13 +778,12 @@
    (= 'anything (content entity))
    ;; It is a column header.
    (some #(= (content %) :column-headers) (elements (target-entity entity)))
-   ;; It has no elements, or only a :label element.
+   ;; It has no elements, except 'amything
    (let [semantic (semantic-elements entity)]
      (or (empty? semantic)
          (and (empty? (rest semantic))
-              (#{'anything} (content (first semantic)))
-              (every? #(= (content %) :label)
-                      (semantic-elements (first semantic))))))))
+              (= (content (first semantic)) 'anything)
+              (empty? (semantic-elements (first semantic))))))))
 
 (defn abandon-problem-changes
   "Given an old store, a new store, both immutable, and an id where

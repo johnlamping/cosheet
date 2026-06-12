@@ -672,10 +672,13 @@
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-id] (get-new-object-id s0)
         [s2 inner-obj-id] (get-new-object-id s1)
-        [s3 elem-id] (add-element s2 obj-id `(~(id->object inner-obj-id s2)))
+        [s3 elem-id] (add-element s2 obj-id `(~(id->object inner-obj-id s2)
+                                              (~o2 :order)))
         [s4 class-id] (add-element s3 inner-obj-id `(~name-label))
         [s5 name-id] (add-element s4 inner-obj-id `("Fred" (~name-label)))
-        [store test-id] (add-element s5 obj-id `("test"))
+        ;; The second element we add to the object should be first in the DOM.
+        [store test-id] (add-element s5 obj-id `("test"
+                                                 (~o1 :order)))
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id obj-id

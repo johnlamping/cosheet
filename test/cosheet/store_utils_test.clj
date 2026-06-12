@@ -100,12 +100,10 @@
                   `("name" (~name-label-in-s))])))
     (is (check
          (map to-list (forward-elements link-type-in-s))
-         [`(~object-type-in-s)
-          `("label" (~name-label-in-s))]))
+         [`(~object-type-in-s)]))
     (is (check
          (map to-list (forward-elements object-type-in-s))
-         (as-set [`(~object-type-in-s)
-                  `("class" (~name-label-in-s))])))))
+         [`(~object-type-in-s)]))))
 
 (deftest add-object-type-object-test
   (let [s0 (add-universal-objects (new-element-store))

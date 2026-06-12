@@ -12,8 +12,7 @@
              [reporter-macros :refer [app-R]]
              [task-queue :refer [make-priority-task-queue]]
              [calculator :refer [make-calculator-data request compute]]
-             [debug :refer [profile-and-print-reporters
-                            simplify-for-print]]
+             [debug :refer [simplify-for-print]]
              entity-impl
              [query :refer [matching-elements]]
              query-impl

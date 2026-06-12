@@ -16,8 +16,7 @@
                                         in-different-store
                                         recursively-in-different-store]]
              [calculator :refer [make-calculator-data compute]]
-             [debug :refer [profile-and-print-reporters
-                            store-as-list simplify-for-print]]
+             [debug :refer [store-as-list simplify-for-print]]
              entity-impl
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store

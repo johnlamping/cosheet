@@ -19,6 +19,7 @@
              store-utils-test
              entity-test
              query-calculator-test
-             hiccup-utils-test)
+             hiccup-utils-test
+             profiling-test)
    :reload
             ))

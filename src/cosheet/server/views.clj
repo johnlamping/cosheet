@@ -10,14 +10,13 @@
      [entity :refer [in-different-store content label->elements]]
      entity-impl
      [query :refer [matching-elements]]
-     [debug :refer [simplify-for-print]]
+     [profiling :refer [profile-and-print-reporters]]
      query-impl
      [calculator :refer [make-calculator-data compute]]
      [task-queue :refer [make-priority-task-queue finished-all-tasks?]]
      [hiccup-utils :refer [dom-attributes add-attributes]]
      [reporter :as reporter]
-     [map-reporter :refer [map-reporter-reset! map-reporter-get-current]]
-     [debug :refer [profile-and-print-reporters]])
+     [map-reporter :refer [map-reporter-reset! map-reporter-get-current]])
     (cosheet.server
       [dom-manager :refer [request-client-refresh
                            process-acknowledgements get-response-doms]]

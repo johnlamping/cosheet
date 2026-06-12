@@ -11,24 +11,25 @@
                                       to-list
                                       label-element?]]
                       [query :refer [extended-by-m?
-                               matching-extensions-m
-                               matching-elements-m
-                               matching-items-m
-                               query-matches-m
-                               special-form?
-                               special-form-type
-                               variable-query?
-                               variable-name
-                               variable-qualifier
-                               variable-reference
-                               sub-queries
-                               sub-query
-                               quantifier-variable]]
+                                     matching-extensions-m
+                                     matching-elements-m
+                                     matching-items-m
+                                     query-matches-m
+                                     special-form?
+                                     special-form-type
+                                     variable-query?
+                                     variable-name
+                                     variable-qualifier
+                                     variable-reference
+                                     sub-queries
+                                     sub-query
+                                     quantifier-variable]]
                       [canonical :refer [equivalent-primitives?
                                          canonicalize]]
                       [utils :refer [unzip
                                      conj-disjoint-combinations
-                                     disjoint-combinations]])))
+                                     disjoint-combinations]]
+                      [debug :refer [simplify-for-print]])))
 
 ;;; TODO: !!! Do checking for non-generic objects, not moving into them.
 
@@ -332,9 +333,9 @@
   (assert (not (object? term)))
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels))
-      (let [candidates (entity-element-filter
-                        (candidate-elements
-                         labels (term-orientation term env) entity))
+      (let [unfiltered-candidates (candidate-elements
+                                   labels (term-orientation term env) entity)
+            candidates (entity-element-filter unfiltered-candidates)
             match-envs (map #(matching-extensions term identity env % identity)
                             candidates)]
         (reduce (fn [result [candidate matching-envs]]
@@ -343,8 +344,8 @@
                           result matching-envs))
                 {} (map vector candidates match-envs)))
       ;; The special case of looking for any element with one specific label.
-      (let [matching-elements (entity-element-filter
-                               (label->elements entity labels))]
+      (let [unfiltered-matches (label->elements entity labels)
+            matching-elements unfiltered-matches]
         (cond (empty? matching-elements)
               {}
               (variable-query? term)

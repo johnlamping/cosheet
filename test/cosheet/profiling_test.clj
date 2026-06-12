@@ -1,8 +1,8 @@
-(ns cosheet.debug-test
+(ns cosheet.profiling-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             (cosheet
-             [debug :refer :all]
+             [profiling :refer :all]
              [task-queue :refer [make-priority-task-queue]]
              [reporter :refer [make-reporter]]
              [calculator :refer [make-calculator-data
@@ -23,6 +23,6 @@
     (propagate-calculator-data! rs cd)
     (let [profile (reporters-profile [rs])
           expected{nil {'_PLUS_ 1 'inc 1 'dec 1 'min 1 'max 1
-                        'debug-test/fn/indirect 1}
-                   'debug-test/fn/indirect {'max 1}}]
-      (is (= profile expected)))))
+                        'profiling-test/fn/indirect 1}
+                   'profiling-test/fn/indirect {'max 1}}]
+      (is (check profile expected)))))

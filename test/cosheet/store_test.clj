@@ -24,14 +24,19 @@
   (assert (> n 0))
   (->ItemId n))
 
-(def oid-2 (make-object-id -2))
+(def foo-oid (make-object-id -2))
+(def bar-oid (make-object-id -3))
 ;;; This store holds two top level items:
 ;;; <id:4>5
 ;;; (object-1
-;;;    <id:1>(44 <id:2>("Foo" <id:3>(oid-2 :baz)
-;;;                           <id:5>("bar" :label)
-;;;                           <id:11>("bar" :label)
-;;;              <id:9>("Bar" :order)))
+;;;    <id:1>(44 <id:2>("Foo" <id:3>(foo-oid :foo-keyword)
+;;;                           <id:5>(bar-oid)
+;;;                           <id:11>(bar-oid))
+;;;              <id:9>("Bar" :bar-keyword)))
+;;; foo-oid is a link-type object with name "foo", and bar-oid is a
+;;; link-type object with name "bar". (link-type-id and name-label-id
+;;; are used directly as sources, without corresponding objects of
+;;; their own.)
 (def unindexed-test-store
   (map->ElementStoreImpl
    {:id->target
@@ -40,29 +45,31 @@
      (make-link-id 3) (make-link-id 2)
      (make-link-id 5) (make-link-id 2)
      (make-link-id 6) (make-link-id 3)
-     (make-link-id 7) oid-2
-     (make-link-id 71) oid-2
+     (make-link-id 7) foo-oid
+     (make-link-id 71) foo-oid
      (make-link-id 72) (make-link-id 71)
-     (make-link-id 8) (make-link-id 5)
      (make-link-id 9) (make-link-id 1)
      (make-link-id 10) (make-link-id 9)
-     (make-link-id 11) (make-link-id 2)
-     (make-link-id 12) (make-link-id 11)}
+     (make-link-id 11) (make-link-id 2)  ; a duplicate of id 5.
+     (make-link-id 13) bar-oid
+     (make-link-id 14) (make-link-id 13)
+     (make-link-id 15) bar-oid}
     :id->source
     {(make-link-id 1) 44
      (make-link-id 2) "Foo"
-     (make-link-id 3) oid-2
+     (make-link-id 3) foo-oid
      (make-link-id 4) 5
-     (make-link-id 5) "bar"
-     (make-link-id 6) :baz
-     (make-link-id 7) (make-object-id "link-type")
-     (make-link-id 71) "baz"
-     (make-link-id 72) (make-object-id "name")
-     (make-link-id 8) :label
+     (make-link-id 5) bar-oid
+     (make-link-id 6) :foo-keyword
+     (make-link-id 7) link-type-id
+     (make-link-id 71) "foo"
+     (make-link-id 72) name-label-id
      (make-link-id 9) "Bar"
-     (make-link-id 10) :order
-     (make-link-id 11) "bar"
-     (make-link-id 12) :label}
+     (make-link-id 10) :bar-keyword
+     (make-link-id 11) bar-oid  ; a duplicate of id 5.
+     (make-link-id 13) "bar"
+     (make-link-id 14) name-label-id
+     (make-link-id 15) link-type-id}
     :ephemeral-ids  #{}
     :ephemeral-data {}
     :marked-as-type #{}
@@ -124,8 +131,8 @@
         empty-indexed (clear-store-leaving-indices store)
         unindexed (reduce #(index-marked-as-type %1 store %2)
                           empty-indexed ids)]
-    (is (check (:marked-as-type store)
-               #{(make-link-id 5) (make-link-id 11)}))
+    ;; The new style has no :label markers, so nothing is marked-as-type.
+    (is (check (:marked-as-type store) #{}))
     (is (empty? (:marked-as-type unindexed)))))
 
 (deftest index-endpoint->label->label-ids-test
@@ -149,19 +156,20 @@
             index-key (endpoint-label-index-key endpoint)]
         (is (check (index-key store)
                    (case endpoint
-                     :target {(make-link-id 1) {oid-2 (make-link-id 3)
-                                                "bar" #{(make-link-id 5)
-                                                        (make-link-id 11)}
-                                                :order (make-link-id 10)}
-                              (make-link-id 2) {:baz (make-link-id 6)}
-                              oid-2 {(make-object-id "name") (make-link-id 72)}}
-                     :source {"bar" {:order (make-link-id 10)}
-                              "foo" {oid-2 (make-link-id 3)
-                                     "bar" #{(make-link-id 5)
-                                             (make-link-id 11)}}
-                              oid-2 {:baz (make-link-id 6)}
-                              "baz" {(make-object-id "name") (make-link-id 72)}}
-                     )))
+                     :target {(make-link-id 1) {foo-oid (make-link-id 3)
+                                                bar-oid #{(make-link-id 5)
+                                                          (make-link-id 11)}
+                                                :bar-keyword (make-link-id 10)}
+                              (make-link-id 2) {:foo-keyword (make-link-id 6)}
+                              foo-oid {name-label-id (make-link-id 72)}
+                              bar-oid {name-label-id (make-link-id 14)}}
+                     :source {"bar" {:bar-keyword (make-link-id 10)
+                                     name-label-id (make-link-id 14)}
+                              "foo" {foo-oid (make-link-id 3)
+                                     bar-oid #{(make-link-id 5)
+                                               (make-link-id 11)}
+                                     name-label-id (make-link-id 72)}
+                              foo-oid {:foo-keyword (make-link-id 6)}})))
         (is (empty? (index-key unindexed)))))))
 
 (def test-store
@@ -193,7 +201,7 @@
   (is (= (id->source test-store (make-link-id 999)) nil))
   (is (= (id->source test-store (make-link-id 1)) 44))
   (is (= (id->source test-store (make-link-id 2)) "Foo"))
-  (is (= (id->source test-store (make-link-id 6)) :baz)))
+  (is (= (id->source test-store (make-link-id 6)) :foo-keyword)))
 
 (deftest target->ids-test
   (is (= (target->ids test-store (make-object-id "object"))
@@ -203,35 +211,36 @@
   (is (= (target->ids test-store (make-link-id 999)) nil)))
 
 (deftest source->ids-test
-  (is (= (source->ids test-store "Foo") [(make-link-id 2)]))
-  (is (check (source->ids test-store :label)
-             (as-set [(make-link-id 8) (make-link-id 12)])))
+  (is (check (source->ids test-store "Foo")
+         (as-set [(make-link-id 2) (make-link-id 71)])))
+  (is (check (source->ids test-store bar-oid)
+             (as-set [(make-link-id 5) (make-link-id 11)])))
   (is (= (source->ids test-store 123) nil)))
 
 (deftest target-source->ids-test
   ;; Both target and source -ids are sets
-  (is (= (target-source->ids test-store (make-link-id 3) :baz)
+  (is (= (target-source->ids test-store (make-link-id 3) :foo-keyword)
          [(make-link-id 6)]))
   ;; Only target-ids is a set
-  (is (= (target-source->ids test-store (make-link-id 2) oid-2)
+  (is (= (target-source->ids test-store (make-link-id 2) foo-oid)
          [(make-link-id 3)]))
   ;; Only source-ids is a set
-  (is (= (target-source->ids test-store (make-link-id 5) :label)
-         [(make-link-id 8)]))
+  (is (check (target-source->ids test-store (make-link-id 2) bar-oid)
+             (as-set [(make-link-id 5) (make-link-id 11)])))
   ;; Neither target nor source -ids are sets
-  (is (= (target-source->ids test-store (make-link-id 9) :order)
+  (is (= (target-source->ids test-store (make-link-id 9) :bar-keyword)
          [(make-link-id 10)])))
 
 (deftest target-label->ids-test
-  (is (= (target-label->ids test-store (make-link-id 1) "Bar")
+  (is (= (target-label->ids test-store (make-link-id 1) bar-oid)
          [(make-link-id 2)]))
-  (is (= (target-label->ids test-store (make-link-id 1) oid-2)
+  (is (= (target-label->ids test-store (make-link-id 1) foo-oid)
          [(make-link-id 2)]))
   (is (= (target-label->ids test-store (make-link-id 0.5) "bar") nil))
   (is (= (target-label->ids test-store (make-link-id 999) "bar") nil))
-  (is (= (target-label->ids test-store (make-link-id 1) :order)
+  (is (= (target-label->ids test-store (make-link-id 1) :bar-keyword)
          [(make-link-id 9)]))
-  (is (= (target-label->ids test-store (make-link-id 0.5) :order)
+  (is (= (target-label->ids test-store (make-link-id 0.5) :bar-keyword)
          nil)))
 
 (deftest target-label-index-on-label-object-transition-test
@@ -255,21 +264,22 @@
       (is (= (target-label->ids s3 t-id o-id) [x-id])))))
 
 (deftest source-label->ids-test
-  (is (= (source-label->ids test-store "Foo" "Bar")
+  (is (= (source-label->ids test-store "Foo" bar-oid)
          [(make-link-id 2)]))
-  (is (= (source-label->ids test-store "foo" "bar")
+  (is (= (source-label->ids test-store "foo" bar-oid)
          [(make-link-id 2)]))
-  (is (= (source-label->ids test-store "foo" oid-2)
+  (is (= (source-label->ids test-store "foo" foo-oid)
          [(make-link-id 2)]))
-  (is (= (source-label->ids test-store "foo" :order) nil))
+  (is (= (source-label->ids test-store "foo" :bar-keyword) nil))
   (is (= (source-label->ids test-store (make-link-id 1) "bar") nil))
-  (is (= (source-label->ids test-store "Bar" :order)
+  (is (= (source-label->ids test-store "Bar" :bar-keyword)
          [(make-link-id 9)]))
-  (is (= (source-label->ids test-store (make-link-id 0.5) :order)
+  (is (= (source-label->ids test-store (make-link-id 0.5) :bar-keyword)
          nil)))
 
 (deftest id->marked-as-type?-test
-  (is (id->marked-as-type? test-store (make-link-id 5)))
+  ;; The new style has no :label markers, so nothing is marked-as-type.
+  (is (not (id->marked-as-type? test-store (make-link-id 5))))
   (is (not (id->marked-as-type? test-store (make-link-id 7))))
   (is (not (id->marked-as-type? test-store (make-link-id 1)))))
 
@@ -449,7 +459,7 @@
     (doseq [[id source] (:id->source store)]
       ;; Note: must be kept in synch with entity/label?
       (when-let [label-id (cond (= source :label) (id->target store id)
-                                (= source :order) id)]
+                                (= source :bar-keyword) id)]
         (let [label (canonical-primitive-form (id->source store label-id))
               label-target (id->target store label-id)]
           (when-let [endpoint-value (canonical-primitive-form
@@ -489,7 +499,7 @@
                                    (int (/ 200 (gen/uniform 1 100))))
                                1 (random-object)
                                2 :label
-                               3 :order))
+                               3 :bar-keyword))
         random-target (fn [i] (case (gen/uniform 0 2)
                                 0 (make-link-id (earlier-number i))
                                 1 (random-object)))]
@@ -537,22 +547,24 @@
                    m)))))))
 
 (deftest candidate-matching-ids-test
-  (let [obj-2 (id->object oid-2 nil)]
+  (let [obj-2 (id->object foo-oid nil)
+        bar-object (id->object bar-oid nil)]
     (is (check (candidate-matching-ids-and-estimate test-store 5)
                [1 [(make-link-id 4)] true]))
     (is (check (candidate-matching-ids-and-estimate test-store '(5))
                [1 [(make-link-id 4)] true]))
     (is (check (candidate-matching-ids-and-estimate test-store '(nil "Foo"))
-               [1 [(make-link-id 1)] true]))
-    (is (check (candidate-matching-ids-and-estimate test-store `(~obj-2 :baz))
+               [2 [(make-link-id 1)] true]))
+    (is (check (candidate-matching-ids-and-estimate test-store `(~obj-2 :foo-keyword))
                [1 [(make-link-id 3)] true]))
     (is (check (candidate-matching-ids-and-estimate test-store '(0 "Foo"))
                [0 [] false]))
     (is (check (candidate-matching-ids-and-estimate
-                test-store `(nil (~obj-2) "bar"))
+                test-store `(nil (~obj-2) (~bar-object)))
                [1 [(make-link-id 2)] true]))
-    (is (check (candidate-matching-ids-and-estimate test-store '(nil "bar" "bar"))
-               [3 [(make-link-id 2) (make-link-id 1)] false]))
+    (is (check (candidate-matching-ids-and-estimate
+                test-store `(nil (~bar-object) (~bar-object)))
+               [2 [(make-link-id 2)] false]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-element-list
@@ -589,17 +601,19 @@
     (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
     (is (check (candidate-matching-ids test-store nil)
                [(as-set [(make-object-id "object")
-                         (make-object-id "link-type")
-                         (make-object-id "name")
-                         (make-object-id -2)
+                         link-type-id
+                         name-label-id
+                         foo-oid
+                         bar-oid
                          (make-link-id 1)
                          (make-link-id 2) (make-link-id 3)
                          (make-link-id 4) (make-link-id 5)
                          (make-link-id 6) (make-link-id 7)
                          (make-link-id 71) (make-link-id 72)
-                         (make-link-id 8) (make-link-id 9)
+                         (make-link-id 9)
                          (make-link-id 10) (make-link-id 11)
-                         (make-link-id 12)])
+                         (make-link-id 13) (make-link-id 14)
+                         (make-link-id 15)])
                 false]))
     (is (check (candidate-matching-ids test-store '(nil))
                [(as-set [(make-link-id 1)
@@ -607,25 +621,27 @@
                          (make-link-id 4) (make-link-id 5)
                          (make-link-id 6) (make-link-id 7)
                          (make-link-id 71) (make-link-id 72)
-                         (make-link-id 8) (make-link-id 9)
+                         (make-link-id 9)
                          (make-link-id 10) (make-link-id 11)
-                         (make-link-id 12)])
+                         (make-link-id 13) (make-link-id 14)
+                         (make-link-id 15)])
                 false]))
     (is (check (candidate-matching-ids test-store (make-object-list nil))
                [(as-set  [(make-object-id "object")
-                          (make-object-id "link-type")
-                          (make-object-id "name")
-                          (make-object-id -2)])
+                          link-type-id
+                          name-label-id
+                          foo-oid
+                          bar-oid])
                 false]))
     (is (check (candidate-matching-ids test-store '(nil nil))
                [(as-set  [(make-link-id 1)
                           (make-link-id 2) (make-link-id 3)
                           (make-link-id 71)
-                          (make-link-id 5) (make-link-id 9)
-                          (make-link-id 11)])
+                          (make-link-id 9)
+                          (make-link-id 13)])
                 false]))
     (is (check (candidate-matching-ids test-store '("Foo"))
-               [[(make-link-id 2)] true]))
+               [(as-set [(make-link-id 71) (make-link-id 2)]) true]))
     (is (check (candidate-matching-ids test-store 5)
                [[(make-link-id 4)] true]))
     (is (check (candidate-matching-ids test-store '(nil "Foo" nil))
@@ -635,13 +651,13 @@
     (is (check (candidate-matching-ids test-store (make-object-list '((44))))
                [[(make-object-id "object")] true]))
     (is (check (candidate-matching-ids test-store (make-object-list '((nil))))
-               [(as-set [(make-object-id "object") (make-object-id -2)])
+               [(as-set [(make-object-id "object") foo-oid bar-oid])
                 false]))
     (is (check (candidate-matching-ids
                 test-store (make-object-list '((44) (44))))
                [[(make-object-id "object")] false]))
     (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
-               [nil true]))))
+               [[foo-oid] true]))))
 
 (deftest declare-ephemeral-id-test
   (is (= (:ephemeral-ids test-store) #{}))
@@ -649,16 +665,16 @@
                             (declare-ephemeral-id (make-link-id 3))
                             (add-link (make-link-id 1) "hi")
                             first
-                            (declare-ephemeral-id (make-link-id 8)))]
+                            (declare-ephemeral-id (make-link-id 14)))]
     (is (= (:ephemeral-ids ephemeral-store)
-           #{(make-link-id 3) (make-link-id 8)}))
+           #{(make-link-id 3) (make-link-id 14)}))
     (is (= (all-ephemeral-ids ephemeral-store)
-           #{(make-link-id 3) (make-link-id 6) (make-link-id 8)}))))
+           #{(make-link-id 3) (make-link-id 6) (make-link-id 14)}))))
 
 (deftest ephemeral-data-test
   (is (= (:ephemeral-data test-store) {}))
-  (let [store (assoc test-store :ephemeral-data {:foo 1})]
-    (is (= (:ephemeral-data store) {:foo 1}))))
+  (let [store (assoc test-store :ephemeral-data {:foo-keyword 1})]
+    (is (= (:ephemeral-data store) {:foo-keyword 1}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
@@ -671,9 +687,9 @@
   ;; Now try it with some items not serialized
   (let [ephemeral-store (-> test-store
                             (declare-ephemeral-id (make-link-id 3))
-                            (declare-ephemeral-id (make-link-id 8)))
+                            (declare-ephemeral-id (make-link-id 14)))
         smaller-store (-> test-store
-                          (remove-link (make-link-id 8))
+                          (remove-link (make-link-id 14))
                           (remove-link (make-link-id 6)) ; Points to id 3
                           (remove-link (make-link-id 3)))]
     (is (check (into {} smaller-store)
@@ -682,11 +698,11 @@
   ;; Try with obj-2 being non-interned.
   (let [ephemeral-store (-> test-store
                             (declare-ephemeral-id (make-link-id 3))
-                            (declare-ephemeral-id (make-link-id 8))
+                            (declare-ephemeral-id (make-link-id 14))
                             ;; Make id -2 non-interned
                             (remove-link (make-link-id 72)))
         smaller-store (-> test-store
-                          (remove-link (make-link-id 8))
+                          (remove-link (make-link-id 14))
                           (remove-link (make-link-id 6)) ; Points to id 3
                           (remove-link (make-link-id 3))
                           (remove-link (make-link-id 72))

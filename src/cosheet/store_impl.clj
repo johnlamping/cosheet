@@ -512,7 +512,7 @@
       ;; whose source is that target a label. So we need to re-index
       ;; all such links when a typing link changes.
       (let [typing-source? #{link-type-id object-type-id}
-            affected-target
+            target-if-affected ; Return [target] is whether it's a label changes.
             (fn [s] (let [target (id->target s id)]
                       (when (and (typing-source? (id->source s id))
                                  (object-id? target)
@@ -520,14 +520,13 @@
                                        (id-is-label-object? old-store target)))
                         [target])))
             affected-object-ids
-            (->> (map affected-target [store old-store])
-                 (apply concat)
-                 distinct)]
+            (->> [store old-store]
+                 (map target-if-affected) (apply concat) distinct)]
         (reduce
          (fn [store object-id]
-           (let [affected-links (distinct
-                                 (concat (source->ids store object-id)
-                                         (source->ids old-store object-id)))]
+           (let [affected-links
+                 (->> [store old-store]
+                      (map #(source->ids % object-id)) (apply concat) distinct)]
              (reduce
               (fn [store affected-id]
                 (index-endpoint->label->label-ids-from-label

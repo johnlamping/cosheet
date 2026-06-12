@@ -478,7 +478,7 @@
   ;; elements with at most 1/2 its id number, and we only remove at
   ;; most the last 1/2 of the elements while removing. (We remove them
   ;; in a random order, so this guarantees that we won't remove a
-  ;; link while another link reverences it.
+  ;; link while another link references it.
   (binding [gen/*rnd* (java.util.Random. 437)])
   (let [earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
         random-object (fn [] (make-object-id

@@ -18,14 +18,15 @@
             ))
 
 (deftest add-test
-  (let [s (new-element-store)
-        [s1 id] (add-element s (make-item-id "0") '(77 ("test" :label)))
+  (let [s (add-universal-objects (new-element-store))
+        [s1 id] (add-element s (make-item-id "0")
+                             `(77 (~(link-type-object "test"))))
         [s2 id1] (add-object s1 (make-object-list '("Hello")))
         ;; A reversed link. "Fred" is the source.
         [s3 id2] (add-element s2 "Fred" (make-element-list
                                          :target
                                          (id->object id1 s2)
-                                         '(("by" :label))))
+                                         `((~(link-type-object "by")))))
         [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
         [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
         [s6 id6] (add-object s5
@@ -35,21 +36,23 @@
         [s id7] (add-object s6
                             (make-object-list
                              [`(1
-                                (~(id->object (make-item-id "name") nil)))]))]
+                                (~(id->object (make-item-id "name") nil)))]))
+        test-label (find-object-by-name s "test" (link-type-object ""))
+        by-label (find-object-by-name s "by" (link-type-object ""))]
     (is (= (id->target s id)) (make-item-id "0"))
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
     (is (= id6 id7)) ; check that we found the existing object.
     (is (check (to-list (id->element id s))
                (as-set `(77
-                         ("test" :label)
+                         (~test-label)
                          (~(make-object-list '(1)) 3)))))
     (is (= (to-list (id->element id2 s))
-           '("Fred" ("by" :label))))
+           `("Fred" (~by-label))))
     (is (check (to-list (id->object id1 s))
                (as-set (make-object-list
                         `("Hello"
-                          ("Fred" ("by" :label))
+                          ("Fred" (~by-label))
                           (~(id->object (make-item-id "a") s)))))))
     (is (check (to-list (id->element id3 s))
                `(~(make-object-list '(1)) 3)))
@@ -59,21 +62,30 @@
                          2])))))
 
 (deftest remove-entity-by-id-test
-  (let [[added-store e1]
-        (add-element (new-element-store) (make-item-id "0")
-                    '("foo" ("test" :label)))
+  (let [;; Pre-store the link-type-objects so they exist in added-store
+        ;; as well as added-store2, which lets the final equality
+        ;; check between added-store and removed-store hold.
+        s0 (-> (new-element-store)
+               add-universal-objects
+               (add-link-type-object "test") first
+               (add-link-type-object "by") first)
+        test-label (find-object-by-name s0 "test" (link-type-object ""))
+        by-label (find-object-by-name s0 "by" (link-type-object ""))
+        [added-store e1]
+        (add-element s0 (make-item-id "0")
+                    `("foo" (~test-label)))
         [added-store2 e2]
         (add-element added-store e1 `(~(make-object-list '("Fred" 1))
-                                      ("by" :label)))
+                                      (~by-label)))
         removed-store (remove-entity-by-id added-store2 e2)]
     (println (canonicalize (id->element e1 added-store2)))
     (is (check (canonicalize (id->element e1 added-store2))
                (canonicalize `("foo"
-                               ("test" :label)
+                               (~test-label)
                                (~(make-object-list '("Fred" 1))
-                                ("by" :label))))))
-    (is (= (to-list (id->element e1 removed-store))
-           '("foo" ("test" :label))))
+                                (~by-label))))))
+    (is (= (canonicalize (id->element e1 removed-store))
+           (canonicalize `("foo" (~test-label)))))
     (is (= (assoc removed-store :next-number (:next-number added-store))
            added-store))))
 

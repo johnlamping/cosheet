@@ -234,6 +234,26 @@
   (is (= (target-label->ids test-store (make-link-id 0.5) :order)
          nil)))
 
+(deftest target-label-index-on-label-object-transition-test
+  ;; When an object O transitions to becoming a label-object (by having
+  ;; a link added with target=O and source=link-type-id), existing links
+  ;; whose source is O become labels. The index target->label->label-ids
+  ;; needs to reflect this transition.
+  (let [t-id (make-object-id "test-T")
+        o-id (make-object-id "test-O")
+        s0 (new-element-store)
+        [s1 x-id] (add-link s0 t-id 44)
+        ;; Add a link from O to X. It will be a label iff O is a
+        ;; label-object.
+        [s2 _] (add-link s1 x-id o-id)]
+    ;; At this point, O is not yet a label-object, so the link from O
+    ;; to X is not a label. The index reflects that.
+    (is (= (target-label->ids s2 t-id o-id) nil))
+    ;; Now add a link making O a label-object.
+    (let [[s3 _] (add-link s2 o-id link-type-id)]
+      ;; X should now be findable as an element of T labeled by O.
+      (is (= (target-label->ids s3 t-id o-id) [x-id])))))
+
 (deftest source-label->ids-test
   (is (= (source-label->ids test-store "Foo" "Bar")
          [(make-link-id 2)]))

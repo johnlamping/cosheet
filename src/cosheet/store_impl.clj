@@ -57,7 +57,8 @@
 
     ;;; A derived map from the canonical-primitive-form of source to a
     ;;; pseudo-set of ids with that source.
-    ;;; TODO: !!! Remove the following once sources can no longer be nil.
+    ;;; TODO: !!! Remove the following comment once sources can no
+    ;;; longer be nil.
     ;;; Nil source is not indexed.
     source->ids
 
@@ -71,13 +72,13 @@
     id->keywords
 
     ;;; A derived map that indexes everything that looks like
-    ;;;    target <- link1 <- link2 -o label
+    ;;;    target <- link1 <- link2 -o label-object
     ;;; The map takes the target, then the label and returns the ids of
     ;;; the link2s in the diagram, whose source is that label.
     ;;; In other words, given a target id and a label, this map give
     ;;; the pseudo set of all links whose source is that label, and
     ;;; that target links that target to the provided target id.
-    ;;; This is priarily used to find link1s in the diagram, all links
+    ;;; This is primarily used to find links in the diagram, all links
     ;;; with a given target and that have a given label. But this
     ;;; index is easier to maintain than than an index to the link1s,
     ;;; because it lists the liks that make them have those labels, so
@@ -85,7 +86,7 @@
     target->label->label-ids
 
     ;;; This is the analogue of target->label->label-ids, but for
-    ;;;    source o- link1 <- link2 -o label
+    ;;;    source o- link1 <- link2 -o label-object
     source->label->label-ids
 
     ;;; The next number to assign to a new link or object.
@@ -480,9 +481,9 @@
 
 (defn index-endpoint->label->label-ids
   "Reflect the effects of this link in the endpoint->label->label-ids index.
-  The indices :target->ids, Lsource->ids, and :marked-as-type
-  index must be valid when this is called. (This function uses
-  id-is-label?, which uses all of those indices.)"
+  The indices :target->ids, source->ids, and :marked-as-type must be
+  valid when this is called. (This function uses id-is-label?, which
+  uses all of those indices.)"
   [store old-store endpoint id]
   (as-> store store
       ;; Handle when id is a label.
@@ -501,7 +502,38 @@
              (fn [store label-id]
                (index-endpoint->label->label-ids-from-label
                 store old-store endpoint label-id))
-             store label-ids))))))
+             store label-ids))))
+      ;; Handle when id changes the label-object status of its
+      ;; target. This normally won't happen due to user edits, since
+      ;; the can't change label status of an object. But it can happen
+      ;; during loading.
+      ;; A link whose source is link-type-id or object-type-id makes
+      ;; its target a label-object, which in turn makes every link
+      ;; whose source is that target a label. So we need to re-index
+      ;; all such links when a typing link changes.
+      (let [typing-source? #{link-type-id object-type-id}
+            ;; TODO: !!! Clean this up to iterate through new and old,
+            ;; checking for typing, that the target is an object, and
+            ;; that it type status changes between stores. return
+            ;; either nil of a singleton, then concat them together
+            ;; and distinctify them.
+            typing-target-now (when (typing-source? (id->source store id))
+                                (id->target store id))
+            typing-target-old (when (typing-source? (id->source old-store id))
+                                (id->target old-store id))
+            affected-object-ids (distinct (remove nil? [typing-target-now
+                                                        typing-target-old]))]
+        (reduce
+         (fn [store object-id]
+           (let [affected-links (distinct
+                                 (concat (source->ids store object-id)
+                                         (source->ids old-store object-id)))]
+             (reduce
+              (fn [store affected-id]
+                (index-endpoint->label->label-ids-from-label
+                 store old-store endpoint affected-id))
+              store affected-links)))
+         store affected-object-ids))))
 
 (defn index-all
   "Do all indexing for adding, removing or changing the id in the store."

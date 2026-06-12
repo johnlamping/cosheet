@@ -84,6 +84,14 @@
   [immutable-entity]
   (filter semantic-element? (elements immutable-entity)))
 
+(defn semantic-or-selector-elements
+  "Return the elements of an entity that are semantic or that indicate a
+  selector."
+  [immutable-entity]
+  (filter #(or (semantic-element? %)
+               (= % :selector))
+          (elements immutable-entity)))
+
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
@@ -407,14 +415,14 @@
 
 (defn update-add-element-with-order-and-ephemeral
   "Add an element, described in list form, to the store, with the given
-  target.  Add ordering information to the element and each part of it,
-  except for :label or :category specifiers and non-semantic elements,
-  splitting the provided order for the orders, and returning an unused
-  piece of it.  Put the new entity in the specified position (:before
-  or :after) of the returned order, and make the entity use the bigger
-  piece if use-bigger is true, otherwise use the smaller piece.  If
-  the template has a :ephemeral element, mark it ephemeral in the store.
-  Return the new store, the id of the item, and the remaining order."
+  target.  Add ordering information to the element and each part of
+  it, except for non-semantic elements, splitting the provided order
+  for the orders, and returning an unused piece of it.  Put the new
+  entity in the specified position (:before or :after) of the returned
+  order, and make the entity use the bigger piece if use-bigger is
+  true, otherwise use the smaller piece.  If the template has
+  a :ephemeral element, mark it ephemeral in the store.  Return the
+  new store, the id of the item, and the remaining order."
   [store target-id template order position use-bigger]
   (let [template-content (content template)
         template-elements (elements template)
@@ -510,7 +518,7 @@
            store (content (first name-elements)) template order position))
         true
         (update-add-object-with-given-elements-and-order
-         store (elements template) order position)))
+         store (semantic-or-selector-elements template) order position)))
 
 (defn update-add-element-adjacent-to
   "Add an entity with the given target id and contents,
@@ -572,7 +580,7 @@
        (let [contents (content element)]
          (if-let [revised-contents
                   (cond (= 'anything contents) ""
-                        ;; Check that no sub-part is a selector.
+                        ;; Check that no sub-part is marked as a selector.
                         (= :selector contents) (assert false element))]
            (make-element-list (orientation element)
                               revised-contents

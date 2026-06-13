@@ -122,13 +122,6 @@
 ;;; should be
 ;;;    [:link source target element element ...]
 
-;;; TODO: !!! Get rid of this once the definition of label changes
-;;; There are functions to get all elements of an entity, or just
-;;; those elements with a specific label. For the entity
-;;; ("Joe" "person" (44 ("age" :label) "uncertain")) "age" is the label
-;;; for the element (44 ("age" :label) "uncertain"). In general, a label
-;;; of an element is one of its elements that itself has the element :label.
-
 (defprotocol ToStoredEntity
   "A description of an item."
   (id->entity-m [this orientation store]

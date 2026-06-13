@@ -84,14 +84,6 @@
   [immutable-entity]
   (filter semantic-element? (elements immutable-entity)))
 
-(defn semantic-or-selector-elements
-  "Return the elements of an entity that are semantic or that indicate a
-  selector."
-  [immutable-entity]
-  (filter #(or (semantic-element? %)
-               (= % :selector))
-          (elements immutable-entity)))
-
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
@@ -424,6 +416,7 @@
   a :ephemeral element, mark it ephemeral in the store.  Return the
   new store, the id of the item, and the remaining order."
   [store target-id template order position use-bigger]
+  (assert (empty? (label->elements template :order)))
   (let [template-content (content template)
         template-elements (elements template)
         is-ephemeral (some (fn [element] (= (content element) :ephemeral))
@@ -517,8 +510,9 @@
           (get-or-make-ordered-object-by-name
            store (content (first name-elements)) template order position))
         true
-        (update-add-object-with-given-elements-and-order
-         store (semantic-or-selector-elements template) order position)))
+        (do (assert (empty? (label->elements template :order)))
+            (update-add-object-with-given-elements-and-order
+             store (elements template) order position))))
 
 (defn update-add-element-adjacent-to
   "Add an entity with the given target id and contents,
@@ -541,11 +535,13 @@
    Return the updated store and the id of the new object."
   [store object-template adjacent-to position use-bigger]
   (assert (object? object-template))
+  (assert (empty? (label->elements object-template :order)))    
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store object-id] (get-new-object-id store)
         [store remainder] (update-add-position-and-elements-with-order
-                           store object-id (elements object-template)
+                           store object-id
+                           (elements object-template)
                            order position use-bigger)]
     [(update-source store (:item-id order-element) remainder)
      object-id]))

@@ -33,13 +33,15 @@
 (def cd (make-calculator-data (make-priority-task-queue 0)))
 
 (deftest test-store
-  (let [[store element]
-        (add-element (new-element-store)
-                     nil '(77 ("test" :label)
-                              ("Fred" ("by" :label))))
+  (let [s0 (add-universal-objects (new-element-store))
+        [s0a by-label-id] (add-link-type-object s0 "by")
+        [store element]
+        (add-element s0a
+                     nil `(77 (~(link-type-object "test"))
+                              ("Fred" (~(link-type-object "by")))))
         initial-store (track-modified-ids store)
         queue (make-priority-task-queue 0)
-        calculator-data (make-calculator-data queue) 
+        calculator-data (make-calculator-data queue)
         mutable-store (new-mutable-store store)
         modified-store (update-source store element 99)]
     ;; Test the accessors.
@@ -58,16 +60,18 @@
     (is (= (computation-value (target-source->ids mutable-store element 77) cd)
            (target-source->ids store element 77)))
     (is (= (computation-value
-            (target-label->ids mutable-store element "by")
+            (target-label->ids mutable-store element by-label-id)
             cd)
-           (target-label->ids store element "by")))
+           (target-label->ids store element by-label-id)))
     (is (= (computation-value
-            (source-label->ids mutable-store 77 "by")
+            (source-label->ids mutable-store 77 by-label-id)
             cd)
-           (target-label->ids store 77 "by")))
-    (let [fred (first (target-label->ids store element "by"))
+           (target-label->ids store 77 by-label-id)))
+    (let [fred (first (target-label->ids store element by-label-id))
           label (first (target->ids store fred))]
-      (is (computation-value (id->marked-as-type? store label) cd))
+      ;; In the new style nothing is marked-as-type; the link is a
+      ;; label because its source is a link-type object.
+      (is (not (computation-value (id->marked-as-type? store label) cd)))
       (is (not (computation-value (id->marked-as-type? store fred) cd))))
     (is (= (computation-value (candidate-matching-ids mutable-store 77) cd)
            (candidate-matching-ids store 77)))
@@ -75,7 +79,7 @@
     ;; Test that subscriptions track.
     (let [source (id->source mutable-store element)
           element-ids (target->ids mutable-store element)
-          label-ids (target-label->ids mutable-store element :label)
+          label-ids (target-label->ids mutable-store element by-label-id)
           candidate-ids (candidate-matching-ids mutable-store nil)
           tracking-store (category-change-R [element] mutable-store)
           callback (fn [& {:keys [key reporter description categories]}]
@@ -98,14 +102,16 @@
              (track-modified-ids modified-store)))
       (is (= (reporter-value-or-invalid source) 99))
       (let [[store1 e] (add-link store element "foo")
-            [store2 _] (add-link store1 e :label)
+            ;; Add a label-link as a sub-element of e, using by-label-id
+            ;; (a link-type object) as the source so it counts as a label.
+            [store2 _] (add-link store1 e by-label-id)
             store3 (declare-ephemeral-id store2 e)
             revised-store (update-source store3 element "S3")
             me (store-update-control-return!
                 mutable-store #(add-link % element "foo"))
             s0 (current-store mutable-store)
             _ (store-update-control-return!
-               mutable-store #(add-link % me :label))
+               mutable-store #(add-link % me by-label-id))
             s1 (current-store mutable-store)
             _ (store-update! mutable-store
                              #(-> %
@@ -127,7 +133,7 @@
         (is (= (set (reporter-value-or-invalid element-ids))
                (set (target->ids revised-store element))))
         (is (= (set (reporter-value-or-invalid label-ids))
-               (set (target-label->ids revised-store element :label))))
+               (set (target-label->ids revised-store element by-label-id))))
         (is (= (set (reporter-value-or-invalid candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
         (is (check (reporter-value-or-invalid tracking-store)
@@ -161,7 +167,7 @@
         (is (= (set (reporter-value-or-invalid element-ids))
                (set (target->ids store element))))
         (is (= (set (reporter-value-or-invalid label-ids))
-               (set (target-label->ids store element :label))))
+               (set (target-label->ids store element by-label-id))))
         (is (= (set (reporter-value-or-invalid candidate-ids))
                (set (candidate-matching-ids store nil))))
         (is (= (reporter-value-or-invalid tracking-store)
@@ -209,7 +215,7 @@
         (is (= (set (reporter-value-or-invalid element-ids))
                (set (target->ids revised-store element))))
         (is (= (set (reporter-value-or-invalid label-ids))
-               (set (target-label->ids revised-store element :label))))
+               (set (target-label->ids revised-store element by-label-id))))
         (is (= (set (reporter-value-or-invalid candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
         (is (= (reporter-value-or-invalid tracking-store)
@@ -249,4 +255,4 @@
         (set-attendee! label-ids :a 0 callback)
         (run-all-pending-tasks queue)
         (is (= (set (reporter-value-or-invalid label-ids))
-               (set (target-label->ids store element :label))))))))
+               (set (target-label->ids store element by-label-id))))))))

@@ -180,11 +180,6 @@
     "Return a seq of items for all our elements with an elaboration with
      the given label.")
 
-  ;;; TODO: Get rid of this once we no longer use :label to mark labels.
-  (marked-as-type? [this]
-    "Return whether the entity is marked as being a type. (Has an element
-     whose content is :label)")
-
   (entity-key [this]
     "Return the key of this entity. For stored entities, it is their
     item-id. For all other entities it is the entity, itself.
@@ -330,10 +325,16 @@
 
 (defn label-object? [entity]
   "Return whether the entity is an object that makes an element that
-   has the entity as its content be a label."
+   has the entity as its content be a label.
+   An object is a label object if either:
+     * it's id is name-label-id
+     * it has an element whose content has an item-id of
+      link-type-id or object-type-id
+  (The first cast might look redundant, since the name-label object
+  has a link-type element once a store gets its universal
+  elements. But sometimes, a template uses a name-label object with a
+  store of nil. So it won't have any elements yet.)"
   (and (object? entity)
-       ;;; TODO: !!! The first clause here looks redundant, since the
-       ;;; name-label object is also a link-type object.
        (or (= (entity-key entity) name-label-id)
            (link-type-object? entity)
            (object-type-object? entity))))
@@ -342,19 +343,12 @@
   "Return whether the entity counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
   target's endpoints.
-  A link is a label if:
-     * It's source is either
-        * a keyword that is not :label
-        * the object with item-id 'name'.
-        * an object that has an element whose content has an item-id of
-         'link-type' or 'object-type'.
-     * Has an element whose content is :label (obsolete)"
-  (or (let [content (content entity)]
-        (cond (object? content) (label-object? content)
-              (keyword? content) (not= content :label)))
-      ;; TODO: !!! Get rid of this marked-as-type? condition once
-      ;; :label no longer marks labels.
-      (marked-as-type? entity)))
+  A link is a label if its source is either
+     * a keyword
+     * a label object"
+  (let [content (content entity)]
+    (or (keyword? content)
+        (label-object? content))))
 
 (defn make-element-list
   "Make the list representation of the described entity, simplifying it

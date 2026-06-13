@@ -134,10 +134,10 @@
   Only the name-label object has a name; link-type and object-type
   are anonymous."
   [store]
-  (let [[s1 _] (add-element store name-label-id `("name" (~name-label)))
-        [s2 _] (add-element s1 name-label-id `(~link-type))
-        [s3 _] (add-element s2 link-type-id `(~object-type))
-        [s4 _] (add-element s3 object-type-id `(~object-type))]
+  (let [[s1 _] (add-element store link-type-id `(~object-type))
+        [s2 _] (add-element s1 object-type-id `(~object-type))
+        [s3 _] (add-element s2 name-label-id `(~link-type))
+        [s4 _] (add-element s3 name-label-id `("name" (~name-label)))]
     s4))
 
 (defn link-type-object

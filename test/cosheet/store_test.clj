@@ -72,7 +72,6 @@
      (make-link-id 15) link-type-id}
     :ephemeral-ids  #{}
     :ephemeral-data {}
-    :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
     :equivalent-undo-point false}))
@@ -121,20 +120,6 @@
                id))))
       (is (empty? (index-key unindexed))))))
 
-(deftest index-marked-as-type-test
-  (let [ids (keys (:id->source unindexed-test-store))
-        elements-indexed (reduce #(index-endpoint->ids
-                                   %1 empty-store :target %2)
-                                 unindexed-test-store ids)
-        store (reduce #(index-marked-as-type %1 empty-store %2)
-                      elements-indexed ids)
-        empty-indexed (clear-store-leaving-indices store)
-        unindexed (reduce #(index-marked-as-type %1 store %2)
-                          empty-indexed ids)]
-    ;; The new style has no :label markers, so nothing is marked-as-type.
-    (is (check (:marked-as-type store) #{}))
-    (is (empty? (:marked-as-type unindexed)))))
-
 (deftest index-endpoint->label->label-ids-test
   (let [ids (keys (:id->source unindexed-test-store))
         targets-indexed (reduce #(index-endpoint->ids
@@ -142,13 +127,11 @@
                                 unindexed-test-store ids)
         sources-indexed (reduce #(index-endpoint->ids
                                   %1 empty-store :source %2)
-                                targets-indexed ids)
-        marks-indexed (reduce #(index-marked-as-type %1 empty-store %2)
-                              sources-indexed ids)]
+                                targets-indexed ids)]
     (doseq [endpoint [:target :source]]
       (let [store (reduce #(index-endpoint->label->label-ids
                             %1 empty-store endpoint %2)
-                          marks-indexed ids)
+                          sources-indexed ids)
             empty-indexed (clear-store-leaving-indices store)
             unindexed (reduce #(index-endpoint->label->label-ids
                                    %1 store endpoint %2)
@@ -277,12 +260,6 @@
   (is (= (source-label->ids test-store (make-link-id 0.5) :bar-keyword)
          nil)))
 
-(deftest id->marked-as-type?-test
-  ;; The new style has no :label markers, so nothing is marked-as-type.
-  (is (not (id->marked-as-type? test-store (make-link-id 5))))
-  (is (not (id->marked-as-type? test-store (make-link-id 7))))
-  (is (not (id->marked-as-type? test-store (make-link-id 1)))))
-
 (deftest get-new-object-id-test
   (let [[store id] (get-new-object-id test-store)]
     (is (= (:id id) (- (:next-number test-store))))
@@ -306,7 +283,6 @@
      (make-link-id 7) (make-object-id -8)}
     :ephemeral-ids  #{}
     :ephemeral-data {}
-    :marked-as-type #{}
     :next-number 1001
     :modified-ids nil
     :equivalent-undo-point false}))
@@ -424,21 +400,9 @@
            (get-in store [index-key (canonical-primitive-form endpoint)])
            id)))))
 
-(defn check-marked-as-type
-  "Check that the derived set labels is right."
-  [store]
-  (let [marked-as-type (:marked-as-type store)]
-    ;; Everything in :marked-as-type has a mark.
-    (doseq [id marked-as-type]
-      (is (seq (target-source->ids store id :label))))
-    ;; Everything that should be in :marked-as-type is.
-    (doseq [[id source] (:id->source store)]
-      (when (seq (target-source->ids store id :label))
-        (is (contains? marked-as-type id))))))
-
 (defn check-endpoint->label->label-ids
   "Check that the derived index <endpoint>->label->label-ids is right.
-  Assumes that the endpoint->ids and the marked-as-type indices are correct."
+  Assumes that the endpoint->ids indices are correct."
   [store endpoint]
   (let [primary-key (endpoint-value-key endpoint)
         reverse-primary-key (endpoint-index-key endpoint)
@@ -471,7 +435,6 @@
   [store]
   (check-endpoint->ids store :target)
   (check-endpoint->ids store :source)
-  (check-marked-as-type store)
   (check-endpoint->label->label-ids store :target)
   (check-endpoint->label->label-ids store :source))
 

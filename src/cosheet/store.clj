@@ -208,10 +208,6 @@
     and that are themselves targeted by a link that counts as a label
     and that has the given label as its source.")
 
-  (id->marked-as-type? [this id]
-    "Returns if the id is a link that has been marked as a type.
-    In other words, if it is the target of a link with a source of :label")
-
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity. Return a
      seq of ids that includes the ids all entities that could

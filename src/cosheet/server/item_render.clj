@@ -7,7 +7,6 @@
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object? name-element?
-                    marked-as-type?
                     elements label->elements content->elements
                     name-label link-type object-type
                     make-object-list recursively-in-different-store
@@ -235,10 +234,7 @@
   "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
   (let [ordered-labels (ordered-entities label-elements)
-        label-type (let [example-label (first label-elements)]
-                     (if (marked-as-type? example-label)
-                       :link-type
-                       (display-type (content example-label))))]
+        label-type (display-type (content (first label-elements)))]
     (item-stack-DOM ordered-labels
                     (map (constantly '()) ordered-labels)
                     :vertical

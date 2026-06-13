@@ -62,11 +62,6 @@
     ;;; Nil source is not indexed.
     source->ids
 
-    ;;; A derived set of the ItemIds of links that are are marked as
-    ;;; being labels. This doesn't count ids that are labels by virtue
-    ;;; of having their source be a symbol.
-    marked-as-type
-
     ;;; A derived map from ItemId to a pseudo-set of the keywords that
     ;;; are the source of at least one of its elements.
     id->keywords
@@ -169,9 +164,6 @@
             (get-in this [:source->label->label-ids
                           (canonical-primitive-form source)
                           (canonical-primitive-form label)]))))))
-
-  (id->marked-as-type? [this id]
-    (contains? (:marked-as-type this) id))
 
   (candidate-matching-ids [this template]
     (if (nil? template)
@@ -397,32 +389,16 @@
         (update-in [index-key new-endpoint-value]
                    #(pseudo-set-conj % id))))))
 
-(defn index-marked-as-type
-  "Reflect a link in marked-as-type.
-  The id argument is the id that might do the marking.
-  Requires that target->ids and source->ids be valid."
-  [store old-store id]
-  (let [marks-as-type (= (id->source store id) :label)
-        old-marks-as-type (= (id->source old-store id) :label)
-        target (id->target store id)
-        old-target (id->target old-store id)]
-    (if (and (= marks-as-type old-marks-as-type)
-             (= target old-target))
-      store
-      (cond-> store
-        (and old-marks-as-type
-             (empty? (target-source->ids store old-target :label)))
-        (update-in [:marked-as-type] #(disj % old-target))
-        ;; TODO: !!! Get rid of the possibility the target is nil,
-        ;;       once that is forbidden.
-        (and target marks-as-type)
-        (update-in [:marked-as-type] #(conj % target))))))
-
 ;;; NOTE: The next two definitions must be kept in synch with entity/label?
 
 (defn id-is-label-object?
   "Return whether the id is an object that makes a link with it as
-  source count be a label."
+  source count be a label.
+  An object id represents a label object if either:
+     * it is name-label-id
+     * it is the target of a link whose source is either
+       link-type-id or object-type-id.
+  Requires that :target->ids and :source->ids are up to date."
   [store id]
   (and (object-id? id)
        (or (= id name-label-id)
@@ -433,22 +409,14 @@
   "Return whether the id counts as a label. A label is a link under
   which its target should be indexed, starting from either of the
   target's endpoints.
-  A link is a label if:
-     * It's source is either
-        * a keyword that is not :label
-        * the object with item-id 'name'.
-        * an object that has an element whose content has an item-id of
-         'link-type' or 'object-type'.
-     * Has an element whose content is :label (obsolete)
-  Requires that :marked-as-type is up to date.
+  A link is a label if its source is either:
+     * a keyword
+     * the id of a label object
   Requires that :target->ids and :source->ids are up to date."
   [store id]
-  (or (let [source (id->source store id)]
-        (cond (object-id? source) (id-is-label-object? store source)
-              (keyword? source) (not= source :label)))
-      ;; TODO: !!! Get rid of the :marked-as-type test (and its index),
-      ;;       once :label no longer marks labels.
-      (contains? (:marked-as-type store) id)))
+  (let [source (id->source store id)]
+    (or (keyword? source)
+        (id-is-label-object? store source))))
 
 (defn index-endpoint->label->label-ids-from-label
   "Reflect a label in endpoint->label->label-ids.
@@ -481,9 +449,8 @@
 
 (defn index-endpoint->label->label-ids
   "Reflect the effects of this link in the endpoint->label->label-ids index.
-  The indices :target->ids, source->ids, and :marked-as-type must be
-  valid when this is called. (This function uses id-is-label?, which
-  uses all of those indices.)"
+  The indices :target->ids and :source->ids must be valid when this is
+  called. (This function uses id-is-label?, which uses those indices.)"
   [store old-store endpoint id]
   (as-> store store
       ;; Handle when id is a label.
@@ -537,11 +504,9 @@
 (defn index-all
   "Do all indexing for adding, removing or changing the id in the store."
   [store old-store id]
-  (-> store 
+  (-> store
       (index-endpoint->ids old-store :target id)
       (index-endpoint->ids old-store :source id)
-      ;; This must be done before the next two, as they depend on labels.
-      (index-marked-as-type old-store id)
       (index-endpoint->label->label-ids old-store :target id)
       (index-endpoint->label->label-ids old-store :source id)))
 
@@ -719,8 +684,7 @@
 
 ;;; TODO: If a template element has a label, filter with
 ;;; target->label->label-ids if the label intersection list would be
-;;; too large. Likewise, if the template is tagged :label, filter with
-;;; marked-as-type
+;;; too large.
 (defn candidate-matching-ids-and-estimate
   "Given a template that is valid as a query to the store, Return
    a triple consisting of:
@@ -758,7 +722,6 @@
                           :id->source {}
                           :target->ids {}
                           :source->ids {}
-                          :marked-as-type #{}
                           :target->label->label-ids {}
                           :source->label->label-ids {}
                           :ephemeral-ids #{}

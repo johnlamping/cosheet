@@ -67,12 +67,6 @@
             (source-label->ids mutable-store 77 by-label-id)
             cd)
            (target-label->ids store 77 by-label-id)))
-    (let [fred (first (target-label->ids store element by-label-id))
-          label (first (target->ids store fred))]
-      ;; In the new style nothing is marked-as-type; the link is a
-      ;; label because its source is a link-type object.
-      (is (not (computation-value (id->marked-as-type? store label) cd)))
-      (is (not (computation-value (id->marked-as-type? store fred) cd))))
     (is (= (computation-value (candidate-matching-ids mutable-store 77) cd)
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))

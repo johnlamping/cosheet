@@ -4,7 +4,6 @@
                                      target-source->ids
                                      id->source id->target
                                      item-id? link-id? object-id?
-                                     id->marked-as-type?
                                      mutable-store?
                                      current-store
                                      Store]]
@@ -64,7 +63,6 @@
   (orientation [this] orientation)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] nil) 
   (entity-key [this] item-id)
   (updating-immutable [this] this))
 
@@ -139,9 +137,6 @@
              (concat (->> (source-label->ids store item-id label-key)
                           (filter #(object-id? (id->target store %)))
                           (map #(id->element % :target store))))))))
-
-  (marked-as-type? [this]
-    (id->marked-as-type? store item-id))
 
   (entity-key [this]
     item-id)
@@ -245,9 +240,6 @@
                         (map #(id->element % :target store))))))
             forward-elements)))))
 
-  (marked-as-type? [this]
-    (id->marked-as-type? store item-id))
-  
   (entity-key [this]
     item-id)
 
@@ -309,10 +301,6 @@
                          (elements element)))
                  (elements this))))
 
-  (marked-as-type? [this]
-    (some #(= (content %) :label)
-          (elements this)))
-    
   (entity-key [this]
     this)
 
@@ -353,7 +341,6 @@
                          (elements element)))
                  (elements this))))
 
-  (marked-as-type? [this] false)
     
   (entity-key [this]
     this)
@@ -372,7 +359,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
   
@@ -387,7 +373,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
   
@@ -402,7 +387,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
   
@@ -417,7 +401,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
   
@@ -432,7 +415,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
   
@@ -447,7 +429,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this)
 
@@ -462,7 +443,6 @@
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (marked-as-type? [this] false)
   (entity-key [this] this)
   (updating-immutable [this] this))
 

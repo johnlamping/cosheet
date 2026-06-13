@@ -244,10 +244,6 @@
     (cache-and-categorize
         [source] source-label->ids this source label))
 
-  (id->marked-as-type? [this id]
-    (cache-and-categorize
-        [id] id->marked-as-type? this id))
-
   (candidate-matching-ids [this template]
     (cache-R candidate-matching-ids this template))
 

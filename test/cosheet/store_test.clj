@@ -457,16 +457,14 @@
           (is (id-is-label? store label-id)))))
     ;; Everything that should be in :endpoint->label->label-ids is.
     (doseq [[id source] (:id->source store)]
-      ;; Note: must be kept in synch with entity/label?
-      (when-let [label-id (cond (= source :label) (id->target store id)
-                                (= source :bar-keyword) id)]
-        (let [label (canonical-primitive-form (id->source store label-id))
-              label-target (id->target store label-id)]
+      (when (id-is-label? store id)
+        (let [label-key (canonical-primitive-form (id->source store id))
+              label-target (id->target store id)]
           (when-let [endpoint-value (canonical-primitive-form
                                      (get-in store [primary-key label-target]))]
             (is (pseudo-set-contains?
-                 (get-in store [index-key endpoint-value label])
-                 label-id))))))))
+                 (get-in store [index-key endpoint-value label-key])
+                 id))))))))
 
 (defn check-derived-indices
   "Check that each of the derived indices of the store matches the data."
@@ -490,38 +488,39 @@
   ;; in a random order, so this guarantees that we won't remove a
   ;; link while another link references it.
   (binding [gen/*rnd* (java.util.Random. 437)])
-  (let [earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
+  (let [iterations 100  ;; 100000
+        earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
         random-object (fn [] (make-object-id
                               (- (+ 1 (int (/ 200 (gen/uniform 1 100)))))))
-        random-source (fn [] (case (gen/uniform 0 4)
-                               0 (if (= (gen/uniform 0 2) 0)
-                                   (str "N" (int (/ 200 (gen/uniform 1 100))))
-                                   (int (/ 200 (gen/uniform 1 100))))
-                               1 (random-object)
-                               2 :label
-                               3 :bar-keyword))
-        random-target (fn [i] (case (gen/uniform 0 2)
-                                0 (make-link-id (earlier-number i))
-                                1 (random-object)))]
+        random-source (fn [target]
+                        (case (gen/uniform 0 4)
+                          0 (if (= (gen/uniform 0 2) 0)
+                              (str "N" (int (/ 200 (gen/uniform 1 100))))
+                              (int (/ 200 (gen/uniform 1 100))))
+                          1 (random-object)
+                          2 (if (link-id? target)
+                              link-type-id
+                              object-type-id)
+                          3 :bar-keyword))]
     (loop [iteration 0
-           store (first (add-link
-                         (first (add-link
-                                 (new-element-store)
-                                 (random-object) (random-source)))
-                         (random-object) (random-source)))
+           store (let [target (random-object)
+                       inner-target (random-object)]
+                   (first (add-link
+                           (first (add-link
+                                   (new-element-store)
+                                   inner-target (random-source inner-target)))
+                           target (random-source target))))
            items 2]
       (let [;; Number of items to end up with after adding (has a long tail)
-            n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
+            n (max (+ items 10) (int (/ 1000 (gen/uniform 1 20))))
             ;; Number of items to keep after removing
             m (gen/uniform (int (/ n 2)) n)]
         (let [added-store
               (reduce (fn [store i]
                         (let [[new-store id]
-                              (add-link
-                               store
-                               (when (not= 0 (gen/uniform 0 10))
-                                 (make-link-id (earlier-number i)))
-                               (random-source))]
+                              (let [target (when (not= 0 (gen/uniform 0 10))
+                                             (make-link-id (earlier-number i)))]
+                                (add-link store target (random-source target)))]
                           (assert (= (:id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
@@ -530,7 +529,8 @@
                         (let [id (make-link-id i)]
                           (cond-> store
                             (= 0 (gen/uniform 0 4))
-                            (update-source id (random-source))
+                            (update-source id (random-source
+                                               (id->target store id)))
                             (and (= 0 (gen/uniform 0 4))
                                  (object-id? (id->target store id)))
                             (update-target id (random-object)))))
@@ -541,7 +541,7 @@
                       mutated-store (gen/shuffle (range (+ m 1) (+ n 1))))]
           (check-derived-indices added-store)
           (check-derived-indices removed-store)
-          (when (< iteration 100)
+          (when (< iteration iterations)
             (recur (+ iteration 1)
                    (assoc removed-store :next-number (+ m 1))
                    m)))))))

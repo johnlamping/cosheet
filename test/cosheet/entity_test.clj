@@ -490,13 +490,13 @@
   (is (= (add-elements-to-entity (make-object-list '(1 2 (3 4))) '(5 (6 7)))
          (make-object-list '(1 2 (3 4) 5 (6 7))))))
 
-(deftest map-elements-test
+(deftest map-subparts-test
   (let [incrementer #(if (number? %) (inc %) %)]
-    (is (= (map-elements incrementer '(1 5 (2 3) 4))
-           '(1 6 (2 3) 5)))
-    (is (= (map-elements incrementer (id->object (make-item-id "foo") nil))
+    (is (= (map-subparts incrementer '(1 5 (2 3) 4))
+           '(2 6 (2 3) 5)))
+    (is (= (map-subparts incrementer (id->object (make-item-id "foo") nil))
            (id->object (make-item-id "foo") nil)))
-    (is (= (map-elements incrementer (make-object-list '(5 (2 3) 4)))
+    (is (= (map-subparts incrementer (make-object-list '(5 (2 3) 4)))
            (make-object-list '(6 (2 3) 5))))))
 
 (deftest post-walk-entity-test

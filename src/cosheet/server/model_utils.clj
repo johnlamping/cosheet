@@ -18,7 +18,7 @@
                     content elements orientation containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
-                    map-elements pre-walk-entity post-walk-entity
+                    map-subparts pre-walk-entity post-walk-entity
                     target-entity entity-key
                     make-element-list make-object-list
                     add-elements-to-entity
@@ -572,21 +572,13 @@
   non-selector. Specifically, replace 'anything by the empty string,
   unless in a part of the template that is marked as a selector, in
   which case don't modify it."
-  [pattern]
-  (if (some #(= (content %) :selector) (elements pattern))
-    pattern
-    (post-walk-entity
-     (fn [element]
-       (let [contents (content element)]
-         (if-let [revised-contents
-                  (cond (= 'anything contents) ""
-                        ;; Check that no sub-part is marked as a selector.
-                        (= :selector contents) (assert false element))]
-           (make-element-list (orientation element)
-                              revised-contents
-                              (elements element))
-           element)))
-     pattern)))
+    [pattern]
+    (cond (some #(= (content %) :selector) (elements pattern))
+          pattern
+          (= 'anything pattern)
+          ""
+          :else
+          (map-subparts template-to-possible-non-selector-template pattern)))
 
 (defn selector?
   "Return whether the entity is (or is part of) a selector."

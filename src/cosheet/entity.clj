@@ -388,17 +388,18 @@
           (make-object-list (concat (elements entity) elements-to-add))
           :else (make-element-list :source entity elements-to-add))))
 
-(defn map-elements
-  "Run the function, which must return an element, on each of the
-  elements of the entity, to get new elements. Then reassemble the
-  entity from the resulting elements. Don't map the elements of an
-  interned object."
+(defn map-subparts
+  "Run the function on each subpart of the entity, and reassemble the
+  entity from the results. For an element entity, the subparts are its
+  content and its elements; for a non presumed interned object, they
+  are its elements. Interned objects and primitives are returned
+  unchanged."
   [f entity]
   (cond (element? entity)
         (make-element-list (orientation entity)
-                           (content entity)
+                           (f (content entity))
                            (map f (elements entity)))
-        (and (object? entity) (not (interned-object? entity)))
+        (and (object? entity) (not (presumed-interned-object? entity)))
         (make-object-list (map f (elements entity)))
         :else
         entity))
@@ -421,11 +422,11 @@
           entity)))
 
 (defn post-walk-entity
-  "Recursively run the function on all the elements of the entity, from
-  the leaves up, going through objects that are not presumed
-  interned. The function must return the same kid of entity as it
-  gets. If the function turns an element into nil, that element will
-  be removed."
+  "Recursively run the function on all the elements of the entity and
+  their content, from the leaves up, going through objects that are
+  not presumed interned. The function must return an element or a
+  primitive. If the function turns an element into nil, that element
+  will be removed."
   [f entity]
   (f (cond (element? entity)
            (make-element-list (orientation entity)

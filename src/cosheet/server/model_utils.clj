@@ -427,7 +427,7 @@
       (let [[store value-to-store order]
             (if (object? template-content)
               (update-add-object-with-order
-               store template-content order position)
+               store template-content order position false)
               [store template-content order])
             [store id] (add-link store target-id value-to-store)
             [store remainder]
@@ -457,30 +457,33 @@
   order. Add an :order element to the new object as well as to each
   of its elements. If the elements describe a uniquely identified
   object, there must not already be a matching one in the store.
-  Return the new store, the id of the new object, and the unused part
-  of the order."
-  [store element-templates order position]
+  The new object gets the bigger piece of the order split if
+  use-bigger is true, otherwise the smaller piece. Return the new
+  store, the id of the new object, and the unused part of the order."
+  [store element-templates order position use-bigger]
   (let [[store object-id] (get-new-object-id store)
         [store remainder]
         (update-add-position-and-elements-with-order
-         store object-id element-templates order position false)]
+         store object-id element-templates order position use-bigger)]
     [store object-id remainder]))
 
 (defn get-or-make-ordered-object-by-name
   "Find or make an object with the given name, and satisfying the
   fixed-term.  If an object is found, add elements to it if necessary
   to make it satisfy the fixed term, and remove elements that were
-  rendered redundant because we added a more specific element. Return
-  the new store, the id of the matching object, and the unused part of
-  the order."
-  [store name fixed-term order position]
+  rendered redundant because we added a more specific element. A newly
+  created object gets the bigger piece of the order split if
+  use-bigger is true, otherwise the smaller piece. Return the new
+  store, the id of the matching object, and the unused part of the
+  order."
+  [store name fixed-term order position use-bigger]
   (assert (object? fixed-term) fixed-term)
   ;; First, get or make an object with the given name.
   (let [[store object-id order]
         (if-let [object (find-object-by-name store name fixed-term)]
           [store (:item-id object) order]
           (update-add-object-with-given-elements-and-order
-           store `((~name (~name-label))) order position))]
+           store `((~name (~name-label))) order position use-bigger))]
     ;; Now make it satisfy the fixed term.
     (let [[templates-to-add elements-to-remove]
           (elements-to-change-to-satisfy-fixed-term-elements
@@ -493,9 +496,11 @@
 
 (defn update-add-object-with-order
   "Add an object matching the template to the store, or update a unique
-  one to match the template. Return the new store, the id of the
-  object, and the unused part of the order."
-  [store template order position]
+  one to match the template. The new object gets the bigger piece of
+  the order split if use-bigger is true, otherwise the smaller piece.
+  Return the new store, the id of the object, and the unused part of
+  the order."
+  [store template order position use-bigger]
   (assert (object? template) template)
   (cond (id-identified-object? template)
         [store (:item-id template) order]
@@ -508,11 +513,12 @@
         (let [name-elements (label->elements template name-label)]
           (assert (seq name-elements) template)
           (get-or-make-ordered-object-by-name
-           store (content (first name-elements)) template order position))
+           store (content (first name-elements)) template order position
+           use-bigger))
         true
         (do (assert (empty? (label->elements template :order)))
             (update-add-object-with-given-elements-and-order
-             store (elements template) order position))))
+             store (elements template) order position use-bigger))))
 
 (defn update-add-element-adjacent-to
   "Add an entity with the given target id and contents,
@@ -535,14 +541,12 @@
    Return the updated store and the id of the new object."
   [store object-template adjacent-to position use-bigger]
   (assert (object? object-template))
-  (assert (empty? (label->elements object-template :order)))    
+  (assert (empty? (label->elements object-template :order)))
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
-        [store object-id] (get-new-object-id store)
-        [store remainder] (update-add-position-and-elements-with-order
-                           store object-id
-                           (elements object-template)
-                           order position use-bigger)]
+        [store object-id remainder] (update-add-object-with-order
+                                     store object-template
+                                     order position use-bigger)]
     [(update-source store (:item-id order-element) remainder)
      object-id]))
 

@@ -174,7 +174,8 @@
                                       (= (content %) ""))
                                 (elements template)))
               [store object-id remainder] (get-or-make-ordered-object-by-name
-                                           store name template order :after)
+                                           store name template order :after
+                                           false)
               store (update-source store (:item-id order-element) remainder)
               ;; TODO: !!! This needs to handle orientation.
               logical-from (id->source store (first subject-ids))]

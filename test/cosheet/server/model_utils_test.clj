@@ -295,38 +295,38 @@
       [[s1 id1 order1] (get-or-make-ordered-object-by-name
                         store
                         "Tina" (make-object-list [1 2])
-                        unused-orderable :before)
+                        unused-orderable :before false)
        ;; Ask for it again.
        [s2 id2 order2] (get-or-make-ordered-object-by-name
                         s1
                         "Tina" (make-object-list [1 2])
-                        order1 :before)
+                        order1 :before false)
        ;; Ask for it again, with fewer required elements.
        [s3 id3 order3] (get-or-make-ordered-object-by-name
                         s2
                         "Tina" (make-object-list [1])
-                        order2 :before)
+                        order2 :before false)
        ;; Ask for it, with no additional required elements.
        [s4 id4 order4] (get-or-make-ordered-object-by-name
                         s3
                         "Tina" (make-object-list [])
-                        order3 :before)
+                        order3 :before false)
        ;; Ask for it, with different required elements.
        [s5 id5 order5] (get-or-make-ordered-object-by-name
                         s4
                         "Tina" (make-object-list [2 '(3 4)])
-                        order4 :before)
+                        order4 :before false)
        ;; Ask for it, with elements that have some commonality with
        ;; existing ones.
        [s6 id6 order6] (get-or-make-ordered-object-by-name
                         s5
                         "Tina" (make-object-list ['(1 2) 3])
-                        order5 :before)
+                        order5 :before false)
        ;; Ask for an object with a different name than existing ones.
        [s7 id7 order7] (get-or-make-ordered-object-by-name
                         s6
                         "Tony" (make-object-list [])
-                        order6 :before)]
+                        order6 :before false)]
     
     ;; The new Tina object should match the template.
     (is (check (object-semantic-to-list (id->object id1 s1))

@@ -271,7 +271,7 @@
         [s1 fred-oid order] (update-add-object-with-order
                              (add-universal-objects (new-element-store))
                              (make-object-list `(("Fred" (~name-label)) "foo"))
-                             initial :after)
+                             initial :after false)
         [s2 fred-holder-id order] (update-add-element-with-order-and-ephemeral
                                    s1 nil
                                    `(~(id->object fred-oid s1))
@@ -279,7 +279,7 @@
         [store sally-oid order] (update-add-object-with-order
                                  s2
                                  (make-object-list `(("Sally" (~name-label))))
-                                 order :after)
+                                 order :after false)
         sally-name (label->element (id->entity sally-oid store) name-label)
         sally-name-id (:item-id sally-name)
         ;; We include an empty name in the templates, to make sure

@@ -507,18 +507,20 @@
       ;; because the reverse link back to new-a is skipped as the
       ;; parent element.
       (is (check (to-list new-a)
-                 (as-set [:object
-                          `(~(any) :order)
-                          `(~(as-set [:object `(~(any) :order)])
-                            (~(any) :order))])))
+                 (as-set (make-object-list
+                          [`(~(any) :order)
+                           `(~(as-set (make-object-list
+                                       [`(~(any) :order)]))
+                             (~(any) :order))]))))
       (is (not= new-b-id b-id))
       ;; new-b's to-list is symmetric: the back-pointer to new-a is
       ;; rendered as a (:target ...) element.
       (is (check (to-list (id->entity new-b-id s5))
-                 (as-set [:object
-                          `((:target ~(as-set [:object `(~(any) :order)]))
-                            (~(any) :order))
-                          `(~(any) :order)]))))
+                 (as-set (make-object-list
+                          [`((:target ~(as-set (make-object-list
+                                                [`(~(any) :order)])))
+                             (~(any) :order))
+                           `(~(any) :order)])))))
     ;; Second case: same A->B setup, but exercising
     ;; update-add-object-adjacent-to and using B as the template, so
     ;; the recursion traverses the link in the opposite order (from B
@@ -536,10 +538,11 @@
       ;; link, so new-b's to-list is structurally the same as case 1's
       ;; new-b: the back-pointer to new-a appears with (:target ...).
       (is (check (to-list new-b)
-                 (as-set [:object
-                          `((:target ~(as-set [:object `(~(any) :order)]))
-                            (~(any) :order))
-                          `(~(any) :order)])))
+                 (as-set (make-object-list
+                          [`((:target ~(as-set (make-object-list
+                                                [`(~(any) :order)])))
+                             (~(any) :order))
+                           `(~(any) :order)]))))
       (is (not= new-a-id a-id))))
   ;; Three non-interned objects A, B, C connected A->B->C. The
   ;; bidirectional element view exposes the chain in both directions
@@ -578,38 +581,40 @@
     ;; reverse link back to the parent is filtered out.
     (is (check
          (to-list new-a)
-         (as-set [:object
-                  `(~(any) :order)
-                  `(~(as-set [:object
-                              `(~(any) :order)
-                              `(~(as-set [:object `(~(any) :order)])
-                                (~(any) :order))])
-                    (~(any) :order))])))
+         (as-set (make-object-list
+                  [`(~(any) :order)
+                   `(~(as-set (make-object-list
+                               [`(~(any) :order)
+                                `(~(as-set (make-object-list
+                                            [`(~(any) :order)]))
+                                  (~(any) :order))]))
+                     (~(any) :order))]))))
     ;; new-b's to-list shows both directions: the (:target ...) entry
     ;; is the reverse link to new-a; the bare object entry is the
     ;; forward link to new-c.
     (is (check
          (to-list new-b)
-         (as-set [:object
-                  `((:target ~(as-set [:object `(~(any) :order)]))
-                    (~(any) :order))
-                  `(~(any) :order)
-                  `(~(as-set [:object `(~(any) :order)])
-                    (~(any) :order))])))
+         (as-set (make-object-list
+                  [`((:target ~(as-set (make-object-list
+                                        [`(~(any) :order)])))
+                     (~(any) :order))
+                   `(~(any) :order)
+                   `(~(as-set (make-object-list [`(~(any) :order)]))
+                     (~(any) :order))]))))
     ;; new-c's to-list walks the chain backward; the back-pointer to
     ;; new-b appears as (:target ...), and inside that new-b the
     ;; further back-pointer to new-a appears the same way.
     (is (check
          (to-list new-c)
-         (as-set [:object
-                  `((:target ~(as-set [:object
-                                       `((:target ~(as-set
-                                                    [:object
-                                                     `(~(any) :order)]))
-                                         (~(any) :order))
-                                       `(~(any) :order)]))
-                    (~(any) :order))
-                  `(~(any) :order)])))))
+         (as-set (make-object-list
+                  [`((:target ~(as-set (make-object-list
+                                        [`((:target
+                                            ~(as-set (make-object-list
+                                                      [`(~(any) :order)])))
+                                           (~(any) :order))
+                                         `(~(any) :order)])))
+                     (~(any) :order))
+                   `(~(any) :order)]))))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")

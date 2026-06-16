@@ -371,24 +371,19 @@
         (match-terms-and-targets unmatched-object-elements templates-to-add)]
     [templates-to-add (map first object-term-pairs)]))
 
-(def update-add-object-with-order)
+(def update-add-object-with-order-without-revisiting)
 
-(def update-add-elements-with-order)
+(def update-add-elements-with-order-without-revisiting)
 
-(defn update-add-position-and-elements-with-order
+(defn update-add-position-and-elements-with-order-without-revisiting
   "Given the id of an already-created entity, add an :order element to
    it for its own position, and add the given template-elements to it,
    each with its own order. The provided order is split into a bigger
    and smaller piece, with the entity getting the bigger piece if
-   use-bigger is true, otherwise the smaller one. Return the new store
-   and the unused part of the order (the piece that did not go to the
-   entity)."
-  [store entity-id template-elements order position use-bigger]
-  ;; First, we split the order into a bigger and a smaller part, putting
-  ;; the bigger part in the correct position. Then, when we recursively
-  ;; add the elements, we take their order from the bigger position,
-  ;; leaving most of the space on the bigger position. Finally, we use
-  ;; the appropriate position for the entity and the return value.
+   use-bigger is true, otherwise the smaller one. The seen map (stored
+   object → entity id) is threaded through for cycle detection.
+   Return [store remainder seen]."
+  [store entity-id template-elements order position use-bigger seen]
   (let [entity-order-index (case position :before 0 :after 1)
         other-position ([:after :before] entity-order-index)
         split-order (split order (if use-bigger position other-position))
@@ -397,75 +392,192 @@
                        (- 1 entity-order-index))
         bigger-order (split-order bigger-index)
         smaller-order (split-order (- 1 bigger-index))
-        [store bigger-order]
-        (update-add-elements-with-order
-         store entity-id template-elements bigger-order position)
+        [store bigger-order seen]
+        (update-add-elements-with-order-without-revisiting
+         store entity-id template-elements bigger-order position seen)
         [store _] (add-element
                    store entity-id
                    `(~(if use-bigger bigger-order smaller-order) :order))]
-    [store (if use-bigger smaller-order bigger-order)]))
+    [store (if use-bigger smaller-order bigger-order) seen]))
 
-(defn update-add-element-with-order-and-ephemeral
-  "Add an element, described in list form, to the store, with the given
-  target.  Add ordering information to the element and each part of
-  it, except for non-semantic elements, splitting the provided order
-  for the orders, and returning an unused piece of it.  Put the new
-  entity in the specified position (:before or :after) of the returned
-  order, and make the entity use the bigger piece if use-bigger is
-  true, otherwise use the smaller piece.  If the template has
-  a :ephemeral element, mark it ephemeral in the store.  Return the
-  new store, the id of the item, and the remaining order."
-  [store target-id template order position use-bigger]
+(defn update-add-element-with-order-and-ephemeral-without-revisiting
+  "Like update-add-element-with-order-and-ephemeral, but threads the
+   seen map for cycle detection. If the element's content is a stored
+   object already in seen, the element is treated as a back-reference
+   and skipped entirely (no link is added), since the corresponding
+   link in the other direction has already been created by the call
+   that added the object to seen. The attachment-id is the endpoint
+   of the new link that does NOT hold the element's content: for an
+   element with :source orientation it becomes the link's target, and
+   for :target orientation it becomes the link's source. Return
+   [store id remainder seen]."
+  [store attachment-id template order position use-bigger seen]
   (assert (empty? (label->elements template :order)))
   (let [template-content (content template)
         template-elements (elements template)
         is-ephemeral (some (fn [element] (= (content element) :ephemeral))
                            template-elements)]
-    (if (not (orderable-entity? template))
-      (let [[s id] (add-element store target-id template)]
-        [s id order])
-      (let [[store value-to-store order]
+    (cond
+      (and (stored-entity? template-content)
+           (object? template-content)
+           (not (interned-object? template-content))
+           (contains? seen (entity-key template-content)))
+      [store nil order seen]
+      (not (orderable-entity? template))
+      (let [[s id] (add-element store attachment-id template)]
+        [s id order seen])
+      :else
+      (let [[store value-to-store order seen]
             (if (object? template-content)
-              (update-add-object-with-order
-               store template-content order position false)
-              [store template-content order])
-            [store id] (add-link store target-id value-to-store)
-            [store remainder]
-            (update-add-position-and-elements-with-order
-             store id template-elements order position use-bigger)]
+              (update-add-object-with-order-without-revisiting
+               store template-content order position false seen)
+              [store template-content order seen])
+            [store id] (if (= (orientation template) :target)
+                         (add-link store value-to-store attachment-id)
+                         (add-link store attachment-id value-to-store))
+            [store remainder seen]
+            (update-add-position-and-elements-with-order-without-revisiting
+             store id template-elements order position use-bigger seen)]
         [(if is-ephemeral (declare-ephemeral-id store id) store)
          id
-         remainder]))))
+         remainder
+         seen]))))
 
-(defn update-add-elements-with-order
-  [store target-id elements order position]
-  (let [[s id order]
-        (reduce (fn [[store _ order] element]
-                  (update-add-element-with-order-and-ephemeral
-                   store target-id element order position false))
-                [store nil order]
+(defn update-add-elements-with-order-without-revisiting
+  "Return [store order seen]."
+  [store attachment-id elements order position seen]
+  (let [[s _ order seen]
+        (reduce (fn [[store _ order seen] element]
+                  (update-add-element-with-order-and-ephemeral-without-revisiting
+                   store attachment-id element order position false seen))
+                [store nil order seen]
                 (case position
                   :before elements
                   ;; If we are adding them after the current order
                   ;; chunk, then each one is before the previous
                   ;; one, as the chunk shrinks.
                   :after (reverse elements)))]
-    [s order]))
+    [s order seen]))
 
-(defn update-add-object-with-given-elements-and-order
-  "Add an object with the given elements to the store, in the given
-  order. Add an :order element to the new object as well as to each
-  of its elements. If the elements describe a uniquely identified
-  object, there must not already be a matching one in the store.
-  The new object gets the bigger piece of the order split if
-  use-bigger is true, otherwise the smaller piece. Return the new
-  store, the id of the new object, and the unused part of the order."
-  [store element-templates order position use-bigger]
+(defn update-add-object-with-given-elements-and-order-without-revisiting
+  "Like update-add-object-with-given-elements-and-order. If seen-key
+   is non-nil, register seen-key → new object id in seen before
+   recursing into the elements (to break cycles). Return
+   [store object-id remainder seen]."
+  [store element-templates order position use-bigger seen seen-key]
   (let [[store object-id] (get-new-object-id store)
-        [store remainder]
-        (update-add-position-and-elements-with-order
-         store object-id element-templates order position use-bigger)]
-    [store object-id remainder]))
+        seen (cond-> seen seen-key (assoc seen-key object-id))
+        [store remainder seen]
+        (update-add-position-and-elements-with-order-without-revisiting
+         store object-id element-templates order position use-bigger seen)]
+    [store object-id remainder seen]))
+
+(defn get-or-make-ordered-object-by-name-without-revisiting
+  "Like get-or-make-ordered-object-by-name. If seen-key is non-nil,
+   register seen-key → object id in seen before recursing into the
+   additional elements. Return [store object-id order seen]."
+  [store name fixed-term order position use-bigger seen seen-key]
+  (assert (object? fixed-term) fixed-term)
+  ;; First, get or make an object with the given name.
+  (let [[store object-id order seen]
+        (if-let [object (find-object-by-name store name fixed-term)]
+          [store (:item-id object) order
+           (cond-> seen seen-key (assoc seen-key (:item-id object)))]
+          (update-add-object-with-given-elements-and-order-without-revisiting
+           store `((~name (~name-label))) order position use-bigger seen
+           seen-key))
+        ;; Now make it satisfy the fixed term.
+        [templates-to-add elements-to-remove]
+        (elements-to-change-to-satisfy-fixed-term-elements
+         fixed-term (id->entity object-id store))
+        [store order seen]
+        (update-add-elements-with-order-without-revisiting
+         store object-id templates-to-add order position seen)
+        store (reduce remove-entity-by-id store
+                      (map :item-id elements-to-remove))]
+    [store object-id order seen]))
+
+(defn update-add-object-with-order-without-revisiting
+  "Like update-add-object-with-order, but checks seen for cycle
+   detection. If the template is a stored entity already in seen,
+   return its cached id without recursing into its elements. Otherwise
+   process the template, registering it in seen before recursing into
+   any sub-objects. Return [store id remainder seen]."
+  [store template order position use-bigger seen]
+  (assert (object? template) template)
+  (let [seen-key (when (and (stored-entity? template)
+                            (not (interned-object? template)))
+                   (entity-key template))]
+    (if-let [cached-id (when seen-key (get seen seen-key))]
+      [store cached-id order seen]
+      (cond (id-identified-object? template)
+            (let [id (:item-id template)]
+              [store id order
+               (cond-> seen seen-key (assoc seen-key id))])
+            (and (stored-entity? template) (nil? (:store template)))
+            (do (assert (uniquely-identified-object?
+                         (in-different-store template store))
+                        template)
+                (let [id (:item-id template)]
+                  [store id order
+                   (cond-> seen seen-key (assoc seen-key id))]))
+            (uniquely-identified-object? template)
+            (let [name-elements (label->elements template name-label)]
+              (assert (seq name-elements) template)
+              (get-or-make-ordered-object-by-name-without-revisiting
+               store (content (first name-elements)) template order position
+               use-bigger seen seen-key))
+            true
+            (do (assert (empty? (label->elements template :order)))
+                (update-add-object-with-given-elements-and-order-without-revisiting
+                 store (elements template) order position use-bigger seen
+                 seen-key))))))
+
+(defn update-add-element-adjacent-to-without-revisiting
+  "Like update-add-element-adjacent-to, threading seen. Return
+   [store id seen]."
+  [store attachment-id element adjacent-to position use-bigger seen]
+  (let [order-element (order-element-for-item adjacent-to store)
+        order (content order-element)
+        [store id remainder seen]
+        (update-add-element-with-order-and-ephemeral-without-revisiting
+         store attachment-id element order position use-bigger seen)]
+    [(update-source store (:item-id order-element) remainder) id seen]))
+
+(defn update-add-object-adjacent-to-without-revisiting
+  "Like update-add-object-adjacent-to, threading seen. Return
+   [store object-id seen]."
+  [store object-template adjacent-to position use-bigger seen]
+  (assert (object? object-template))
+  (assert (empty? (label->elements object-template :order)))
+  (let [order-element (order-element-for-item adjacent-to store)
+        order (content order-element)
+        [store object-id remainder seen]
+        (update-add-object-with-order-without-revisiting
+         store object-template order position use-bigger seen)]
+    [(update-source store (:item-id order-element) remainder)
+     object-id
+     seen]))
+
+;;; Client-facing wrappers: call the -without-revisiting versions with
+;;; an empty seen map.
+
+(defn update-add-element-with-order-and-ephemeral
+  "Add an element, described in list form, to the store, attached to
+  attachment-id (the endpoint of the new link that does NOT hold the
+  element's content). Add ordering information to the element and each
+  part of it, except for non-semantic elements, splitting the provided
+  order for the orders, and returning an unused piece of it.  Put the
+  new entity in the specified position (:before or :after) of the
+  returned order, and make the entity use the bigger piece if
+  use-bigger is true, otherwise use the smaller piece.  If the
+  template has a :ephemeral element, mark it ephemeral in the store.
+  Return the new store, the id of the item, and the remaining order."
+  [store attachment-id template order position use-bigger]
+  (let [[store id remainder _]
+        (update-add-element-with-order-and-ephemeral-without-revisiting
+         store attachment-id template order position use-bigger {})]
+    [store id remainder]))
 
 (defn get-or-make-ordered-object-by-name
   "Find or make an object with the given name, and satisfying the
@@ -477,22 +589,10 @@
   store, the id of the matching object, and the unused part of the
   order."
   [store name fixed-term order position use-bigger]
-  (assert (object? fixed-term) fixed-term)
-  ;; First, get or make an object with the given name.
-  (let [[store object-id order]
-        (if-let [object (find-object-by-name store name fixed-term)]
-          [store (:item-id object) order]
-          (update-add-object-with-given-elements-and-order
-           store `((~name (~name-label))) order position use-bigger))]
-    ;; Now make it satisfy the fixed term.
-    (let [[templates-to-add elements-to-remove]
-          (elements-to-change-to-satisfy-fixed-term-elements
-           fixed-term (id->entity object-id store))
-          [store order] (update-add-elements-with-order
-                         store object-id templates-to-add order position)
-          store (reduce remove-entity-by-id store
-                        (map :item-id elements-to-remove))]
-      [store object-id order])))
+  (let [[store id order _]
+        (get-or-make-ordered-object-by-name-without-revisiting
+         store name fixed-term order position use-bigger {} nil)]
+    [store id order]))
 
 (defn update-add-object-with-order
   "Add an object matching the template to the store, or update a unique
@@ -501,37 +601,22 @@
   Return the new store, the id of the object, and the unused part of
   the order."
   [store template order position use-bigger]
-  (assert (object? template) template)
-  (cond (id-identified-object? template)
-        [store (:item-id template) order]
-        (and (stored-entity? template) (nil? (:store template)))
-        (do (assert (uniquely-identified-object?
-                     (in-different-store template store))
-                    template)
-            [store (:item-id template) order])
-        (uniquely-identified-object? template)
-        (let [name-elements (label->elements template name-label)]
-          (assert (seq name-elements) template)
-          (get-or-make-ordered-object-by-name
-           store (content (first name-elements)) template order position
-           use-bigger))
-        true
-        (do (assert (empty? (label->elements template :order)))
-            (update-add-object-with-given-elements-and-order
-             store (elements template) order position use-bigger))))
+  (let [[store id remainder _]
+        (update-add-object-with-order-without-revisiting
+         store template order position use-bigger {})]
+    [store id remainder]))
 
 (defn update-add-element-adjacent-to
-  "Add an entity with the given target id and contents,
-   taking its order from the given item, in the given position,
-   and giving the entity the bigger piece if use-bigger is true.
-   Return the updated store and the id of the entity."
-  [store target-id element adjacent-to position use-bigger]
-  (let [order-element (order-element-for-item adjacent-to store)
-        order (content order-element)
-        [store id remainder] (update-add-element-with-order-and-ephemeral
-                              store target-id element
-                              order position use-bigger)]
-    [(update-source store (:item-id order-element) remainder) id]))
+  "Add an entity attached to attachment-id (the endpoint of the new
+   link that does NOT hold the element's content), taking its order
+   from the given item, in the given position, and giving the entity
+   the bigger piece if use-bigger is true. Return the updated store
+   and the id of the entity."
+  [store attachment-id element adjacent-to position use-bigger]
+  (let [[store id _]
+        (update-add-element-adjacent-to-without-revisiting
+         store attachment-id element adjacent-to position use-bigger {})]
+    [store id]))
 
 (defn update-add-object-adjacent-to
   "Add a top-level object matching the template,
@@ -540,15 +625,10 @@
    if use-bigger is true.
    Return the updated store and the id of the new object."
   [store object-template adjacent-to position use-bigger]
-  (assert (object? object-template))
-  (assert (empty? (label->elements object-template :order)))
-  (let [order-element (order-element-for-item adjacent-to store)
-        order (content order-element)
-        [store object-id remainder] (update-add-object-with-order
-                                     store object-template
-                                     order position use-bigger)]
-    [(update-source store (:item-id order-element) remainder)
-     object-id]))
+  (let [[store id _]
+        (update-add-object-adjacent-to-without-revisiting
+         store object-template adjacent-to position use-bigger {})]
+    [store id]))
 
 ;;; Handling of generics and templates
 

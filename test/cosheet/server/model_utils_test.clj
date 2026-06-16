@@ -4,6 +4,7 @@
                       [entity :refer [in-different-store stored-entity?
                                       link-type object-type name-label
                                       make-object-list make-element-list
+                                      object?
                                       recursively-in-different-store
                                       id->object id->entity
                                       label->elements content->elements
@@ -476,6 +477,139 @@
                     (:other-keyword "")))))
     (is ((:ephemeral-ids s) id))
     (is (= (:item-id new-entity) id))))
+
+(deftest cycle-detection-test
+  ;; Create two non-interned objects A and B with a single link A -> B
+  ;; in the store. Because elements include reversed links between
+  ;; objects, A's elements list contains B and B's elements list
+  ;; contains A. Without cycle detection, walking the template would
+  ;; bounce between them forever, reversing direction each time.
+  (let [s0 (new-element-store)
+        [s1 a-id] (add-object s0 (make-object-list []))
+        [s2 b-id] (add-object s1 (make-object-list []))
+        [s3 _] (add-element s2 a-id `(~(id->object b-id s2)))
+        ;; A primitive anchor (with order) for the adjacent-to variant.
+        [s4 anchor-id] (add-element s3 nil
+                                    `("anchor" (~unused-orderable :order)))
+        a-template (id->object a-id s4)]
+    ;; First case: copy a-template with update-add-object-with-order.
+    ;; Without cycle detection, this call would not return.
+    (let [[s5 new-a-id _]
+          (update-add-object-with-order
+           s4 a-template unused-orderable :before false)
+          new-a (id->entity new-a-id s5)
+          new-b (content (first (filter #(object? (content %))
+                                        (elements new-a))))
+          new-b-id (:item-id new-b)]
+      (is (not= new-a-id a-id))
+      ;; new-a's to-list: an object with new-a's own :order and the
+      ;; forward link to new-b. new-b only contributes its :order here
+      ;; because the reverse link back to new-a is skipped as the
+      ;; parent element.
+      (is (check (to-list new-a)
+                 (as-set [:object
+                          `(~(any) :order)
+                          `(~(as-set [:object `(~(any) :order)])
+                            (~(any) :order))])))
+      (is (not= new-b-id b-id))
+      ;; new-b's to-list is symmetric: the back-pointer to new-a is
+      ;; rendered as a (:target ...) element.
+      (is (check (to-list (id->entity new-b-id s5))
+                 (as-set [:object
+                          `((:target ~(as-set [:object `(~(any) :order)]))
+                            (~(any) :order))
+                          `(~(any) :order)]))))
+    ;; Second case: same A->B setup, but exercising
+    ;; update-add-object-adjacent-to and using B as the template, so
+    ;; the recursion traverses the link in the opposite order (from B
+    ;; through its reverse-link view to A).
+    (let [anchor (id->entity anchor-id s4)
+          b-template (id->object b-id s4)
+          [s5 new-b-id]
+          (update-add-object-adjacent-to s4 b-template anchor :before false)
+          new-b (id->entity new-b-id s5)
+          new-a-id (:item-id (content (first (filter #(object? (content %))
+                                                     (elements new-b)))))]
+      (is (not= new-b-id b-id))
+      ;; Because the element's :target orientation is honored, the new
+      ;; link is added in the same direction as the original A->B
+      ;; link, so new-b's to-list is structurally the same as case 1's
+      ;; new-b: the back-pointer to new-a appears with (:target ...).
+      (is (check (to-list new-b)
+                 (as-set [:object
+                          `((:target ~(as-set [:object `(~(any) :order)]))
+                            (~(any) :order))
+                          `(~(any) :order)])))
+      (is (not= new-a-id a-id))))
+  ;; Three non-interned objects A, B, C connected A->B->C. The
+  ;; bidirectional element view exposes the chain in both directions
+  ;; (A<->B<->C); without cycle detection the recursion would bounce
+  ;; between adjacent pairs forever. (A fully-closed triangle of
+  ;; non-interned objects isn't allowed by the store: it disallows new
+  ;; links between two non-interned objects that both already have
+  ;; links to other non-interned objects.)
+  (let [s0 (new-element-store)
+        [s1 a-id] (add-object s0 (make-object-list []))
+        [s2 b-id] (add-object s1 (make-object-list []))
+        [s3 c-id] (add-object s2 (make-object-list []))
+        [s4 _] (add-element s3 a-id `(~(id->object b-id s3)))
+        [s5 _] (add-element s4 b-id `(~(id->object c-id s4)))
+        a-template (id->object a-id s5)
+        [s6 new-a-id _]
+        (update-add-object-with-order
+         s5 a-template unused-orderable :before false)
+        new-a (id->entity new-a-id s6)
+        new-b (content (first (filter #(object? (content %))
+                                      (elements new-a))))
+        new-b-id (:item-id new-b)
+        ;; The two object-content elements of new-b are new-a and
+        ;; new-c (in some order).
+        new-b-obj-ids (set (map #(:item-id (content %))
+                                (filter #(object? (content %))
+                                        (elements new-b))))
+        new-c-id (first (disj new-b-obj-ids new-a-id))
+        new-c (id->entity new-c-id s6)]
+    (is (not= new-a-id a-id))
+    (is (not= new-b-id b-id))
+    (is (not= new-c-id c-id))
+    (is (distinct? new-a-id new-b-id new-c-id))
+    (is (contains? new-b-obj-ids new-a-id))
+    ;; new-a's to-list walks the chain forward. At each step the
+    ;; reverse link back to the parent is filtered out.
+    (is (check
+         (to-list new-a)
+         (as-set [:object
+                  `(~(any) :order)
+                  `(~(as-set [:object
+                              `(~(any) :order)
+                              `(~(as-set [:object `(~(any) :order)])
+                                (~(any) :order))])
+                    (~(any) :order))])))
+    ;; new-b's to-list shows both directions: the (:target ...) entry
+    ;; is the reverse link to new-a; the bare object entry is the
+    ;; forward link to new-c.
+    (is (check
+         (to-list new-b)
+         (as-set [:object
+                  `((:target ~(as-set [:object `(~(any) :order)]))
+                    (~(any) :order))
+                  `(~(any) :order)
+                  `(~(as-set [:object `(~(any) :order)])
+                    (~(any) :order))])))
+    ;; new-c's to-list walks the chain backward; the back-pointer to
+    ;; new-b appears as (:target ...), and inside that new-b the
+    ;; further back-pointer to new-a appears the same way.
+    (is (check
+         (to-list new-c)
+         (as-set [:object
+                  `((:target ~(as-set [:object
+                                       `((:target ~(as-set
+                                                    [:object
+                                                     `(~(any) :order)]))
+                                         (~(any) :order))
+                                       `(~(any) :order)]))
+                    (~(any) :order))
+                  `(~(any) :order)])))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")

@@ -318,7 +318,7 @@
             [env]))))))
 
 (defn make-element-filter
-  "Given an element, return a function that removes elements elements
+  "Given an element, return a function that removes elements
   with the same item id from a list of elements." 
   [element]
   (let [key (entity-key element)]

@@ -20,14 +20,14 @@
 ;;; property, qualifier, or relation of another entity, as seen from
 ;;; that entity. There is no ordering among the elements of an entity.
 
-;;; Elements give a way of overlaying a structure on information in a
-;;; store, or on information that might be stored there. That makes
-;;; them more convenient than just a bunch of links. They give a
-;;; convenient way to describe:
-;;;    * What should be displayed in a cell.
-;;;    * Information that should be added to entities in the store.
-;;;    * Queries for searches over the store (to find entities matching
-;;;      an element or containing matches to an element).
+;;; Elements give a way of overlaying a hierarchical structure on
+;;; information in a store, or on information that might be stored
+;;; there. That makes them more convenient than just a bunch of
+;;; links. They give a convenient way to describe: * What should be
+;;; displayed in a cell.  * Information that should be added to
+;;; entities in the store.  * Queries for searches over the store (to
+;;; find entities matching an element or containing matches to an
+;;; element).
 
 ;;; An element's description consists of
 ;;;   * a content, which is an entity.
@@ -393,14 +393,16 @@
   entity from the results. For an element entity, the subparts are its
   content and its elements; for a non presumed interned object, they
   are its elements. Interned objects and primitives are returned
-  unchanged."
+  unchanged. The function must return the same kid of entity as it
+  gets. If the function turns an element into nil, that element will
+  be removed."
   [f entity]
   (cond (element? entity)
         (make-element-list (orientation entity)
                            (f (content entity))
-                           (map f (elements entity)))
+                           (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
-        (make-object-list (map f (elements entity)))
+        (make-object-list (keep f (elements entity)))
         :else
         entity))
 
@@ -411,15 +413,7 @@
   gets. If the function turns an element into nil, that element will
   be removed."
   [f entity]
-  (let [entity (f entity)]
-    (cond (element? entity)
-          (make-element-list (orientation entity)
-                             (pre-walk-entity f (content entity))
-                             (keep #(pre-walk-entity f %) (elements entity)))
-          (and (object? entity) (not (presumed-interned-object? entity)))
-          (make-object-list (keep #(pre-walk-entity f %) (elements entity)))
-          :else
-          entity)))
+  (map-subparts #(pre-walk-entity f %) (f entity)))
 
 (defn post-walk-entity
   "Recursively run the function on all the elements of the entity and
@@ -428,15 +422,7 @@
   primitive. If the function turns an element into nil, that element
   will be removed."
   [f entity]
-  (f (cond (element? entity)
-           (make-element-list (orientation entity)
-                              (post-walk-entity f (content entity))
-                              (keep #(post-walk-entity f %)
-                                    (elements entity)))
-           (and (object? entity) (not (presumed-interned-object? entity)))
-           (make-object-list (keep #(post-walk-entity f %) (elements entity)))
-           :else
-           entity)))
+  (f (map-subparts #(post-walk-entity f %) entity)))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."

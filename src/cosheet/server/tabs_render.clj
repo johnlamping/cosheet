@@ -16,7 +16,8 @@
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
                                   new-tab-table-element]]
-             [render-utils :refer [hierarchy-node-DOM make-component]]
+             [render-utils :refer [hierarchy-node-DOM make-component
+                                   make-sequential-template]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
@@ -119,7 +120,8 @@
    {:relative-id :virtual-tab
     :auxiliary-item-id last-tab-id
     :class "tab virtualTab"
-    :template [`("" :tab ~new-tab-table-element) 'anything]  
+    :template (make-sequential-template[`("" :tab ~new-tab-table-element)
+                                        'anything])
     :sibling true
     :get-action-data get-item-or-exemplar-action-data
     :use-bigger true}))

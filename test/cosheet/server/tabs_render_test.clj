@@ -16,7 +16,7 @@
              [item-render :refer [render-item-DOM-R
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
-             [model-utils :refer [semantic-to-list]]
+             [render-utils :refer [make-sequential-template]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
@@ -101,15 +101,17 @@
             {:relative-id :virtual-tab
              :auxiliary-item-id (:item-id t3)
              :class "tab virtualTab"
-             :template [`(""
-                          :tab
-                          ("" :tab-topic :table
-                                  (~(make-object-list [`(~(object-type-object '???)) :selector])
-                                   :row-condition)
-                                  (~'anything
-                                   :column-headers :selector
-                                   (~'anything (~(link-type-object '???))))))
-                        'anything]
+             :template (make-sequential-template
+                        [`(""
+                           :tab
+                           ("" :tab-topic :table
+                            (~(make-object-list [`(~(object-type-object '???))
+                                                 :selector])
+                             :row-condition)
+                            (~'anything
+                             :column-headers :selector
+                             (~'anything (~(link-type-object '???))))))
+                         'anything])
              :sibling true
              :use-bigger true
              :render-dom (virt-DOM)

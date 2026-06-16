@@ -45,8 +45,8 @@
   (.write w (str "SequentialTemplate " (vec (:template-sequence s)))))
 
 (defn make-sequential-template
-  [template]
-  (->SequentialTemplate template))
+  [template-sequence]
+  (->SequentialTemplate template-sequence))
 
 (defn sequential-template?
   [template]

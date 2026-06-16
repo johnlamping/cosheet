@@ -18,7 +18,7 @@
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
-                                  create-possible-selector-elements]]
+                                  create-possible-selector-entities]]
              [order-utils :refer [ordered-entities]])))
 
 ;;; This file contains the basic action data getters, plus utilities for them.
@@ -433,7 +433,7 @@
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]
-           (let [[ids store] (create-possible-selector-elements
+           (let [[ids store] (create-possible-selector-entities
                               template targets adjacents
                               (or position :after) use-bigger store)]
              [ids ids (cons targets past-ids) store]))

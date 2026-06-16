@@ -102,16 +102,16 @@
              :auxiliary-item-id (:item-id t3)
              :class "tab virtualTab"
              :template (make-sequential-template
-                        [`(""
-                           :tab
-                           ("" :tab-topic :table
-                            (~(make-object-list [`(~(object-type-object '???))
-                                                 :selector])
-                             :row-condition)
-                            (~'anything
-                             :column-headers :selector
-                             (~'anything (~(link-type-object '???))))))
-                         'anything])
+                        `(""
+                          :tab
+                          ("" :tab-topic :table
+                           (~(make-object-list [`(~(object-type-object '???))
+                                                :selector])
+                            :row-condition)
+                           (~'anything
+                            :column-headers :selector
+                            (~'anything (~(link-type-object '???))))))
+                        'anything)
              :sibling true
              :use-bigger true
              :render-dom (virt-DOM)

@@ -301,10 +301,10 @@
                                           (batch-virtual-element-AD) 
                                           (virt-AD)]
                         :template (make-sequential-template
-                                   ['anything
-                                    '("")
-                                    (make-object-list [`(~link-type)
-                                                       `("" (~name-label))])])
+                                   'anything
+                                   '("")
+                                   (make-object-list [`(~link-type)
+                                                      `("" (~name-label))]))
                         :is-object-name true
                         :position :after
                         :do-not-match-query true}]

@@ -120,8 +120,8 @@
    {:relative-id :virtual-tab
     :auxiliary-item-id last-tab-id
     :class "tab virtualTab"
-    :template (make-sequential-template[`("" :tab ~new-tab-table-element)
-                                        'anything])
+    :template (make-sequential-template `("" :tab ~new-tab-table-element)
+                                        'anything)
     :sibling true
     :get-action-data get-item-or-exemplar-action-data
     :use-bigger true}))

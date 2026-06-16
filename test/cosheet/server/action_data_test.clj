@@ -153,7 +153,7 @@
   ;; vector as the template.
   (let [data (get-virtual-action-data
               {:template (make-sequential-template
-                          ['anything `(2 (~age-label-object))])}
+                          'anything `(2 (~age-label-object)))}
               {:subject-ids [jane-id joe-id]} nil store)]
     (println jane-id joe-id)
     (is (check data {:subject-ids [(any) (any)]

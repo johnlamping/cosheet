@@ -45,7 +45,7 @@
   (.write w (str "SequentialTemplate " (vec (:template-sequence s)))))
 
 (defn make-sequential-template
-  [template-sequence]
+  [& template-sequence]
   (->SequentialTemplate template-sequence))
 
 (defn sequential-template?
@@ -122,7 +122,7 @@
           (let [template-sequence (:template-sequence template)]
             [(butlast template-sequence) (last template-sequence)])
           [[] template])]
-    (make-sequential-template
+    (apply make-sequential-template
      (concat
       prefix-templates
        ;; The label.

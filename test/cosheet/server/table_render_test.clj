@@ -343,10 +343,10 @@
                           :width 0.75
                           :sibling true
                           :template (make-sequential-template
-                                     ['anything
-                                      '("")
-                                      (make-object-list [`(~link-type)
-                                                         `("" (~name-label))])])
+                                     'anything
+                                     '("")
+                                     (make-object-list [`(~link-type)
+                                                        `("" (~name-label))]))
                           :is-object-name true
                           :position :after
                           :get-action-data [composed-get-action-data
@@ -523,10 +523,10 @@
                              " column-header virtual-column")}
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
-                                   ['anything
-                                    '("")
-                                    (make-object-list [`(~link-type)
-                                                       `("" (~name-label))])])
+                                   'anything
+                                   '("")
+                                   (make-object-list [`(~link-type)
+                                                      `("" (~name-label))]))
                         :is-object-name true
                         :position :after
                         :sibling true

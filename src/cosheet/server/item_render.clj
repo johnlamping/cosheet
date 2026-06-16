@@ -190,8 +190,8 @@
                         (dissoc :relative-id)
                         (assoc :template
                                (make-sequential-template
-                                [template `(~(ensure-label-object
-                                              'anything label-type))]))))]
+                                template `(~(ensure-label-object
+                                              'anything label-type))))))]
     (cond-> (wrap-with-labels-DOM labels-dom :link-type dom orientation)
       class
       (add-attributes {:class class}))))

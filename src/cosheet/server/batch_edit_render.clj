@@ -211,9 +211,9 @@
                      (assoc
                       specification
                       :template (make-sequential-template
-                                 ['anything
-                                  `(~(ensure-label-object
-                                      'anything :link-type))])
+                                 'anything
+                                 `(~(ensure-label-object
+                                      'anything :link-type)))
                       :relative-id :stack-virtual-label
                       :get-action-data
                       get-batch-edit-stack-virtual-element-subject-action-data

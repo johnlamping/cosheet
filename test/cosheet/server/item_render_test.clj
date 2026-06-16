@@ -452,9 +452,9 @@
               [:component
                {:relative-id :virtual-label
                 :template (make-sequential-template
-                           ['(anything "foo")
-                            '("")
-                            label-object-template])
+                           '(anything "foo")
+                           '("")
+                           label-object-template)
                 :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)

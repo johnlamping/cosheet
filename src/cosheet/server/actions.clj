@@ -38,7 +38,7 @@
                          relative-ids->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          ordered-semantic-to-list entity->canonical-semantic
-                         create-possible-selector-elements
+                         create-possible-selector-entities
                          exemplar-to-fixed-term remove-semantic-elements
                          label-object-template
                          table-row-template table-column-headers-id
@@ -228,7 +228,7 @@
                          (object? template) (do (assert is-object-name)
                                                 `(~template))
                          true template)
-          [ids store] (create-possible-selector-elements
+          [ids store] (create-possible-selector-entities
                       template
                       (map #(id->target store %) subject-ids)
                       subject-ids
@@ -237,7 +237,7 @@
 
 (defn do-add-element
   [store {:keys [subject-ids session-state client-id]}]
-  (let [[ids store] (create-possible-selector-elements
+  (let [[ids store] (create-possible-selector-entities
                      'anything subject-ids subject-ids
                      :before false store)]
     (add-following-selection-by-ids store client-id ids)))
@@ -246,7 +246,7 @@
   [store {:keys [subject-ids session-state client-id]}]
   ;; We disallow adding a label to a label.
   (when (not-any? #(label-element? (id->entity % store)) subject-ids)
-    (let [[ids store] (create-possible-selector-elements
+    (let [[ids store] (create-possible-selector-entities
                        `(~label-object-template) subject-ids subject-ids
                        :before false store)]
       (add-following-selection-by-ids store client-id ids))))
@@ -258,7 +258,7 @@
     (let [table-entity (id->entity table-id store)
           row-template (table-row-template table-entity)
           row-parent-id (id->target store row-id)
-          [ids store] (create-possible-selector-elements
+          [ids store] (create-possible-selector-entities
                        row-template [row-parent-id] [row-id]
                        :after false store)]
       (if (and column-ids client-id)
@@ -278,7 +278,7 @@
   (println "adding column")
   (when (and column-ids table-id)
     (let [column-headers-id (table-column-headers-id table-id store)
-          [ids store] (create-possible-selector-elements
+          [ids store] (create-possible-selector-entities
                        unspecified-column-header-template
                        [column-headers-id] [(last column-ids)]
                        :after false store)]

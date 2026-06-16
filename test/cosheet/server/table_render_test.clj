@@ -12,8 +12,8 @@
                                   link-type-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->element id->object
-                                         label->elements elements to-list
-                                         make-object-list
+                                         label->elements elements to-tree
+                                         make-tree-object
                                          link-type name-label]]
              [calculator :refer [make-calculator-data computation-value]]
              [task-queue :refer [make-priority-task-queue]]
@@ -41,7 +41,7 @@
                                    make-sequential-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities add-order-elements]]
-             [model-utils :refer [semantic-to-list semantic-elements
+             [model-utils :refer [semantic-to-tree semantic-elements
                                   table-row-condition-object]]
              [table-render :refer :all])
              ; :reload
@@ -123,7 +123,7 @@
               nil store)
         new-store (:store data)
         new-id (first (:subject-ids data))]
-    (is (= (semantic-to-list (id->element new-id new-store))
+    (is (= (semantic-to-tree (id->element new-id new-store))
            `("" (~(find-object-by-name new-store " A"
                                        (link-type-object 'anything))))))))
 
@@ -143,7 +143,7 @@
         temp-single-label-object (id->object single-oid sf)
         temp-height-label-object (id->object height-oid sf)
         temp-other-label-object (id->object other-oid sf)
-        joe-list (make-object-list
+        joe-list (make-tree-object
                   [`(~o2 :order)
                    `("male" (~o1 :order))
                    `("married" (~o2 :order))
@@ -158,11 +158,11 @@
                    `("Joseph" (~o6 :order)
                      (~temp-name-label-object (~o1 :order))
                      (~temp-id-label-object (~o2 :order)))])
-        jane-list (make-object-list
+        jane-list (make-tree-object
                    [`(~o1 :order)
                     `("plain" (~o2 :order))
                     `("plain" (~o3 :order))])
-        test-list (make-object-list
+        test-list (make-tree-object
                    [:test
                     `(~o3 :order)
                     ;; Real data won't have 'anything as content,
@@ -173,7 +173,7 @@
                     `(~'anything (~o3 :order) (~temp-age-label-object
                                                (~o3 :order)))])
         table-list `("table"
-                     (~(make-object-list
+                     (~(make-tree-object
                         [`(~'anything
                            (~temp-age-label-object (~o1 :order))
                            (~o8 :order))])
@@ -345,7 +345,7 @@
                           :template (make-sequential-template
                                      'anything
                                      '("")
-                                     (make-object-list [`(~link-type)
+                                     (make-tree-object [`(~link-type)
                                                         `("" (~name-label))]))
                           :is-object-name true
                           :position :after
@@ -525,7 +525,7 @@
                         :template (make-sequential-template
                                    'anything
                                    '("")
-                                   (make-object-list [`(~link-type)
+                                   (make-tree-object [`(~link-type)
                                                       `("" (~name-label))]))
                         :is-object-name true
                         :position :after
@@ -767,7 +767,7 @@
              {:relative-id :body
               :alternate-row-sibling column-headers-id
               :column-descriptions-R (any)
-              :row-template-R (make-object-list
+              :row-template-R (make-tree-object
                                [`(~'anything (~age-label-object))])
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM-R

@@ -19,7 +19,7 @@
                             extended-by?]]
              [entity :as entity  :refer [id->entity in-different-store
                                          label->elements elements
-                                         make-object-list link-type name-label]]
+                                         make-tree-object link-type name-label]]
              [debug :refer [simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set]])
@@ -98,14 +98,14 @@
 (def h1 (second t0))
 (def t1 (add-object (first t0)
                     (first (add-order-elements-inside-object
-                            (make-object-list [`(2 (~c1-label))
+                            (make-tree-object [`(2 (~c1-label))
                                                `(2 (~c2-label))
                                                `(~orderable/initial :order)])
                             orderable/initial))))
 (def r1 (second t1))
 (def t2 (add-object (first t1)
                     (first (add-order-elements-inside-object
-                            (make-object-list [`(2 (~c1-label))
+                            (make-tree-object [`(2 (~c1-label))
                                                `(3 (~c2-label))
                                                `(~orderable/initial :order)])
                             orderable/initial))))
@@ -303,7 +303,7 @@
                         :template (make-sequential-template
                                    'anything
                                    '("")
-                                   (make-object-list [`(~link-type)
+                                   (make-tree-object [`(~link-type)
                                                       `("" (~name-label))]))
                         :is-object-name true
                         :position :after

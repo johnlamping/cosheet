@@ -5,7 +5,7 @@
                       [store :refer [make-item-id new-element-store]]
                       store-impl
                       [store-utils :refer [add-object add-universal-objects]]
-                      [entity :refer [make-object-list id->object
+                      [entity :refer [make-tree-object id->object
                                       in-different-store]]
                       [entity-impl])
             ; :reload
@@ -17,11 +17,11 @@
                 (39 ("age" tag) ("doubtful" "confidence") )
                 "married"
                 (45 ("age" tag))))
-(def joe-anonymous-object (make-object-list (rest joe-list)))
+(def joe-anonymous-object (make-tree-object (rest joe-list)))
 (def joe-named-object
   (let [[store id] (add-object
                     (add-universal-objects (new-element-store))
-                    (make-object-list
+                    (make-tree-object
                      (conj (rest joe-list)
                            `("Joe" (~(id->object (make-item-id "name")
                                                  nil))))))]
@@ -46,14 +46,14 @@
     (is (= (canonicalize joe-named-object)
            (in-different-store joe-named-object nil))))
 
-(deftest canonical-to-list-test
+(deftest canonical-to-tree-test
   (let [starting `("starting" ~joe-list ~jane-list ~jane-list)
         canonical (canonicalize starting)]
-    (is (check (canonicalize (canonical-to-list canonical))
+    (is (check (canonicalize (canonical-to-tree canonical))
                canonical)))
   (let [starting `[:object ~joe-list ~jane-list ~jane-list]
         canonical (canonicalize starting)]
-    (is (check (canonicalize (canonical-to-list canonical))
+    (is (check (canonicalize (canonical-to-tree canonical))
                canonical))))
 
 (deftest update-canonical-content-test

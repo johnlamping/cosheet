@@ -62,8 +62,8 @@
     (is (= (content->elements item99 4) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (entity-key item99) id99))
-    (is (= (to-list item0) item0))
-    (is (= (to-list item99) item99))
+    (is (= (to-tree item0) item0))
+    (is (= (to-tree item99) item99))
     (is (universal-object? (id->object (make-item-id "name") nil)))
     (is (universal-object? (id->object (make-item-id "link-type") nil)))
     (is (universal-object? (id->object (make-item-id "object-type") nil)))
@@ -179,7 +179,7 @@
     (is (= (content item-b-reversed) item-a-reversed))
     (is (= (entity-key item-a) ida))
     (is (= (entity-key item-a-reversed) ida))
-    (is (= (to-list item99) item99))
+    (is (= (to-tree item99) item99))
     (is (check (elements item0)
                (as-set [(id->element idl s)
                         (id->element idm s)])))
@@ -190,12 +190,12 @@
                (as-set [(id->element idm :target s)])))
     (is (= (forward-elements item1)
            nil))
-    (is (check (to-list item1) item1))
-    (is (= (to-list item-a-reversed) `((:target ~item99) (~foo-label))))
-    (is (= (to-list item-m) (make-element-list :source item1
+    (is (check (to-tree item1) item1))
+    (is (= (to-tree item-a-reversed) `((:target ~item99) (~foo-label))))
+    (is (= (to-tree item-m) (make-element-list :source item1
                                                `((~rel-label)))))
-    (is (check (to-list item0)
-               (as-set (make-object-list
+    (is (check (to-tree item0)
+               (as-set (make-tree-object
                         `(~(make-element-list :source item1
                                               `((~rel-label)))
                           "irrelevant")))))))
@@ -299,9 +299,9 @@
     (is (= (current-value (content (id->element idc ms))) 4))
     (is (= (entity-key item-a) ida))
     (is (= (entity-key item-a-reversed) ida))
-    (is (= (current-value (to-list item99))
+    (is (= (current-value (to-tree item99))
            item99))
-    (is (= (current-value (to-list item-a-reversed))
+    (is (= (current-value (to-tree item-a-reversed))
            `((:target ~item99) (~foo-label))))
     (is (check (current-value (elements item0))
                (as-set [(id->element idl ms)
@@ -318,7 +318,7 @@
           updating-immutable-result (let-R [current-item (updating-immutable
                                                         item99)] 
                                       (is (not (mutable-entity? current-item)))
-                                      (let [value (to-list current-item)]
+                                      (let [value (to-tree current-item)]
                                         (swap! record-of-updates
                                                #(conj % value))
                                         value))
@@ -333,7 +333,7 @@
       (set-attendee! reporter-99 :a 0 (fn [& _] nil))
       (is (not (reporter-valid? updating-immutable-result)))
       (run-all-pending-tasks queue)
-      (let [orig-99 (to-list (in-different-store item99 (current-store ms)))]
+      (let [orig-99 (to-tree (in-different-store item99 (current-store ms)))]
         (is (check (canonicalize
                     (reporter-value-or-invalid updating-immutable-result))
                    (canonicalize orig-99)))
@@ -349,15 +349,15 @@
         (is (check (canonicalize
                     (reporter-value-or-invalid updating-immutable-result))
                    (canonicalize
-                    (to-list (in-different-store item99 (current-store ms))))))
+                    (to-tree (in-different-store item99 (current-store ms))))))
         (is (check (canonicalize
-                    (to-list (reporter-value-or-invalid reporter-99)))
+                    (to-tree (reporter-value-or-invalid reporter-99)))
                    (canonicalize
-                    (to-list (in-different-store item99 (current-store ms))))))
+                    (to-tree (in-different-store item99 (current-store ms))))))
         (is (check (map canonicalize @record-of-updates)
                    [(canonicalize orig-99)
                     (canonicalize
-                     (to-list (in-different-store item99
+                     (to-tree (in-different-store item99
                                                   (current-store ms))))]))))))
 
 (deftest list-test
@@ -379,7 +379,7 @@
   (is (= (content '((:target 1) (2 3) (4 5))) 1))
   (is (= (content->elements '(1 (2 3) (4 5)) 4) ['(4 5)]))
   (is (=(entity-key '(1 2)) '(1 2)))
-  (is (= (to-list '(nil (1 nil))) '(nil (1 nil)))))
+  (is (= (to-tree '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest vector-test
   (is (not (primitive? [:object 1 2])))
@@ -395,7 +395,7 @@
   (is (= (content [:object 1 2]) nil))
   (is (= (content->elements '[:object (2 3) (4 5)] 4) '[(4 5)]))
   (is (= (entity-key [:object 1 2]) [:object 1 2]))
-  (is (= (to-list [:object 1 2]) [:object 1 2]))
+  (is (= (to-tree [:object 1 2]) [:object 1 2]))
   ;; More extensive tests of uniquely-identified-object?
   (let [name-label `(~(id->object (make-item-id "name") nil))]
     (is (not (uniquely-identified-object? [:object])))
@@ -475,7 +475,7 @@
   (is (= (entity-key 'foo) 'foo))
   (is (= (entity-key nil) nil))
   (is (= (entity-key orderable/initial) orderable/initial))
-  (is (to-list 3) 3))
+  (is (to-tree 3) 3))
 
 (deftest add-elements-to-entity-test
   (is (= (add-elements-to-entity '(1 2 (3 4)) '())
@@ -487,8 +487,8 @@
          (make-element-list :target 1 '(2 (3 4) 5 (6 7)))))
   (is (= (add-elements-to-entity 1 '(5 (6 7)))
          '(1 5 (6 7))))
-  (is (= (add-elements-to-entity (make-object-list '(1 2 (3 4))) '(5 (6 7)))
-         (make-object-list '(1 2 (3 4) 5 (6 7))))))
+  (is (= (add-elements-to-entity (make-tree-object '(1 2 (3 4))) '(5 (6 7)))
+         (make-tree-object '(1 2 (3 4) 5 (6 7))))))
 
 (deftest map-subparts-test
   (let [incrementer #(if (number? %) (inc %) %)]
@@ -496,8 +496,8 @@
            '(2 6 (2 3) 5)))
     (is (= (map-subparts incrementer (id->object (make-item-id "foo") nil))
            (id->object (make-item-id "foo") nil)))
-    (is (= (map-subparts incrementer (make-object-list '(5 (2 3) 4)))
-           (make-object-list '(6 (2 3) 5))))))
+    (is (= (map-subparts incrementer (make-tree-object '(5 (2 3) 4)))
+           (make-tree-object '(6 (2 3) 5))))))
 
 (deftest post-walk-entity-test
   (is (check (post-walk-entity
@@ -506,10 +506,10 @@
                      (= % '(3 4)) nil
                      :else %)
               `(1 (2 3)
-                  (~(make-object-list
+                  (~(make-tree-object
                        `(4 (5 6))))
                   (~(id->object (make-item-id "foo") nil))))
-             `(2 (~(make-object-list
+             `(2 (~(make-tree-object
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
 
@@ -520,10 +520,10 @@
                      (= % '(2 3)) nil
                      :else %)
               `(1 (2 3)
-                  (~(make-object-list
+                  (~(make-tree-object
                      `(4 (5 6))))
                   (~(id->object (make-item-id "foo") nil))))
-             `(2 (~(make-object-list
+             `(2 (~(make-tree-object
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
 
@@ -532,40 +532,40 @@
   (is (= (entity-complexity nil) 0.3))
   (is (= (entity-complexity '(1 2 "" nil)) (+ 1 (* 0.75 (+ 1 0.4 0.3)))))
   (is (= (entity-complexity '(1 (2 "a"))) (+ 1 (* 0.75 (+ 1 0.75)))))
-  (is (= (entity-complexity `(~(make-object-list '(1 2)) (2 "a")))
+  (is (= (entity-complexity `(~(make-tree-object '(1 2)) (2 "a")))
          (+ 0.3 (* 0.75 (+ 1 1)) (* 0.75 (+ 1 0.75))))))
 
 (deftest label-object?-test
   (let [special-object (fn [id] (id->object (make-item-id id) nil))]
     (is (label-object? (special-object "name")))
-    (is (label-object? (make-object-list
+    (is (label-object? (make-tree-object
                         `((~(special-object "link-type"))))))
-    (is (link-type-object? (make-object-list
+    (is (link-type-object? (make-tree-object
                             `((~(special-object "link-type"))))))
-    (is (not (object-type-object? (make-object-list
+    (is (not (object-type-object? (make-tree-object
                                     `((~(special-object "link-type")))))))
-    (is (not (non-type-object? (make-object-list
+    (is (not (non-type-object? (make-tree-object
                                     `((~(special-object "link-type")))))))
-    (is (label-object? (make-object-list
+    (is (label-object? (make-tree-object
                         `((~(special-object "object-type"))))))
-    (is (not (link-type-object? (make-object-list
+    (is (not (link-type-object? (make-tree-object
                                  `((~(special-object "object-type")))))))
-    (is (object-type-object? (make-object-list
+    (is (object-type-object? (make-tree-object
                               `((~(special-object "object-type"))))))
-    (is (not (non-type-object? (make-object-list
+    (is (not (non-type-object? (make-tree-object
                                 `((~(special-object "object-type")))))))
-    (is (label-object? (make-object-list
+    (is (label-object? (make-tree-object
                         `(("fred" ~(special-object "name"))
                           (~(special-object "link-type"))))))
-    (is (not (label-object? (make-object-list
+    (is (not (label-object? (make-tree-object
                              `((~(special-object "name")))))))
-    (is (not (label-object? (make-object-list
+    (is (not (label-object? (make-tree-object
                              `(("fred" ~(special-object "name")))))))
-    (is (not (link-type-object? (make-object-list
+    (is (not (link-type-object? (make-tree-object
                                  `(("fred" ~(special-object "name")))))))
-    (is (not (object-type-object? (make-object-list
+    (is (not (object-type-object? (make-tree-object
                                    `(("fred" ~(special-object "name")))))))
-    (is (non-type-object? (make-object-list
+    (is (non-type-object? (make-tree-object
                            `(("fred" ~(special-object "name"))))))))
 
 (deftest label-element?-test
@@ -577,16 +577,16 @@
     (is (not (label-element? "foo")))
     (is (not (label-element? `("foo" ~(special-object "name-type")))))
     (is (not (label-element? `("foo" ~(special-object "link-type")))))
-    (is (label-element? `(~(make-object-list
+    (is (label-element? `(~(make-tree-object
                     `((~(special-object "link-type")))))))
-    (is (label-element? `(~(make-object-list
+    (is (label-element? `(~(make-tree-object
                     `((~(special-object "object-type")))))))
-    (is (label-element? `(~(make-object-list
+    (is (label-element? `(~(make-tree-object
                     `(("fred" ~(special-object "name"))
                       (~(special-object "link-type")))))))
-    (is (not (label-element? `(~(make-object-list
+    (is (not (label-element? `(~(make-tree-object
                          `((~(special-object "name"))))))))
-    (is (not (label-element? `(~(make-object-list
+    (is (not (label-element? `(~(make-tree-object
                          `(("fred" ~(special-object "name"))))))))))
 
 (deftest name-element?-test
@@ -606,7 +606,7 @@
   (is (= (make-element-list :target 1 [2])
          '((:target 1) 2))))
 
-(deftest make-object-list-test
-  (is (= (make-object-list [1])
+(deftest make-tree-object-test
+  (is (= (make-tree-object [1])
          [:object 1])))
 

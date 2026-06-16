@@ -7,11 +7,11 @@
              [orderable :refer [initial split earlier?]]
              [map-reporter :refer [make-map-reporter map-reporter-get-current
                                 map-reporter-reset!]]
-             [entity :as entity :refer [id->entity id->object to-list
+             [entity :as entity :refer [id->entity id->object to-tree
                                         content elements label->element
                                         label->elements label->content
                                         name-label link-type object-type
-                                        make-object-list make-element-list
+                                        make-tree-object make-element-list
                                         uniquely-identified-object?
                                         in-different-store
                                         recursively-in-different-store]]
@@ -45,7 +45,7 @@
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements selector?
-                                  semantic-to-list object-semantic-to-list
+                                  semantic-to-tree object-semantic-to-tree
                                   pattern-to-fixed-term
                                   label-object-template
                                   update-add-object-with-order
@@ -91,7 +91,7 @@
 (def table-list (add-order-elements
                  `(:x
                    :selector
-                   (~(make-object-list row-condition-elements)
+                   (~(make-tree-object row-condition-elements)
                     :row-condition)
                    (:x :column-headers ~@column-headers))))
 (def t0 (add-element base-store nil table-list))
@@ -125,7 +125,7 @@
 ;;;       Replace the previous store by this.
 ;;; TODO: !!! The labels need to be converted to label objects.
 (def new-joe-object-list
-  (make-object-list
+  (make-tree-object
    (map add-order-elements
         `(("Joe" (~name-label))
           "male"
@@ -133,7 +133,7 @@
           "married"
           (45 (~age-label))))))
 (def new-jane-object-list
-  (make-object-list
+  (make-tree-object
    (map add-order-elements
         `(("Jane" (~name-label)) :selector "female"
           (45 (~age-label))))))
@@ -181,9 +181,9 @@
                           `(~link-type)]
         ;; Make two objects that differ only in a non-semantic element
         ;; and one object that differs from them semantically
-        common-object1 (make-object-list (conj common-elements `(~o1 :order)))
-        common-object2 (make-object-list (conj common-elements `(~o2 :order)))
-        longer-object (make-object-list
+        common-object1 (make-tree-object (conj common-elements `(~o1 :order)))
+        common-object2 (make-tree-object (conj common-elements `(~o2 :order)))
+        longer-object (make-tree-object
                        (conj common-elements `(~o1 :order) `(5 (~o4 order))))
         [s1 common-id1] (add-element new-store new-joe-id `(~common-object1))
         [s2 common-id2] (add-element s1 new-joe-id `(~common-object2))
@@ -270,7 +270,7 @@
         ;; an element holding Fred.
         [s1 fred-oid order] (update-add-object-with-order
                              (add-universal-objects (new-element-store))
-                             (make-object-list `(("Fred" (~name-label)) "foo"))
+                             (make-tree-object `(("Fred" (~name-label)) "foo"))
                              initial :after false)
         [s2 fred-holder-id order] (update-add-element-with-order-and-ephemeral
                                    s1 nil
@@ -278,14 +278,14 @@
                                    initial :after false)
         [store sally-oid order] (update-add-object-with-order
                                  s2
-                                 (make-object-list `(("Sally" (~name-label))))
+                                 (make-tree-object `(("Sally" (~name-label))))
                                  order :after false)
         sally-name (label->element (id->entity sally-oid store) name-label)
         sally-name-id (:item-id sally-name)
         ;; We include an empty name in the templates, to make sure
         ;; that is handled correctly.
-        bare-template (make-object-list [`("" (~name-label))])
-        foo-template (make-object-list [`("" (~name-label)) "foo"])
+        bare-template (make-tree-object [`("" (~name-label))])
+        foo-template (make-tree-object [`("" (~name-label)) "foo"])
         ;; Now, render the nesting doms: the holding element, the
         ;; object inside, and its name.
         holder-dom-spec {:relative-id fred-holder-id
@@ -333,8 +333,8 @@
     ;; Test changing Fred to Sally, with a template that requires more.
     ;; Also test the template being an element.
     (let [[new-store for-client] (run-set-name "Fred" "Sally" `(~foo-template))]
-      (is (check (object-semantic-to-list (id->object sally-oid new-store))
-                 (as-set (make-object-list `(("Sally" (~(in-different-store
+      (is (check (object-semantic-to-tree (id->object sally-oid new-store))
+                 (as-set (make-tree-object `(("Sally" (~(in-different-store
                                                          name-label new-store)))
                                              "foo")))))
       (is (check (:ephemeral-data new-store)
@@ -360,7 +360,7 @@
           new-object (id->entity new-object-id new-store)]
       (is (= (id->source new-store new-name-id) "Bob"))
       (is (= (id->source new-store fred-holder-id) new-object-id))
-      (is (check (map semantic-to-list (semantic-elements new-object))
+      (is (check (map semantic-to-tree (semantic-elements new-object))
                  (as-set [`("Bob" (~(in-different-store name-label new-store)))
                           "foo"]))))))
 
@@ -420,7 +420,7 @@
                        label-object-template
                        new-store)
         blank-label (recursively-in-different-store
-                     (make-object-list [`("" (~name-label))
+                     (make-tree-object [`("" (~name-label))
                                         `(~link-type)])
                      new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
@@ -483,7 +483,7 @@
                                :client-id (relative-ids->client-id
                                            [table-id jane-id first-header-id])})
         row-pattern (pattern-to-fixed-term
-                     (make-object-list row-condition-elements))
+                     (make-tree-object row-condition-elements))
         rows (matching-items row-pattern store)
         new-rows (matching-items row-pattern new-store)]
     (is (= (count new-rows)
@@ -568,7 +568,7 @@
         session-ephemeral (id->entity ephemeral-id (:store updated))
         query-item (first (label->elements session-ephemeral :batch-query))
         stack-item (first (label->elements session-ephemeral :batch-stack))]
-    (is (check (canonicalize (semantic-to-list query-item))
+    (is (check (canonicalize (semantic-to-tree query-item))
                (canonicalize `(~'anything
                                ("Joe"
                                 "male"
@@ -576,7 +576,7 @@
                                 (39 (~age-label)
                                     ("doubtful" "confidence"))
                                 (45 (~age-label)))))))
-    (is (check (canonicalize (semantic-to-list stack-item))
+    (is (check (canonicalize (semantic-to-tree stack-item))
                (canonicalize `(~'anything
                                ("Jane"
                                 (45 (~age-label))
@@ -596,9 +596,9 @@
           session-ephemeral (id->entity ephemeral-id (:store reupdated))
           query-item (label->element session-ephemeral :batch-query)
           stack-item (label->element session-ephemeral :batch-stack)]
-      (is (check (semantic-to-list stack-item)
+      (is (check (semantic-to-tree stack-item)
                  'anything))
-      (is (check (canonicalize (semantic-to-list query-item))
+      (is (check (canonicalize (semantic-to-tree query-item))
                  (canonicalize `(~'anything
                                  ("Joe"
                                   "male"
@@ -724,7 +724,7 @@
                    :target-key ["jane" "jane-age"]})
           new-store (:store result)]
       (is (check (item->canonical-semantic
-                  (to-list (id->entity (:item-id jane) new-store)))
+                  (to-tree (id->entity (:item-id jane) new-store)))
                  (canonicalize `("Jane"
                                  "female"
                                  (45 (~age-label))
@@ -742,7 +742,7 @@
                    :select-pattern ["jane" [:pattern]]
                    :target-key ["jane" "jane-age"]})]
       (is (check (item->canonical-semantic
-                  (to-list (id->entity (:item-id jane) (:store result))))
+                  (to-tree (id->entity (:item-id jane) (:store result))))
                  (canonicalize `("Jane"
                                  "female"
                                  (45 (~age-label))
@@ -805,7 +805,7 @@
                                    "married"
                                    (45 (~age-label))
                                    ""))))
-        (is (= (immutable-semantic-to-list
+        (is (= (immutable-semantic-to-tree
                 (id->entity new-id new-store))
                'anything)))))
 

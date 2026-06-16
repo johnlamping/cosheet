@@ -1,6 +1,6 @@
 (ns cosheet.server.format-convert
   (:require (cosheet [debug :refer [simplify-for-print]]             
-                      [entity :refer [to-list label->elements content]]
+                      [entity :refer [to-tree label->elements content]]
                       [store :refer [update-source id-valid-link?]]
                       [store-utils :refer [add-element remove-entity-by-id]]
                       [query :refer [matching-items]])))
@@ -22,7 +22,7 @@
           (fn [store column]
             (first (add-element (remove-entity-by-id store (:item-id column))
                                (:item-id condition)
-                               (to-list column))))
+                               (to-tree column))))
           store columns)))
      (first (add-element store nil '(1 :format)))
      tables)))
@@ -131,7 +131,7 @@
             (fn [store column]
               (first (add-element (remove-entity-by-id store (:item-id column))
                                   column-headers-id
-                                  (remove #{:column} (to-list column)))))
+                                  (remove #{:column} (to-tree column)))))
             store columns))))
      store
      tables)))

@@ -1,8 +1,8 @@
 (ns cosheet.server.batch-edit-render
   (:require (cosheet [reporter :refer [universal-category]]
                       [entity :refer [id->entity updating-immutable
-                                      elements to-list
-                                      make-object-list
+                                      elements to-tree
+                                      make-tree-object
                                       label-element? label->elements
                                       add-elements-to-entity
                                       target-entity]]
@@ -22,8 +22,8 @@
                                    make-sequential-template
                                    ensure-label-object]]
              [model-utils :refer [semantic-elements semantic-non-label-elements
-                                  semantic-to-list entity->canonical-semantic
-                                  object-semantic-to-list
+                                  semantic-to-tree entity->canonical-semantic
+                                  object-semantic-to-tree
                                   pattern-to-fixed-term]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
@@ -39,8 +39,8 @@
    that matches row objects."
   [query-entity]
   (pattern-to-fixed-term
-   (make-object-list
-    (map semantic-to-list (semantic-elements query-entity)))))
+   (make-tree-object
+    (map semantic-to-tree (semantic-elements query-entity)))))
 
 (defn row-match-count-R
   "Return a reporter whose value is the number of row objects matching
@@ -57,7 +57,7 @@
   [query-R query-qualifier mutable-store]
   (let-R [query-entity query-R]
     (let [query (-> query-entity
-                    semantic-to-list
+                    semantic-to-tree
                     pattern-to-fixed-term
                     (add-elements-to-entity [query-qualifier]))]
       (let-R [matches (matching-item-ids-R query mutable-store)]
@@ -118,7 +118,7 @@
   [{:keys [query-id stack-id do-not-match-query]} store]
   (let [query-entity (id->entity query-id store)
         stack-entity (id->entity stack-id store)
-        query (pattern-to-fixed-term (semantic-to-list query-entity))
+        query (pattern-to-fixed-term (semantic-to-tree query-entity))
         row-query (add-elements-to-entity query [:row-condition])
         matching-table-conditions (matching-items row-query store)]
     (distinct
@@ -137,11 +137,11 @@
   (let [stack-entity (id->entity stack-id store)
         selecting-query (-> (or item-id relative-id)
                             (id->entity store)
-                            semantic-to-list
+                            semantic-to-tree
                             pattern-to-fixed-term)
         excluding-queries (map #(-> %
                                     (id->entity store)
-                                    semantic-to-list
+                                    semantic-to-tree
                                     pattern-to-fixed-term)
                                excluding-ids)
         to-search (batch-edit-matching-rows specification store)

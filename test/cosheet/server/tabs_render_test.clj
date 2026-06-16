@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet
              [orderable :refer [split initial]]
-             [entity :refer [label->elements make-object-list]]
+             [entity :refer [label->elements make-tree-object]]
              [store :refer [new-element-store]]
              store-impl
              [store-utils :refer [add-element link-type-object
@@ -105,7 +105,7 @@
                         `(""
                           :tab
                           ("" :tab-topic :table
-                           (~(make-object-list [`(~(object-type-object '???))
+                           (~(make-tree-object [`(~(object-type-object '???))
                                                 :selector])
                             :row-condition)
                            (~'anything
@@ -121,7 +121,7 @@
              :width 0.75
              :template `("" :tab ""
                          ("" :tab-topic :table
-                                 (~(make-object-list [`(~(object-type-object '???)) :selector])
+                                 (~(make-tree-object [`(~(object-type-object '???)) :selector])
                                   :row-condition)
                                  (~'anything
                                   :column-headers :selector
@@ -138,7 +138,7 @@
               :width 1.5
               :template `("" :tab ""
                           ("" :tab-topic :table
-                                  (~(make-object-list [`(~(object-type-object '???)) :selector])
+                                  (~(make-tree-object [`(~(object-type-object '???)) :selector])
                                    :row-condition)
                                   (~'anything
                                    :column-headers :selector
@@ -156,7 +156,7 @@
                :width 0.75
                :template `("" :tab ""
                            ("" :tab-topic :table
-                                   (~(make-object-list [`(~(object-type-object '???)) :selector])
+                                   (~(make-tree-object [`(~(object-type-object '???)) :selector])
                                     :row-condition)
                                    (~'anything
                                     :column-headers :selector

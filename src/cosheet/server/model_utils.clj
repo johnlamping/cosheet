@@ -20,7 +20,7 @@
                     content->elements label->elements label->element
                     map-subparts pre-walk-entity post-walk-entity
                     target-entity entity-key
-                    make-element-list make-object-list
+                    make-element-list make-tree-object
                     add-elements-to-entity
                     entity-complexity stored-entity?
                     in-different-store]]
@@ -103,65 +103,65 @@
             immutable-store
             (map :item-id (semantic-elements item)))))
 
-(def internal-semantic-to-list)
+(def internal-semantic-to-tree)
 
-(defn internal-object-semantic-to-list
-  "The skipped element lets semantic-to-list avoid going back up a link
+(defn internal-object-semantic-to-tree
+  "The skipped element lets semantic-to-tree avoid going back up a link
   it just traversed to this object."
   [object use-order expand-identified skipped-element]
   (if (or expand-identified (not (interned-object? object)))
     (->> (cond-> (semantic-elements object)
            use-order (ordered-entities))
          (remove #(= (entity-key %) (entity-key skipped-element)))
-         (map #(internal-semantic-to-list % use-order))
-         (make-object-list))
+         (map #(internal-semantic-to-tree % use-order))
+         (make-tree-object))
     object))
 
-(defn internal-semantic-to-list
+(defn internal-semantic-to-tree
   [immutable-entity use-order]
   (cond (primitive? immutable-entity)
         immutable-entity
         (object? immutable-entity)
-        (internal-object-semantic-to-list immutable-entity use-order false nil)
+        (internal-object-semantic-to-tree immutable-entity use-order false nil)
         true
         (let [content (content immutable-entity)
               elements (cond-> (semantic-elements immutable-entity)
                          use-order (ordered-entities))
               content-semantic (if (object? content)
-                                 (internal-object-semantic-to-list
+                                 (internal-object-semantic-to-tree
                                   content use-order false immutable-entity)
-                                 (internal-semantic-to-list content use-order))
-              element-semantics (map #(internal-semantic-to-list % use-order)
+                                 (internal-semantic-to-tree content use-order))
+              element-semantics (map #(internal-semantic-to-tree % use-order)
                                      elements)]
           (make-element-list (orientation immutable-entity)
                              content-semantic
                              element-semantics))))
 
-(defn semantic-to-list
+(defn semantic-to-tree
   "Given an immutable entity, make a list representation of the
   semantic information of the entity."
   [immutable-entity]
-  (internal-semantic-to-list immutable-entity false))
+  (internal-semantic-to-tree immutable-entity false))
 
-(defn ordered-semantic-to-list
+(defn ordered-semantic-to-tree
   "Given an immutable entity, make a list representation of the
   semantic information of the entity, putting elements in the order that the
   :order information calls for."
   [immutable-entity]
-  (internal-semantic-to-list immutable-entity true))
+  (internal-semantic-to-tree immutable-entity true))
 
-(defn object-semantic-to-list
+(defn object-semantic-to-tree
   "Given an immutable object, make a list representation of its semantic
   information, even if the object is identified. Put elements in the
   order that the :order information calls for."
   [immutable-entity]
-  (internal-object-semantic-to-list immutable-entity true true nil))
+  (internal-object-semantic-to-tree immutable-entity true true nil))
 
 (defn entity->canonical-semantic
   "Return the canonical form of the semantic information for the entity.
   Only works on immutable entities."
   [entity]
-  (canonicalize (semantic-to-list entity)))
+  (canonicalize (semantic-to-tree entity)))
 
 ;;; We have various list forms of entities for different purposes:
 ;;;      query: a form suitable for use as a query. It can have nils,
@@ -241,7 +241,7 @@
     (object? pattern)
     (let [non-type (and (not (link-type-object? pattern))
                         (not (object-type-object? pattern)))]
-      (make-object-list
+      (make-tree-object
        (cond-> (transform-pattern-elements-toward-fixed-term
                 (elements pattern) options)
          (and require-not-type non-type)
@@ -256,7 +256,7 @@
   "Convert the entity to a list, and change 'anything to nil."
   [entity]
   (-> entity
-      semantic-to-list
+      semantic-to-tree
       (transform-pattern-toward-fixed-term {})))
 
 (defn entity->fixed-term-with-negations
@@ -266,7 +266,7 @@
     * If an element is not a label, then require it to not match labels."
   [entity]
   (-> entity
-      semantic-to-list
+      semantic-to-tree
       (transform-pattern-toward-fixed-term {:require-not-type true})))
 
 (defn pattern-to-fixed-term
@@ -282,7 +282,7 @@
 (defn exemplar-to-fixed-term
   "Given an exemplar entity, turn it into a fixed-term"
   [entity]
-  (pattern-to-fixed-term (semantic-to-list entity)))
+  (pattern-to-fixed-term (semantic-to-tree entity)))
 
 (defn fixed-term-to-template
   "Given a fixed-term, turn it into a template by removing any (nil :order),
@@ -323,7 +323,7 @@
        (let [;; If the fixed term is a stored entity; we only want to
              ;; match its semantic parts.
              semantic (if (stored-entity? fixed-term)
-                        (semantic-to-list fixed-term)
+                        (semantic-to-tree fixed-term)
                         fixed-term)
              [matching-target remaining-targets]
              (extract-first #(extended-by? semantic %) unmatched-targets)]
@@ -718,7 +718,7 @@
                    store)))
 
 (def label-object-template
-  (make-object-list [`(~'anything (~name-label)) `(~link-type)]))
+  (make-tree-object [`(~'anything (~name-label)) `(~link-type)]))
 
 ;;; A table item has a :table element, and has the following elements
 ;;; that describe the table:
@@ -773,12 +773,12 @@
   "Return the row template from the row condition. The template is the
    object each row must extend."
   [row-condition]
-  (object-semantic-to-list (content row-condition)))
+  (object-semantic-to-tree (content row-condition)))
 
 (defn table-row-template
   "Return the row condition as a template."
   [table-item]
-  (object-semantic-to-list
+  (object-semantic-to-tree
    (table-row-condition-object table-item)))
 
 (defn tab-table-element
@@ -790,7 +790,7 @@
   `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
     :table
-    (~(make-object-list (conj row-condition-elements :selector))
+    (~(make-tree-object (conj row-condition-elements :selector))
      :row-condition)
     ~(concat '(anything :column-headers :selector)
              header-elements)))
@@ -936,7 +936,7 @@
   "Given a sequence of rows, each a sequence of values,
   add a table corresponding to them to the store, with its own tab."
   [store table-name rows]
-  (let [rows-template (make-object-list
+  (let [rows-template (make-tree-object
                        [`(~(object-type-object table-name))])
         [store headers] (add-rows store rows rows-template)]
     (add-table-tab store table-name headers)))

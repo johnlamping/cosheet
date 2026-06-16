@@ -1,7 +1,7 @@
 (ns cosheet.query
   (:require (cosheet [entity :refer [content elements
                                       label->elements label->content
-                                      to-list object? primitive? orientation
+                                      to-tree object? primitive? orientation
                                       make-element-list
                                       add-elements-to-entity]])))
 
@@ -279,4 +279,4 @@
    of the list form of the environments."
   (seq (for [env envs]
          (zipmap (keys env)
-                 (map #(to-list %) (vals env))))))
+                 (map #(to-tree %) (vals env))))))

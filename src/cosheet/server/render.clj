@@ -13,7 +13,7 @@
             (cosheet.server
              [order-utils :refer [semantic-element?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
-                                  semantic-to-list]]
+                                  semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
              [table-render :refer [render-table-DOM-R get-table-rendering-data]]
@@ -385,7 +385,7 @@
                   row-selector (app-R first
                                  (label->elements
                                   ephemeral-item :batch-row-selector))
-                  query-content (semantic-to-list row-selector)]
+                  query-content (semantic-to-tree row-selector)]
             (when (and query-content (not= query-content 'anything))
               selector-items)))))))
 

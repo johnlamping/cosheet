@@ -3,7 +3,7 @@
                                       label-element? object? label-object?
                                       link-type-object? object-type-object?
                                       name-element?
-                                      link-type object-type name-label make-object-list
+                                      link-type object-type name-label make-tree-object
                                       label->elements
                                       make-element-list content orientation]]
                       [store :refer [item-id?]]
@@ -89,7 +89,7 @@
                         :object-type object-type)]
     (if (and is-label has-name)
       template
-      (make-object-list
+      (make-tree-object
        (cond-> (if (universal-template? template)
                  []
                  (do (assert (object? template))

@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [store :refer [new-element-store]]
-             [entity :as entity  :refer [to-list id->entity name-label]]
+             [entity :as entity  :refer [to-tree id->entity name-label]]
              [canonical :refer [canonicalize]]
              [store-utils :refer [add-element add-universal-objects
                                   add-link-type-object
@@ -55,15 +55,15 @@
         item-b3 (id->entity item-b3-id store)
         item-21 (id->entity item-21-id store)]
     (let [competing (competing-siblings item-a1)]
-      (is (check (map entity/to-list competing)
+      (is (check (map entity/to-tree competing)
                  (as-set ['(anything 1) '(2 1) '(2 3) '("" 3)])))
       (is (not-any? #(= % item-a1) competing)))
     (let [competing (competing-siblings item-21)]
-      (is (check (map entity/to-list competing)
+      (is (check (map entity/to-tree competing)
                  (as-set ['(2 1) '(2 3)])))
       (is (not-any? #(= % item-21) competing)))
     (let [competing (competing-siblings item-b3)]
-      (is (check (map entity/to-list competing)
+      (is (check (map entity/to-tree competing)
                  ['(anything 1)])))))
 
 (deftest display-type-test

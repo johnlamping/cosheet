@@ -53,7 +53,7 @@
 
 (defn store-as-list [store]
   (map
-   #(entity/to-list (entity/id->entity % store))
+   #(entity/to-tree (entity/id->entity % store))
    (filter #(nil? (store/id->target store %))
            (first (store/candidate-matching-ids store nil)))))
 
@@ -201,7 +201,7 @@
    of the current value of the environments."
   (seq (for [env envs]
          (zipmap (keys env)
-                 (map #(current-value (entity/to-list %)) (vals env))))))
+                 (map #(current-value (entity/to-tree %)) (vals env))))))
 
 ;;; Showing items in a file.
 

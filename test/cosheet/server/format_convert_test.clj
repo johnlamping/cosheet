@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [orderable :as orderable]
-             [entity  :refer [to-list]]
+             [entity  :refer [to-tree]]
              [canonical :refer [canonicalize]]
              [store :refer [new-element-store]]
              store-impl
@@ -172,44 +172,44 @@
           tables-7 (matching-items '(nil :table) store-7)
           versions-7 (matching-items '(nil :format) store-7)]
       (is (= (count tables-1) 1))
-      (is (check (canonicalize (to-list (first tables-1)))
+      (is (check (canonicalize (to-tree (first tables-1)))
                  (canonicalize table-list-1)))
       (is (= (count versions-1) 1))
-      (is (= (to-list (first versions-1)) '(1 :format)))
+      (is (= (to-tree (first versions-1)) '(1 :format)))
       
       (is (= (count tables-3) 1))
-      (is (check (canonicalize (to-list (first tables-3)))
+      (is (check (canonicalize (to-tree (first tables-3)))
                  (canonicalize table-list-3)))
       (is (= (count versions-3) 1))
-      (is (= (to-list (first versions-3)) '(3 :format)))
+      (is (= (to-tree (first versions-3)) '(3 :format)))
       
       (is (= (count tables-4) 1))
-      (is (check (canonicalize (to-list (first tables-4)))
+      (is (check (canonicalize (to-tree (first tables-4)))
                  (canonicalize table-list-4)))
       (is (= (count versions-4) 1))
-      (is (= (to-list (first versions-4)) '(4 :format)))
+      (is (= (to-tree (first versions-4)) '(4 :format)))
  
       (is (= (count tables-5) 1))
-      (is (check (canonicalize (to-list (first tables-5)))
+      (is (check (canonicalize (to-tree (first tables-5)))
                  (canonicalize table-list-5)))
       (is (= (count versions-5) 1))
       ;; We can't test this any more, because vectors are no longer
       ;; allowed as contents.
       (comment
-        (is (= (to-list (first versions-5)) '([5] :format))))
+        (is (= (to-tree (first versions-5)) '([5] :format))))
       
       (is (= (count tables-6) 1))
-      (is (check (canonicalize (to-list (first tables-6)))
+      (is (check (canonicalize (to-tree (first tables-6)))
                  (canonicalize table-list-6)))
       (is (= (count versions-6) 1))
-      (is (= (to-list (first versions-6)) '(6 :format)))
+      (is (= (to-tree (first versions-6)) '(6 :format)))
 
       (is (= (count tables-7) 1))
-      (println "!!!" (to-list (first tables-7)))
-      (is (check (canonicalize (to-list (first tables-7)))
+      (println "!!!" (to-tree (first tables-7)))
+      (is (check (canonicalize (to-tree (first tables-7)))
                  (canonicalize table-list-7)))
       (is (= (count versions-7) 1))
-      (is (= (to-list (first versions-7)) '(7 :format)))
+      (is (= (to-tree (first versions-7)) '(7 :format)))
 
       (is (= (convert-to-current store-0) store-7))
       (is (= (convert-to-current store-1) store-7))

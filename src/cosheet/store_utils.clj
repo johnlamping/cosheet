@@ -11,10 +11,10 @@
                     uniquely-identified-object?
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
-                    content orientation elements to-list
+                    content orientation elements to-tree
                     in-different-store
                     label->elements content->elements
-                    make-object-list name-label link-type object-type]]
+                    make-tree-object name-label link-type object-type]]
     [query :refer [matching-items extended-by?]]
     query-impl)))
 
@@ -49,7 +49,7 @@
   "Find an object with the given name, and with the type that matches
    the template's type."
   [store name template]
-  (let [query (make-object-list [`(~name (~name-label))])
+  (let [query (make-tree-object [`(~name (~name-label))])
         matches (matching-items query store) 
         filtered (filter (template-type-test template) matches)]
     (when (seq filtered)
@@ -65,15 +65,15 @@
   (assert object? template)
   (if-let [object (find-object-by-name store name template)]
     (do (assert (extended-by? template object)
-                [(map to-list (elements template))
-                 (map to-list (elements object))])
+                [(map to-tree (elements template))
+                 (map to-tree (elements object))])
         [store (:item-id object)])
     (let [;; Remove any existing name in the template, replacing it
           ;; with the name we are looking for.
           pattern (-> (remove #(seq (content->elements % name-label))
                               (elements template))
                       (conj `(~name (~name-label)))
-                      make-object-list)]
+                      make-tree-object)]
       (add-object-with-given-elements store (elements pattern)))))
 
 (defn add-object
@@ -143,7 +143,7 @@
 (defn link-type-object
   "Return the list representation of a link type object with the given name."
   [name]
-  (make-object-list [`(~name (~name-label)) `(~link-type)]))
+  (make-tree-object [`(~name (~name-label)) `(~link-type)]))
 
 (defn add-link-type-object
   "Add a label object with the given name to the store.
@@ -154,7 +154,7 @@
 (defn object-type-object
   "Return the list representation of a link type object with the given name."
   [name]
-  (make-object-list [`(~name (~name-label)) `(~object-type)]))
+  (make-tree-object [`(~name (~name-label)) `(~object-type)]))
 
 (defn add-object-type-object
   "Add an object-type object with the given name to the store.

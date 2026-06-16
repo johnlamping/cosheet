@@ -4,8 +4,8 @@
             (cosheet
              [store :refer :all]
              [store-utils :refer :all]
-             [entity :refer [to-list id->object id->element
-                             make-element-list make-object-list
+             [entity :refer [to-tree id->object id->element
+                             make-element-list make-tree-object
                              elements forward-elements in-different-store
                              name-label link-type object-type]]
              entity-impl
@@ -21,20 +21,20 @@
   (let [s (add-universal-objects (new-element-store))
         [s1 id] (add-element s (make-item-id "0")
                              `(77 (~(link-type-object "test"))))
-        [s2 id1] (add-object s1 (make-object-list '("Hello")))
+        [s2 id1] (add-object s1 (make-tree-object '("Hello")))
         ;; A reversed link. "Fred" is the source.
         [s3 id2] (add-element s2 "Fred" (make-element-list
                                          :target
                                          (id->object id1 s2)
                                          `((~(link-type-object "by")))))
-        [s4 id3] (add-element s3 id `(~(make-object-list '(1)) 3))
+        [s4 id3] (add-element s3 id `(~(make-tree-object '(1)) 3))
         [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
         [s6 id6] (add-object s5
-                             (make-object-list
+                             (make-tree-object
                               [`(1 (~(id->object (make-item-id "name") nil)))
                                2]))
         [s id7] (add-object s6
-                            (make-object-list
+                            (make-tree-object
                              [`(1
                                 (~(id->object (make-item-id "name") nil)))]))
         test-label (find-object-by-name s "test" (link-type-object ""))
@@ -43,21 +43,21 @@
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
     (is (= id6 id7)) ; check that we found the existing object.
-    (is (check (to-list (id->element id s))
+    (is (check (to-tree (id->element id s))
                (as-set `(77
                          (~test-label)
-                         (~(make-object-list '(1)) 3)))))
-    (is (= (to-list (id->element id2 s))
+                         (~(make-tree-object '(1)) 3)))))
+    (is (= (to-tree (id->element id2 s))
            `("Fred" (~by-label))))
-    (is (check (to-list (id->object id1 s))
-               (as-set (make-object-list
+    (is (check (to-tree (id->object id1 s))
+               (as-set (make-tree-object
                         `("Hello"
                           ("Fred" (~by-label))
                           (~(id->object (make-item-id "a") s)))))))
-    (is (check (to-list (id->element id3 s))
-               `(~(make-object-list '(1)) 3)))
+    (is (check (to-tree (id->element id3 s))
+               `(~(make-tree-object '(1)) 3)))
     (is (= id7 id6))
-    (is (check (map to-list (elements (id->object id6 s)))
+    (is (check (map to-tree (elements (id->object id6 s)))
                (as-set [`(1 (~(id->object (make-item-id "name") s)))
                          2])))))
 
@@ -75,14 +75,14 @@
         (add-element s0 (make-item-id "0")
                     `("foo" (~test-label)))
         [added-store2 e2]
-        (add-element added-store e1 `(~(make-object-list '("Fred" 1))
+        (add-element added-store e1 `(~(make-tree-object '("Fred" 1))
                                       (~by-label)))
         removed-store (remove-entity-by-id added-store2 e2)]
     (println (canonicalize (id->element e1 added-store2)))
     (is (check (canonicalize (id->element e1 added-store2))
                (canonicalize `("foo"
                                (~test-label)
-                               (~(make-object-list '("Fred" 1))
+                               (~(make-tree-object '("Fred" 1))
                                 (~by-label))))))
     (is (= (canonicalize (id->element e1 removed-store))
            (canonicalize `("foo" (~test-label)))))
@@ -95,14 +95,14 @@
         link-type-in-s (in-different-store link-type s)
         object-type-in-s (in-different-store object-type s)]
     (is (check
-         (map to-list (forward-elements name-label-in-s))
+         (map to-tree (forward-elements name-label-in-s))
          (as-set [`(~link-type-in-s)
                   `("name" (~name-label-in-s))])))
     (is (check
-         (map to-list (forward-elements link-type-in-s))
+         (map to-tree (forward-elements link-type-in-s))
          [`(~object-type-in-s)]))
     (is (check
-         (map to-list (forward-elements object-type-in-s))
+         (map to-tree (forward-elements object-type-in-s))
          [`(~object-type-in-s)]))))
 
 (deftest add-object-type-object-test
@@ -112,7 +112,7 @@
         name-label-in-s (in-different-store name-label store)
         object-type-in-s (in-different-store object-type store)]
     (is (check
-         (map to-list (forward-elements obj))
+         (map to-tree (forward-elements obj))
          (as-set [`("foo" (~name-label-in-s))
                   `(~object-type-in-s)])))))
 
@@ -123,7 +123,7 @@
         name-label-in-s (in-different-store name-label store)
         link-type-in-s (in-different-store link-type store)]
     (is (check
-         (map to-list (forward-elements obj))
+         (map to-tree (forward-elements obj))
          (as-set [`("foo" (~name-label-in-s))
                   `(~link-type-in-s)])))))
 

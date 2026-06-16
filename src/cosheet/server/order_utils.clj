@@ -12,7 +12,7 @@
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements orientation
                     label->elements label->content
-                    id->entity make-element-list make-object-list
+                    id->entity make-element-list make-tree-object
                     element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
     [utils :refer [thread-map with-latest-value update-new-further-action]]
@@ -233,7 +233,7 @@
   [object order]
   (let [[elements remainder] (thread-map add-order-elements-to-element
                                          (elements object) order)]
-    [(make-object-list elements) remainder]))
+    [(make-tree-object elements) remainder]))
 
 (defn add-order-elements-to-element
   "Use the specified order to add order information to the entity, as if

@@ -23,11 +23,11 @@
 ;;; Elements give a way of overlaying a hierarchical structure on
 ;;; information in a store, or on information that might be stored
 ;;; there. That makes them more convenient than just a bunch of
-;;; links. They give a convenient way to describe: * What should be
-;;; displayed in a cell.  * Information that should be added to
-;;; entities in the store.  * Queries for searches over the store (to
-;;; find entities matching an element or containing matches to an
-;;; element).
+;;; links. They give a convenient way to describe:
+;;;    * What should be displayed in a cell.
+;;;    * Information that should be added to entities in the store.
+;;;    * Queries for searches over the store (to find entities matching
+;;;      an element or containing matches to an element).
 
 ;;; An element's description consists of
 ;;;   * a content, which is an entity.
@@ -180,7 +180,7 @@
     will be independent of any particular store.
 
     Note that the key ignores the orientation of elements. Both query
-    matching and to-list rely on that to avoid infinite loops. The
+    matching and to-tree rely on that to avoid infinite loops. The
     only other place the key is used is to compare objects, which have
     no orientation.")
 
@@ -367,7 +367,7 @@
       content
       (cons content elements))))
 
-(defn make-object-list
+(defn make-tree-object
   "Make the list representation of the described object."
   [elements]
   ;; Make sure the elements we are given respect the list form.
@@ -385,7 +385,7 @@
                              (content entity)
                              (concat (elements entity) elements-to-add))
           (object? entity)
-          (make-object-list (concat (elements entity) elements-to-add))
+          (make-tree-object (concat (elements entity) elements-to-add))
           :else (make-element-list :source entity elements-to-add))))
 
 (defn map-subparts
@@ -402,7 +402,7 @@
                            (f (content entity))
                            (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
-        (make-object-list (keep f (elements entity)))
+        (make-tree-object (keep f (elements entity)))
         :else
         entity))
 
@@ -432,11 +432,11 @@
                              %)
                           entity))
 
-(defn immutable-to-list-generator [object-to-list]
+(defn immutable-to-tree-generator [object-to-tree]
   "Internal function that takes an object to list function and returns a
   function from immutable entity and element to skip to a list,
   handling objects with the object to list function. The
-  object-to-list function must also take an object and an element to
+  object-to-tree function must also take an object and an element to
   skip.
   The element to skip only has an effect when converting an non-interned
   object. In that case, an element of the object with the same key
@@ -449,18 +449,18 @@
   ;; recursively. But that resulted in a compile error, where the
   ;; letfn definition was not available deep inside.
   (fn [entity skipped-element]
-    (let [recurse (immutable-to-list-generator object-to-list)]
+    (let [recurse (immutable-to-tree-generator object-to-tree)]
       (cond
         (primitive? entity) entity
-        (object? entity) (object-to-list entity skipped-element)
+        (object? entity) (object-to-tree entity skipped-element)
         true (make-element-list (orientation entity)
                                 (recurse (content entity) entity)
                                 (map #(recurse % nil) (elements entity)))))))
 
-(defn immutable-object-to-list [object skipped-element]
+(defn immutable-object-to-tree [object skipped-element]
   (if (not (presumed-interned-object? object))
-    (let [recurse (immutable-to-list-generator immutable-object-to-list)]
-      (make-object-list (map #(recurse % nil)
+    (let [recurse (immutable-to-tree-generator immutable-object-to-tree)]
+      (make-tree-object (map #(recurse % nil)
                              ;; We rely on entity-key ignoring
                              ;; orientation, so that the two
                              ;; orientations of a relation will match.
@@ -469,19 +469,19 @@
                                      (elements object)))))
     object))
 
-(defn to-list [entity]
+(defn to-tree [entity]
   "Return a list form of the entity."
   (if (mutable-entity? entity)
     ;; We want to run with updating-immutable, relative to an
     ;; immutable store, but for objects, we want to return the
     ;; corresponding object from the mutable store.
     (let-R [immutable (updating-immutable entity)]
-      ((immutable-to-list-generator
+      ((immutable-to-tree-generator
         (fn [object skipped-element] (if (stored-entity? object)
                                        (in-different-store object entity)
                                        object)))
        immutable nil))
-    ((immutable-to-list-generator immutable-object-to-list)
+    ((immutable-to-tree-generator immutable-object-to-tree)
      entity nil)))
 
 (defn entity-complexity
@@ -513,7 +513,7 @@
       (assert (= (count elements) 1)
               (apply str "entity "  (:id (:item-id entity))
                      " has " (count elements) " elements for label " label
-                     " entity contents: " (current-value (to-list entity))
+                     " entity contents: " (current-value (to-tree entity))
                      " element contents: "
                      (interleave (repeat " ")
                                  (map #(current-value (content %)) elements))))

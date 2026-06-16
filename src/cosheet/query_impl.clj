@@ -5,10 +5,10 @@
                                       stored-entity?
                                       id->entity entity-key
                                       orientation content elements
-                                      make-element-list make-object-list
+                                      make-element-list make-tree-object
                                       label->elements
                                       label->content
-                                      to-list
+                                      to-tree
                                       label-element?]]
                       [query :refer [extended-by-m?
                                      matching-extensions-m
@@ -259,7 +259,7 @@
   the term, using the format of combine-exact-matches."
   [term env]
   (let [[contextualized exact-match] (contextualize-variable term env)]
-    (let [as-list (to-list contextualized)]
+    (let [as-list (to-tree contextualized)]
       (if (is-fixed-term-special-form? as-list)
         [nil false]
         (do (assert (not (special-form? as-list)))
@@ -278,7 +278,7 @@
                                                             dropped-elements))
                                                  converted-kept-exact))]
                 (if (object? as-list)
-                  [(make-object-list converted-kept-elements)
+                  [(make-tree-object converted-kept-elements)
                    exact-element-match]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]

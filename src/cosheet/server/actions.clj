@@ -20,7 +20,7 @@
                    id->string string->id id->source
                    Store]]
     [store-utils :refer [remove-entity-by-id add-object]]
-    [entity :refer [id->entity id->element make-object-list
+    [entity :refer [id->entity id->element make-tree-object
                     elements content content->elements
                     label->element label->elements label->content
                     name-label object? element? interned-object? label-element?
@@ -37,7 +37,7 @@
                          client-id->relative-ids
                          relative-ids->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
-                         ordered-semantic-to-list entity->canonical-semantic
+                         ordered-semantic-to-tree entity->canonical-semantic
                          create-possible-selector-entities
                          exemplar-to-fixed-term remove-semantic-elements
                          label-object-template
@@ -45,7 +45,7 @@
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
-                         object-semantic-to-list]]
+                         object-semantic-to-tree]]
     [render-utils :refer [sequential-template?]]
     [order-utils :refer [furthest-item order-element-for-item]])))
 
@@ -169,7 +169,7 @@
               ;; The template might have a generic name. Remove it, or
               ;; we'll make an object with both that and the name the
               ;; user set.
-              template (make-object-list
+              template (make-tree-object
                         (remove #(and (seq (content->elements % name-label))
                                       (= (content %) ""))
                                 (elements template)))
@@ -210,7 +210,7 @@
         (let [to (parse-string-as-number (clojure.string/trim to))]
           (println "Setting" (count subject-ids) "items from" from "to"
                    (if (object-id? to)
-                     (object-semantic-to-list (id->entity to store))
+                     (object-semantic-to-tree (id->entity to store))
                      to))
           (->
            (reduce
@@ -368,7 +368,7 @@
              (fn [[_ [store order]] [item-label ids]]
                (let [item (label->element ephemeral-item item-label)
                      target-id (:item-id item)
-                     new-lists (map #(ordered-semantic-to-list
+                     new-lists (map #(ordered-semantic-to-tree
                                       (id->entity % store))
                                     ids)
                      store (remove-semantic-elements store (:item-id item))]

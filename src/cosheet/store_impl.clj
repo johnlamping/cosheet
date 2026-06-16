@@ -210,7 +210,7 @@
     ;; Disallow links between two non-interned objects that both
     ;; already have links to non-interned objects. This ensures that
     ;; the relationships between non-interned objects will not have
-    ;; any loops. Both queries and Entity/to-list rely on that.  We
+    ;; any loops. Both queries and Entity/to-tree rely on that.  We
     ;; can't put this test in add-link-from-triple because that is
     ;; called to read in a store, where, depending on the order links
     ;; are read, this condition might be violated, even though there

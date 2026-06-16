@@ -6,12 +6,12 @@
                       store-impl
                       [store-utils :refer [add-element link-type-object
                                            add-link-type-object]]
-                      [entity :refer [to-list id->element id->object content
+                      [entity :refer [to-tree id->element id->object content
                                       recursively-in-different-store
                                       elements label->elements mutable-entity?
                                       primitive? entity-key
-                                      make-object-list make-element-list
-                                      immutable-object-to-list
+                                      make-tree-object make-element-list
+                                      immutable-object-to-tree
                                       add-elements-to-entity
                                       link-type name-label]]
                       entity-impl
@@ -22,9 +22,9 @@
             ))
 
 (defn listify-map-values
-  "Given a map whose values are entities, run to-list on them."
+  "Given a map whose values are entities, run to-tree on them."
   [map]
-  (into {} (for [[k v] map] [k (to-list v)])))
+  (into {} (for [[k v] map] [k (to-tree v)])))
 
 (deftest extended-by-test
   (let [element0 `(3 (~(link-type-object "Foo")))
@@ -63,15 +63,15 @@
                            '(3 ("foo" (4 true))))))
     (is (not (extended-by? '(3 2 2)
                            '(3 2))))
-    (is (extended-by? (make-object-list
+    (is (extended-by? (make-tree-object
                      [`(1 (~(id->object (make-item-id "name") nil)))])
-                      (make-object-list
+                      (make-tree-object
                        [`(1 (~(id->object (make-item-id "name") nil)))
                         2])))
-    (is (extended-by? (make-object-list
+    (is (extended-by? (make-tree-object
                        [`(1 (~(id->object (make-item-id "name") nil)))
                         2])
-                      (make-object-list
+                      (make-tree-object
                        [`(1 (~(id->object (make-item-id "name") nil)))
                         2])))
     (is (extended-by? `(~(id->object (make-item-id "name") nil))
@@ -106,36 +106,36 @@
                       '(1 :a (:b :c))))
     (is (not (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
                            '(1 :a (:b :c)))))
-    (is (extended-by? (make-object-list '(1 2))
-                      (make-object-list '(1 2 3))))
-    (is (extended-by? (make-object-list '(1 2))
-                      (make-object-list '(1 2))))
-    (is (extended-by? (make-object-list
+    (is (extended-by? (make-tree-object '(1 2))
+                      (make-tree-object '(1 2 3))))
+    (is (extended-by? (make-tree-object '(1 2))
+                      (make-tree-object '(1 2))))
+    (is (extended-by? (make-tree-object
                        [`(1 (~(id->object (make-item-id "name") nil)))])
-                      (make-object-list
+                      (make-tree-object
                        [`(1 (~(id->object (make-item-id "name") nil)))
                         2])))
-    (is (not (extended-by? (make-object-list '(1 2 3))
-                           (make-object-list '(1 2)))))
+    (is (not (extended-by? (make-tree-object '(1 2 3))
+                           (make-tree-object '(1 2)))))
     (is (not (extended-by? (make-element-list :source 1 '(1 2))
-                           (make-object-list '(1 2)))))
-    (is (not (extended-by? (make-object-list '(1 2))
+                           (make-tree-object '(1 2)))))
+    (is (not (extended-by? (make-tree-object '(1 2))
                            (make-element-list :source 1 '(1 2)))))
     (is (not (extended-by? (make-element-list :source 1 '(2))
-                           (make-object-list '(1 2)))))
-    (is (not (extended-by? (make-object-list '(1 2))
+                           (make-tree-object '(1 2)))))
+    (is (not (extended-by? (make-tree-object '(1 2))
                            (make-element-list :source 1 '(2)))))
-    (is (not (extended-by? (make-object-list
+    (is (not (extended-by? (make-tree-object
                             [`(1 (~(id->object (make-item-id "name") nil)))
                              2])
-                           (make-object-list
+                           (make-tree-object
                             [`(1 (~(id->object (make-item-id "name") nil)))]))))
     (is (extended-by? object-foo object-foo))
     (is (extended-by? object-foo object-bare-foo))
     (is (extended-by? object-bare-foo object-foo))
-    (is (extended-by? (make-object-list nil) object-bare-foo))
+    (is (extended-by? (make-tree-object nil) object-bare-foo))
     (is (not (extended-by? object-foo
-                           (make-object-list nil))))
+                           (make-tree-object nil))))
     ;; Objects by themselves can't stand in for entities with that content.
     (is (not (extended-by? object-foo
                            (make-element-list :source object-foo nil))))
@@ -219,15 +219,15 @@
          ['(1 2 (3 (7 6))) true]))
   (let [reversed (fn [content elements]
                    (make-element-list :target content elements))]
-    (is (= (closest-template (make-object-list
+    (is (= (closest-template (make-tree-object
                               `(2 ~(reversed (variable "bar") '(3))))
                              {"bar" 7})
-           [(make-object-list `(2 ~(reversed 7 '(3)))) true]))
-    (is (= (closest-template (make-object-list
-                              `(2 (3 (~(make-object-list [(variable "bar")
+           [(make-tree-object `(2 ~(reversed 7 '(3)))) true]))
+    (is (= (closest-template (make-tree-object
+                              `(2 (3 (~(make-tree-object [(variable "bar")
                                                           (reversed 7 nil)])))))
                              {})
-           [(make-object-list `(2 (3 (~(make-object-list [nil
+           [(make-tree-object `(2 (3 (~(make-tree-object [nil
                                                           (reversed 7 nil)])))))
             #{"bar"}]))
     (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
@@ -284,7 +284,7 @@
     (is (not (minimal-label? `(~foo-obj "bar")))))
   (is (minimal-label? `(~(id->object (->ItemId -2) nil))))
   (is (not (minimal-label? `(~(id->object (->ItemId -2) nil) "bar"))))
-  (is (not (minimal-label? `(~(make-object-list '()))))))
+  (is (not (minimal-label? `(~(make-tree-object '()))))))
 
 (deftest matching-extensions-test
   (is (= (matching-extensions 1 {} 1) [{}]))
@@ -321,19 +321,19 @@
          [{:a :b}]))
 
   ;; Objects
-  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
-                              (make-object-list '(1 2)))
+  (is (= (matching-extensions (make-tree-object '(1 2)) {:a :b}
+                              (make-tree-object '(1 2)))
          [{:a :b}]))
-  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
-                              (make-object-list '(1 (2 3) 4)))
+  (is (= (matching-extensions (make-tree-object '(1 2)) {:a :b}
+                              (make-tree-object '(1 (2 3) 4)))
          [{:a :b}]))
-  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
-                              (make-object-list '(1)))
+  (is (= (matching-extensions (make-tree-object '(1 2)) {:a :b}
+                              (make-tree-object '(1)))
          nil))
   (is (= (matching-extensions '(1 2) {:a :b}
-                              (make-object-list '(0 1 2)))
+                              (make-tree-object '(0 1 2)))
          nil))
-  (is (= (matching-extensions (make-object-list '(1 2)) {:a :b}
+  (is (= (matching-extensions (make-tree-object '(1 2)) {:a :b}
                               '(0 1 2))
          nil))
 
@@ -350,14 +350,14 @@
   (is (= (matching-extensions (make-element-list :source 1 '(2 3)) {:a :b}
                               (make-element-list :target 1 '(2 3)))
          nil))
-  (is (= (matching-extensions (make-object-list
+  (is (= (matching-extensions (make-tree-object
                                `(~(make-element-list :target 1 '(2 3)))) {:a :b}
-                              (make-object-list
+                              (make-tree-object
                                `(~(make-element-list :target 1 '(2 3)))))
          [{:a :b}]))
-  (is (= (matching-extensions (make-object-list
+  (is (= (matching-extensions (make-tree-object
                                `(~(make-element-list :target 1 '(2 3)))) {:a :b}
-                              (make-object-list
+                              (make-tree-object
                                `(~(make-element-list :source 1 '(2 3)))))
          nil))
   
@@ -388,8 +388,8 @@
                               (make-element-list :target 1 '(2 3)))
          [{:a :b, "foo" (make-element-list :target 1 '(2 3))}]))
   (is (= (matching-extensions (variable "foo") {:a :b}
-                              (make-object-list '(2 3)))
-         [{:a :b, "foo" (make-object-list '(2 3))}]))
+                              (make-tree-object '(2 3)))
+         [{:a :b, "foo" (make-tree-object '(2 3))}]))
   (is (= (matching-extensions `(1 ~(variable "foo")) {:a :b}
                               '(1 2))
          [{:a :b, "foo" 2}]))
@@ -464,28 +464,28 @@
                               '(1 (2 :foo)))
          [{:a :b, "foo" 2}]))
   (is (= (matching-extensions
-          (make-object-list `(~(variable
+          (make-tree-object `(~(variable
                                 "foo" (make-element-list :source 2 nil))))
           {:a :b}
-          (make-object-list `(~(make-element-list :source 2 '(:foo)))))
+          (make-tree-object `(~(make-element-list :source 2 '(:foo)))))
          [{:a :b, "foo" (make-element-list :source 2 '(:foo))}]))
   (is (= (matching-extensions
-          (make-object-list `(~(variable
+          (make-tree-object `(~(variable
                                 "foo" (make-element-list :target 2 nil))))
           {:a :b}
-          (make-object-list `(~(make-element-list :target 2 '(:foo)))))
+          (make-tree-object `(~(make-element-list :target 2 '(:foo)))))
          [{:a :b, "foo" (make-element-list :target 2 '(:foo))}]))
   (is (= (matching-extensions
-          (make-object-list `(~(variable
+          (make-tree-object `(~(variable
                                 "foo" (make-element-list :target 2 nil))))
           {:a :b}
-          (make-object-list `(~(make-element-list :source 2 '(:foo)))))
+          (make-tree-object `(~(make-element-list :source 2 '(:foo)))))
          nil))
   (is (= (matching-extensions
-          (make-object-list `(~(variable
+          (make-tree-object `(~(variable
                                 "foo" (make-element-list :source 2 nil))))
           {:a :b}
-          (make-object-list `(~(make-element-list :target 2 '(:foo)))))
+          (make-tree-object `(~(make-element-list :target 2 '(:foo)))))
          nil))
   (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
                               '(1 (3 :foo)))
@@ -538,7 +538,7 @@
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))
-  (let [blank-label-template `(~(make-object-list [`(~link-type)
+  (let [blank-label-template `(~(make-tree-object [`(~link-type)
                                                    `("" (~name-label))]))
         [sa ia] (get-new-object-id (new-element-store))
         ib (make-item-id "ib") ;; a named object
@@ -552,25 +552,25 @@
                                           (~(link-type-object "C"))))
         [s5 id5] (add-element s4 ia (make-element-list
                                      :target (id->object ib s4) '("reversed")))
-        [s id6] (add-element s5 ia `(~(make-object-list '(1)) 3))]
+        [s id6] (add-element s5 ia `(~(make-tree-object '(1)) 3))]
     (let [matches (matching-elements '(nil ("A"))
                                      (id->object ia s))]
-      (is (= (map to-list matches)
+      (is (= (map to-tree matches)
              ['(1 ("a" 3))])))
     (let [matches (matching-elements nil
                                      (id->object ia s))]
-      (is (check (map to-list matches)
+      (is (check (map to-tree matches)
                  (as-set ['(1 ("a" 3))
                           '(3 (4 5))
-                          `(~(make-object-list '(1)) 3)
+                          `(~(make-tree-object '(1)) 3)
                           (make-element-list
                            :target (id->object ib s) '("reversed"))]))))
     ;; Test elements of an element.
     (let [matches (matching-elements "A" (id->element id1 s))]
-      (is (= (map to-list matches)
+      (is (= (map to-tree matches)
              ['("a" 3)])))
     ;; Test matching an element with an object as content.
-    (let [matches (matching-elements `(~(make-object-list '(1)))
+    (let [matches (matching-elements `(~(make-tree-object '(1)))
                                      (id->object ia s))]
       (is (= matches
              [(id->element id6 s)])))
@@ -612,7 +612,7 @@
     (let [c-obj (first (matching-items (link-type-object "C") s))
           matches (matching-elements `(nil (~c-obj))
                                      (id->object oid1 s))]
-      (is (= (map to-list matches)
+      (is (= (map to-tree matches)
              [`(2 (~c-obj) (~c-obj))])))))
 
 (deftest query-matches-test
@@ -650,11 +650,11 @@
                             s-relationship)
              [{}])))
     ;; objects
-    (is (= (query-matches (make-object-list '(nil)) s2) [{}]))
-    (is (= (query-matches (make-object-list '((:a))) s2) [{}]))
-    (is (= (query-matches (make-object-list '((:a 1))) s2) [{}]))
-    (is (= (query-matches (make-object-list '((:a 2))) s2) nil))
-    (is (= (query-matches (make-object-list '((:d))) s2) nil))
+    (is (= (query-matches (make-tree-object '(nil)) s2) [{}]))
+    (is (= (query-matches (make-tree-object '((:a))) s2) [{}]))
+    (is (= (query-matches (make-tree-object '((:a 1))) s2) [{}]))
+    (is (= (query-matches (make-tree-object '((:a 2))) s2) nil))
+    (is (= (query-matches (make-tree-object '((:d))) s2) nil))
     ;; variables as top level entities
     (is (check (set (envs-to-list (query-matches (variable "v") s2)))
                #{{"v" (id->object (make-item-id "a") s2)}
@@ -671,19 +671,19 @@
                  {"v" 4}
                  {"v" 3}}))
     (is (= (set (envs-to-list
-                 (query-matches (variable "v" (make-object-list '((:a)))) s2)))
+                 (query-matches (variable "v" (make-tree-object '((:a)))) s2)))
            #{{"v" (id->object (make-item-id "a") s2)}}))
     (is (= (set (envs-to-list
                  (query-matches
-                  (variable "v" (make-object-list '((:a 1)))) s2)))
+                  (variable "v" (make-tree-object '((:a 1)))) s2)))
            #{{"v" (id->object (make-item-id "a") s2)}}))
     (is (= (set (envs-to-list
                  (query-matches
-                  (variable "v" (make-object-list '((:a 2)))) s2)))
+                  (variable "v" (make-tree-object '((:a 2)))) s2)))
            #{}))
     (is (= (set (envs-to-list
                  (query-matches
-                  (variable "v" (make-object-list '((:d)))) s2)))
+                  (variable "v" (make-tree-object '((:d)))) s2)))
            #{}))
     (is (= (set (envs-to-list
                  (query-matches (and-query `(1 ~(variable "v"))
@@ -837,12 +837,12 @@
     (let [matches (matching-items `(nil (2 ~(not-query 3))) s3)]
       (is (= (map :item-id matches) [id3])))
     ;; objects
-    (let [matches (matching-items (make-object-list ['(nil (2))]) s3)]
+    (let [matches (matching-items (make-tree-object ['(nil (2))]) s3)]
       (is (= (set (map :item-id matches)) #{ia ib})))
-    (let [matches (matching-items (make-object-list ['(nil (3))]) s3)]
+    (let [matches (matching-items (make-tree-object ['(nil (3))]) s3)]
       (is (= matches [])))
-    (let [matches (matching-items (make-object-list ['(nil (nil (3)))]) s3)]
+    (let [matches (matching-items (make-tree-object ['(nil (nil (3)))]) s3)]
       (is (= (map :item-id matches) [ia])))
     (let [matches (matching-items
-                   (make-object-list [`(nil (2 ~(not-query 3)))]) s3)]
+                   (make-tree-object [`(nil (2 ~(not-query 3)))]) s3)]
       (is (= (map :item-id matches) [ib])))))

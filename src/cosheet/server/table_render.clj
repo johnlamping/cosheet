@@ -28,8 +28,8 @@
                                   table-column-headers-element
                                   table-row-condition-element
                                   table-row-condition-object
-                                  object-semantic-to-list
-                                  semantic-to-list
+                                  object-semantic-to-tree
+                                  semantic-to-tree
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-fixed-term fixed-term-to-template
                                   add-non-selector-to-fixed-term
@@ -72,7 +72,7 @@
          {:subject-ids [last-column-id]}
          action immutable-store)
         new-column-id (first subject-ids)
-        template (semantic-to-list (id->entity new-column-id store))]
+        template (semantic-to-tree (id->entity new-column-id store))]
     (get-virtual-action-data
      {:template template} containing-action-data action store)))
 
@@ -194,7 +194,7 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (map #(pattern-to-fixed-term (semantic-to-list (:item %)))
+  (map #(pattern-to-fixed-term (semantic-to-tree (:item %)))
        (hierarchy-node-non-immediate-descendant-cover node)))
 
 (defn table-header-node-specification
@@ -545,7 +545,7 @@
             ;; reconstructed whenever part of the table description
             ;; changes. That makes computations that depend on them
             ;; not depend on changes elsewhere in the table entity.
-            row-template-R (app-R object-semantic-to-list
+            row-template-R (app-R object-semantic-to-tree
                                  (id->updating-entity-R
                                   row-condition-id store))
             column-headers-R (id->updating-entity-R

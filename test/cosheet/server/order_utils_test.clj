@@ -3,9 +3,9 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
-             [entity :as entity :refer [id->entity to-list
+             [entity :as entity :refer [id->entity to-tree
                                         label->elements elements
-                                        make-element-list make-object-list]]
+                                        make-element-list make-tree-object]]
              [orderable :as orderable]
              [reporter :refer [reporter-value-or-invalid make-reporter invalid
                                set-value!]]
@@ -29,7 +29,7 @@
              [test-utils :refer [check any]])
             (cosheet.server
              [order-utils :refer :all]
-             [model-utils :refer [semantic-to-list]])
+             [model-utils :refer [semantic-to-tree]])
             ; :reload
             ))
 
@@ -79,9 +79,9 @@
   (is (semantic-element? (make-element-list :source 'anything [2])))
   (is (semantic-element? (make-element-list :source :name [2])))
   (is (semantic-element? (make-element-list
-                          :source (make-object-list [3]) [2])))
+                          :source (make-tree-object [3]) [2])))
   (is (semantic-element? (make-element-list
-                          :target (make-object-list [3]) [2])))
+                          :target (make-tree-object [3]) [2])))
   (is (not (semantic-element? (make-element-list :source :foo [2])))))
 
 (deftest ordered-ids-test
@@ -106,8 +106,8 @@
            joe-ordered-semantic-elements))))
 
 (deftest order-recursively-test
-  (is (check (semantic-to-list (order-recursively joe-reversed-list))
-             (semantic-to-list joe-list))))
+  (is (check (semantic-to-tree (order-recursively joe-reversed-list))
+             (semantic-to-tree joe-list))))
 
 (deftest ordered-ids-R-test
   (let [joe-semantic-elements (filter semantic-element? (elements joe))
@@ -164,14 +164,14 @@
                    ("b" "c")
                    "d"
                    (~e-label)
-                   (~(make-object-list `("f")))
+                   (~(make-tree-object `("f")))
                    (~(id->entity (make-item-id "test") nil))))]
     (is (check ordered
                `("a" ("b" ("c" (~(any) :order))
                       (~(any) :order))
                  ("d" (~(any) :order))
                  (~e-label (~(any) :order))
-                 (~(make-object-list `(("f" (~(any) :order))))
+                 (~(make-tree-object `(("f" (~(any) :order))))
                   (~(any) :order))
                  (~(id->entity (make-item-id "test") nil)
                   (~(any) :order))

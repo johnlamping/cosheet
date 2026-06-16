@@ -7,8 +7,8 @@
              [debug :refer [envs-to-list simplify-for-print]]
              [entity :refer [id->element id->object
                              name-label link-type object-type
-                             make-object-list uniquely-identified-object?
-                             to-list]]
+                             make-tree-object uniquely-identified-object?
+                             to-tree]]
              entity-impl
              [store :refer [new-element-store get-new-object-id
                             ->ItemId]]
@@ -473,7 +473,7 @@
                                                    `("Friedrich" (~name-label)))
         [label-store _] (add-element store oid `(link-type))
         [class-store _] (add-element store oid `(object-type))
-        template (make-object-list [`(~name-label)])
+        template (make-tree-object [`(~name-label)])
         spec (assoc basic-dom-specification
                     :relative-id :content
                     :auxiliary-item-id oid
@@ -545,7 +545,7 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id fred-holder-id
-                                 :template `(~(make-object-list
+                                 :template `(~(make-tree-object
                                                [`("" (~name-label))])))
                           store)
         ;; We expect a component, which we also run, to make sure it is right.
@@ -556,14 +556,14 @@
                             :class "editable item"
                             :auxiliary-item-id fred-oid,
                             :relative-id :content
-                            :template (make-object-list
+                            :template (make-tree-object
                                        [`("" (~name-label))])
                             :render-dom render-object-reference-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name object-reference"
-                            :template (make-object-list [`("" (~name-label))])
+                            :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
                             :omit-universal-elements true
@@ -581,7 +581,7 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id anonymous-holder-id
-                                 :template `(~(make-object-list
+                                 :template `(~(make-tree-object
                                                [`("" (~name-label))])))
                           store)
         ;; We expect a component, which we also run, to make sure it is right.
@@ -594,14 +594,14 @@
                             :class "editable item"
                             :auxiliary-item-id anonymous-oid,
                             :relative-id :content
-                            :template (make-object-list
+                            :template (make-tree-object
                                        [`("" (~name-label))])
                             :render-dom render-object-reference-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable item name object-reference"
-                            :template (make-object-list [`("" (~name-label))])
+                            :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id anonymous-name-id
                             :omit-universal-elements true

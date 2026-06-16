@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [orderable :as orderable]
                       [entity :as entity  :refer [id->entity
-                                                  elements to-list content
+                                                  elements to-tree content
                                                   in-different-store]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
@@ -17,7 +17,7 @@
                              [order-utils :refer [add-order-elements
                                                   ordered-entities
                                                   order-recursively]]
-                             [model-utils :refer [semantic-to-list
+                             [model-utils :refer [semantic-to-tree
                                                   semantic-elements]]
                              [render-utils :refer [make-sequential-template]])
             ; :reload
@@ -147,7 +147,7 @@
       (is (= (id->target store id) joe-id))
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
-      (is (= (semantic-to-list (id->entity id store))
+      (is (= (semantic-to-tree (id->entity id store))
              ""))))
   ;; Try several initial targets, one a selector and one not, and a
   ;; vector as the template.
@@ -164,15 +164,15 @@
           [new-jane-id new-joe-id] subject-ids
           age-label-obj (in-different-store (content joe-age-label) store)]
       (is (=  (id->target store (id->target store new-joe-id)) joe-id))
-      (is (check (semantic-to-list (id->entity new-joe-id store))
+      (is (check (semantic-to-tree (id->entity new-joe-id store))
                  `(2 (~age-label-obj))))
-      (is (check (semantic-to-list (id->entity
+      (is (check (semantic-to-tree (id->entity
                                     (id->target store new-joe-id) store))
                  `("" (2 (~age-label-obj)))))
       (is (= (id->target store (id->target store new-jane-id)) jane-id))
-      (is (check (semantic-to-list (id->entity new-jane-id store))
+      (is (check (semantic-to-tree (id->entity new-jane-id store))
                  `(2 (~age-label-obj))))
-      (is (check (semantic-to-list (id->entity
+      (is (check (semantic-to-tree (id->entity
                                     (id->target store new-jane-id) store))
                  `(~'anything (2 (~age-label-obj)))))))
   ;; Try :sibling true
@@ -192,7 +192,7 @@
              (:left (get-order (:item-id joe-age) original-store))))
       (is (< (:right (get-order id store))
              (:right (get-order (:item-id joe-age) original-store))))
-      (is (check (semantic-to-list (id->entity id store))
+      (is (check (semantic-to-tree (id->entity id store))
                  ""))))
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
@@ -208,9 +208,9 @@
           [new-jane-id new-joe-id] subject-ids
           age-label-obj (in-different-store (content jane-age-label) store)]
       (is (= (id->target store new-joe-id) joe-id))
-      (is (check (semantic-to-list (id->entity new-joe-id store))
+      (is (check (semantic-to-tree (id->entity new-joe-id store))
                  '("" 2)))
-      (is (check (map semantic-to-list
+      (is (check (map semantic-to-tree
                       (semantic-elements
                        (order-recursively
                         (id->entity joe-id store))))
@@ -220,7 +220,7 @@
                    (39 (~age-label-obj) ("doubtful" "confidence"))
                    (45 (~age-label-obj)))))
       (is (= (id->target store new-jane-id) jane-id))
-      (is (check (map semantic-to-list
+      (is (check (map semantic-to-tree
                       (ordered-entities
                        (semantic-elements
                         (id->entity jane-id store))))

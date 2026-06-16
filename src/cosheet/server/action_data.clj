@@ -15,7 +15,7 @@
                       :as query])
             (cosheet.server
              [render-utils :refer [sequential-template?]]
-             [model-utils :refer [semantic-elements semantic-to-list
+             [model-utils :refer [semantic-elements semantic-to-tree
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
                                   create-possible-selector-entities]]
@@ -133,7 +133,7 @@
     ;; No choice.
     (first matches)
     ;; Prefer a match with no extra semantic info.
-    (let [semantic (semantic-to-list template)
+    (let [semantic (semantic-to-tree template)
           ;; A nil in the template probably came from a wildcard.
           ;; It should be considered a perfect match with 'anything,
           ;; to handle selectors, and with the empty string, to handle
@@ -171,7 +171,7 @@
     ;; The exemplar id is an element of the given subject. Return it.
     exemplar-id
     (let [template (-> (id->entity exemplar-id immutable-store)
-                       semantic-to-list
+                       semantic-to-tree
                        pattern-to-fixed-term)
           subject (id->entity subject-id immutable-store)]
       (:item-id (best-match template (matching-elements template subject))))))

@@ -9,7 +9,7 @@
                     label-object? name-element?
                     elements label->elements content->elements
                     name-label link-type object-type
-                    make-object-list recursively-in-different-store
+                    make-tree-object recursively-in-different-store
                     entity-complexity
                     add-elements-to-entity]]
     [query :refer [matching-elements]]
@@ -23,7 +23,7 @@
    (cosheet.server
     [model-utils :refer [semantic-elements
                          semantic-non-label-elements semantic-label-elements
-                         semantic-to-list entity->canonical-semantic
+                         semantic-to-tree entity->canonical-semantic
                          elements-to-change-to-satisfy-fixed-term-elements]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
@@ -718,7 +718,7 @@
                                        ;; This might come from a column header.
                                        (content %)
                                        ;; We have exactly the required labels.
-                                       (map semantic-to-list
+                                       (map semantic-to-tree
                                             (semantic-label-elements
                                              element)))))
               inner-dom (element-content-and-non-label-elements-DOM
@@ -785,10 +785,10 @@
   (println "Generating DOM for" (simplify-for-print relative-id))
   (assert (:width specification)
           [specification
-           (semantic-to-list (id->entity relative-id store))])
+           (semantic-to-tree (id->entity relative-id store))])
   (assert (not (:auxiliary-item-id specification))
           [specification
-           (semantic-to-list (id->entity relative-id store))])
+           (semantic-to-tree (id->entity relative-id store))])
   (let-R [entity (id->updating-entity-R
                   (specification-item-id specification) store)]
     (cond (element? entity)

@@ -94,7 +94,7 @@
            (canonicalize (content entity))
            (multiset (map canonicalize (elements entity)))))))
 
-(def canonical-to-list)
+(def canonical-to-tree)
 
 (defn canonical-set-to-list
   "Given a multiset of canonicalized elements, return a list of the entities
@@ -102,10 +102,10 @@
   [set]
   (when (not (empty? set))
     (reduce (fn [result [key count]]
-              (concat result (repeat count (canonical-to-list key))))
+              (concat result (repeat count (canonical-to-tree key))))
             [] (seq set))))
 
-(defn canonical-to-list
+(defn canonical-to-tree
   "Given a canonicalized list form of an entity, return a list form for it."
   [entity]
   (if (vector? entity)
@@ -115,7 +115,7 @@
       (do (assert (= (count entity) 3))
           (let [[orientation content elements] entity]
             (make-element-list orientation
-                               (canonical-to-list content)
+                               (canonical-to-tree content)
                                (canonical-set-to-list elements)))))
     entity))
 

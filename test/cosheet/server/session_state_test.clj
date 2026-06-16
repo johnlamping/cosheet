@@ -18,12 +18,12 @@
              [calculator :refer [make-calculator-data compute]]
              [task-queue :refer [make-priority-task-queue]])
             (cosheet
-             [entity :refer [make-object-list name-label object-type]]
+             [entity :refer [make-tree-object name-label object-type]]
              [store-utils :refer [link-type-object]])
             (cosheet.server
              [session-state :refer :all]
              [item-render :refer [render-item-DOM-R]]
-             [model-utils :refer [semantic-to-list
+             [model-utils :refer [semantic-to-tree
                                   starting-store add-table]]
              [dom-manager :refer [relative-ids->client-id
                                   client-id->component]]
@@ -53,16 +53,16 @@
         a-label (find-object-by-name store "a" (link-type-object ""))
         b-label (find-object-by-name store "b" (link-type-object ""))
         row1 (first (matching-items
-                     (make-object-list [`(1 (~a-label))]) store))
+                     (make-tree-object [`(1 (~a-label))]) store))
         row2 (first (matching-items
-                     (make-object-list [`(3 (~a-label))]) store))]
-    (is (= (canonicalize (semantic-to-list row1))
+                     (make-tree-object [`(3 (~a-label))]) store))]
+    (is (= (canonicalize (semantic-to-tree row1))
            (canonicalize
-            (make-object-list [`(~hello-name)
+            (make-tree-object [`(~hello-name)
                                `(1 (~a-label))
                                `(2 (~b-label))]))))
-    (is (= (canonicalize (semantic-to-list row2))
-           (canonicalize (make-object-list [`(~hello-name)
+    (is (= (canonicalize (semantic-to-tree row2))
+           (canonicalize (make-tree-object [`(~hello-name)
                                             `(3 (~a-label))]))))))
 
 (deftest create-client-state-test
@@ -127,7 +127,7 @@
                          "Hello" [["a" "b"] [1 2] [3]])
         a-label (find-object-by-name store "a" (link-type-object ""))
         row1 (first (matching-items
-                     (make-object-list [`(1 (~a-label))]) store))
+                     (make-tree-object [`(1 (~a-label))]) store))
         ms (new-mutable-store store)
         queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)]

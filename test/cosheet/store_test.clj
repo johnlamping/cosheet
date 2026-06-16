@@ -4,7 +4,7 @@
             (cosheet
              [store :refer :all]
              [store-impl :refer :all]
-             [entity :refer [to-list make-object-list make-element-list
+             [entity :refer [to-tree make-tree-object make-element-list
                              id->element id->object]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
@@ -589,7 +589,7 @@
                          (make-link-id 13) (make-link-id 14)
                          (make-link-id 15)])
                 false]))
-    (is (check (candidate-matching-ids test-store (make-object-list nil))
+    (is (check (candidate-matching-ids test-store (make-tree-object nil))
                [(as-set  [(make-object-id "object")
                           link-type-id
                           name-label-id
@@ -611,15 +611,15 @@
                [[(make-link-id 1)] false]))
     (is (check (candidate-matching-ids test-store '(5 nil))
                [[(make-link-id 4)] false]))
-    (is (check (candidate-matching-ids test-store (make-object-list '((44))))
+    (is (check (candidate-matching-ids test-store (make-tree-object '((44))))
                [[(make-object-id "object")] true]))
-    (is (check (candidate-matching-ids test-store (make-object-list '((nil))))
+    (is (check (candidate-matching-ids test-store (make-tree-object '((nil))))
                [(as-set [(make-object-id "object") foo-oid bar-oid])
                 false]))
     (is (check (candidate-matching-ids
-                test-store (make-object-list '((44) (44))))
+                test-store (make-tree-object '((44) (44))))
                [[(make-object-id "object")] false]))
-    (is (check (candidate-matching-ids test-store (make-object-list '(("Foo"))))
+    (is (check (candidate-matching-ids test-store (make-tree-object '(("Foo"))))
                [[foo-oid] true]))))
 
 (deftest declare-ephemeral-id-test

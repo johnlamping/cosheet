@@ -309,6 +309,9 @@
 ;;; Make a vector work as an object or a link
 ;;; For an object, the format is
 ;;;   [:object element element ...]
+;;; Or, for an object whose identity should be recognizable across
+;;; multiple references:
+;;;   [:shareable-object identifier element element ...]
 (extend-type clojure.lang.PersistentVector
 
   Entity
@@ -317,13 +320,16 @@
 
   (primitive? [this] false)
   (element? [this] false)
-  (object? [this] (= (first this) :object))
+  (object? [this] (or (= (first this) :object)
+                      (= (first this) :shareable-object)))
 
   (content [this] nil)
-  
+
   (elements [this]
-    (assert (= (first this) :object) this)
-    (seq (rest this)))
+    (assert (object? this) this)
+    (seq (case (first this)
+           :object (rest this)
+           :shareable-object (nthrest this 2))))
 
   (forward-elements [this] (seq (filter #(not= (orientation %) :target)
                                         (elements this))))
@@ -341,9 +347,11 @@
                          (elements element)))
                  (elements this))))
 
-    
+
   (entity-key [this]
-    this)
+    (case (first this)
+      :shareable-object [:shareable-object (second this)]
+      this))
 
   (updating-immutable [this] this))
 

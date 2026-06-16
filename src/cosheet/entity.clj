@@ -372,6 +372,31 @@
   (assert (not-any? object? elements))
   (into [:object] elements))
 
+(defn make-shareable-tree-object
+  "Make a tree representation of an object that carries an identifier
+   so that multiple references to the same object can be recognized as
+   sharing identity (via entity-key)."
+  [identifier elements]
+  (assert (not-any? object? elements))
+  (into [:shareable-object identifier] elements))
+
+(defn sharable-tree-object?
+  "Return true if entity is the output of make-shareable-tree-object."
+  [entity]
+  (and (vector? entity)
+       (= (first entity) :shareable-object)))
+
+(defn sharable-uninterned-object?
+  "Return true if the entity is an object whose identity can be
+  recognized across multiple references without being interned: either
+  a shareable tree-object (which carries an explicit identifier) or a
+  stored object that is not presumed-interned."
+  [entity]
+  (or (sharable-tree-object? entity)
+      (and (stored-entity? entity)
+           (object? entity)
+           (not (presumed-interned-object? entity)))))
+
 (defn add-elements-to-entity
   "Add elements an entity, using a tree form for its top level if
   anything changed."

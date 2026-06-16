@@ -404,6 +404,51 @@
     (is (not (uniquely-identified-object? [:object `(~'anything ~name-label)])))
     (is (uniquely-identified-object? [:object `("Joe" ~name-label)]))))
 
+(deftest shareable-vector-test
+  ;; A shareable tree-object behaves like an object for the Entity
+  ;; protocol, but its entity-key is just [:shareable-object id] (the
+  ;; elements don't participate), so two references with the same id
+  ;; but different elements are recognized as the same object.
+  (let [obj (make-shareable-tree-object "x" [1 2])]
+    (is (= obj [:shareable-object "x" 1 2]))
+    (is (sharable-tree-object? obj))
+    (is (not (sharable-tree-object? [:object 1 2])))
+    (is (not (primitive? obj)))
+    (is (not (element? obj)))
+    (is (object? obj))
+    (is (= (elements obj) [1 2]))
+    (is (= (forward-elements obj) [1 2]))
+    (is (= (content obj) nil))
+    (is (= (orientation obj) nil))
+    (is (= (entity-key obj) [:shareable-object "x"]))
+    (is (= (entity-key (make-shareable-tree-object "x" [3 4]))
+           (entity-key obj)))
+    (is (not= (entity-key (make-shareable-tree-object "y" [1 2]))
+              (entity-key obj))))
+  (let [obj (make-shareable-tree-object "x" '[(2 :foo) (4 3)])]
+    (is (= (label->elements obj :foo) '[(2 :foo)]))
+    (is (= (content->elements obj 4) '[(4 3)]))))
+
+(deftest sharable-uninterned-object?-test
+  ;; Shareable tree-objects are uninterned.
+  (is (sharable-uninterned-object? (make-shareable-tree-object "x" [])))
+  ;; Plain primitives and non-shareable tree-objects are not.
+  (is (not (sharable-uninterned-object? 1)))
+  (is (not (sharable-uninterned-object? "foo")))
+  (is (not (sharable-uninterned-object? [:object 1 2])))
+  ;; Stored anonymous objects (have a store and no name) are uninterned.
+  (let [[s id] (get-new-object-id (new-element-store))
+        stored-anon (id->object id s)
+        stored-no-store (id->object id nil)]
+    (is (sharable-uninterned-object? stored-anon))
+    ;; A stored entity with no :store is presumed-interned and thus
+    ;; not sharable-uninterned.
+    (is (not (sharable-uninterned-object? stored-no-store)))
+    ;; An interned object (e.g., the name-label one) is not
+    ;; sharable-uninterned either.
+    (is (not (sharable-uninterned-object?
+              (id->object (make-item-id "name") s))))))
+
 (deftest constant-test
   (is (primitive? 1))
   (is (primitive? true))

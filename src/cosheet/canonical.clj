@@ -4,7 +4,7 @@
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
                     content elements orientation in-different-store
-                    make-element-list interned-object?]])))
+                    make-tree-element interned-object?]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -114,7 +114,7 @@
           (apply vector :object (canonical-set-to-list (second entity))))
       (do (assert (= (count entity) 3))
           (let [[orientation content elements] entity]
-            (make-element-list orientation
+            (make-tree-element orientation
                                (canonical-to-tree content)
                                (canonical-set-to-list elements)))))
     entity))

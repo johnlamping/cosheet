@@ -5,7 +5,7 @@
                                       stored-entity?
                                       id->entity entity-key
                                       orientation content elements
-                                      make-element-list make-tree-object
+                                      make-tree-element make-tree-object
                                       label->elements
                                       label->content
                                       to-tree
@@ -282,7 +282,7 @@
                    exact-element-match]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
-                    [(make-element-list (orientation as-list)
+                    [(make-tree-element (orientation as-list)
                                         converted-content
                                         converted-kept-elements)
                      (combine-exact-matches content-exact

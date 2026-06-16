@@ -5,7 +5,7 @@
             (cosheet
              [entity :as entity :refer [id->entity to-tree
                                         label->elements elements
-                                        make-element-list make-tree-object]]
+                                        make-tree-element make-tree-object]]
              [orderable :as orderable]
              [reporter :refer [reporter-value-or-invalid make-reporter invalid
                                set-value!]]
@@ -74,15 +74,15 @@
                          ("male" (~o2 :order))))
 
 (deftest semantic-element?-test
-  (is (semantic-element? (make-element-list :source 1 [2])))
-  (is (semantic-element? (make-element-list :source "1" [2])))
-  (is (semantic-element? (make-element-list :source 'anything [2])))
-  (is (semantic-element? (make-element-list :source :name [2])))
-  (is (semantic-element? (make-element-list
+  (is (semantic-element? (make-tree-element :source 1 [2])))
+  (is (semantic-element? (make-tree-element :source "1" [2])))
+  (is (semantic-element? (make-tree-element :source 'anything [2])))
+  (is (semantic-element? (make-tree-element :source :name [2])))
+  (is (semantic-element? (make-tree-element
                           :source (make-tree-object [3]) [2])))
-  (is (semantic-element? (make-element-list
+  (is (semantic-element? (make-tree-element
                           :target (make-tree-object [3]) [2])))
-  (is (not (semantic-element? (make-element-list :source :foo [2])))))
+  (is (not (semantic-element? (make-tree-element :source :foo [2])))))
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.

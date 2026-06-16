@@ -4,7 +4,7 @@
             (cosheet
              [store :refer :all]
              [store-impl :refer :all]
-             [entity :refer [to-tree make-tree-object make-element-list
+             [entity :refer [to-tree make-tree-object make-tree-element
                              id->element id->object]]
              entity-impl
              [utils :refer [pseudo-set-seq pseudo-set-contains?]]
@@ -530,36 +530,36 @@
                [2 [(make-link-id 2)] false]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->object (make-object-id "object") nil) nil))
                [1 [(make-link-id 1)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->object (make-object-id "object") nil) '("Foo")))
                [1 [(make-link-id 1)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->element (make-link-id 1) test-store) nil))
                [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->element (make-link-id 1) test-store) `((~obj-2))))
                [1 (as-set [(make-link-id 2)]) true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->element (make-link-id 1) test-store) '(5)))
                [1 () true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
-                (make-element-list
+                (make-tree-element
                  :target (id->element (make-link-id 1) test-store) nil))
                [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
     (is (check (candidate-matching-ids-and-estimate
-                test-store (make-element-list :target 5 nil))
+                test-store (make-tree-element :target 5 nil))
                [0 () true]))
     (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
     (is (check (candidate-matching-ids test-store nil)

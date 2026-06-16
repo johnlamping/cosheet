@@ -51,22 +51,20 @@
 ;;; and target are objects. In other words, only relationships between
 ;;; objects are reversible.
 
-;;; The case where the target can be a link may be supported
-;;; later. That is a pretty big change because it means that content
-;;; of an element could be another element, which is viewed from
-;;; neither its link's source or target, but from one of the links to
-;;; it.
+;;; The case where the source is a link may be supported later. That
+;;; is a pretty big change because it means that content of an element
+;;; could be another element, which is viewed from neither its link's
+;;; source or target, but from one of the links to it.
 
 ;;; This, in turn, means that the elements of an object correspond to
-;;; all links that have it as a target, and all links that have it as
-;;; a target and that have an object as their subject.
+;;; all links that have it as a target, plus all links that have it as
+;;; a source and that have an object as their target.
 
 ;;; Elements are normally accessed in terms of content, orientation,
 ;;; and sub-elements. But elements that are associated with stores
 ;;; also support two other methods. The target-entity method takes an
 ;;; element and returns the entity corresponding to its
-;;; target. Depending on the element's orientation, that could either
-;;; be its content or the entity the element is about. And the
+;;; target, independent of its orientation. And the
 ;;; containing-elements method takes an entity and returns the
 ;;; elements that have it as its their content and have orientation
 ;;; :source.
@@ -74,21 +72,21 @@
 ;;; Since some uses of entities require creating an entity that
 ;;; doesn't exactly match any entity in the store. There is a
 ;;; representation of entities that is largely independent of stores,
-;;; called the list form.
+;;; called the tree form.
 
-;;; The list form of primitives is just the primitive, since they are
-;;; already independent of stores. The list form of mutable objects
+;;; The tree form of primitives is just the primitive, since they are
+;;; already independent of stores. The tree form of mutable objects
 ;;; and named objects is their normal element form. That provides the
 ;;; support for the object methods, while also including their id. And
 ;;; one of these objects in a query matches a subject object iff the
 ;;; two have the same id (independent of which store they are in).
 
-;;; But anonymous objects don't need an id in list form, as they match
-;;; based on their elements, not their id. So they do have a list form
+;;; But anonymous objects don't need an id in tree form, as they match
+;;; based on their elements, not their id. So they do have a tree form
 ;;; that includes just their elements:
 ;;;    [:object element element ...]
 
-;;; Elements are more complicated. The most general list form of an
+;;; Elements are more complicated. The most general tree form of an
 ;;; element is
 ;;;   ((orientation content) element element ...)
 ;;; where orientation is either :source or :target, to indicate which
@@ -98,27 +96,27 @@
 ;;; has orientation :source, and its content is not a list, then one
 ;;; of two simplified forms is possible.
 ;;;    * If its content is a primitive and it has no sub-elements of
-;;;      its own, then its list form is just its content.
-;;;    * If it does have sub-elements of its own, then its list form is
+;;;      its own, then its tree form is just its content.
+;;;    * If it does have sub-elements of its own, then its tree form is
 ;;;      (content element element ...)
-;;; Combinding these simplified forms yield compact list
+;;; Combinding these simplified forms yield compact tree
 ;;; representations of the most common kinds of elements, like
 ;;;   (5 "value" (3 "x") (4 "y"))
 
-;;; This means that the list form of an element that consists of
+;;; This means that the tree form of an element that consists of
 ;;; nothing but a primitive content is just that content. So
-;;; converting to list form can change an entity from an element to a
+;;; converting to tree form can change an entity from an element to a
 ;;; primitive.  To reduce the problems from that, primitives return
 ;;; the same answers to content, orientation, and elememts as would an
 ;;; element consisting of just that primitive as its content. That is,
 ;;; they return themselves for their content, :souce for their
 ;;; orientation, nil for their elements.
 
-;;; We can't use the same trick for the list form of an element
+;;; We can't use the same trick for the tree form of an element
 ;;; consisting of nothing but an object, because objects are defined
 ;;; to not have any content.
 
-;;; If it turns out that list forms of links are also necessary, they
+;;; If it turns out that tree forms of links are also necessary, they
 ;;; should be
 ;;;    [:link source target element element ...]
 
@@ -343,8 +341,8 @@
     (or (keyword? content)
         (label-object? content))))
 
-(defn make-element-list
-  "Make the list representation of the described entity, simplifying it
+(defn make-tree-element
+  "Make the tree representation of the described entity, simplifying it
   as much as possible without leaving ambiguities. This can turn
   elements into primitives."
   [element-orientation content elements]
@@ -368,25 +366,25 @@
       (cons content elements))))
 
 (defn make-tree-object
-  "Make the list representation of the described object."
+  "Make the tree representation of the described object."
   [elements]
-  ;; Make sure the elements we are given respect the list form.
+  ;; Make sure the elements we are given respect the tree form.
   (assert (not-any? object? elements))
   (into [:object] elements))
 
 (defn add-elements-to-entity
-  "Add elements an entity, using a list form for its top level if
+  "Add elements an entity, using a tree form for its top level if
   anything changed."
   [entity elements-to-add]
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
-          (make-element-list (orientation entity)
+          (make-tree-element (orientation entity)
                              (content entity)
                              (concat (elements entity) elements-to-add))
           (object? entity)
           (make-tree-object (concat (elements entity) elements-to-add))
-          :else (make-element-list :source entity elements-to-add))))
+          :else (make-tree-element :source entity elements-to-add))))
 
 (defn map-subparts
   "Run the function on each subpart of the entity, and reassemble the
@@ -398,7 +396,7 @@
   be removed."
   [f entity]
   (cond (element? entity)
-        (make-element-list (orientation entity)
+        (make-tree-element (orientation entity)
                            (f (content entity))
                            (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
@@ -433,9 +431,9 @@
                           entity))
 
 (defn immutable-to-tree-generator [object-to-tree]
-  "Internal function that takes an object to list function and returns a
-  function from immutable entity and element to skip to a list,
-  handling objects with the object to list function. The
+  "Internal function that takes an object to tree function and returns a
+  function from immutable entity and element to skip to a tree,
+  handling objects with the object to tree function. The
   object-to-tree function must also take an object and an element to
   skip.
   The element to skip only has an effect when converting an non-interned
@@ -453,7 +451,7 @@
       (cond
         (primitive? entity) entity
         (object? entity) (object-to-tree entity skipped-element)
-        true (make-element-list (orientation entity)
+        true (make-tree-element (orientation entity)
                                 (recurse (content entity) entity)
                                 (map #(recurse % nil) (elements entity)))))))
 
@@ -470,7 +468,7 @@
     object))
 
 (defn to-tree [entity]
-  "Return a list form of the entity."
+  "Return a tree form of the entity."
   (if (mutable-entity? entity)
     ;; We want to run with updating-immutable, relative to an
     ;; immutable store, but for objects, we want to return the

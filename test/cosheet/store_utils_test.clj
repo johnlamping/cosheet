@@ -5,7 +5,7 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-tree id->object id->element
-                             make-element-list make-tree-object
+                             make-tree-element make-tree-object
                              elements forward-elements in-different-store
                              name-label link-type object-type]]
              entity-impl
@@ -23,7 +23,7 @@
                              `(77 (~(link-type-object "test"))))
         [s2 id1] (add-object s1 (make-tree-object '("Hello")))
         ;; A reversed link. "Fred" is the source.
-        [s3 id2] (add-element s2 "Fred" (make-element-list
+        [s3 id2] (add-element s2 "Fred" (make-tree-element
                                          :target
                                          (id->object id1 s2)
                                          `((~(link-type-object "by")))))

@@ -3,7 +3,7 @@
             (cosheet [orderable :refer [split initial]]
                       [entity :refer [in-different-store stored-entity?
                                       link-type object-type name-label
-                                      make-tree-object make-element-list
+                                      make-tree-object make-tree-element
                                       object?
                                       recursively-in-different-store
                                       id->object id->entity
@@ -71,7 +71,7 @@
 (def joe (id->entity joe-id store))
 
 (deftest transform-pattern-toward-fixed-term-test
-  (let [pattern (make-element-list
+  (let [pattern (make-tree-element
                  :target
                  'anything
                  ['anything
@@ -79,7 +79,7 @@
                   `(~(make-tree-object `("a")))])]
     (is (check (transform-pattern-toward-fixed-term
                 pattern {})
-               (make-element-list
+               (make-tree-element
                  :target
                  nil
                  [nil
@@ -87,7 +87,7 @@
                   `(~(make-tree-object `("a")))])))
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true})
-               (make-element-list
+               (make-tree-element
                  :target
                  nil
                  [nil
@@ -98,7 +98,7 @@
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true
                          :require-orders true})
-               (make-element-list
+               (make-tree-element
                  :target
                  nil
                  ['(nil (nil :order))
@@ -168,8 +168,8 @@
                `("Joe" (~(any) :order)))))
   (is (= (semantic-to-tree '(1 (2 (:foo))))
          '(1 2)))
-  (is (= (semantic-to-tree (make-element-list :target 1 '(2 (:foo))))
-         (make-element-list :target 1 '(2))))
+  (is (= (semantic-to-tree (make-tree-element :target 1 '(2 (:foo))))
+         (make-tree-element :target 1 '(2))))
   (is (= (semantic-to-tree `(~(make-tree-object [3 :name :bar]) (2 (:foo))))
          `(~(make-tree-object [3 :name]) 2)))
   (let [named (id->object (make-item-id "A") (new-element-store))]

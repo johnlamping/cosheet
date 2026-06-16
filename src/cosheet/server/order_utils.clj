@@ -12,7 +12,7 @@
                    target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements orientation
                     label->elements label->content
-                    id->entity make-element-list make-tree-object
+                    id->entity make-tree-element make-tree-object
                     element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
     [utils :refer [thread-map with-latest-value update-new-further-action]]
@@ -251,7 +251,7 @@
                                     contents remainder)
                                    [contents remainder])
             [before after] (split remainder :after)]
-        [(make-element-list (orientation entity)
+        [(make-tree-element (orientation entity)
                             contents
                             (concat elements [`(~before :order)]))
          after])

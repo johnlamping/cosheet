@@ -11,7 +11,7 @@
                                         content elements label->element
                                         label->elements label->content
                                         name-label link-type object-type
-                                        make-tree-object make-element-list
+                                        make-tree-object make-tree-element
                                         uniquely-identified-object?
                                         in-different-store
                                         recursively-in-different-store]]

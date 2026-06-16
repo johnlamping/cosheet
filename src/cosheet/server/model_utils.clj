@@ -20,7 +20,7 @@
                     content->elements label->elements label->element
                     map-subparts pre-walk-entity post-walk-entity
                     target-entity entity-key
-                    make-element-list make-tree-object
+                    make-tree-element make-tree-object
                     add-elements-to-entity
                     entity-complexity stored-entity?
                     in-different-store]]
@@ -133,7 +133,7 @@
                                  (internal-semantic-to-tree content use-order))
               element-semantics (map #(internal-semantic-to-tree % use-order)
                                      elements)]
-          (make-element-list (orientation immutable-entity)
+          (make-tree-element (orientation immutable-entity)
                              content-semantic
                              element-semantics))))
 
@@ -227,7 +227,7 @@
             (cond-> replaced-content
               (object? replaced-content)
               (transform-pattern-toward-fixed-term options)))]
-      (make-element-list
+      (make-tree-element
        (orientation pattern)
        new-content
        (cond-> (transform-pattern-elements-toward-fixed-term

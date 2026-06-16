@@ -192,11 +192,11 @@
            nil))
     (is (check (to-tree item1) item1))
     (is (= (to-tree item-a-reversed) `((:target ~item99) (~foo-label))))
-    (is (= (to-tree item-m) (make-element-list :source item1
+    (is (= (to-tree item-m) (make-tree-element :source item1
                                                `((~rel-label)))))
     (is (check (to-tree item0)
                (as-set (make-tree-object
-                        `(~(make-element-list :source item1
+                        `(~(make-tree-element :source item1
                                               `((~rel-label)))
                           "irrelevant")))))))
 
@@ -482,9 +482,9 @@
          '(1 2 (3 4))))
   (is (= (add-elements-to-entity '(1 2 (3 4)) '(5 (6 7)))
          '(1 2 (3 4) 5 (6 7))))
-  (is (= (add-elements-to-entity (make-element-list :target 1 '(2 (3 4)))
+  (is (= (add-elements-to-entity (make-tree-element :target 1 '(2 (3 4)))
                                  '(5 (6 7)))
-         (make-element-list :target 1 '(2 (3 4) 5 (6 7)))))
+         (make-tree-element :target 1 '(2 (3 4) 5 (6 7)))))
   (is (= (add-elements-to-entity 1 '(5 (6 7)))
          '(1 5 (6 7))))
   (is (= (add-elements-to-entity (make-tree-object '(1 2 (3 4))) '(5 (6 7)))
@@ -597,13 +597,13 @@
     (is (not (name-element? `(~(special-object "name")))))))
 
 (deftest make-element-list-test
-  (is (= (make-element-list :source 1 nil)
+  (is (= (make-tree-element :source 1 nil)
          1))
-  (is (= (make-element-list :source 1 [2])
+  (is (= (make-tree-element :source 1 [2])
          '(1 2)))
-  (is (= (make-element-list :target 1 nil)
+  (is (= (make-tree-element :target 1 nil)
          '((:target 1))))
-  (is (= (make-element-list :target 1 [2])
+  (is (= (make-tree-element :target 1 [2])
          '((:target 1) 2))))
 
 (deftest make-tree-object-test

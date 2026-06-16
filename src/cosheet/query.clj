@@ -2,7 +2,7 @@
   (:require (cosheet [entity :refer [content elements
                                       label->elements label->content
                                       to-tree object? primitive? orientation
-                                      make-element-list
+                                      make-tree-element
                                       add-elements-to-entity]])))
 
 ;;; Querying involves looking for entities that are extensions of a
@@ -118,9 +118,9 @@
   "Encode a sub-query as an element, as described above."
   [sub-query]
   (concat (if (or (primitive? sub-query) (object? sub-query))
-            (make-element-list :source sub-query '(::content))
+            (make-tree-element :source sub-query '(::content))
             (if (= (orientation sub-query) :target)
-              (make-element-list :source
+              (make-tree-element :source
                                  (content sub-query)
                                  (concat (elements sub-query)
                                          '(::reversed)))
@@ -136,7 +136,7 @@
       (let [cleaned (remove #{::sub-query ::first ::second ::reversed}
                             encoded)]
         (if (some #(= ::reversed %) (elements encoded))
-          (make-element-list :target (content cleaned) (elements cleaned))
+          (make-tree-element :target (content cleaned) (elements cleaned))
           cleaned)))))
 
 (defn variable-query

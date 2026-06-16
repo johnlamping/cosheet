@@ -5,7 +5,7 @@
                                       name-element?
                                       link-type object-type name-label make-tree-object
                                       label->elements
-                                      make-element-list content orientation]]
+                                      make-tree-element content orientation]]
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
@@ -104,7 +104,7 @@
   label object of the given label-type, if it isn't already."
   [template label-type]
   (assert (or (element? template) (universal-template? template)))
-  (make-element-list (orientation template)
+  (make-tree-element (orientation template)
                      (ensure-label-object (content template) label-type)
                      (elements template)))
 

@@ -1,7 +1,6 @@
 (ns cosheet.server.action-data
   (:require (cosheet [utils :refer [multiset replace-in-seqs
                                      assoc-if-non-empty
-                                     map-map thread-map thread-recursive-map
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [item-id? id->target id->source]]

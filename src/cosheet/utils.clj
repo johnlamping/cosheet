@@ -297,7 +297,7 @@
 
 ;;; Threading state through map style operations
 
-(defn thread-map
+(defn threaded-map
   "Call f on each element of the sequence, passing it the current state
   as its second argument. f must return a pair of a value and the new state.
   Return the sequence of values and the final state.
@@ -310,14 +310,14 @@
                 [[] state] items)]
     [(if (seq? items) (list* mapped) mapped) state]))
 
-(defn thread-recursive-map
+(defn threaded-recursive-map
   "Walk the possibly nested sequence, calling f on each element,
   passing it the current state as its first argument. f must return a
   pair of a value and the new state
   Return the nested sequence of values the final state."
   [f items state]
   (if (sequential? items)
-    (thread-map (fn [items state] (thread-recursive-map f items state))
+    (threaded-map (fn [items state] (threaded-recursive-map f items state))
                 items state)
     (f items state)))
 

@@ -2,7 +2,7 @@
   (:require
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number thread-map truncate-at-value
+    [utils :refer [parse-string-as-number threaded-map truncate-at-value
                    swap-control-return!]]
     [canonical :refer [equivalent-primitives?]]
     [map-reporter :refer [map-reporter-get-current map-reporter-reset!
@@ -372,7 +372,7 @@
                                       (id->entity % store))
                                     ids)
                      store (remove-semantic-elements store (:item-id item))]
-                 (thread-map
+                 (threaded-map
                   (fn [new-list [store order]]
                     (let [[store id remainder]
                           (update-add-element-with-order-and-ephemeral

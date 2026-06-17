@@ -47,30 +47,43 @@
 
 ;;; The store's restriction that the target can't be a primitive and
 ;;; the source can't be a link restricts the possible elements. In
-;;; addition, for now, a link can only be reversed if both its source
-;;; and target are objects. In other words, only relationships between
-;;; objects are reversible.
+;;; addition, at least for now, a link can only be an element in both
+;;; directions if both its source and target are objects. In other
+;;; words, only relationships between objects are reversible. All
+;;; other links only represent elements where their source is the
+;;; content.
+
+;;; This, in turn, means that the elements of an object correspond to
+;;; all links that have it as a target, plus all links that have it as
+;;; a source and that have an object as their target.
+
+;;; That still allows for circularity in the element
+;;; structure. Trivially, if two objects have a link between them,
+;;; there an element going each way. And cycles can be formed without
+;;; reversing links; there can be a link from object A to object B,
+;;; and another one from B to A. And there can be larger cycles, as
+;;; well. And the linkages can be more indirect, where object A has an
+;;; element with a sub-element with content object B, etc.
+
+;;; This means that any traversal of an entity structure has to handle
+;;; circularity. The threaded-traversal function handles cyclic
+;;; structure in a general enough way to meet most needs.
 
 ;;; The case where the source is a link may be supported later. That
 ;;; is a pretty big change because it means that content of an element
 ;;; could be another element, which is viewed from neither its link's
 ;;; source or target, but from one of the links to it.
 
-;;; This, in turn, means that the elements of an object correspond to
-;;; all links that have it as a target, plus all links that have it as
-;;; a source and that have an object as their target.
-
 ;;; Elements are normally accessed in terms of content, orientation,
 ;;; and sub-elements. But elements that are associated with stores
 ;;; also support two other methods. The target-entity method takes an
-;;; element and returns the entity corresponding to its
-;;; target, independent of its orientation. And the
-;;; containing-elements method takes an entity and returns the
-;;; elements that have it as its their content and have orientation
-;;; :source.
+;;; element and returns the entity corresponding to its target,
+;;; independent of its orientation. And the containing-elements method
+;;; takes an entity and returns the elements that have it as its their
+;;; content and have orientation :source.
 
 ;;; Since some uses of entities require creating an entity that
-;;; doesn't exactly match any entity in the store. There is a
+;;; doesn't exactly match any entity in the store, there is a
 ;;; representation of entities that is largely independent of stores,
 ;;; called the tree form.
 
@@ -81,13 +94,27 @@
 ;;; one of these objects in a query matches a subject object iff the
 ;;; two have the same id (independent of which store they are in).
 
-;;; But anonymous objects don't need an id in tree form, as they match
-;;; based on their elements, not their id. So they do have a tree form
-;;; that includes just their elements:
+;;; The tree form of anonymous objects needs to deal with need to
+;;; represent circularity. That is handled by giving anonymous objects
+;;; ids if necessary. If an anonymous object needs to be referenced
+;;; more than once, a shareable-tree-object is used for it. This has
+;;; the form
+;;;   [:sharaeble-object identifier element element ...]
+;;; only its first occurrence in the tree form (in depth first order)
+;;; will include the elements of the object, while; all other
+;;; occurrences will have only the id.
+
+;;; Anonymous objects that don't need to be referenced more than once
+;;; have a tree form that includes just their elements:
 ;;;    [:object element element ...]
 
-;;; Elements are more complicated. The most general tree form of an
-;;; element is
+;;; The other nuance to handle circularity is that links between
+;;; objects are recorded in only one direction in the tree form, from
+;;; the first encountered object (in depth first order) to the latter
+;;; encountered object.
+
+;;; Elements need to indicate which direction they are traversing a
+;;; link. The most general tree form of an element is
 ;;;   ((orientation content) element element ...)
 ;;; where orientation is either :source or :target, to indicate which
 ;;; endpoint holds the content.
@@ -115,6 +142,12 @@
 ;;; We can't use the same trick for the tree form of an element
 ;;; consisting of nothing but an object, because objects are defined
 ;;; to not have any content.
+
+;;; Note that the definition of depth first order requires an ordering
+;;; on the elements of entities. While the ordering of elements is
+;;; undefined, in general, for the purpose of traversing tree
+;;; entities, the order is defined to be the order the elements appear
+;;; in the entities. Only the traversal code relies on that.
 
 ;;; If it turns out that tree forms of links are also necessary, they
 ;;; should be
@@ -172,10 +205,14 @@
      the given label.")
 
   (entity-key [this]
+    
     "Return the key of this entity. For stored entities, it is their
-    item-id. For all other entities it is the entity, itself.
-    Matching of named objects is based on their key, so that it
-    will be independent of any particular store.
+    item-id. For shareable-tree-objects, it is [:shareable-object
+    <identifier>]. For all other entities it is the entity, itself.
+
+    Since matching of store objects is independent of the store, named
+    objects can be matched even if they are associated with different
+    versions of the store, from after they were interned.
 
     Note that the key ignores the orientation of elements. Both query
     matching and to-tree rely on that to avoid infinite loops. The
@@ -455,57 +492,34 @@
                              %)
                           entity))
 
-(defn immutable-to-tree-generator [object-to-tree]
-  "Internal function that takes an object to tree function and returns a
-  function from immutable entity and element to skip to a tree,
-  handling objects with the object to tree function. The
-  object-to-tree function must also take an object and an element to
-  skip.
-  The element to skip only has an effect when converting an non-interned
-  object. In that case, an element of the object with the same key
-  will not be shown. This avoids an infinite loop when a non-interned
-  object has a relation to another non-interned object, and showing all
-  elements of both objects would bounce back and forth between them
-  forever."
-  ;; Note: We tried using a letfn here, so we didn't have to pass in
-  ;; the object-transformer each time we called ourselves
-  ;; recursively. But that resulted in a compile error, where the
-  ;; letfn definition was not available deep inside.
-  (fn [entity skipped-element]
-    (let [recurse (immutable-to-tree-generator object-to-tree)]
-      (cond
-        (primitive? entity) entity
-        (object? entity) (object-to-tree entity skipped-element)
-        true (make-tree-element (orientation entity)
-                                (recurse (content entity) entity)
-                                (map #(recurse % nil) (elements entity)))))))
-
-(defn immutable-object-to-tree [object skipped-element]
-  (if (not (presumed-interned-object? object))
-    (let [recurse (immutable-to-tree-generator immutable-object-to-tree)]
-      (make-tree-object (map #(recurse % nil)
+(defn internal-to-tree
+  "Internal function to-tree that takes an element to skip, which only
+  has an effect when converting an non-interned object. In that case,
+  an element of the object with the same key will not be shown. This
+  avoids an infinite loop when a non-interned object has a relation to
+  another non-interned object, and showing all elements of both
+  objects would bounce back and forth between them forever."
+  [entity skipped-element]
+  (cond
+    (primitive? entity) entity
+    (object? entity) (if (presumed-interned-object? entity)
+                       entity
+                       (make-tree-object
+                        (map #(internal-to-tree % nil)
                              ;; We rely on entity-key ignoring
                              ;; orientation, so that the two
                              ;; orientations of a relation will match.
                              (remove #(= (entity-key %)
                                          (entity-key skipped-element))
-                                     (elements object)))))
-    object))
+                                     (elements entity)))))
+    true (make-tree-element (orientation entity)
+                            (internal-to-tree (content entity) entity)
+                            (map #(internal-to-tree % nil) (elements entity)))))
 
-(defn to-tree [entity]
+(defn to-tree
   "Return a tree form of the entity."
-  (if (mutable-entity? entity)
-    ;; We want to run with updating-immutable, relative to an
-    ;; immutable store, but for objects, we want to return the
-    ;; corresponding object from the mutable store.
-    (let-R [immutable (updating-immutable entity)]
-      ((immutable-to-tree-generator
-        (fn [object skipped-element] (if (stored-entity? object)
-                                       (in-different-store object entity)
-                                       object)))
-       immutable nil))
-    ((immutable-to-tree-generator immutable-object-to-tree)
-     entity nil)))
+  [entity]
+  (internal-to-tree entity nil))
 
 (defn entity-complexity
   "Return the complexity of the element, which is the total number of

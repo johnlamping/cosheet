@@ -15,7 +15,7 @@
                     id->entity make-tree-element make-tree-object
                     element? object? interned-object?]]
     [query :refer [matching-items special-form?]]
-    [utils :refer [thread-map with-latest-value update-new-further-action]]
+    [utils :refer [threaded-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 
 ;;; Utilities for creating and using orders.
@@ -231,7 +231,7 @@
   subparts. Return a list form for the new object and the unused part
   of order."
   [object order]
-  (let [[elements remainder] (thread-map add-order-elements-to-element
+  (let [[elements remainder] (threaded-map add-order-elements-to-element
                                          (elements object) order)]
     [(make-tree-object elements) remainder]))
 
@@ -242,7 +242,7 @@
     [entity order]
     (cond
       (element? entity)
-      (let [[elements remainder] (thread-map add-order-elements-to-element
+      (let [[elements remainder] (threaded-map add-order-elements-to-element
                                              (rest entity) order)
             contents (content entity)
             [contents remainder] (if (and (object? contents)

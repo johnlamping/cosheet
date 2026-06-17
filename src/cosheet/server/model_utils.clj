@@ -2,7 +2,7 @@
   (:require
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [thread-map replace-in-seqs
+    [utils :refer [threaded-map replace-in-seqs
                    extract-first]]
     [orderable :refer [initial split]]
     [reporter-macros :refer [app-R let-R]]
@@ -643,7 +643,7 @@
     (let [[string new-store] (get-new-string store)]
       [(str "\u00A0" string) new-store])
     (sequential? generic)
-    (thread-map specialize-generic generic store)
+    (threaded-map specialize-generic generic store)
     true
     [generic store]))
 
@@ -693,7 +693,7 @@
    store."
   [template targets adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-generic template store)]
-    (thread-map
+    (threaded-map
      (fn [[target adjacent] store]
        (let [[store id] (create-possible-selector-entity
                          specialized-template

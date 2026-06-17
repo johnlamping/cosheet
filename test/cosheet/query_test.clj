@@ -11,7 +11,6 @@
                                       elements label->elements mutable-entity?
                                       primitive? entity-key
                                       make-tree-object make-tree-element
-                                      immutable-object-to-tree
                                       add-elements-to-entity
                                       link-type name-label]]
                       entity-impl

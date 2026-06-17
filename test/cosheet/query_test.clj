@@ -16,6 +16,7 @@
                                       link-type name-label]]
                       entity-impl
                       [query :as query :refer :all]
+                      [debug :refer [envs-to-trees]]
                       [query-impl :refer [closest-template minimal-label?]]
                       [test-utils :refer [check as-set]])
             ; :reload
@@ -656,7 +657,7 @@
     (is (= (query-matches (make-tree-object '((:a 2))) s2) nil))
     (is (= (query-matches (make-tree-object '((:d))) s2) nil))
     ;; variables as top level entities
-    (is (check (set (envs-to-list (query-matches (variable "v") s2)))
+    (is (check (set (envs-to-trees (query-matches (variable "v") s2)))
                #{{"v" (id->object (make-item-id "a") s2)}
                  {"v" (id->object (make-item-id "b") s2)}
                  {"v" (as-set '(:a (3 (4 5)) (1 (2 3))))}
@@ -670,45 +671,45 @@
                  {"v" 5}
                  {"v" 4}
                  {"v" 3}}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches (variable "v" (make-tree-object '((:a)))) s2)))
            #{{"v" (id->object (make-item-id "a") s2)}}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches
                   (variable "v" (make-tree-object '((:a 1)))) s2)))
            #{{"v" (id->object (make-item-id "a") s2)}}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches
                   (variable "v" (make-tree-object '((:a 2)))) s2)))
            #{}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches
                   (variable "v" (make-tree-object '((:d)))) s2)))
            #{}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches (and-query `(1 ~(variable "v"))
                                            (variable "v"))
                                 s2)))
            #{{"v" '(2 3)} {"v" '(2 4)}}))
     ;; variables inside items
     (is (= (set
-            (envs-to-list
+            (envs-to-trees
              (query-matches `(nil (1 ~(variable "v"))) s2)))
            #{{"v" '(2 4)} {"v" '(2 3)}}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches `(nil (1 (2 ~(variable "v")))) s2)))
            #{{"v" 4} {"v" 3}}))
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches `(nil (1 ~(variable "v"))
                                  (3 ~(variable "v")))
                            s2))
            nil)) 
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches `(nil (1 (2 ~(variable "v")))
                                  (~(variable "v")))
                            s2))
            [{"v" 3}]))
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches `(nil (~(variable "v"))
                                  (1 (2 ~(variable "v"))))
                            s2))
@@ -721,13 +722,13 @@
                    `(1 ~(variable "v" '(2 3) true))
                    s2)]
       (is (= (count matches) 1)))
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches (and-query `(nil (~(variable "v") 4))
                                       `(1 (~(variable "v" nil true) 3)))
                            s2))
            nil))
     ;; and
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches (and-query `(1 (~(variable "v") 3))
                                       `(nil (~(variable "v") 4)))
                            s2))
@@ -740,7 +741,7 @@
                                      `(nil (~(variable "v") 5)))
                           s2)
            nil))
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches (and-query `(~(variable "c") (~(variable "v") 3))
                                       `(~(variable "c") (~(variable "v") 4)))
                            s2))
@@ -749,12 +750,12 @@
                                      `(~(variable "c") (~(variable "v") 4)))
                           s2)
            nil))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches (and-query `(nil ~(variable "v"))
                                            `(nil (nil ~(variable "v"))))
                                 s2)))
            #{{"v" '(2 3)} {"v" '(2 4)} {"v" 3} {"v" 4} {"v" '(4 5)} {"v" 5}}))
-    (is (= (set (envs-to-list
+    (is (= (set (envs-to-trees
                  (query-matches (and-query `(nil (~(variable "v")))
                                            `(nil (nil ~(variable "v"))))
                                 s2)))
@@ -770,7 +771,7 @@
                                               (~(variable "v"))))
                           s2)
            [{}]))
-    (is (= (envs-to-list
+    (is (= (envs-to-trees
             (query-matches (exists-query "c" nil
                                          `(nil (1 (2 ~(variable "v")))
                                                (~(variable "v"))))

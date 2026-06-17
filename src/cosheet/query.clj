@@ -272,11 +272,3 @@
   ([query store] (query-matches-m query {} store))
   ([query env store] (query-matches-m query env store)))
 
-;;; This is a utility for debugging the results of queries. We put it here
-;;; because it is query specific.
-(defn envs-to-list [envs]
-  "Given a vector of environments, as returned by a query, turn it into maps
-   of the list form of the environments."
-  (seq (for [env envs]
-         (zipmap (keys env)
-                 (map #(to-tree %) (vals env))))))

@@ -2,11 +2,15 @@
   (:require [clojure.set :as set]
             [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [parse-string-as-number]]
-                      [store :as store]
+                      [store :refer [Store candidate-matching-ids id->target
+                                     item-id-name item-id? mutable-store?
+                                     new-element-store read-store]]
                       store-impl
-                      [entity :as entity]
+                      [entity :refer [content element? elements id->entity
+                                      orientation primitive? stored-entity?
+                                      to-tree uniquely-identified-object?]]
                       [entity-impl :as entity-impl]
-                      [query :as query]
+                      [query :refer [matching-items]]
                       [reporter :refer [reporter? attended?
                                         reporter-data reporter-value-or-invalid
                                         reporter-valid?]]
@@ -15,7 +19,7 @@
                                           current-tasks]]
                       [calculator :refer [current-value computation-value
                                           make-calculator-data]]
-                      [mutable-map :as mm])))
+                      [mutable-map :refer [current-contents]])))
 
 (defn simplified-function-name
   "Return a simplified name of the function, getting rid of uniquifying
@@ -53,23 +57,23 @@
 
 (defn store-as-list [store]
   (map
-   #(entity/to-tree (entity/id->entity % store))
-   (filter #(nil? (store/id->target store %))
-           (first (store/candidate-matching-ids store nil)))))
+   #(to-tree (id->entity % store))
+   (filter #(nil? (id->target store %))
+           (first (candidate-matching-ids store nil)))))
 
 (defn simplify-for-print [item]
-  (cond (satisfies? store/Store item)
-        (if (store/mutable-store? item)
+  (cond (satisfies? Store item)
+        (if (mutable-store? item)
           (symbol "MutableStore")
           (symbol "Store"))
-        (store/item-id? item)
-        (symbol (store/item-id-name item))
-        (entity/stored-entity? item)
+        (item-id? item)
+        (symbol (item-id-name item))
+        (stored-entity? item)
         (symbol (clojure.string/join
-                 [(if (entity/element? item)
-                    (if (= (entity/orientation item) :target)
+                 [(if (element? item)
+                    (if (= (orientation item) :target)
                       "Reverse-Element" "Element")
-                    (if (entity/uniquely-identified-object? item)
+                    (if (uniquely-identified-object? item)
                       "Identified-Object" "Object"))
                   "-" (simplify-for-print (:item-id item))]))
         (reporter? item)
@@ -85,7 +89,7 @@
         (vector? item)
         (if (and (not (empty? item))
                  (every? #(instance? clojure.lang.Atom %) item))
-          (simplify-for-print (mm/current-contents item))
+          (simplify-for-print (current-contents item))
           (vec (map simplify-for-print item)))
         (instance? clojure.lang.Fn item)
         (simplified-function-name item)
@@ -196,12 +200,12 @@
                (print-backtrace rep)))))))))
 
 
-(defn envs-to-list [envs]
+(defn envs-to-trees [envs]
   "Given a vector of environments, as returned by a query, turn it into maps
    of the current value of the environments."
   (seq (for [env envs]
          (zipmap (keys env)
-                 (map #(current-value (entity/to-tree %)) (vals env))))))
+                 (map to-tree (vals env))))))
 
 ;;; Showing items in a file.
 
@@ -211,14 +215,14 @@
 
 (defn read-store-file [name]
   (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
-    (store/read-store (store/new-element-store) stream)))
+    (read-store (new-element-store) stream)))
 
 ;;; Make a list form, but only to a limited depth
 (defn to-depth-limited-list [entity depth width]
-  (if (entity/primitive? entity)
+  (if (primitive? entity)
     entity
-    (let [content (entity/content entity)
-          elements (entity/elements entity)]
+    (let [content (content entity)
+          elements (elements entity)]
       (if (empty? elements)
         content
         (if (= depth 0)
@@ -245,7 +249,7 @@
                       :depth depth
                       :width width})
   (let [store (or store (read-store-file name))
-        results (vec (query/matching-items pattern store))
+        results (vec (matching-items pattern store))
         lists (vec (map #(-> %
                              (to-depth-limited-list depth width)
                              simplify-for-print)

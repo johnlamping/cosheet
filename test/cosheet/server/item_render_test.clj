@@ -4,7 +4,7 @@
             (cosheet
              [orderable :as orderable]
              [query :refer [matching-elements]]
-             [debug :refer [envs-to-list simplify-for-print]]
+             [debug :refer [envs-to-trees simplify-for-print]]
              [entity :refer [id->element id->object
                              name-label link-type object-type
                              make-tree-object uniquely-identified-object?

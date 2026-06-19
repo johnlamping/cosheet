@@ -405,8 +405,10 @@
   ;; protocol, but its entity-key is just [:shareable-object id] (the
   ;; elements don't participate), so two references with the same id
   ;; but different elements are recognized as the same object.
-  (let [obj (make-shareable-tree-object "x" [1 2])]
-    (is (= obj [:shareable-object "x" 1 2]))
+  (let [tid1 (make-tree-id 1)
+        tid2 (make-tree-id 2)
+        obj (make-shareable-tree-object tid1 [1 2])]
+    (is (= obj [:shareable-object tid1 1 2]))
     (is (sharable-tree-object? obj))
     (is (not (sharable-tree-object? [:object 1 2])))
     (is (not (primitive? obj)))
@@ -416,18 +418,20 @@
     (is (= (forward-elements obj) [1 2]))
     (is (= (content obj) nil))
     (is (= (orientation obj) nil))
-    (is (= (entity-key obj) [:shareable-object "x"]))
-    (is (= (entity-key (make-shareable-tree-object "x" [3 4]))
+    (is (= (entity-key obj) tid1))
+    (is (= (entity-key (make-shareable-tree-object tid1 [3 4]))
            (entity-key obj)))
-    (is (not= (entity-key (make-shareable-tree-object "y" [1 2]))
+    (is (not= (entity-key (make-shareable-tree-object tid2 [1 2]))
               (entity-key obj))))
-  (let [obj (make-shareable-tree-object "x" '[(2 :foo) (4 3)])]
+  (let [obj (make-shareable-tree-object (make-tree-id 1)
+                                        '[(2 :foo) (4 3)])]
     (is (= (label->elements obj :foo) '[(2 :foo)]))
     (is (= (content->elements obj 4) '[(4 3)]))))
 
 (deftest sharable-uninterned-object?-test
   ;; Shareable tree-objects are uninterned.
-  (is (sharable-uninterned-object? (make-shareable-tree-object "x" [])))
+  (is (sharable-uninterned-object?
+       (make-shareable-tree-object (make-tree-id 1) [])))
   ;; Plain primitives and non-shareable tree-objects are not.
   (is (not (sharable-uninterned-object? 1)))
   (is (not (sharable-uninterned-object? "foo")))
@@ -567,6 +571,117 @@
              `(2 (~(make-tree-object
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
+
+(deftest threaded-traversal-test
+  (let [;; Trivial pre/post: leave the entity unchanged, but use the
+        ;; caller-data as a counter or accumulator.
+        identity-pre (fn [e cd] [e cd])
+        identity-post (fn [e _ cd] [e cd])
+        counter-pre (fn [e cd] [e (inc cd)])
+        collector-pre (fn [e cd] [e (conj cd e)])]
+    ;; Primitive sub-elements are wrapped as one-element lists before
+    ;; descent, so each primitive sub-element generates two pre-fn
+    ;; calls: one for the wrapped element, one for its content.
+    ;; Entities visited: outer, content 1, sub (2), its content 2,
+    ;; sub (3 4), its content 3, its sub (4), its content 4 — 8 total.
+    (let [[result count] (threaded-traversal '(1 2 (3 4))
+                                             counter-pre identity-post 0)]
+      (is (= result '(1 2 (3 4))))
+      (is (= count 8)))
+    ;; Pre-fn order is depth-first: outer, then content, then each
+    ;; sub-element (descending into each before moving on); primitive
+    ;; sub-elements appear once as the wrapped list and once as the
+    ;; primitive content.
+    (let [[_ visited] (threaded-traversal '(1 2 (3 4))
+                                          collector-pre identity-post [])]
+      (is (= visited ['(1 2 (3 4)) 1 '(2) 2 '(3 4) 3 '(4) 4])))
+    ;; Pre-fn can transform entities (here, double every number).
+    (let [doubler (fn [e cd] [(if (number? e) (* 2 e) e) cd])
+          [result _] (threaded-traversal '(1 2 (3 4))
+                                         doubler identity-post nil)]
+      (is (= result '(2 4 (6 8)))))
+    ;; Pre-fn returning nil for an element drops it from the result
+    ;; and skips traversal into its content and elements.
+    (let [drop-5 (fn [e cd]
+                   [(if (and (sequential? e) (= (first e) 5)) nil e) cd])
+          [result _] (threaded-traversal '(1 2 (5 6) (3 4))
+                                         drop-5 identity-post nil)]
+      (is (= result '(1 2 (3 4)))))
+    ;; Post-fn returning nil for an element also drops it.
+    (let [drop-5-post (fn [e _ cd]
+                        [(if (and (sequential? e) (= (first e) 5)) nil e)
+                         cd])
+          [result _] (threaded-traversal '(1 2 (5 6) (3 4))
+                                         identity-pre drop-5-post nil)]
+      (is (= result '(1 2 (3 4)))))
+    ;; When the skip check fires for a non-sharable parent, the child
+    ;; is not descended into, but pre-fn and post-fn are still called
+    ;; on it so it can be transformed. obj appears twice in the input
+    ;; (once as content, once via the skipped element keeping its
+    ;; original shareable form), so the construction at obj's only
+    ;; descent records a single encounter and produces a plain
+    ;; tree-object; the back-reference keeps the original shareable
+    ;; form.
+    (let [obj (make-shareable-tree-object (make-tree-id 1) [])
+          structure `(~obj (~obj))
+          [result count] (threaded-traversal structure counter-pre
+                                             identity-post 0)]
+      ;; Visits: outer (the element), obj (the content), (obj) (via
+      ;; pre-fn only, not recursed) = 3.
+      (is (= count 3))
+      (is (= result `(~(make-tree-object []) (~obj)))))
+    ;; When the skip check fires and the parent IS a
+    ;; sharable-uninterned-object, the child is dropped entirely.
+    (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
+          x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
+          structure `(~y-obj (~x-obj))
+          [result count] (threaded-traversal structure counter-pre
+                                             identity-post 0)]
+      ;; Visits: outer, y-obj, (x-obj), x-obj. The (y-obj) element
+      ;; inside x-obj is skipped because x-obj is sharable-uninterned,
+      ;; so no pre-fn is called on it.
+      (is (= count 4))
+      ;; Both y-obj and x-obj are constructed only once, so they
+      ;; produce plain tree-objects (no shareable form is needed).
+      (is (= result `(~(make-tree-object []) (~(make-tree-object []))))))
+    ;; The skip check uses the seen set as it was when this entity's
+    ;; elements were entered, so additions made by one sibling's
+    ;; recursion do not cause the next sibling to be skipped. obj is
+    ;; constructed twice: the first time the seen map records only
+    ;; one encounter so a plain tree-object is produced; the second
+    ;; time obj's key was already in the seen map (from the first
+    ;; sibling), so a shareable tree-object is produced without
+    ;; elements (the elements only appear at the first-encounter
+    ;; location).
+    (let [obj (make-shareable-tree-object (make-tree-id 1) [1])
+          structure `(0 (~obj) (~obj))
+          [result count] (threaded-traversal structure counter-pre
+                                             identity-post 0)]
+      ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj, (1), 1 = 10.
+      ;; (Each primitive 1 is wrapped, so contributes two visits.)
+      (is (= count 10))
+      (is (= result `(0 (~(make-tree-object [1]))
+                        (~(make-shareable-tree-object
+                           (make-tree-id 1) []))))))
+    ;; post-fn receives the caller-data that was input to this level
+    ;; (before pre-fn ran), and the caller-data threaded back up
+    ;; through the children.
+    (let [pre (fn [_ _] [42 :modified])
+          post (fn [e orig cd] [e {:orig orig :back cd}])
+          ;; Primitive 42, no children: orig=:start, back=:modified.
+          [_ result-cd] (threaded-traversal 42 pre post :start)]
+      (is (= result-cd {:orig :start :back :modified})))
+    ;; A shareable object at the top level is traversed through its
+    ;; elements. Because it is only referenced once, the result is a
+    ;; plain tree-object (no shareable identifier is preserved). The
+    ;; accumulator records every entity visited, in order: the outer
+    ;; object, the wrapped (1), its content 1, the element (2 3), its
+    ;; content 2, the wrapped (3), its content 3.
+    (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
+          [result visited] (threaded-traversal obj collector-pre
+                                               identity-post [])]
+      (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
+      (is (= result (make-tree-object [1 '(2 3)]))))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

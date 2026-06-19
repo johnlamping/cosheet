@@ -350,7 +350,7 @@
 
   (entity-key [this]
     (case (first this)
-      :shareable-object [:shareable-object (second this)]
+      :shareable-object (second this)
       this))
 
   (updating-immutable [this] this))

@@ -207,8 +207,8 @@
   (entity-key [this]
     
     "Return the key of this entity. For stored entities, it is their
-    item-id. For shareable-tree-objects, it is [:shareable-object
-    <identifier>]. For all other entities it is the entity, itself.
+    item-id. For shareable-tree-objects, it is their id. For all other
+    entities it is the entity, itself.
 
     Since matching of store objects is independent of the store, named
     objects can be matched even if they are associated with different
@@ -409,13 +409,32 @@
   (assert (not-any? object? elements))
   (into [:object] elements))
 
+(defrecord
+    ^{:doc
+      "The id for shareable-tree-objects."}
+    TreeId
+    [number])
+
+(defn make-tree-id
+  "Turn an integer into a tree id."
+  [n]
+  ;; Integers are reserved for creation by the store
+  (assert (integer? n))
+  (->TreeId n))
+
+(defn tree-id?
+  "Return true if the argument is a tree id."
+  [x]
+  (instance? TreeId x))
+
 (defn make-shareable-tree-object
-  "Make a tree representation of an object that carries an identifier
-   so that multiple references to the same object can be recognized as
-   sharing identity (via entity-key)."
-  [identifier elements]
+  "Make a tree representation of an object that carries an id so that
+   multiple references to the same object can be recognized as sharing
+   identity (via entity-key)."
+  [id elements]
+  (assert (tree-id? id))
   (assert (not-any? object? elements))
-  (into [:shareable-object identifier] elements))
+  (into [:shareable-object id] elements))
 
 (defn sharable-tree-object?
   "Return true if entity is the output of make-shareable-tree-object."
@@ -426,8 +445,8 @@
 (defn sharable-uninterned-object?
   "Return true if the entity is an object whose identity can be
   recognized across multiple references without being interned: either
-  a shareable tree-object (which carries an explicit identifier) or a
-  stored object that is not presumed-interned."
+  a shareable tree-object (which carries an explicit id) or a stored
+  object that is not presumed-interned."
   [entity]
   (or (sharable-tree-object? entity)
       (and (stored-entity? entity)
@@ -483,6 +502,192 @@
   will be removed."
   [f entity]
   (f (map-subparts #(post-walk-entity f %) entity)))
+
+(defn- assign-fresh-id
+  "Assign a fresh tree-id to the seen map for key k, using the current
+   :next-number, and increment :next-number."
+  [seen k]
+  (-> seen
+      (assoc k (make-tree-id (:next-number seen)))
+      (update :next-number inc)))
+
+(defn- record-encounter
+  "Update threaded-traversal's seen map for entering an entity: the
+  first time a sharable-uninterned-object is encountered, add its key
+  with value nil; on a later encounter, assign a fresh tree-id (drawn
+  from :next-number) so the construction step knows to produce a
+  shareable form with that id."
+  [seen entity]
+  (if-not (sharable-uninterned-object? entity)
+    seen
+    (let [k (entity-key entity)]
+      (cond
+        (not (contains? seen k)) (assoc seen k nil)
+        (nil? (get seen k)) (assign-fresh-id seen k)
+        :else seen))))
+
+(defn- assemble-object
+  "Build the tree form for an object whose new elements have been
+   computed. Produce a shareable-tree-object using the tree-id stored
+   in the seen map if the seen map records more than one reference
+   (its value is non-nil); otherwise produce a plain tree-object. If
+   the entity's key was already present in the seen map before this
+   encounter was recorded, this is a repeat encounter so the
+   shareable-tree-object is built without elements; the elements only
+   appear at the first-encounter location."
+  [entity original-seen seen new-elements]
+  (if-let [id (get seen (entity-key entity))]
+    (if (contains? original-seen (entity-key entity))
+      (make-shareable-tree-object id [])
+      (make-shareable-tree-object id new-elements))
+    (make-tree-object new-elements)))
+
+(defn threaded-traversal-helper
+  "Build the recursive worker for threaded-traversal. Given pre-fn and
+   post-fn, return a function traverse [entity [caller-data seen]]
+   that performs the traversal and returns [entity [caller-data seen]]."
+  [pre-fn post-fn]
+  (letfn [(finish [assembled original-caller-data caller-data seen]
+            (let [[e cd] (post-fn assembled original-caller-data caller-data)]
+              [e [cd seen]]))
+          (traverse [original-entity [original-caller-data seen]]
+            (let [[entity caller-data] (pre-fn original-entity
+                                               original-caller-data)]
+              (if (and (nil? entity) (element? original-entity))
+                ;; pre-fn dropped this element; don't descend or assemble.
+                [nil [caller-data seen]]
+                (let [original-seen seen
+                      seen (record-encounter seen entity)
+                      threaded-data [caller-data seen]]
+                  (cond
+                    (element? entity)
+                    (let [[new-content threaded-data]
+                          (traverse (content entity) threaded-data)
+                          [new-elements threaded-data]
+                          (traverse-elements entity threaded-data)
+                          [caller-data seen] threaded-data
+                          assembled (make-tree-element (orientation entity)
+                                                       new-content
+                                                       new-elements)]
+                      (finish assembled original-caller-data caller-data seen))
+
+                    (and (object? entity)
+                         (not (presumed-interned-object? entity)))
+                    (let [[new-elements threaded-data]
+                          (traverse-elements entity threaded-data)
+                          [caller-data seen] threaded-data
+                          assembled (assemble-object entity original-seen
+                                                     seen new-elements)]
+                      (finish assembled original-caller-data caller-data seen))
+
+                    :else
+                    (finish entity original-caller-data caller-data seen))))))
+          (traverse-elements [entity threaded-data]
+            (let [[_ seen] threaded-data
+                  entity-sharable? (sharable-uninterned-object? entity)]
+              (reduce
+               (fn [[results threaded-data] child]
+                 (let [child (cond (element? child) child
+                                   (primitive? child) (list child)
+                                   :else (make-tree-element :source
+                                                            child nil))
+                       [r threaded-data]
+                       (if (and (sharable-uninterned-object? (content child))
+                                (contains? seen
+                                           (entity-key (content child))))
+                         ;; Record this as a second-or-later encounter and
+                         ;; either skip the child or process it without
+                         ;; descending into it.
+                         (let [child-key (entity-key (content child))
+                               [cd s] threaded-data
+                               s (if (nil? (get s child-key))
+                                   (assign-fresh-id s child-key)
+                                   s)]
+                           (if entity-sharable?
+                             [nil [cd s]]
+                             (let [[pe pcd] (pre-fn child cd)]
+                               (if (nil? pe)
+                                 [nil [pcd s]]
+                                 (let [[fe fcd] (post-fn pe cd pcd)]
+                                   [fe [fcd s]])))))
+                         (traverse child threaded-data))]
+                   [(if (nil? r) results (conj results r)) threaded-data]))
+               [[] threaded-data]
+               (elements entity))))]
+    traverse))
+
+(defn threaded-traversal
+  "Treats an entity as a graph, with elements corresponding to edges,
+  while objects and primitives correspond to nodes. Does a depth first
+  traversal of the graph, which logically overlays a tree on
+  it. Returns a tree entity corresponding to that tree. In addition,
+  the caller provides functions that can alter the traversal, both on
+  the way down, and on the way back up.
+
+  Most elements correspond to directed edges in the graph, and are
+  only traversed in the direction from the entity they are about to
+  their content. But a link between two objects corresponds to an
+  undirected edge in the graph between its two endpoints. The depth
+  first traversal will only traverse it once, going from the endpoint
+  that the traversal visits first to the one that it visits second, So
+  it will only generate a single element in the tree graph, oriented
+  in that direction.
+
+  (An aside: the edges of the graph can have their own edges, which
+  means that the traversal has to traverse edges of edges. This is not
+  a standard structure, although RDF-star comes close.)
+
+  Unlike elements or links, which only appear once in the resulting
+  tree entity, an object may need to appear several times, once in
+  each element in the final tree entity where it's an endpoint. If an
+  object is presumed interned, then its item-id can be used to
+  identify it each time, and the traversal stops at it, not traversing
+  beyond. (The purpose of the tree form is to be able to represent an
+  entity that may not be in a store, and presumed interned objects are
+  in already in the store.)
+
+  That leaves objects that are not presumed interned. If one of them
+  is encountered multiple times, the traversal will make a
+  shareable-tree-object for it. For the first time it is encountered
+  by the traversal, the object will contain all its elements, while
+  for the other times, there will just be a reference that has the
+  shareable object's id, but no elements.
+
+  The caller provides two functions, pre-fn and post-fn, which can
+  modify the traversal or its resulting tree entity. In addition, user
+  data is threaded through all calls to those functions, which lets
+  them accumulate information across the traversal.
+
+  The pre-fn is called just before an entity is traversed, passing in
+  the entity and the caller data, and must return a pair of a revised
+  entity and revised caller data. The traversal will then proceed on
+  the revised entity, rather than on the original one, and the revised
+  caller data will be passed on to the next invocation of a caller
+  provided function. If the entity is an element, pre-fn may return
+  nil for the revised entity, which tells the traversal to behave as
+  if the entity weren't there: don't traverse it or include it in the
+  resulting tree entity. In the case where an element would ordinarily
+  be represented by a primitive, pre-fn will be passed a full element,
+  not the primitive, so it will know it can return nil.
+
+  The post-fn is called after the traversal has finished for an
+  entity. It gets passed the tree entity the traversal has
+  assembled. And it gets passed both the original caller data for the
+  entity being traversed and the caller data after the traversal of
+  the entity. The post-fn must returns a pair of the revised tree
+  entity and the revised caller data. As a rule, its revised caller
+  data will be based on the latest caller data, but it might want to
+  use the original caller data in deciding what to do. If the post-fn
+  is called with a tree element, is also has the option to return a
+  nil revised element. In that case the tree element will be thrown
+  away. And just as for pre-fun, in the case where an element would
+  ordinarily be represented by a primitive, post-fn will be passed a
+  full element."
+  [entity pre-fn post-fn caller-data]
+  (let [[result [final-caller-data _]]
+        ((threaded-traversal-helper pre-fn post-fn)
+         entity [caller-data {:next-number 1}])]
+    [result final-caller-data]))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."

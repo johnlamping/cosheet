@@ -657,9 +657,10 @@
           structure `(0 (~obj) (~obj))
           [result count] (threaded-traversal structure counter-pre
                                              identity-post 0)]
-      ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj, (1), 1 = 10.
-      ;; (Each primitive 1 is wrapped, so contributes two visits.)
-      (is (= count 10))
+      ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj = 8.
+      ;; The second time obj is reached its key is already in the seen
+      ;; map, so traversal does not descend into its elements.
+      (is (= count 8))
       (is (= result `(0 (~(make-tree-object [1]))
                         (~(make-shareable-tree-object
                            (make-tree-id 1) []))))))

@@ -526,22 +526,6 @@
         (nil? (get seen k)) (assign-fresh-id seen k)
         :else seen))))
 
-(defn- assemble-object
-  "Build the tree form for an object whose new elements have been
-   computed. Produce a shareable-tree-object using the tree-id stored
-   in the seen map if the seen map records more than one reference
-   (its value is non-nil); otherwise produce a plain tree-object. If
-   the entity's key was already present in the seen map before this
-   encounter was recorded, this is a repeat encounter so the
-   shareable-tree-object is built without elements; the elements only
-   appear at the first-encounter location."
-  [entity original-seen seen new-elements]
-  (if-let [id (get seen (entity-key entity))]
-    (if (contains? original-seen (entity-key entity))
-      (make-shareable-tree-object id [])
-      (make-shareable-tree-object id new-elements))
-    (make-tree-object new-elements)))
-
 (defn threaded-traversal-helper
   "Build the recursive worker for threaded-traversal. Given pre-fn and
    post-fn, return a function traverse [entity [caller-data seen]]
@@ -550,38 +534,51 @@
   (letfn [(finish [assembled original-caller-data caller-data seen]
             (let [[e cd] (post-fn assembled original-caller-data caller-data)]
               [e [cd seen]]))
-          (traverse [original-entity [original-caller-data seen]]
+          
+          (traverse [original-entity [original-caller-data original-seen]]
             (let [[entity caller-data] (pre-fn original-entity
                                                original-caller-data)]
-              (if (and (nil? entity) (element? original-entity))
+              (cond
+                (and (nil? entity)
+                     (element? original-entity))
                 ;; pre-fn dropped this element; don't descend or assemble.
-                [nil [caller-data seen]]
-                (let [original-seen seen
-                      seen (record-encounter seen entity)
-                      threaded-data [caller-data seen]]
-                  (cond
-                    (element? entity)
-                    (let [[new-content threaded-data]
-                          (traverse (content entity) threaded-data)
-                          [new-elements threaded-data]
-                          (traverse-elements entity threaded-data)
-                          [caller-data seen] threaded-data
-                          assembled (make-tree-element (orientation entity)
-                                                       new-content
-                                                       new-elements)]
-                      (finish assembled original-caller-data caller-data seen))
+                [nil [caller-data original-seen]]
 
-                    (and (object? entity)
-                         (not (presumed-interned-object? entity)))
-                    (let [[new-elements threaded-data]
-                          (traverse-elements entity threaded-data)
-                          [caller-data seen] threaded-data
-                          assembled (assemble-object entity original-seen
-                                                     seen new-elements)]
-                      (finish assembled original-caller-data caller-data seen))
+                (or (presumed-interned-object? entity)
+                    (primitive? entity))
+                ;; Treat it as atomic.
+                (finish entity original-caller-data caller-data original-seen)
 
-                    :else
-                    (finish entity original-caller-data caller-data seen))))))
+                (element? entity)
+                (let [[new-content threaded-data]
+                      (traverse (content entity) [caller-data original-seen])
+                      [new-elements threaded-data]
+                      (traverse-elements entity threaded-data)
+                      [caller-data seen] threaded-data
+                      assembled (make-tree-element (orientation entity)
+                                                   new-content
+                                                   new-elements)]
+                  (finish assembled original-caller-data caller-data seen))
+
+                :else ;; An object that we have to traverse once.
+                (let [seen (record-encounter original-seen entity)]
+                  (if (contains? original-seen (entity-key entity))
+                    ;; A shareable object we have already seen. Put in
+                    ;; a reference.
+                    (finish (make-shareable-tree-object
+                             (get seen (entity-key entity)) [])
+                            original-caller-data  caller-data original-seen)
+
+                    (let [[new-elements [caller-data seen]]
+                          (traverse-elements entity [caller-data seen])
+                          assembled (if-let [id (get seen
+                                                     (entity-key entity))]
+                                      (make-shareable-tree-object
+                                       id new-elements)
+                                      (make-tree-object new-elements))]
+                      (finish assembled original-caller-data
+                              caller-data seen)))))))
+          
           (traverse-elements [entity threaded-data]
             (let [[_ seen] threaded-data
                   entity-sharable? (sharable-uninterned-object? entity)]

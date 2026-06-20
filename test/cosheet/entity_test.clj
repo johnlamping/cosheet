@@ -409,8 +409,8 @@
         tid2 (make-tree-id 2)
         obj (make-shareable-tree-object tid1 [1 2])]
     (is (= obj [:shareable-object tid1 1 2]))
-    (is (sharable-tree-object? obj))
-    (is (not (sharable-tree-object? [:object 1 2])))
+    (is (shareable-tree-object? obj))
+    (is (not (shareable-tree-object? [:object 1 2])))
     (is (not (primitive? obj)))
     (is (not (element? obj)))
     (is (object? obj))
@@ -428,25 +428,25 @@
     (is (= (label->elements obj :foo) '[(2 :foo)]))
     (is (= (content->elements obj 4) '[(4 3)]))))
 
-(deftest sharable-uninterned-object?-test
+(deftest shareable-uninterned-object?-test
   ;; Shareable tree-objects are uninterned.
-  (is (sharable-uninterned-object?
+  (is (shareable-uninterned-object?
        (make-shareable-tree-object (make-tree-id 1) [])))
   ;; Plain primitives and non-shareable tree-objects are not.
-  (is (not (sharable-uninterned-object? 1)))
-  (is (not (sharable-uninterned-object? "foo")))
-  (is (not (sharable-uninterned-object? [:object 1 2])))
+  (is (not (shareable-uninterned-object? 1)))
+  (is (not (shareable-uninterned-object? "foo")))
+  (is (not (shareable-uninterned-object? [:object 1 2])))
   ;; Stored anonymous objects (have a store and no name) are uninterned.
   (let [[s id] (get-new-object-id (new-element-store))
         stored-anon (id->object id s)
         stored-no-store (id->object id nil)]
-    (is (sharable-uninterned-object? stored-anon))
+    (is (shareable-uninterned-object? stored-anon))
     ;; A stored entity with no :store is presumed-interned and thus
-    ;; not sharable-uninterned.
-    (is (not (sharable-uninterned-object? stored-no-store)))
+    ;; not shareable-uninterned.
+    (is (not (shareable-uninterned-object? stored-no-store)))
     ;; An interned object (e.g., the name-label one) is not
-    ;; sharable-uninterned either.
-    (is (not (sharable-uninterned-object?
+    ;; shareable-uninterned either.
+    (is (not (shareable-uninterned-object?
               (id->object (make-item-id "name") s))))))
 
 (deftest constant-test
@@ -575,10 +575,10 @@
 (deftest threaded-traversal-test
   (let [;; Trivial pre/post: leave the entity unchanged, but use the
         ;; caller-data as a counter or accumulator.
-        identity-pre (fn [e cd] [e cd])
-        identity-post (fn [e _ cd] [e cd])
-        counter-pre (fn [e cd] [e (inc cd)])
-        collector-pre (fn [e cd] [e (conj cd e)])]
+        identity-pre (fn [_ e cd] [e cd])
+        identity-post (fn [_ e _ cd] [e cd])
+        counter-pre (fn [_ e cd] [e (inc cd)])
+        collector-pre (fn [_ e cd] [e (conj cd e)])]
     ;; Primitive sub-elements are wrapped as one-element lists before
     ;; descent, so each primitive sub-element generates two pre-fn
     ;; calls: one for the wrapped element, one for its content.
@@ -596,25 +596,25 @@
                                           collector-pre identity-post [])]
       (is (= visited ['(1 2 (3 4)) 1 '(2) 2 '(3 4) 3 '(4) 4])))
     ;; Pre-fn can transform entities (here, double every number).
-    (let [doubler (fn [e cd] [(if (number? e) (* 2 e) e) cd])
+    (let [doubler (fn [_ e cd] [(if (number? e) (* 2 e) e) cd])
           [result _] (threaded-traversal '(1 2 (3 4))
                                          doubler identity-post nil)]
       (is (= result '(2 4 (6 8)))))
     ;; Pre-fn returning nil for an element drops it from the result
     ;; and skips traversal into its content and elements.
-    (let [drop-5 (fn [e cd]
+    (let [drop-5 (fn [_ e cd]
                    [(if (and (sequential? e) (= (first e) 5)) nil e) cd])
           [result _] (threaded-traversal '(1 2 (5 6) (3 4))
                                          drop-5 identity-post nil)]
       (is (= result '(1 2 (3 4)))))
     ;; Post-fn returning nil for an element also drops it.
-    (let [drop-5-post (fn [e _ cd]
+    (let [drop-5-post (fn [_ e _ cd]
                         [(if (and (sequential? e) (= (first e) 5)) nil e)
                          cd])
           [result _] (threaded-traversal '(1 2 (5 6) (3 4))
                                          identity-pre drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
-    ;; When the skip check fires for a non-sharable parent, the child
+    ;; When the skip check fires for a non-shareable parent, the child
     ;; is not descended into, but pre-fn and post-fn are still called
     ;; on it so it can be transformed. obj appears twice in the input
     ;; (once as content, once via the skipped element keeping its
@@ -626,21 +626,23 @@
           structure `(~obj (~obj))
           [result count] (threaded-traversal structure counter-pre
                                              identity-post 0)]
-      ;; Visits: outer (the element), obj (the content), (obj) (via
-      ;; pre-fn only, not recursed) = 3.
-      (is (= count 3))
+      ;; Visits: outer, obj (the content), (obj) (the element via
+      ;; the elements iteration), obj (its content, which traverse
+      ;; recognizes as already seen and so does not descend) = 4.
+      (is (= count 4))
       (is (= result `(~(make-tree-object []) (~obj)))))
     ;; When the skip check fires and the parent IS a
-    ;; sharable-uninterned-object, the child is dropped entirely.
+    ;; shareable-uninterned-object, the child is dropped entirely.
     (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
           x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
           structure `(~y-obj (~x-obj))
           [result count] (threaded-traversal structure counter-pre
                                              identity-post 0)]
-      ;; Visits: outer, y-obj, (x-obj), x-obj. The (y-obj) element
-      ;; inside x-obj is skipped because x-obj is sharable-uninterned,
-      ;; so no pre-fn is called on it.
-      (is (= count 4))
+      ;; Visits: outer, y-obj, (x-obj), x-obj, (y-obj). pre-fn is
+      ;; called on the (y-obj) sub-element, but traverse then drops
+      ;; it because x-obj is shareable-uninterned and y-obj is
+      ;; already in the seen map, so its content is not visited.
+      (is (= count 5))
       ;; Both y-obj and x-obj are constructed only once, so they
       ;; produce plain tree-objects (no shareable form is needed).
       (is (= result `(~(make-tree-object []) (~(make-tree-object []))))))
@@ -667,8 +669,8 @@
     ;; post-fn receives the caller-data that was input to this level
     ;; (before pre-fn ran), and the caller-data threaded back up
     ;; through the children.
-    (let [pre (fn [_ _] [42 :modified])
-          post (fn [e orig cd] [e {:orig orig :back cd}])
+    (let [pre (fn [_ _ _] [42 :modified])
+          post (fn [_ e orig cd] [e {:orig orig :back cd}])
           ;; Primitive 42, no children: orig=:start, back=:modified.
           [_ result-cd] (threaded-traversal 42 pre post :start)]
       (is (= result-cd {:orig :start :back :modified})))

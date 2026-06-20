@@ -436,19 +436,19 @@
   (assert (not-any? object? elements))
   (into [:shareable-object id] elements))
 
-(defn sharable-tree-object?
+(defn shareable-tree-object?
   "Return true if entity is the output of make-shareable-tree-object."
   [entity]
   (and (vector? entity)
        (= (first entity) :shareable-object)))
 
-(defn sharable-uninterned-object?
+(defn shareable-uninterned-object?
   "Return true if the entity is an object whose identity can be
   recognized across multiple references without being interned: either
   a shareable tree-object (which carries an explicit id) or a stored
   object that is not presumed-interned."
   [entity]
-  (or (sharable-tree-object? entity)
+  (or (shareable-tree-object? entity)
       (and (stored-entity? entity)
            (object? entity)
            (not (presumed-interned-object? entity)))))
@@ -503,27 +503,22 @@
   [f entity]
   (f (map-subparts #(post-walk-entity f %) entity)))
 
-(defn- assign-fresh-id
-  "Assign a fresh tree-id to the seen map for key k, using the current
-   :next-number, and increment :next-number."
-  [seen k]
-  (-> seen
-      (assoc k (make-tree-id (:next-number seen)))
-      (update :next-number inc)))
-
 (defn- record-encounter
   "Update threaded-traversal's seen map for entering an entity: the
-  first time a sharable-uninterned-object is encountered, add its key
+  first time a shareable-uninterned-object is encountered, add its key
   with value nil; on a later encounter, assign a fresh tree-id (drawn
   from :next-number) so the construction step knows to produce a
   shareable form with that id."
   [seen entity]
-  (if-not (sharable-uninterned-object? entity)
+  (if-not (shareable-uninterned-object? entity)
     seen
     (let [k (entity-key entity)]
       (cond
         (not (contains? seen k)) (assoc seen k nil)
-        (nil? (get seen k)) (assign-fresh-id seen k)
+        (nil? (get seen k)) (-> seen
+                                (assoc k (make-tree-id
+                                          (:next-number seen)))
+                                (update :next-number inc))
         :else seen))))
 
 (defn threaded-traversal-helper
@@ -531,12 +526,15 @@
    post-fn, return a function traverse [entity [caller-data seen]]
    that performs the traversal and returns [entity [caller-data seen]]."
   [pre-fn post-fn]
-  (letfn [(finish [assembled original-caller-data caller-data seen]
-            (let [[e cd] (post-fn assembled original-caller-data caller-data)]
+  (letfn [(finish [original-entity assembled
+                   original-caller-data caller-data seen]
+            (let [[e cd] (post-fn original-entity assembled
+                                  original-caller-data caller-data)]
               [e [cd seen]]))
-          
-          (traverse [original-entity [original-caller-data original-seen]]
-            (let [[entity caller-data] (pre-fn original-entity
+
+          (traverse [parent-entity original-entity
+                     [original-caller-data original-seen]]
+            (let [[entity caller-data] (pre-fn parent-entity original-entity
                                                original-caller-data)]
               (cond
                 (and (nil? entity)
@@ -547,27 +545,40 @@
                 (or (presumed-interned-object? entity)
                     (primitive? entity))
                 ;; Treat it as atomic.
-                (finish entity original-caller-data caller-data original-seen)
+                (finish original-entity entity
+                        original-caller-data caller-data original-seen)
 
                 (element? entity)
-                (let [[new-content threaded-data]
-                      (traverse (content entity) [caller-data original-seen])
-                      [new-elements threaded-data]
-                      (traverse-elements entity threaded-data)
-                      [caller-data seen] threaded-data
-                      assembled (make-tree-element (orientation entity)
-                                                   new-content
-                                                   new-elements)]
-                  (finish assembled original-caller-data caller-data seen))
+                (if (and (shareable-uninterned-object? parent-entity)
+                         (shareable-uninterned-object? (content entity))
+                         (contains? original-seen
+                                    (entity-key (content entity))))
+                  ;; Element of a shareable parent whose content has
+                  ;; already been seen: drop entirely so the first-
+                  ;; encounter form is the only place that lists the
+                  ;; element.
+                  [nil [caller-data original-seen]]
+                  (let [[new-content threaded-data]
+                        (traverse original-entity (content entity)
+                                  [caller-data original-seen])
+                        [new-elements threaded-data]
+                        (traverse-elements entity threaded-data)
+                        [caller-data seen] threaded-data
+                        assembled (make-tree-element (orientation entity)
+                                                     new-content
+                                                     new-elements)]
+                    (finish original-entity assembled
+                            original-caller-data caller-data seen)))
 
                 :else ;; An object that we have to traverse once.
                 (let [seen (record-encounter original-seen entity)]
                   (if (contains? original-seen (entity-key entity))
                     ;; A shareable object we have already seen. Put in
                     ;; a reference.
-                    (finish (make-shareable-tree-object
+                    (finish original-entity
+                            (make-shareable-tree-object
                              (get seen (entity-key entity)) [])
-                            original-caller-data  caller-data original-seen)
+                            original-caller-data caller-data original-seen)
 
                     (let [[new-elements [caller-data seen]]
                           (traverse-elements entity [caller-data seen])
@@ -576,41 +587,17 @@
                                       (make-shareable-tree-object
                                        id new-elements)
                                       (make-tree-object new-elements))]
-                      (finish assembled original-caller-data
-                              caller-data seen)))))))
-          
+                      (finish original-entity assembled
+                              original-caller-data caller-data seen)))))))
+
           (traverse-elements [entity threaded-data]
-            (let [[_ seen] threaded-data
-                  entity-sharable? (sharable-uninterned-object? entity)]
-              (reduce
-               (fn [[results threaded-data] child]
-                 (let [child (cond (element? child) child
-                                   (primitive? child) (list child)
-                                   :else (make-tree-element :source
-                                                            child nil))
-                       [r threaded-data]
-                       (if (and (sharable-uninterned-object? (content child))
-                                (contains? seen
-                                           (entity-key (content child))))
-                         ;; Record this as a second-or-later encounter and
-                         ;; either skip the child or process it without
-                         ;; descending into it.
-                         (let [child-key (entity-key (content child))
-                               [cd s] threaded-data
-                               s (if (nil? (get s child-key))
-                                   (assign-fresh-id s child-key)
-                                   s)]
-                           (if entity-sharable?
-                             [nil [cd s]]
-                             (let [[pe pcd] (pre-fn child cd)]
-                               (if (nil? pe)
-                                 [nil [pcd s]]
-                                 (let [[fe fcd] (post-fn pe cd pcd)]
-                                   [fe [fcd s]])))))
-                         (traverse child threaded-data))]
-                   [(if (nil? r) results (conj results r)) threaded-data]))
-               [[] threaded-data]
-               (elements entity))))]
+            (reduce
+             (fn [[results threaded-data] child]
+               (let [child (if (element? child) child (list child))
+                     [r threaded-data] (traverse entity child threaded-data)]
+                 [(if (nil? r) results (conj results r)) threaded-data]))
+             [[] threaded-data]
+             (elements entity)))]
     traverse))
 
 (defn threaded-traversal
@@ -656,20 +643,22 @@
   them accumulate information across the traversal.
 
   The pre-fn is called just before an entity is traversed, passing in
-  the entity and the caller data, and must return a pair of a revised
-  entity and revised caller data. The traversal will then proceed on
-  the revised entity, rather than on the original one, and the revised
-  caller data will be passed on to the next invocation of a caller
-  provided function. If the entity is an element, pre-fn may return
-  nil for the revised entity, which tells the traversal to behave as
-  if the entity weren't there: don't traverse it or include it in the
-  resulting tree entity. In the case where an element would ordinarily
-  be represented by a primitive, pre-fn will be passed a full element,
-  not the primitive, so it will know it can return nil.
+  the parent entity, the entity, and the caller data, and must return
+  a pair of a revised entity and revised caller data. The parent
+  entity is nil for the top-level call and the original entity of the
+  enclosing traversal for nested calls. The traversal will then
+  proceed on the revised entity, rather than on the original one, and
+  the revised caller data will be passed on to the next invocation of
+  a caller provided function. If the entity is an element, pre-fn may
+  return nil for the revised entity, which tells the traversal to
+  behave as if the entity weren't there: don't traverse it or include
+  it in the resulting tree entity. In the case where an element would
+  ordinarily be represented by a primitive, pre-fn will be passed a
+  full element, not the primitive, so it will know it can return nil.
 
   The post-fn is called after the traversal has finished for an
-  entity. It gets passed the tree entity the traversal has
-  assembled. And it gets passed both the original caller data for the
+  entity. It gets passed the original entity, the tree entity the
+  traversal has assembled, and both the original caller data for the
   entity being traversed and the caller data after the traversal of
   the entity. The post-fn must returns a pair of the revised tree
   entity and the revised caller data. As a rule, its revised caller
@@ -683,7 +672,7 @@
   [entity pre-fn post-fn caller-data]
   (let [[result [final-caller-data _]]
         ((threaded-traversal-helper pre-fn post-fn)
-         entity [caller-data {:next-number 1}])]
+         nil entity [caller-data {:next-number 1}])]
     [result final-caller-data]))
 
 (defn recursively-in-different-store

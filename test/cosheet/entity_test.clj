@@ -578,41 +578,48 @@
         identity-pre (fn [_ e cd] [e cd])
         identity-post (fn [_ e _ cd] [e cd])
         counter-pre (fn [_ e cd] [e (inc cd)])
-        collector-pre (fn [_ e cd] [e (conj cd e)])]
+        collector-pre (fn [_ e cd] [e (conj cd e)])
+        ;; Run a traversal with seen-tracking pre/post wrappers and
+        ;; the caller-data shape [user-data seen] they expect. Return
+        ;; [result final-user-data].
+        run (fn [entity user-pre user-post initial-user]
+              (let [[r [user _]]
+                    (threaded-traversal entity
+                                        (wrap-pre-fn-with-loop-avoidance
+                                         user-pre)
+                                        (wrap-post-fn-with-loop-avoidance
+                                         user-post)
+                                        [initial-user {:next-number 1}])]
+                [r user]))]
     ;; Primitive sub-elements are wrapped as one-element lists before
     ;; descent, so each primitive sub-element generates two pre-fn
     ;; calls: one for the wrapped element, one for its content.
     ;; Entities visited: outer, content 1, sub (2), its content 2,
     ;; sub (3 4), its content 3, its sub (4), its content 4 — 8 total.
-    (let [[result count] (threaded-traversal '(1 2 (3 4))
-                                             counter-pre identity-post 0)]
+    (let [[result count] (run '(1 2 (3 4)) counter-pre identity-post 0)]
       (is (= result '(1 2 (3 4))))
       (is (= count 8)))
     ;; Pre-fn order is depth-first: outer, then content, then each
     ;; sub-element (descending into each before moving on); primitive
     ;; sub-elements appear once as the wrapped list and once as the
     ;; primitive content.
-    (let [[_ visited] (threaded-traversal '(1 2 (3 4))
-                                          collector-pre identity-post [])]
+    (let [[_ visited] (run '(1 2 (3 4)) collector-pre identity-post [])]
       (is (= visited ['(1 2 (3 4)) 1 '(2) 2 '(3 4) 3 '(4) 4])))
     ;; Pre-fn can transform entities (here, double every number).
     (let [doubler (fn [_ e cd] [(if (number? e) (* 2 e) e) cd])
-          [result _] (threaded-traversal '(1 2 (3 4))
-                                         doubler identity-post nil)]
+          [result _] (run '(1 2 (3 4)) doubler identity-post nil)]
       (is (= result '(2 4 (6 8)))))
     ;; Pre-fn returning nil for an element drops it from the result
     ;; and skips traversal into its content and elements.
     (let [drop-5 (fn [_ e cd]
                    [(if (and (sequential? e) (= (first e) 5)) nil e) cd])
-          [result _] (threaded-traversal '(1 2 (5 6) (3 4))
-                                         drop-5 identity-post nil)]
+          [result _] (run '(1 2 (5 6) (3 4)) drop-5 identity-post nil)]
       (is (= result '(1 2 (3 4)))))
     ;; Post-fn returning nil for an element also drops it.
     (let [drop-5-post (fn [_ e _ cd]
                         [(if (and (sequential? e) (= (first e) 5)) nil e)
                          cd])
-          [result _] (threaded-traversal '(1 2 (5 6) (3 4))
-                                         identity-pre drop-5-post nil)]
+          [result _] (run '(1 2 (5 6) (3 4)) identity-pre drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
     ;; When the skip check fires for a non-shareable parent, the child
     ;; is not descended into, but pre-fn and post-fn are still called
@@ -624,8 +631,7 @@
     ;; form.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [])
           structure `(~obj (~obj))
-          [result count] (threaded-traversal structure counter-pre
-                                             identity-post 0)]
+          [result count] (run structure counter-pre identity-post 0)]
       ;; Visits: outer, obj (the content), (obj) (the element via
       ;; the elements iteration), obj (its content, which traverse
       ;; recognizes as already seen and so does not descend) = 4.
@@ -636,8 +642,7 @@
     (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
           x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
           structure `(~y-obj (~x-obj))
-          [result count] (threaded-traversal structure counter-pre
-                                             identity-post 0)]
+          [result count] (run structure counter-pre identity-post 0)]
       ;; Visits: outer, y-obj, (x-obj), x-obj, (y-obj). pre-fn is
       ;; called on the (y-obj) sub-element, but traverse then drops
       ;; it because x-obj is shareable-uninterned and y-obj is
@@ -657,8 +662,7 @@
     ;; location).
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1])
           structure `(0 (~obj) (~obj))
-          [result count] (threaded-traversal structure counter-pre
-                                             identity-post 0)]
+          [result count] (run structure counter-pre identity-post 0)]
       ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj = 8.
       ;; The second time obj is reached its key is already in the seen
       ;; map, so traversal does not descend into its elements.
@@ -672,7 +676,7 @@
     (let [pre (fn [_ _ _] [42 :modified])
           post (fn [_ e orig cd] [e {:orig orig :back cd}])
           ;; Primitive 42, no children: orig=:start, back=:modified.
-          [_ result-cd] (threaded-traversal 42 pre post :start)]
+          [_ result-cd] (run 42 pre post :start)]
       (is (= result-cd {:orig :start :back :modified})))
     ;; A shareable object at the top level is traversed through its
     ;; elements. Because it is only referenced once, the result is a
@@ -681,8 +685,7 @@
     ;; object, the wrapped (1), its content 1, the element (2 3), its
     ;; content 2, the wrapped (3), its content 3.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
-          [result visited] (threaded-traversal obj collector-pre
-                                               identity-post [])]
+          [result visited] (run obj collector-pre identity-post [])]
       (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
       (is (= result (make-tree-object [1 '(2 3)]))))))
 

@@ -514,7 +514,7 @@
 (defn record-encounter
   "Update a seen map for entering an entity: the first time a
   shareable-uninterned-object is encountered, add its key with value
-  nil; on a later encounter, assign a fresh tree-id (drawn from
+  nil; on the next encounter, assign a fresh tree-id (drawn from
   :next-number) so the construction step knows to produce a shareable
   form with that id."
   [seen entity]
@@ -542,14 +542,16 @@
   from a freshly entered descendant object to that ancestor will
   have its content already in seen and so will be dropped."
   [starting-entity user-data]
-  (let [seen {:next-number 1}
-        opposite (when (and (stored-entity? starting-entity)
-                            (element? starting-entity))
-                   (originating-entity starting-entity))
-        seen (if (shareable-uninterned-object? opposite)
-               (assoc seen (entity-key opposite) nil)
-               seen)]
+  (let [originating (when (stored-entity? starting-entity)
+                      (originating-entity starting-entity))
+        seen (record-encounter {:next-number 1} originating)]
     [user-data seen]))
+
+(defn extract-caller-data-from-loop-avoidance-data
+  "Return the user caller-data from a loop-avoidance caller-data
+  pair (as produced by wrap-caller-data-with-loop-avoidance-data)."
+  [loop-avoidance-data]
+  (first loop-avoidance-data))
 
 (defn wrap-pre-fn-with-loop-avoidance
   "Wrap a user pre-fn so that the resulting pre-fn prevents
@@ -558,61 +560,57 @@
   function expects caller-data of the form [user-data seen] and
   threads user-data through the user pre-fn. seen is a map that
   records every non-presumed-interned object that has been entered
-  (see `record-encounter`). When the wrapped pre-fn would otherwise
+  (see record-encounter). When the wrapped pre-fn would otherwise
   cause traversal to revisit such an object, it short-circuits:
-    - for an element of a shareable parent whose content has already
+    - For an element of a shareable parent whose content has already
       been seen, it returns :entity/omit so the element is dropped;
-    - for a non-presumed-interned object whose key has already been
-      seen, it returns a plain tree-object with no elements so the
-      traversal does not descend into it.
+      the element will be traversed in the other direction.
+    - For a non-presumed-interned object whose key has already been
+      seen, it returns a plain tree-object with no elements, so there
+      is nothing for the traversal toe descend into
   Use together with wrap-post-fn-with-loop-avoidance."
   [user-pre-fn]
   (fn [parent-entity original-entity [user-data seen]]
-    (let [[user-entity new-user-data] (user-pre-fn parent-entity
-                                                   original-entity user-data)
-          drop? (and (element? original-entity)
-                     (shareable-uninterned-object? parent-entity)
-                     (shareable-uninterned-object? (content original-entity))
-                     (contains? seen
-                                (entity-key (content original-entity))))
-          object-non-interned (and (object? original-entity)
-                                   (not (presumed-interned-object?
-                                         original-entity)))
-          was-in (and object-non-interned
-                      (contains? seen (entity-key original-entity)))
-          new-seen (if object-non-interned
-                     (record-encounter seen original-entity)
-                     seen)
-          entity (cond
-                   drop? :entity/omit
-                   was-in (make-tree-object [])
-                   :else user-entity)]
-      [entity [new-user-data new-seen]])))
+    (if (and (element? original-entity)
+             (shareable-uninterned-object? parent-entity)
+             (shareable-uninterned-object? (content original-entity))
+             (contains? seen (entity-key (content original-entity))))
+      ;; The element's content has already been seen via its content.
+      ;; Drop the element without consulting user-pre-fn.
+      [:entity/omit [user-data seen]]
+      (let [;; When the object has already been seen, substitute an
+            ;; empty tree-object before consulting user-pre-fn so
+            ;; the traversal will not descend into the object's
+            ;; elements again.
+            entity-for-pre (if (contains? seen (entity-key original-entity))
+                             (make-tree-object [])
+                             original-entity)
+            [user-entity new-user-data] (user-pre-fn parent-entity
+                                                     entity-for-pre
+                                                     user-data)]
+        [user-entity
+         [new-user-data (record-encounter seen original-entity)]]))))
 
 (defn wrap-post-fn-with-loop-avoidance
-  "Wrap a user post-fn so that the resulting post-fn links the
-  multiple occurrences of a non-presumed-interned object together by
-  giving them a shared id. The wrapped function expects caller-data
-  of the form [user-data seen] and threads user-data through the
-  user post-fn. seen is the same map maintained by
-  wrap-pre-fn-with-loop-avoidance. When the user post-fn's
-  result is a plain tree-object and seen has a non-nil tree-id for
-  the original non-presumed-interned object's key (assigned at the
-  point of the repeat reference), the wrapped function returns a
-  shareable-tree-object carrying that id."
+  "Wrap a user post-fn so that the resulting post-fn links all multiple
+  visits to a non-presumed-interned object together by giving them a
+  shared id. The wrapped function expects caller-data of the
+  form [user-data seen] and threads user-data through the user
+  post-fn. seen is the same map maintained by
+  wrap-pre-fn-with-loop-avoidance. When the user post-fn's result is a
+  plain tree-object and seen has a non-nil tree-id for the original
+  object's key (assigned at the point of the first repeat reference),
+  the wrapper returns a shareable-tree-object carrying that id."
   [user-post-fn]
   (fn [original-entity assembled [orig-user _] [new-user new-seen]]
     (let [[user-result new-user-2] (user-post-fn original-entity assembled
                                                   orig-user new-user)
-          result (if (and (vector? user-result)
-                          (= :object (first user-result))
-                          (object? original-entity)
-                          (not (presumed-interned-object? original-entity))
-                          (some? (get new-seen
-                                       (entity-key original-entity))))
-                   (make-shareable-tree-object
-                    (get new-seen (entity-key original-entity))
-                    (rest user-result))
+          result (if-let
+                     [id (when (and (object? user-result)
+                                    (not (stored-entity? user-result))
+                                    (not (shareable-tree-object? user-result)))
+                           (get new-seen (entity-key original-entity)))]
+                   (make-shareable-tree-object id (elements user-result))
                    user-result)]
       [result [new-user-2 new-seen]])))
 
@@ -694,22 +692,6 @@
   the assembled tree form, and final-caller-data is the caller-data
   that was threaded through the traversal.
 
-  Presumed-interned objects are treated as atomic and are not
-  descended into. Their item-id identifies them across references,
-  and the purpose of the tree form is to represent entities that may
-  not be in a store.
-
-  threaded-traversal itself does not detect cycles or coalesce
-  repeated references to the same non-presumed-interned object: an
-  input that contains either will cause it to loop or produce a tree
-  with duplicated subtrees. To traverse such an input, wrap pre-fn
-  with wrap-pre-fn-with-loop-avoidance and post-fn with
-  wrap-post-fn-with-loop-avoidance, and supply caller-data
-  wrapped with wrap-caller-data-with-loop-avoidance-data.
-  Together those wrappers will emit a shareable-tree-object the
-  first time a repeated object is reached and bare references
-  thereafter.
-
   (An aside: the edges of the graph can have their own edges, which
   means that the traversal has to traverse edges of edges. This is
   not a standard structure, although RDF-star comes close.)
@@ -719,15 +701,35 @@
   caller data is threaded through all calls to those functions,
   which lets them accumulate information across the traversal.
 
+  Presumed-interned objects are treated as atomic and are not
+  descended into. Their item-id identifies them across references,
+  and the purpose of the tree form is to represent entities that may
+  not be in a store.
+
+  Everything else is traversed. And threaded-traversal, itself, does
+  not detect cycles or make repeated references to the same
+  non-presumed-interned object reference the same result: an input
+  that contains either will cause it to loop or produce a tree with
+  duplicated subtrees. pre-fn and post-fn are responsible for handling
+  these cycles and sharing, since different callers may want to handle
+  them in different ways.
+
+  One way is provided here: wrap pre-fn with
+  wrap-pre-fn-with-loop-avoidance and post-fn with
+  wrap-post-fn-with-loop-avoidance, and supply caller-data wrapped
+  with wrap-caller-data-with-loop-avoidance-data.  Together those
+  wrappers will emit a shareable-tree-object the first time a repeated
+  object is reached and bare references thereafter.
+
   The pre-fn is called just before an entity is traversed, passing in
-  the parent entity, the entity, and the caller data, and must return
+  the parent entity, the entity, and the caller data. ; it must return
   a pair of a revised entity and revised caller data. The parent
   entity is nil for the top-level call and the original entity of the
   enclosing traversal for nested calls. The traversal will then
-  proceed on the revised entity, rather than on the original one, and
-  the revised caller data will be passed on to the next invocation of
-  a caller provided function. If the entity is an element, pre-fn may
-  return :entity/omit for the revised entity, which tells the
+  proceed from the revised entity, rather than on the original one,
+  and the revised caller data will be passed on to the next invocation
+  of a caller provided function. If the entity is an element, pre-fn
+  may return :entity/omit for the revised entity, which tells the
   traversal to behave as if the entity weren't there: don't traverse
   it or include it in the resulting tree entity. In the case where an
   element would ordinarily be represented by a primitive, pre-fn will
@@ -735,25 +737,30 @@
   return :entity/omit.
 
   The post-fn is called after the traversal has finished for an
-  entity. It gets passed the original entity, the tree entity the
-  traversal has assembled, and both the original caller data for the
-  entity being traversed and the caller data after the traversal of
-  the entity. The post-fn must returns a pair of the revised tree
-  entity and the revised caller data. As a rule, its revised caller
-  data will be based on the latest caller data, but it might want to
-  use the original caller data in deciding what to do. If the post-fn
-  is called with a tree element, it also has the option to return
-  :entity/omit as the revised element. In that case the tree element
-  will be thrown away. And just as for pre-fun, in the case where an
-  element would ordinarily be represented by a primitive, post-fn will
-  be passed a full element.
+  entity. It gets passed the original entity, a tree entity the
+  traversal assembles from the traversals of the entity's parts, and
+  both the original caller data for the entity being traversed and the
+  caller data after the traversal of the entity. The post-fn must
+  returns a pair of the revised tree entity and the revised caller
+  data. As a rule, its revised caller data will be based on the latest
+  caller data, but it might want to use the original caller data in
+  deciding what to do. If the post-fn is called with a tree element,
+  it also has the option to return :entity/omit as the revised
+  element. In that case the tree element will be thrown away. Also,
+  just as for pre-fun, in the case where an element would ordinarily
+  be represented by a primitive, post-fn will be passed a full
+  element.
 
-  post-fn may be nil. In that case the forward walk still happens
-  and caller-data is still threaded through, but no tree form is
-  assembled and the returned tree-entity is nil. This supports code
-  that traverses purely for the side effect on caller-data."
+  post-fn may be nil. In that case the forward walk still happens and
+  caller-data is still threaded through, but no tree form is assembled
+  and only the final caller-data is returned. This supports code that
+  traverses purely for their effect on caller-data."
   [entity pre-fn post-fn caller-data]
-  ((threaded-traversal-helper pre-fn post-fn) nil entity caller-data))
+  (let [result ((threaded-traversal-helper pre-fn post-fn)
+                nil entity caller-data)]
+    (if post-fn
+      result
+      (second result))))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."

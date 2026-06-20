@@ -662,11 +662,11 @@
           x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
           structure `(~y-obj (~x-obj))
           [result count] (run structure counter-pre identity-post 0)]
-      ;; Visits: outer, y-obj, (x-obj), x-obj, (y-obj). pre-fn is
-      ;; called on the (y-obj) sub-element, but traverse then drops
-      ;; it because x-obj is shareable-uninterned and y-obj is
-      ;; already in the seen map, so its content is not visited.
-      (is (= count 5))
+      ;; Visits: outer, y-obj, (x-obj), x-obj = 4. The (y-obj) sub-
+      ;; element is dropped by wrap-pre-fn-with-loop-avoidance before
+      ;; user-pre-fn is consulted, because x-obj is shareable-
+      ;; uninterned and y-obj is already in seen.
+      (is (= count 4))
       ;; Both y-obj and x-obj are constructed only once, so they
       ;; produce plain tree-objects (no shareable form is needed).
       (is (= result `(~(make-tree-object []) (~(make-tree-object []))))))
@@ -726,12 +726,13 @@
            (wrap-pre-fn-with-loop-avoidance counter-pre)
            (wrap-post-fn-with-loop-avoidance identity-post)
            (wrap-caller-data-with-loop-avoidance-data element 0))]
-      ;; Visits: the element itself, its content ib, and the one
-      ;; element ib has (the back-link to ia, dropped immediately
-      ;; because ia was pre-seeded in seen) = 3. Without the pre-
-      ;; seeding the back-link would be followed into ia and ia's
-      ;; elements, yielding a higher count.
-      (is (= count 3)))))
+      ;; Visits: the element itself and its content ib = 2. The one
+      ;; element ib has (the back-link to ia) is dropped by
+      ;; wrap-pre-fn-with-loop-avoidance before user-pre-fn is
+      ;; consulted, because ia was pre-seeded in seen. Without the
+      ;; pre-seeding the back-link would be followed into ia and
+      ;; ia's elements, yielding a higher count.
+      (is (= count 2)))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

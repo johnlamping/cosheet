@@ -5,7 +5,7 @@
                                      link-id? object-id?
                                      generic-name?
                                      ;; These are used by entity_impl.clj
-                                     ;; when it is working in our namespace. 
+                                     ;; when it is working in our namespace.
                                      name-label-id
                                      link-type-id object-type-id]])))
 
@@ -232,6 +232,14 @@
     "If the entity represents a link, return the entity corresponding to
     its target. This is independent of the orientation of the
     entity. If the target is a link, the resulting entity will be given
+    orientation :source.")
+
+  (originating-entity [this]
+    "If the entity represents a link, return the entity corresponding
+    to the endpoint of the link opposite the entity's content. That is,
+    when the orientation is :source it is the target endpoint, and when
+    the orientation is :target it is the source endpoint. If the
+    opposite endpoint is a link, the resulting entity will be given
     orientation :source.")
 
   (containing-elements [this]
@@ -524,9 +532,24 @@
 (defn wrap-caller-data-with-loop-avoidance-data
   "Wrap user caller-data with the bookkeeping state that
   wrap-pre-fn-with-loop-avoidance and
-  wrap-post-fn-with-loop-avoidance expect."
-  [user-data]
-  [user-data {:next-number 1}])
+  wrap-post-fn-with-loop-avoidance expect.
+
+  If starting-entity is a stored element, the endpoint opposite its
+  content is examined: when that endpoint is a shareable-uninterned
+  object, its entity-key is pre-populated into the initial seen map
+  (with value nil). This prevents the traversal from going through
+  the object that starting-entity is an element of -- any back-link
+  from a freshly entered descendant object to that ancestor will
+  have its content already in seen and so will be dropped."
+  [starting-entity user-data]
+  (let [seen {:next-number 1}
+        opposite (when (and (stored-entity? starting-entity)
+                            (element? starting-entity))
+                   (originating-entity starting-entity))
+        seen (if (shareable-uninterned-object? opposite)
+               (assoc seen (entity-key opposite) nil)
+               seen)]
+    [user-data seen]))
 
 (defn wrap-pre-fn-with-loop-avoidance
   "Wrap a user pre-fn so that the resulting pre-fn prevents
@@ -538,7 +561,7 @@
   (see `record-encounter`). When the wrapped pre-fn would otherwise
   cause traversal to revisit such an object, it short-circuits:
     - for an element of a shareable parent whose content has already
-      been seen, it returns a nil entity so the element is dropped;
+      been seen, it returns :entity/omit so the element is dropped;
     - for a non-presumed-interned object whose key has already been
       seen, it returns a plain tree-object with no elements so the
       traversal does not descend into it.
@@ -561,7 +584,7 @@
                      (record-encounter seen original-entity)
                      seen)
           entity (cond
-                   drop? nil
+                   drop? :entity/omit
                    was-in (make-tree-object [])
                    :else user-entity)]
       [entity [new-user-data new-seen]])))
@@ -607,10 +630,10 @@
             (let [[entity caller-data] (pre-fn parent-entity original-entity
                                                original-caller-data)]
               (cond
-                (and (nil? entity)
+                (and (= entity :entity/omit)
                      (element? original-entity))
                 ;; pre-fn dropped this element; don't descend or assemble.
-                [nil caller-data]
+                [:entity/omit caller-data]
 
                 (or (presumed-interned-object? entity)
                     (primitive? entity))
@@ -647,7 +670,18 @@
              (fn [[results caller-data] child]
                (let [child (if (element? child) child (list child))
                      [r caller-data] (traverse entity child caller-data)]
-                 [(if (nil? r) results (conj results r)) caller-data]))
+                 (if (= r :entity/omit)
+                   [results caller-data]
+                   ;; Undo the primitive-wrap above when the
+                   ;; traversal returned the wrapped element
+                   ;; unchanged, so a primitive sub-element stays
+                   ;; a primitive in the result.
+                   (let [r (if (and (sequential? r)
+                                    (= (count r) 1)
+                                    (primitive? (first r)))
+                             (first r)
+                             r)]
+                     [(conj results r) caller-data]))))
              [[] caller-data]
              (elements entity)))]
     traverse))
@@ -693,11 +727,12 @@
   proceed on the revised entity, rather than on the original one, and
   the revised caller data will be passed on to the next invocation of
   a caller provided function. If the entity is an element, pre-fn may
-  return nil for the revised entity, which tells the traversal to
-  behave as if the entity weren't there: don't traverse it or include
-  it in the resulting tree entity. In the case where an element would
-  ordinarily be represented by a primitive, pre-fn will be passed a
-  full element, not the primitive, so it will know it can return nil.
+  return :entity/omit for the revised entity, which tells the
+  traversal to behave as if the entity weren't there: don't traverse
+  it or include it in the resulting tree entity. In the case where an
+  element would ordinarily be represented by a primitive, pre-fn will
+  be passed a full element, not the primitive, so it will know it can
+  return :entity/omit.
 
   The post-fn is called after the traversal has finished for an
   entity. It gets passed the original entity, the tree entity the
@@ -707,11 +742,11 @@
   entity and the revised caller data. As a rule, its revised caller
   data will be based on the latest caller data, but it might want to
   use the original caller data in deciding what to do. If the post-fn
-  is called with a tree element, is also has the option to return a
-  nil revised element. In that case the tree element will be thrown
-  away. And just as for pre-fun, in the case where an element would
-  ordinarily be represented by a primitive, post-fn will be passed a
-  full element.
+  is called with a tree element, it also has the option to return
+  :entity/omit as the revised element. In that case the tree element
+  will be thrown away. And just as for pre-fun, in the case where an
+  element would ordinarily be represented by a primitive, post-fn will
+  be passed a full element.
 
   post-fn may be nil. In that case the forward walk still happens
   and caller-data is still threaded through, but no tree form is
@@ -728,34 +763,17 @@
                              %)
                           entity))
 
-(defn internal-to-tree
-  "Internal function to-tree that takes an element to skip, which only
-  has an effect when converting an non-interned object. In that case,
-  an element of the object with the same key will not be shown. This
-  avoids an infinite loop when a non-interned object has a relation to
-  another non-interned object, and showing all elements of both
-  objects would bounce back and forth between them forever."
-  [entity skipped-element]
-  (cond
-    (primitive? entity) entity
-    (object? entity) (if (presumed-interned-object? entity)
-                       entity
-                       (make-tree-object
-                        (map #(internal-to-tree % nil)
-                             ;; We rely on entity-key ignoring
-                             ;; orientation, so that the two
-                             ;; orientations of a relation will match.
-                             (remove #(= (entity-key %)
-                                         (entity-key skipped-element))
-                                     (elements entity)))))
-    true (make-tree-element (orientation entity)
-                            (internal-to-tree (content entity) entity)
-                            (map #(internal-to-tree % nil) (elements entity)))))
-
 (defn to-tree
-  "Return a tree form of the entity."
+  "Return a tree form of the entity. Cycles and repeated references
+  to the same non-presumed-interned object are coalesced via
+  shareable-tree-objects."
   [entity]
-  (internal-to-tree entity nil))
+  (first
+   (threaded-traversal
+    entity
+    (wrap-pre-fn-with-loop-avoidance (fn [_ e cd] [e cd]))
+    (wrap-post-fn-with-loop-avoidance (fn [_ e _ cd] [e cd]))
+    (wrap-caller-data-with-loop-avoidance-data entity nil))))
 
 (defn entity-complexity
   "Return the complexity of the element, which is the total number of

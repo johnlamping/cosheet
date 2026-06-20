@@ -54,6 +54,7 @@
     (is (not (interned-object? item0)))
     (is (= (orientation item0)) nil)
     (is (= (target-entity item0) nil))
+    (is (= (originating-entity item0) nil))
     (is (= (containing-elements item0) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (elements item99) nil))
@@ -129,6 +130,16 @@
     (is (= (target-entity (id->element ida s)) item99))
     (is (= (target-entity item-a-reversed) item99))
     (is (= (target-entity item-b-reversed) (id->element ida s)))
+    ;; For an element with :source orientation, originating-entity
+    ;; matches target-entity (the opposite of content is the target).
+    (is (= (originating-entity (id->element ida s)) item99))
+    ;; For an element with :target orientation, originating-entity
+    ;; returns the source endpoint instead. ida's source is the
+    ;; primitive 3.
+    (is (= (originating-entity item-a-reversed) 3))
+    ;; idb's source is foo-oid, so its reversed element's
+    ;; originating-entity is foo-label.
+    (is (= (originating-entity item-b-reversed) foo-label))
     (is (= (label->elements item99 foo-label) [(id->element ida s)]))
     (is (= (containing-elements item1) [(id->element idm s)]))
     (is (= (containing-elements item0) []))
@@ -251,6 +262,11 @@
     (is (= (current-value (target-entity item-a-reversed)) item99))
     (is (= (current-value (target-entity item-b-reversed))
            (id->element ida ms)))
+    (is (= (current-value (originating-entity (id->element ida ms)))
+           item99))
+    (is (= (current-value (originating-entity item-a-reversed)) 3))
+    (is (= (current-value (originating-entity item-b-reversed))
+           (id->object foo-oid ms)))
     (is (= (current-value (containing-elements item1)) [(id->element idm ms)]))
     (is (= (current-value (containing-elements item0)) []))
     (is (= (primitive? item0) false))
@@ -609,15 +625,18 @@
     (let [doubler (fn [_ e cd] [(if (number? e) (* 2 e) e) cd])
           [result _] (run '(1 2 (3 4)) doubler identity-post nil)]
       (is (= result '(2 4 (6 8)))))
-    ;; Pre-fn returning nil for an element drops it from the result
-    ;; and skips traversal into its content and elements.
+    ;; Pre-fn returning :entity/omit for an element drops it from
+    ;; the result and skips traversal into its content and elements.
     (let [drop-5 (fn [_ e cd]
-                   [(if (and (sequential? e) (= (first e) 5)) nil e) cd])
+                   [(if (and (sequential? e) (= (first e) 5))
+                      :entity/omit e)
+                    cd])
           [result _] (run '(1 2 (5 6) (3 4)) drop-5 identity-post nil)]
       (is (= result '(1 2 (3 4)))))
-    ;; Post-fn returning nil for an element also drops it.
+    ;; Post-fn returning :entity/omit for an element also drops it.
     (let [drop-5-post (fn [_ e _ cd]
-                        [(if (and (sequential? e) (= (first e) 5)) nil e)
+                        [(if (and (sequential? e) (= (first e) 5))
+                           :entity/omit e)
                          cd])
           [result _] (run '(1 2 (5 6) (3 4)) identity-pre drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
@@ -687,7 +706,32 @@
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
           [result visited] (run obj collector-pre identity-post [])]
       (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
-      (is (= result (make-tree-object [1 '(2 3)]))))))
+      (is (= result (make-tree-object [1 '(2 3)]))))
+    ;; When the starting entity is a stored element of a non-
+    ;; presumed-interned object, the traversal must not loop back
+    ;; through that object via a back-link from a descendant.
+    ;; wrap-caller-data-with-loop-avoidance-data invokes
+    ;; originating-entity on the element and pre-populates the seen
+    ;; map with that ancestor's key, so the back-link is dropped on
+    ;; first encounter.
+    (let [[s1 ia-id] (get-new-object-id (new-element-store))
+          [s2 ib-id] (get-new-object-id s1)
+          ;; add-link arguments are [target source]; the resulting
+          ;; element belongs to ia with content ib.
+          [s id1] (add-link s2 ia-id ib-id)
+          element (id->element id1 s)
+          [_ [count _]]
+          (threaded-traversal
+           element
+           (wrap-pre-fn-with-loop-avoidance counter-pre)
+           (wrap-post-fn-with-loop-avoidance identity-post)
+           (wrap-caller-data-with-loop-avoidance-data element 0))]
+      ;; Visits: the element itself, its content ib, and the one
+      ;; element ib has (the back-link to ia, dropped immediately
+      ;; because ia was pre-seeded in seen) = 3. Without the pre-
+      ;; seeding the back-link would be followed into ia and ia's
+      ;; elements, yielding a higher count.
+      (is (= count 3)))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

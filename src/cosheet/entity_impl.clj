@@ -42,15 +42,16 @@
   StoredEntity
 
   (target-entity [this] nil)
+  (originating-entity [this] nil)
   (containing-elements [this] nil)
-  
+
   (in-different-store [this store-or-entity]
     (id->entity-m item-id
                   orientation
                   (if (satisfies? Store store-or-entity)
                     store-or-entity
                     (:store store-or-entity))))
-  
+
   Entity
 
   (mutable-entity? [this] false)
@@ -79,6 +80,13 @@
   (target-entity [this]
     (when (not (object-id? item-id))
       (endpoint->entity (id->target store item-id) store)))
+
+  (originating-entity [this]
+    (when (not (object-id? item-id))
+      (endpoint->entity (if (= orientation :target)
+                          (id->source store item-id)
+                          (id->target store item-id))
+                        store)))
 
   (containing-elements [this]
     (assert (object-id? item-id) this)
@@ -158,6 +166,14 @@
     (when (not (object-id? item-id))
       (let-R [target-id (id->target store item-id)]
         (endpoint->entity target-id store))))
+
+  (originating-entity [this]
+    (when (not (object-id? item-id))
+      (if (= orientation :target)
+        (let-R [source-id (id->source store item-id)]
+          (endpoint->entity source-id store))
+        (let-R [target-id (id->target store item-id)]
+          (endpoint->entity target-id store)))))
 
   (containing-elements [this]
     (assert (object-id? item-id) this)

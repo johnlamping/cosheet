@@ -598,7 +598,10 @@
   and post-fn, return a function traverse [parent-entity
   original-entity caller-data] that performs the traversal and
   returns [entity caller-data]. The caller-data is opaque to
-  traverse; pre-fn and post-fn determine its shape and meaning."
+  traverse; pre-fn and post-fn determine its shape and meaning.
+  post-fn may be nil, in which case the forward walk still happens
+  and threads caller-data, but no tree form is assembled and every
+  traverse call returns a nil entity."
   [pre-fn post-fn]
   (letfn [(traverse [parent-entity original-entity original-caller-data]
             (let [[entity caller-data] (pre-fn parent-entity original-entity
@@ -612,26 +615,32 @@
                 (or (presumed-interned-object? entity)
                     (primitive? entity))
                 ;; Treat it as atomic.
-                (post-fn original-entity entity
-                         original-caller-data caller-data)
+                (if post-fn
+                  (post-fn original-entity entity
+                           original-caller-data caller-data)
+                  [nil caller-data])
 
                 (element? entity)
                 (let [[new-content caller-data]
                       (traverse original-entity (content entity) caller-data)
                       [new-elements caller-data]
-                      (traverse-elements entity caller-data)
-                      assembled (make-tree-element (orientation entity)
-                                                   new-content
-                                                   new-elements)]
-                  (post-fn original-entity assembled
-                           original-caller-data caller-data))
+                      (traverse-elements entity caller-data)]
+                  (if post-fn
+                    (post-fn original-entity
+                             (make-tree-element (orientation entity)
+                                                new-content
+                                                new-elements)
+                             original-caller-data caller-data)
+                    [nil caller-data]))
 
                 :else ;; Object: always assemble a plain tree-object.
                 (let [[new-elements caller-data]
-                      (traverse-elements entity caller-data)
-                      assembled (make-tree-object new-elements)]
-                  (post-fn original-entity assembled
-                           original-caller-data caller-data)))))
+                      (traverse-elements entity caller-data)]
+                  (if post-fn
+                    (post-fn original-entity
+                             (make-tree-object new-elements)
+                             original-caller-data caller-data)
+                    [nil caller-data])))))
 
           (traverse-elements [entity caller-data]
             (reduce
@@ -702,7 +711,12 @@
   nil revised element. In that case the tree element will be thrown
   away. And just as for pre-fun, in the case where an element would
   ordinarily be represented by a primitive, post-fn will be passed a
-  full element."
+  full element.
+
+  post-fn may be nil. In that case the forward walk still happens
+  and caller-data is still threaded through, but no tree form is
+  assembled and the returned tree-entity is nil. This supports code
+  that traverses purely for the side effect on caller-data."
   [entity pre-fn post-fn caller-data]
   ((threaded-traversal-helper pre-fn post-fn) nil entity caller-data))
 

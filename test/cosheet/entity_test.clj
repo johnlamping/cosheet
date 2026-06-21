@@ -596,17 +596,17 @@
         counter-pre (fn [_ e cd] [e (inc cd)])
         collector-pre (fn [_ e cd] [e (conj cd e)])
         ;; Run a traversal with seen-tracking pre/post wrappers and
-        ;; the caller-data shape [user-data seen] they expect. Return
-        ;; [result final-user-data].
+        ;; the caller-data shape they expect. Return [result
+        ;; final-user-data].
         run (fn [entity user-pre user-post initial-user]
-              (let [[r [user _]]
-                    (threaded-traversal entity
-                                        (wrap-pre-fn-with-loop-avoidance
-                                         user-pre)
-                                        (wrap-post-fn-with-loop-avoidance
-                                         user-post)
-                                        [initial-user {:next-number 1}])]
-                [r user]))]
+              (let [[r cd]
+                    (threaded-traversal
+                     entity
+                     (wrap-pre-fn-with-loop-avoidance user-pre)
+                     (wrap-post-fn-with-loop-avoidance user-post)
+                     (wrap-caller-data-with-loop-avoidance-data
+                      entity initial-user))]
+                [r (extract-caller-data-from-loop-avoidance-data cd)]))]
     ;; Primitive sub-elements are wrapped as one-element lists before
     ;; descent, so each primitive sub-element generates two pre-fn
     ;; calls: one for the wrapped element, one for its content.
@@ -628,15 +628,17 @@
     ;; Pre-fn returning :entity/omit for an element drops it from
     ;; the result and skips traversal into its content and elements.
     (let [drop-5 (fn [_ e cd]
-                   [(if (and (sequential? e) (= (first e) 5))
-                      :entity/omit e)
+                   [(if (and (element? e) (= (content e) 5))
+                      :entity/omit
+                      e)
                     cd])
           [result _] (run '(1 2 (5 6) (3 4)) drop-5 identity-post nil)]
       (is (= result '(1 2 (3 4)))))
     ;; Post-fn returning :entity/omit for an element also drops it.
     (let [drop-5-post (fn [_ e _ cd]
-                        [(if (and (sequential? e) (= (first e) 5))
-                           :entity/omit e)
+                        [(if (and (element? e) (= (content e) 5))
+                           :entity/omit
+                           e)
                          cd])
           [result _] (run '(1 2 (5 6) (3 4)) identity-pre drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))

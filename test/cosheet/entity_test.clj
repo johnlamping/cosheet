@@ -642,14 +642,14 @@
                          cd])
           [result _] (run '(1 2 (5 6) (3 4)) identity-pre drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
-    ;; When the skip check fires for a non-shareable parent, the child
-    ;; is not descended into, but pre-fn and post-fn are still called
-    ;; on it so it can be transformed. obj appears twice in the input
-    ;; (once as content, once via the skipped element keeping its
-    ;; original shareable form), so the construction at obj's only
-    ;; descent records a single encounter and produces a plain
-    ;; tree-object; the back-reference keeps the original shareable
-    ;; form.
+    ;; When the same shareable object appears as both the content of
+    ;; the outer entity and the content of one of its sub-elements,
+    ;; the second occurrence is dropped at the element level (because
+    ;; the outer entity isn't shareable, the second appearance reaches
+    ;; the object via traverse, where it short-circuits to a bare
+    ;; reference). Because every first encounter of a non-presumed-
+    ;; interned object now gets a tree-id, the first occurrence is
+    ;; assembled as a shareable-tree-object too, sharing that id.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [])
           structure `(~obj (~obj))
           [result count] (run structure counter-pre identity-post 0)]
@@ -657,7 +657,7 @@
       ;; the elements iteration), obj (its content, which traverse
       ;; recognizes as already seen and so does not descend) = 4.
       (is (= count 4))
-      (is (= result `(~(make-tree-object []) (~obj)))))
+      (is (= result `(~obj (~obj)))))
     ;; When the skip check fires and the parent IS a
     ;; shareable-uninterned-object, the child is dropped entirely.
     (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
@@ -669,18 +669,20 @@
       ;; user-pre-fn is consulted, because x-obj is shareable-
       ;; uninterned and y-obj is already in seen.
       (is (= count 4))
-      ;; Both y-obj and x-obj are constructed only once, so they
-      ;; produce plain tree-objects (no shareable form is needed).
-      (is (= result `(~(make-tree-object []) (~(make-tree-object []))))))
+      ;; Each of y-obj and x-obj is assembled as a shareable-tree-
+      ;; object carrying the tree-id assigned at its first encounter
+      ;; (y-obj is constructed with no elements, x-obj's only element
+      ;; was dropped so it is too).
+      (is (= result `(~y-obj
+                      (~(make-shareable-tree-object
+                         (make-tree-id 2) []))))))
     ;; The skip check uses the seen set as it was when this entity's
     ;; elements were entered, so additions made by one sibling's
     ;; recursion do not cause the next sibling to be skipped. obj is
-    ;; constructed twice: the first time the seen map records only
-    ;; one encounter so a plain tree-object is produced; the second
-    ;; time obj's key was already in the seen map (from the first
-    ;; sibling), so a shareable tree-object is produced without
-    ;; elements (the elements only appear at the first-encounter
-    ;; location).
+    ;; constructed twice: the first time it gets the tree-id assigned
+    ;; by record-encounter and is produced with its elements; the
+    ;; second time the key is already in seen, so a bare reference
+    ;; (a shareable tree-object with no elements) is produced.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1])
           structure `(0 (~obj) (~obj))
           [result count] (run structure counter-pre identity-post 0)]
@@ -688,7 +690,7 @@
       ;; The second time obj is reached its key is already in the seen
       ;; map, so traversal does not descend into its elements.
       (is (= count 8))
-      (is (= result `(0 (~(make-tree-object [1]))
+      (is (= result `(0 (~obj)
                         (~(make-shareable-tree-object
                            (make-tree-id 1) []))))))
     ;; post-fn receives the caller-data that was input to this level
@@ -700,15 +702,16 @@
           [_ result-cd] (run 42 pre post :start)]
       (is (= result-cd {:orig :start :back :modified})))
     ;; A shareable object at the top level is traversed through its
-    ;; elements. Because it is only referenced once, the result is a
-    ;; plain tree-object (no shareable identifier is preserved). The
-    ;; accumulator records every entity visited, in order: the outer
-    ;; object, the wrapped (1), its content 1, the element (2 3), its
-    ;; content 2, the wrapped (3), its content 3.
+    ;; elements and re-assembled as a shareable-tree-object using the
+    ;; tree-id assigned by record-encounter on first encounter (which
+    ;; matches obj's original id, since :next-number starts at 1).
+    ;; The accumulator records every entity visited, in order: the
+    ;; outer object, the wrapped (1), its content 1, the element
+    ;; (2 3), its content 2, the wrapped (3), its content 3.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
           [result visited] (run obj collector-pre identity-post [])]
       (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
-      (is (= result (make-tree-object [1 '(2 3)]))))
+      (is (= result obj)))
     ;; When the starting entity is a stored element of a non-
     ;; presumed-interned object, the traversal must not loop back
     ;; through that object via a back-link from a descendant.
@@ -735,6 +738,71 @@
       ;; pre-seeding the back-link would be followed into ia and
       ;; ia's elements, yielding a higher count.
       (is (= count 2)))))
+
+(deftest to-tree-multi-ref-test
+  ;; An element has three sub-elements: one wrapping a shareable-tree-
+  ;; object with id 1 (referenced once), and two wrapping a shareable-
+  ;; tree-object with id 2 (referenced twice). to-tree demotes the
+  ;; singly-referenced object to a plain tree-object, and keeps both
+  ;; references to the multiply-referenced object as shareable-tree-
+  ;; objects with the same id so their shared identity is preserved.
+  (let [obj1 (make-shareable-tree-object (make-tree-id 1) [1 2])
+        obj2 (make-shareable-tree-object (make-tree-id 2) [3])
+        structure `(0 (~obj1) (~obj2) (~obj2))]
+    (is (= (to-tree structure)
+           `(0 (~(make-tree-object [1 2]))
+               (~(make-shareable-tree-object (make-tree-id 2) [3]))
+               (~(make-shareable-tree-object (make-tree-id 2) []))))))
+  ;; to-tree on an uninterned stored object whose elements include
+  ;; another uninterned stored object. Both objects are reached only
+  ;; once (the back-link from the inner object to the outer one is
+  ;; dropped by loop avoidance), so each is demoted to a plain
+  ;; tree-object in the result.
+  (let [[s1 a-id] (get-new-object-id (new-element-store))
+        [s2 b-id] (get-new-object-id s1)
+        [s3 _]         (add-link s2 a-id "x")
+        [s4 _]         (add-link s3 b-id "y")
+        [s5 z-link-id] (add-link s4 b-id "z")
+        [s _]          (add-link s5 a-id b-id)
+        item-a (id->object a-id s)]
+    (is (check (to-tree item-a)
+               (as-set (make-tree-object
+                        ["x" `(~(as-set (make-tree-object ["y" "z"])))]))))
+    ;; Add a sub-element to the z-element whose content is a. The new
+    ;; reference reaches a after a has already been recorded by the
+    ;; top-level traversal, so a is referenced twice in the result
+    ;; tree. Pass 3 leaves both occurrences as shareable-tree-objects
+    ;; with the same id so the shared identity is preserved.
+    (let [[s' _] (add-link s z-link-id a-id)
+          item-a' (id->object a-id s')
+          item-b' (id->object b-id s')]
+      (is (check (to-tree item-a')
+                 (as-set
+                  (make-shareable-tree-object
+                   (make-tree-id 1)
+                   ["x"
+                    `(~(as-set
+                        (make-tree-object
+                         ["y"
+                          `("z" (~(make-shareable-tree-object
+                                   (make-tree-id 1) [])))])))]))))
+      ;; Starting from b, b's element iteration begins with the
+      ;; reverse-direction back-link to a (an element with :target
+      ;; orientation and content a); a's content gets fully assembled
+      ;; there. Then z-link's sub-element reaches a a second time and
+      ;; produces a bare reference. a is therefore referenced twice
+      ;; in tree1 and its shareable form is preserved by pass 3;
+      ;; b is single-ref and demoted to a plain tree-object.
+      (is (check (to-tree item-b')
+                 (as-set
+                  (make-tree-object
+                   [(make-tree-element
+                     :target
+                     (make-shareable-tree-object (make-tree-id 2) ["x"])
+                     [])
+                    "y"
+                    `("z" (~(make-shareable-tree-object
+                             (make-tree-id 2) [])))])))))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

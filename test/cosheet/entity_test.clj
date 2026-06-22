@@ -591,8 +591,6 @@
 (deftest threaded-traversal-test
   (let [;; Trivial pre/post: leave the entity unchanged, but use the
         ;; caller-data as a counter or accumulator.
-        identity-pre (fn [_ e _ cd] [e cd])
-        identity-post (fn [_ e _ cd] [e cd])
         counter-pre (fn [_ e _ cd] [e (inc cd)])
         collector-pre (fn [_ e _ cd] [e (conj cd e)])
         ;; Run a traversal with seen-tracking pre/post wrappers and
@@ -612,18 +610,18 @@
     ;; calls: one for the wrapped element, one for its content.
     ;; Entities visited: outer, content 1, sub (2), its content 2,
     ;; sub (3 4), its content 3, its sub (4), its content 4 — 8 total.
-    (let [[result count] (run '(1 2 (3 4)) counter-pre identity-post 0)]
+    (let [[result count] (run '(1 2 (3 4)) counter-pre identity-post-fn 0)]
       (is (= result '(1 2 (3 4))))
       (is (= count 8)))
     ;; Pre-fn order is depth-first: outer, then content, then each
     ;; sub-element (descending into each before moving on); primitive
     ;; sub-elements appear once as the wrapped list and once as the
     ;; primitive content.
-    (let [[_ visited] (run '(1 2 (3 4)) collector-pre identity-post [])]
+    (let [[_ visited] (run '(1 2 (3 4)) collector-pre identity-post-fn [])]
       (is (= visited ['(1 2 (3 4)) 1 '(2) 2 '(3 4) 3 '(4) 4])))
     ;; Pre-fn can transform entities (here, double every number).
     (let [doubler (fn [_ e _ cd] [(if (number? e) (* 2 e) e) cd])
-          [result _] (run '(1 2 (3 4)) doubler identity-post nil)]
+          [result _] (run '(1 2 (3 4)) doubler identity-post-fn nil)]
       (is (= result '(2 4 (6 8)))))
     ;; Pre-fn returning :entity/omit for an element drops it from
     ;; the result and skips traversal into its content and elements.
@@ -632,7 +630,7 @@
                       :entity/omit
                       e)
                     cd])
-          [result _] (run '(1 2 (5 6) (3 4)) drop-5 identity-post nil)]
+          [result _] (run '(1 2 (5 6) (3 4)) drop-5 identity-post-fn nil)]
       (is (= result '(1 2 (3 4)))))
     ;; Post-fn returning :entity/omit for an element also drops it.
     (let [drop-5-post (fn [_ e _ cd]
@@ -640,7 +638,7 @@
                            :entity/omit
                            e)
                          cd])
-          [result _] (run '(1 2 (5 6) (3 4)) identity-pre drop-5-post nil)]
+          [result _] (run '(1 2 (5 6) (3 4)) identity-pre-fn drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
     ;; When the same shareable object appears as both the content of
     ;; the outer entity and the content of one of its sub-elements,
@@ -652,7 +650,7 @@
     ;; assembled as a shareable-tree-object too, sharing that id.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [])
           structure `(~obj (~obj))
-          [result count] (run structure counter-pre identity-post 0)]
+          [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, obj (the content), (obj) (the element via
       ;; the elements iteration), obj (its content, which traverse
       ;; recognizes as already seen and so does not descend) = 4.
@@ -663,7 +661,7 @@
     (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
           x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
           structure `(~y-obj (~x-obj))
-          [result count] (run structure counter-pre identity-post 0)]
+          [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, y-obj, (x-obj), x-obj = 4. The (y-obj) sub-
       ;; element is dropped by wrap-pre-fn-with-loop-avoidance before
       ;; user-pre-fn is consulted, because x-obj is shareable-
@@ -685,7 +683,7 @@
     ;; (a shareable tree-object with no elements) is produced.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1])
           structure `(0 (~obj) (~obj))
-          [result count] (run structure counter-pre identity-post 0)]
+          [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj = 8.
       ;; The second time obj is reached its key is already in the seen
       ;; map, so traversal does not descend into its elements.
@@ -709,7 +707,7 @@
     ;; outer object, the wrapped (1), its content 1, the element
     ;; (2 3), its content 2, the wrapped (3), its content 3.
     (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
-          [result visited] (run obj collector-pre identity-post [])]
+          [result visited] (run obj collector-pre identity-post-fn [])]
       (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
       (is (= result obj)))
     ;; When the starting entity is a stored element of a non-
@@ -729,7 +727,7 @@
           (threaded-traversal
            element
            (wrap-pre-fn-with-loop-avoidance counter-pre)
-           (wrap-post-fn-with-loop-avoidance identity-post)
+           (wrap-post-fn-with-loop-avoidance identity-post-fn)
            (wrap-caller-data-with-loop-avoidance-data element 0))]
       ;; Visits: the element itself and its content ib = 2. The one
       ;; element ib has (the back-link to ia) is dropped by

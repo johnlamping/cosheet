@@ -205,7 +205,6 @@
      the given label.")
 
   (entity-key [this]
-    
     "Return the key of this entity. For stored entities, it is their
     item-id. For shareable-tree-objects, it is their id. For all other
     entities it is the entity, itself.
@@ -495,7 +494,10 @@
                            (f (content entity))
                            (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
-        (make-tree-object (keep f (elements entity)))
+        (let [new-elements (keep f (elements entity))]
+          (if (shareable-tree-object? entity)
+            (make-shareable-tree-object (entity-key entity) new-elements)
+            (make-tree-object new-elements)))
         :else
         entity))
 
@@ -554,21 +556,28 @@
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (post-fn original-entity
-                             (make-tree-element (orientation entity)
-                                                new-content
-                                                new-elements)
-                             original-caller-data caller-data)
+                    (let [assembled (make-tree-element (orientation entity)
+                                                       new-content
+                                                       new-elements)] 
+                      (post-fn original-entity assembled
+                               original-caller-data caller-data))
                     [nil caller-data]))
 
-                :else ;; Object: always assemble a plain tree-object.
+                :else
+                ;; Object: Traverse the elements. Then if the entity
+                ;; was a shareable-tree-object, put them in a
+                ;; shareable-tree-object with the same identity,
+                ;; otherwise put them in a tree-object.
                 (let [[new-elements caller-data]
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (post-fn original-entity
-                             (make-tree-object new-elements)
-                             original-caller-data caller-data)
+                    (let [assembled (if (shareable-tree-object? entity)
+                                      (make-shareable-tree-object
+                                       (entity-key entity) new-elements)
+                                      (make-tree-object new-elements))]
+                      (post-fn original-entity assembled
+                               original-caller-data caller-data))
                     [nil caller-data])))))
 
           (traverse-elements [entity original-caller-data caller-data]
@@ -631,19 +640,22 @@
   object is reached and bare references thereafter.
 
   The pre-fn is called just before an entity is traversed, passing in
-  the parent entity, the entity, and the caller data. ; it must return
-  a pair of a revised entity and revised caller data. The parent
-  entity is nil for the top-level call and the original entity of the
-  enclosing traversal for nested calls. The traversal will then
-  proceed from the revised entity, rather than on the original one,
-  and the revised caller data will be passed on to the next invocation
-  of a caller provided function. If the entity is an element, pre-fn
-  may return :entity/omit for the revised entity, which tells the
-  traversal to behave as if the entity weren't there: don't traverse
-  it or include it in the resulting tree entity. In the case where an
-  element would ordinarily be represented by a primitive, pre-fn will
-  be passed a full element, not the primitive, so it will know it can
-  return :entity/omit.
+  the parent entity, the entity, the parent caller data, and the
+  caller data; it must return a pair of a revised entity and revised
+  caller data. The parent entity is nil for the top-level call and
+  the original entity of the enclosing traversal for nested calls.
+  The parent caller data is the caller data as it was when the parent
+  entity was passed to traverse (and is nil for the top-level call).
+  The traversal will then proceed from the revised entity, rather
+  than on the original one, and the revised caller data will be
+  passed on to the next invocation of a caller provided function. If
+  the entity is an element, pre-fn may return :entity/omit for the
+  revised entity, which tells the traversal to behave as if the
+  entity weren't there: don't traverse it or include it in the
+  resulting tree entity. In the case where an element would
+  ordinarily be represented by a primitive, pre-fn will be passed a
+  full element, not the primitive, so it will know it can return
+  :entity/omit.
 
   The post-fn is called after the traversal has finished for an
   entity. It gets passed the original entity, a tree entity the
@@ -670,6 +682,18 @@
     (if post-fn
       result
       (second result))))
+
+(defn identity-pre-fn
+  "An identity pre-fn for threaded-traversal: returns its entity and
+  caller-data unchanged."
+  [_ entity _ caller-data]
+  [entity caller-data])
+
+(defn identity-post-fn
+  "An identity post-fn for threaded-traversal: returns its entity and
+  caller-data unchanged."
+  [_ entity _ caller-data]
+  [entity caller-data])
 
 (defn record-encounter
   "Update a seen map for entering an entity: the first time a
@@ -795,53 +819,45 @@
                              %)
                     entity))
 
+(defn convert-unneeded-shareable-tree-objects
+  "Threaded traverse tree, counting occurrences of each
+  shareable-tree-object id, then post walk it, demoting any
+  shareable-tree-object whose id appears only once to a plain
+  tree-object."
+  [tree]
+  (let [count-shareable-pre-fn (fn [_ e _ cd]
+                                 [e (cond-> cd
+                                      (shareable-tree-object? e)
+                                      (update (entity-key e) (fnil inc 0)))])
+        counts (threaded-traversal tree count-shareable-pre-fn nil {})
+        convert-unshared (fn [e] (if (and (shareable-tree-object? e)
+                                          (= (get counts (entity-key e)) 1))
+                                   (make-tree-object (elements e))
+                                   e))] 
+    (post-walk-entity convert-unshared tree)))
+
 (defn to-tree
   "Return a tree form of the entity. Cycles and repeated references
   to the same non-presumed-interned object are coalesced via
   shareable-tree-objects; objects that are referenced only once
-  collapse back to plain tree-objects.
-
-  The conversion proceeds in up to three passes:
-    1. A loop-avoiding traversal builds the tree, producing a
-       shareable-tree-object for every non-presumed-interned object.
-       The post-fn flips user-data to true if any shareable-tree-
-       object is produced. If none was, no further work is needed.
-    2. Otherwise, a second traversal walks the result and counts how
-       many times each shareable-tree-object id appears.
-    3. A third traversal demotes each shareable-tree-object whose
-       count is 1 back to a plain tree-object."
+  collapse back to plain tree-objects."
   [entity]
-  (let [[tree1 [needs-cleanup? _]]
+  ;; A loop-avoiding traversal builds the tree, producing a shareable-
+  ;; tree-object for every non-presumed-interned object. The post-fn
+  ;; flips user-data to true if any shareable-tree-object is produced.
+  ;; If none was, no further work is needed; otherwise hand off to
+  ;; convert-unneeded-shareable-tree-objects to demote any that turn
+  ;; out to be referenced only once.
+  (let [[assembled [needs-cleanup? _]]
         (threaded-traversal
          entity
-         (wrap-pre-fn-with-loop-avoidance (fn [_ e _ cd] [e cd]))
+         (wrap-pre-fn-with-loop-avoidance identity-pre-fn)
          (wrap-post-fn-with-loop-avoidance
           (fn [_ e _ cd]
             [e (or cd (shareable-tree-object? e))]))
          (wrap-caller-data-with-loop-avoidance-data entity false))]
-    (if-not needs-cleanup?
-      tree1
-      (let [counts (threaded-traversal
-                    tree1
-                    (fn [_ e _ cd]
-                      [e (if (shareable-tree-object? e)
-                           (update cd (entity-key e) (fnil inc 0))
-                           cd)])
-                    nil
-                    {})]
-        (first
-         (threaded-traversal
-          tree1
-          (fn [_ e _ cd] [e cd])
-          (fn [orig-ent e _ cd]
-            [(if (shareable-tree-object? orig-ent)
-               (let [id (entity-key orig-ent)]
-                 (if (= 1 (get cd id))
-                   (make-tree-object (elements e))
-                   (make-shareable-tree-object id (elements e))))
-               e)
-             cd])
-          counts))))))
+    (cond-> assembled
+      needs-cleanup? convert-unneeded-shareable-tree-objects)))
 
 (defn entity-complexity
   "Return the complexity of the element, which is the total number of

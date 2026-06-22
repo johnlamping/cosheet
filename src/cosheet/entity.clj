@@ -517,120 +517,6 @@
   [f entity]
   (f (map-subparts #(post-walk-entity f %) entity)))
 
-(defn record-encounter
-  "Update a seen map for entering an entity: the first time a
-  shareable-uninterned-object is encountered, add its key with value
-  nil; on the next encounter, assign a fresh tree-id (drawn from
-  :next-number) so the construction step knows to produce a shareable
-  form with that id."
-  [seen entity]
-  (if-not (shareable-uninterned-object? entity)
-    seen
-    (let [k (entity-key entity)]
-      (if (contains? seen k)
-        seen
-        (-> seen
-            (assoc k (make-tree-id (:next-number seen)))
-            (update :next-number inc))))))
-
-(defn call-user-fn-adding-seen
-  "Call user-fn with the remaining arguments, expect it to return
-  [user-entity new-user-data], and assemble the final result
-  [user-entity [new-user-data seen-out]] expected by callers of the
-  loop-avoidance wrappers."
-  [seen-out user-fn & args]
-  (let [[user-entity new-user-data] (apply user-fn args)]
-    [user-entity [new-user-data seen-out]]))
-
-(defn wrap-caller-data-with-loop-avoidance-data
-  "Wrap user caller-data with the bookkeeping state that
-  wrap-pre-fn-with-loop-avoidance and
-  wrap-post-fn-with-loop-avoidance expect.
-
-  If starting-entity is a stored element, the endpoint opposite its
-  content is examined: when that endpoint is a shareable-uninterned
-  object, its entity-key is pre-populated into the initial seen map
-  (with value nil). This prevents the traversal from going through
-  the object that starting-entity is an element of -- any back-link
-  from a freshly entered descendant object to that ancestor will
-  have its content already in seen and so will be dropped."
-  [starting-entity user-data]
-  (let [originating (when (stored-entity? starting-entity)
-                      (originating-entity starting-entity))
-        seen (record-encounter {:next-number 1} originating)]
-    [user-data seen]))
-
-(defn extract-caller-data-from-loop-avoidance-data
-  "Return the user caller-data from a loop-avoidance caller-data
-  pair (as produced by wrap-caller-data-with-loop-avoidance-data)."
-  [loop-avoidance-data]
-  (first loop-avoidance-data))
-
-(defn wrap-pre-fn-with-loop-avoidance
-  "Wrap a user pre-fn so that the resulting pre-fn prevents
-  threaded-traversal from descending into cycles or repeated
-  references to the same non-presumed-interned object. The wrapped
-  function expects caller-data of the form [user-data seen] and
-  threads user-data through the user pre-fn. seen is a map that
-  records every non-presumed-interned object that has been entered
-  (see record-encounter). When the wrapped pre-fn would otherwise
-  cause traversal to revisit such an object, it short-circuits:
-    - For an element of a shareable parent whose content has already
-      been seen, it returns :entity/omit so the element is dropped;
-      the element will be traversed in the other direction.
-    - For a non-presumed-interned object whose key has already been
-      seen, it returns a plain tree-object with no elements, so there
-      is nothing for the traversal toe descend into
-  Use together with wrap-post-fn-with-loop-avoidance."
-  [user-pre-fn]
-  (fn [parent-entity entity [user-data seen]]
-    (cond
-      (and (element? entity)
-           (shareable-uninterned-object? parent-entity)
-           (shareable-uninterned-object? (content entity))
-           (contains? seen (entity-key (content entity))))
-      ;; This link has or will be handled from the other direction.
-      ;; Drop the element without consulting user-pre-fn.
-      [:entity/omit [user-data seen]]
-
-      (shareable-uninterned-object? entity)
-      ;; Record the encounter and substitute a shareable-tree-object
-      ;; whose id is the value record-encounter assigned, carrying
-      ;; the original entity's elements on first encounter and no
-      ;; elements on subsequent encounters (so the traversal will
-      ;; not descend into the object's elements again).
-      (let [orig-had-key? (contains? seen (entity-key entity))
-            new-seen (record-encounter seen entity)
-            new-tree (make-shareable-tree-object
-                      (get new-seen (entity-key entity))
-                      (if orig-had-key? [] (elements entity)))]
-        (call-user-fn-adding-seen
-         new-seen user-pre-fn parent-entity new-tree user-data))
-
-      :else
-      (call-user-fn-adding-seen
-       seen user-pre-fn parent-entity entity user-data))))
-
-(defn wrap-post-fn-with-loop-avoidance
-  "Wrap a user post-fn so that the resulting post-fn links all multiple
-  visits to a non-presumed-interned object together by giving them a
-  shared id. The wrapped function expects caller-data of the
-  form [user-data seen] and threads user-data through the user
-  post-fn. seen is the same map maintained by
-  wrap-pre-fn-with-loop-avoidance. When the user post-fn's result is a
-  plain tree-object and seen has a non-nil tree-id for the original
-  object's key (assigned at the point of the first repeat reference),
-  the wrapper returns a shareable-tree-object carrying that id."
-  [user-post-fn]
-  (fn [original-entity assembled [orig-user _] [new-user new-seen]]
-    (let [result (if-let
-                     [id (when (non-shareable-tree-object? assembled)
-                           (get new-seen (entity-key original-entity)))]
-                   (make-shareable-tree-object id (elements assembled))
-                   assembled)]
-      (call-user-fn-adding-seen
-       new-seen user-post-fn original-entity result orig-user new-user))))
-
 (defn threaded-traversal-helper
   "Build the recursive worker for threaded-traversal. Given pre-fn
   and post-fn, return a function traverse [parent-entity
@@ -641,8 +527,10 @@
   and threads caller-data, but no tree form is assembled and every
   traverse call returns a nil entity."
   [pre-fn post-fn]
-  (letfn [(traverse [parent-entity original-entity original-caller-data]
+  (letfn [(traverse [parent-entity parent-caller-data
+                     original-entity original-caller-data]
             (let [[entity caller-data] (pre-fn parent-entity original-entity
+                                               parent-caller-data
                                                original-caller-data)]
               (cond
                 (and (= entity :entity/omit)
@@ -660,9 +548,11 @@
 
                 (element? entity)
                 (let [[new-content caller-data]
-                      (traverse original-entity (content entity) caller-data)
+                      (traverse original-entity original-caller-data
+                                (content entity) caller-data)
                       [new-elements caller-data]
-                      (traverse-elements entity caller-data)]
+                      (traverse-elements entity original-caller-data
+                                         caller-data)]
                   (if post-fn
                     (post-fn original-entity
                              (make-tree-element (orientation entity)
@@ -673,18 +563,20 @@
 
                 :else ;; Object: always assemble a plain tree-object.
                 (let [[new-elements caller-data]
-                      (traverse-elements entity caller-data)]
+                      (traverse-elements entity original-caller-data
+                                         caller-data)]
                   (if post-fn
                     (post-fn original-entity
                              (make-tree-object new-elements)
                              original-caller-data caller-data)
                     [nil caller-data])))))
 
-          (traverse-elements [entity caller-data]
+          (traverse-elements [entity original-caller-data caller-data]
             (reduce
              (fn [[results caller-data] child]
                (let [child (if (element? child) child (list child))
-                     [r caller-data] (traverse entity child caller-data)]
+                     [r caller-data] (traverse entity original-caller-data
+                                               child caller-data)]
                  (if (= r :entity/omit)
                    [results caller-data]
                    ;; Undo the primitive-wrap above when the
@@ -774,10 +666,126 @@
   traverses purely for their effect on caller-data."
   [entity pre-fn post-fn caller-data]
   (let [result ((threaded-traversal-helper pre-fn post-fn)
-                nil entity caller-data)]
+                nil nil entity caller-data)]
     (if post-fn
       result
       (second result))))
+
+(defn record-encounter
+  "Update a seen map for entering an entity: the first time a
+  shareable-uninterned-object is encountered, add its key with value
+  nil; on the next encounter, assign a fresh tree-id (drawn from
+  :next-number) so the construction step knows to produce a shareable
+  form with that id."
+  [seen entity]
+  (if-not (shareable-uninterned-object? entity)
+    seen
+    (let [k (entity-key entity)]
+      (if (contains? seen k)
+        seen
+        (-> seen
+            (assoc k (make-tree-id (:next-number seen)))
+            (update :next-number inc))))))
+
+(defn call-user-fn-adding-seen
+  "Call user-fn with the remaining arguments, expect it to return
+  [user-entity new-user-data], and assemble the final result
+  [user-entity [new-user-data seen-out]] expected by callers of the
+  loop-avoidance wrappers."
+  [seen-out user-fn & args]
+  (let [[user-entity new-user-data] (apply user-fn args)]
+    [user-entity [new-user-data seen-out]]))
+
+(defn wrap-caller-data-with-loop-avoidance-data
+  "Wrap user caller-data with the bookkeeping state that
+  wrap-pre-fn-with-loop-avoidance and
+  wrap-post-fn-with-loop-avoidance expect.
+
+  If starting-entity is a stored element, the endpoint opposite its
+  content is examined: when that endpoint is a shareable-uninterned
+  object, its entity-key is pre-populated into the initial seen map
+  (with value nil). This prevents the traversal from going through
+  the object that starting-entity is an element of -- any back-link
+  from a freshly entered descendant object to that ancestor will
+  have its content already in seen and so will be dropped."
+  [starting-entity user-data]
+  (let [originating (when (stored-entity? starting-entity)
+                      (originating-entity starting-entity))
+        seen (record-encounter {:next-number 1} originating)]
+    [user-data seen]))
+
+(defn extract-caller-data-from-loop-avoidance-data
+  "Return the user caller-data from a loop-avoidance caller-data
+  pair (as produced by wrap-caller-data-with-loop-avoidance-data)."
+  [loop-avoidance-data]
+  (first loop-avoidance-data))
+
+(defn wrap-pre-fn-with-loop-avoidance
+  "Wrap a user pre-fn so that the resulting pre-fn prevents
+  threaded-traversal from descending into cycles or repeated
+  references to the same non-presumed-interned object. The wrapped
+  function expects caller-data of the form [user-data seen] and
+  threads user-data through the user pre-fn. seen is a map that
+  records every non-presumed-interned object that has been entered
+  (see record-encounter). When the wrapped pre-fn would otherwise
+  cause traversal to revisit such an object, it short-circuits:
+    - For an element of a shareable parent whose content has already
+      been seen, it returns :entity/omit so the element is dropped;
+      the element will be traversed in the other direction.
+    - For a non-presumed-interned object whose key has already been
+      seen, it returns a plain tree-object with no elements, so there
+      is nothing for the traversal toe descend into
+  Use together with wrap-post-fn-with-loop-avoidance."
+  [user-pre-fn]
+  (fn [parent-entity entity [parent-user-data parent-seen] [user-data seen]]
+    (cond
+      (and (element? entity)
+           (shareable-uninterned-object? parent-entity)
+           (shareable-uninterned-object? (content entity))
+           (contains? parent-seen (entity-key (content entity))))
+      ;; This link has or will be handled from the other direction.
+      ;; Drop the element without consulting user-pre-fn.
+      [:entity/omit [user-data seen]]
+
+      (shareable-uninterned-object? entity)
+      ;; Record the encounter and substitute a shareable-tree- object
+      ;; whose id is the value record-encounter assigned, carrying the
+      ;; original entity's elements on first encounter and no elements
+      ;; on subsequent encounters (so the traversal will not descend
+      ;; into the object's elements again).
+      (let [orig-had-key? (contains? seen (entity-key entity))
+            new-seen (record-encounter seen entity)
+            new-tree (make-shareable-tree-object
+                      (get new-seen (entity-key entity))
+                      (if orig-had-key? [] (elements entity)))]
+        (call-user-fn-adding-seen
+         new-seen user-pre-fn parent-entity new-tree
+         parent-user-data user-data))
+
+      :else
+      (call-user-fn-adding-seen
+       seen user-pre-fn parent-entity entity
+       parent-user-data user-data))))
+
+(defn wrap-post-fn-with-loop-avoidance
+  "Wrap a user post-fn so that the resulting post-fn links all multiple
+  visits to a non-presumed-interned object together by giving them a
+  shared id. The wrapped function expects caller-data of the
+  form [user-data seen] and threads user-data through the user
+  post-fn. seen is the same map maintained by
+  wrap-pre-fn-with-loop-avoidance. When the user post-fn's result is a
+  plain tree-object and seen has a non-nil tree-id for the original
+  object's key (assigned at the point of the first repeat reference),
+  the wrapper returns a shareable-tree-object carrying that id."
+  [user-post-fn]
+  (fn [original-entity assembled [orig-user _] [new-user new-seen]]
+    (let [result (if-let
+                     [id (when (non-shareable-tree-object? assembled)
+                           (get new-seen (entity-key original-entity)))]
+                   (make-shareable-tree-object id (elements assembled))
+                   assembled)]
+      (call-user-fn-adding-seen
+       new-seen user-post-fn original-entity result orig-user new-user))))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."
@@ -785,7 +793,7 @@
   (post-walk-entity #(if (stored-entity? %)
                              (in-different-store % store)
                              %)
-                          entity))
+                    entity))
 
 (defn to-tree
   "Return a tree form of the entity. Cycles and repeated references
@@ -806,7 +814,7 @@
   (let [[tree1 [needs-cleanup? _]]
         (threaded-traversal
          entity
-         (wrap-pre-fn-with-loop-avoidance (fn [_ e cd] [e cd]))
+         (wrap-pre-fn-with-loop-avoidance (fn [_ e _ cd] [e cd]))
          (wrap-post-fn-with-loop-avoidance
           (fn [_ e _ cd]
             [e (or cd (shareable-tree-object? e))]))
@@ -815,7 +823,7 @@
       tree1
       (let [counts (threaded-traversal
                     tree1
-                    (fn [_ e cd]
+                    (fn [_ e _ cd]
                       [e (if (shareable-tree-object? e)
                            (update cd (entity-key e) (fnil inc 0))
                            cd)])
@@ -824,7 +832,7 @@
         (first
          (threaded-traversal
           tree1
-          (fn [_ e cd] [e cd])
+          (fn [_ e _ cd] [e cd])
           (fn [orig-ent e _ cd]
             [(if (shareable-tree-object? orig-ent)
                (let [id (entity-key orig-ent)]

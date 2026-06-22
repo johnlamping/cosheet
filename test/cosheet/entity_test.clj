@@ -19,7 +19,7 @@
                       [canonical :refer [canonicalize]]
                       [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
-                      [test-utils :refer [check any as-set]])
+                      [test-utils :refer [check any as-set differences]])
             ; :reload
             ))
 
@@ -591,10 +591,10 @@
 (deftest threaded-traversal-test
   (let [;; Trivial pre/post: leave the entity unchanged, but use the
         ;; caller-data as a counter or accumulator.
-        identity-pre (fn [_ e cd] [e cd])
+        identity-pre (fn [_ e _ cd] [e cd])
         identity-post (fn [_ e _ cd] [e cd])
-        counter-pre (fn [_ e cd] [e (inc cd)])
-        collector-pre (fn [_ e cd] [e (conj cd e)])
+        counter-pre (fn [_ e _ cd] [e (inc cd)])
+        collector-pre (fn [_ e _ cd] [e (conj cd e)])
         ;; Run a traversal with seen-tracking pre/post wrappers and
         ;; the caller-data shape they expect. Return [result
         ;; final-user-data].
@@ -622,12 +622,12 @@
     (let [[_ visited] (run '(1 2 (3 4)) collector-pre identity-post [])]
       (is (= visited ['(1 2 (3 4)) 1 '(2) 2 '(3 4) 3 '(4) 4])))
     ;; Pre-fn can transform entities (here, double every number).
-    (let [doubler (fn [_ e cd] [(if (number? e) (* 2 e) e) cd])
+    (let [doubler (fn [_ e _ cd] [(if (number? e) (* 2 e) e) cd])
           [result _] (run '(1 2 (3 4)) doubler identity-post nil)]
       (is (= result '(2 4 (6 8)))))
     ;; Pre-fn returning :entity/omit for an element drops it from
     ;; the result and skips traversal into its content and elements.
-    (let [drop-5 (fn [_ e cd]
+    (let [drop-5 (fn [_ e _ cd]
                    [(if (and (element? e) (= (content e) 5))
                       :entity/omit
                       e)
@@ -696,7 +696,7 @@
     ;; post-fn receives the caller-data that was input to this level
     ;; (before pre-fn ran), and the caller-data threaded back up
     ;; through the children.
-    (let [pre (fn [_ _ _] [42 :modified])
+    (let [pre (fn [_ _ _ _] [42 :modified])
           post (fn [_ e orig cd] [e {:orig orig :back cd}])
           ;; Primitive 42, no children: orig=:start, back=:modified.
           [_ result-cd] (run 42 pre post :start)]
@@ -747,12 +747,16 @@
   ;; references to the multiply-referenced object as shareable-tree-
   ;; objects with the same id so their shared identity is preserved.
   (let [obj1 (make-shareable-tree-object (make-tree-id 1) [1 2])
-        obj2 (make-shareable-tree-object (make-tree-id 2) [3])
-        structure `(0 (~obj1) (~obj2) (~obj2))]
-    (is (= (to-tree structure)
-           `(0 (~(make-tree-object [1 2]))
-               (~(make-shareable-tree-object (make-tree-id 2) [3]))
-               (~(make-shareable-tree-object (make-tree-id 2) []))))))
+        obj2 (make-shareable-tree-object (make-tree-id 2) [3])]
+    (is (check (to-tree `(0 (~obj1) (~obj2) (~obj2)))
+               `(0 (~(make-tree-object [1 2]))
+                     (~(make-shareable-tree-object (make-tree-id 2) [3]))
+                     (~(make-shareable-tree-object (make-tree-id 2) [])))))
+    ;; If we put obj1 last, the earlier id should go to obj2.
+    (is (check (to-tree `(0 (~obj2) (~obj2) (~obj1)))
+               `(0 (~(make-shareable-tree-object (make-tree-id 1) [3]))
+                   (~(make-shareable-tree-object (make-tree-id 1) []))
+                   (~(make-tree-object [1 2]))))))
   ;; to-tree on an uninterned stored object whose elements include
   ;; another uninterned stored object. Both objects are reached only
   ;; once (the back-link from the inner object to the outer one is
@@ -786,23 +790,46 @@
                          ["y"
                           `("z" (~(make-shareable-tree-object
                                    (make-tree-id 1) [])))])))]))))
-      ;; Starting from b, b's element iteration begins with the
-      ;; reverse-direction back-link to a (an element with :target
-      ;; orientation and content a); a's content gets fully assembled
-      ;; there. Then z-link's sub-element reaches a a second time and
-      ;; produces a bare reference. a is therefore referenced twice
-      ;; in tree1 and its shareable form is preserved by pass 3;
-      ;; b is single-ref and demoted to a plain tree-object.
-      (is (check (to-tree item-b')
-                 (as-set
-                  (make-tree-object
-                   [(make-tree-element
-                     :target
-                     (make-shareable-tree-object (make-tree-id 2) ["x"])
-                     [])
-                    "y"
-                    `("z" (~(make-shareable-tree-object
-                             (make-tree-id 2) [])))])))))))
+      ;; Starting from b, a is referenced twice regardless of the
+      ;; iteration order of b's elements: once via the reverse-
+      ;; direction back-link and once via z-link's sub-element.
+      ;; Whichever of those is visited first carries a's elements;
+      ;; the other becomes a bare reference. Both occurrences share
+      ;; the same id, and b (single-ref) is demoted to a plain
+      ;; tree-object.
+      (let [actual (to-tree item-b')]
+        ;; We can't put check inside an or, yet we want to use as-set
+        ;; inside, so we use differences, instead, which can work
+        ;; inside an or.
+        (is (or
+             ;; back-link visited first.
+             (nil?
+              (first (differences
+                      actual
+                      (as-set
+                       (make-tree-object
+                        [(make-tree-element
+                          :target
+                          (make-shareable-tree-object
+                           (make-tree-id 2) ["x"])
+                          [])
+                         "y"
+                         `("z" (~(make-shareable-tree-object
+                                  (make-tree-id 2) [])))])))))
+             ;; z-link visited first.
+             (nil?
+              (first (differences
+                      actual
+                      (as-set
+                       (make-tree-object
+                        [(make-tree-element
+                          :target
+                          (make-shareable-tree-object
+                           (make-tree-id 2) [])
+                          [])
+                         "y"
+                         `("z" (~(make-shareable-tree-object
+                                  (make-tree-id 2) ["x"])))])))))))))))
 
 (deftest entity-complexity-test
   (is (= (entity-complexity "a") 1.0))

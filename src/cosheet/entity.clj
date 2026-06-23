@@ -47,11 +47,10 @@
 
 ;;; The store's restriction that the target can't be a primitive and
 ;;; the source can't be a link restricts the possible elements. In
-;;; addition, at least for now, a link can only be an element in both
-;;; directions if both its source and target are objects. In other
-;;; words, only relationships between objects are reversible. All
-;;; other links only represent elements where their source is the
-;;; content.
+;;; addition, a link can only be an element in both directions if both
+;;; its source and target are objects. In other words, only
+;;; relationships between objects are reversible. All other links only
+;;; represent elements where their source is the content.
 
 ;;; This, in turn, means that the elements of an object correspond to
 ;;; all links that have it as a target, plus all links that have it as
@@ -65,27 +64,31 @@
 ;;; well. And the linkages can be more indirect, where object A has an
 ;;; element with a sub-element with content object B, etc.
 
-;;; This means that any traversal of an entity structure has to handle
-;;; circularity. The threaded-traversal function handles cyclic
-;;; structure in a general enough way to meet most needs.
-
-;;; The case where the source is a link may be supported later. That
-;;; is a pretty big change because it means that content of an element
-;;; could be another element, which is viewed from neither its link's
-;;; source or target, but from one of the links to it.
+;;; This means that any traversal of an entity structure has to avoid
+;;; looping forever through circularities. And it should also avoid
+;;; re-processing objects that can be reached via multiple paths. The
+;;; repeat-avoiding-threaded-traverse function handles these cases in
+;;; a general enough way to meet most needs. It is built on the more
+;;; basic threaded-traverse function which threads user data through a
+;;; depth first traversal; that enables repeat avoidance, without
+;;; committing to a particular approach.
 
 ;;; Elements are normally accessed in terms of content, orientation,
 ;;; and sub-elements. But elements that are associated with stores
-;;; also support two other methods. The target-entity method takes an
-;;; element and returns the entity corresponding to its target,
-;;; independent of its orientation. And the containing-elements method
-;;; takes an entity and returns the elements that have it as its their
-;;; content and have orientation :source.
+;;; also support three other methods. The target-entity method takes
+;;; an element and returns the entity corresponding to its target,
+;;; independent of its orientation. The originating-entity method
+;;; returns the entity at the opposite endpoint from the one holding
+;;; the content. And the containing-elements method takes an entity
+;;; and returns the elements that have it as its their content and
+;;; have orientation :source.
 
-;;; Since some uses of entities require creating an entity that
-;;; doesn't exactly match any entity in the store, there is a
-;;; representation of entities that is largely independent of stores,
-;;; called the tree form.
+;;; Since some uses of entities require making an entity that is not
+;;; in the store. For example, it could be a pattern to query for in
+;;; the store, or it could be a description of an entity that should
+;;; be added to the store. For these uses, there is a representation
+;;; of entities, called the tree form, that is largely independent of
+;;; stores.
 
 ;;; The tree form of primitives is just the primitive, since they are
 ;;; already independent of stores. The tree form of mutable objects
@@ -94,24 +97,36 @@
 ;;; one of these objects in a query matches a subject object iff the
 ;;; two have the same id (independent of which store they are in).
 
-;;; The tree form of anonymous objects needs to deal with need to
-;;; represent circularity. That is handled by giving anonymous objects
-;;; ids if necessary. If an anonymous object needs to be referenced
-;;; more than once, a shareable-tree-object is used for it. This has
-;;; the form
-;;;   [:sharaeble-object identifier element element ...]
-;;; only its first occurrence in the tree form (in depth first order)
-;;; will include the elements of the object, while; all other
-;;; occurrences will have only the id.
+;;; The tree form of anonymous objects needs to be able to express
+;;; circularity and sharing across multiple paths. So, even though a
+;;; tree form is a tree, a location in that tree needs a way to
+;;; reference objects elsewhere in the tree.
 
 ;;; Anonymous objects that don't need to be referenced more than once
-;;; have a tree form that includes just their elements:
+;;; don't have to worry about this, and have a tree form that includes
+;;; just their elements:
 ;;;    [:object element element ...]
+
+;;; But anonymous objects that can be referenced more than once are
+;;; represented by a a conflux-tree-object, which has an id that can
+;;; be used to reference it:
+;;;   [:conflux-object identifier element element ...]
+;;; For each id, only the first conflux-tree-object with that id in
+;;; the tree form (in depth first order) will include the elements of
+;;; the object; all other occurrences will have only the id, acting as
+;;; a reference to the first occurrence.
 
 ;;; The other nuance to handle circularity is that links between
 ;;; objects are recorded in only one direction in the tree form, from
 ;;; the first encountered object (in depth first order) to the latter
 ;;; encountered object.
+
+;;; While a tree form can describe a circular structure, or one with
+;;; objects shared across multiple paths, navigating down the tree
+;;; only keeps the information that's in the subtree, so it may no
+;;; longer be able to construct the full structure. On the other hand,
+;;; a tree form built afresh from the new node would have all the
+;;; necessary information.
 
 ;;; Elements need to indicate which direction they are traversing a
 ;;; link. The most general tree form of an element is
@@ -143,11 +158,22 @@
 ;;; consisting of nothing but an object, because objects are defined
 ;;; to not have any content.
 
-;;; Note that the definition of depth first order requires an ordering
-;;; on the elements of entities. While the ordering of elements is
-;;; undefined, in general, for the purpose of traversing tree
-;;; entities, the order is defined to be the order the elements appear
-;;; in the entities. Only the traversal code relies on that.
+;;; As mentioned earlier, if a conflux tree object with a given id
+;;; appears in a tree form, only its first occurrence in depth first
+;;; order records the elements of the object. This still gives depth
+;;; first traversals all the information they need the first time they
+;;; encounter a given conflux id. But that depth first order depends
+;;; on the order of elements at each node. So to make the order
+;;; repeatable, the tree form fixes the order of elements to be the
+;;; order they appear in the representation. That fixes the depth
+;;; first order for entities defined by a tree form.
+
+;;; In contrast, the order of elements defined by a store is
+;;; undefined, so there is no defined depth first order for entities
+;;; defined by a store; it might change from traversal to
+;;; traversal. That means that there is no unique tree form
+;;; corresponding to a particular entity defined by a store. The
+;;; canonical namespace has functions to help with this.
 
 ;;; If it turns out that tree forms of links are also necessary, they
 ;;; should be
@@ -206,17 +232,17 @@
 
   (entity-key [this]
     "Return the key of this entity. For stored entities, it is their
-    item-id. For shareable-tree-objects, it is their id. For all other
+    item-id. For conflux-tree-objects, it is their id. For all other
     entities it is the entity, itself.
 
     Since matching of store objects is independent of the store, named
     objects can be matched even if they are associated with different
     versions of the store, from after they were interned.
 
-    Note that the key ignores the orientation of elements. Both query
-    matching and to-tree rely on that to avoid infinite loops. The
-    only other place the key is used is to compare objects, which have
-    no orientation.")
+    Note that the key ignores the orientation of elements. Query
+    matching relies on that to avoid infinite loops. The only other
+    place the key is used is to compare objects, which have no
+    orientation.")
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
@@ -300,6 +326,37 @@
   [entity]
   (and (stored-entity? entity)
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
+
+;;; There are several ways that objects might be identified.
+;;; First, there are objects can be located in a store, based on their
+;;; properties:
+;;;          id-identified: The object's item-id is a know string,
+;;;                         like "link-type"
+;;;    uniquely-idenfified: The object is either id-identified or it
+;;;                         has a name that isn't just the empty string.
+;;;                         If it is not in the store, then stands for
+;;;                         a similarly named object in the store.
+;;;               interned: The object is uniquely identified, and stored.
+;;;                         In tree form, these objects are
+;;;                         represented by themselves.
+;;;      presumed-interned: The object is uniquely identified, or it
+;;;                         consists of an object it, but no store.
+;;;                         In the second case, the object is presumed
+;;;                         to have originated from an interned object,
+;;;                         and then gotten its store dropped. When put
+;;;                         in the context of a store, that store should
+;;;                         have an interned object with the same id.
+;;; Second, there are objects that might have several elements that
+;;; reference them, but that don't have any notable identifying
+;;; characteristics. They can only be referenced in terms of a numeric
+;;; id.
+;;;    conflux-uninterned-object: This is an object that is not
+;;;                               presumed interned, but that supports
+;;;                               a way of being identified for
+;;;                               purposes of attaching multiple
+;;;                               links. Any stored object that is nor
+;;;                               presumed-interned qualifies, as does
+;;;                               a conflux-tree-object.
 
 (defn id-identified-object?
   "Return true if the entity is an object that is identified by its id."
@@ -416,7 +473,7 @@
   (assert (not-any? object? elements))
   (into [:object] elements))
 
-(defn non-shareable-tree-object?
+(defn non-conflux-tree-object?
   "Return true if entity is the output of make-tree-object."
   [entity]
   (and (vector? entity)
@@ -424,7 +481,7 @@
 
 (defrecord
     ^{:doc
-      "The id for shareable-tree-objects."}
+      "The id for conflux-tree-objects."}
     TreeId
     [number])
 
@@ -440,28 +497,27 @@
   [x]
   (instance? TreeId x))
 
-(defn make-shareable-tree-object
+(defn make-conflux-tree-object
   "Make a tree representation of an object that carries an id so that
    multiple references to the same object can be recognized as sharing
    identity (via entity-key)."
   [id elements]
   (assert (tree-id? id))
   (assert (not-any? object? elements))
-  (into [:shareable-object id] elements))
+  (into [:conflux-object id] elements))
 
-(defn shareable-tree-object?
-  "Return true if entity is the output of make-shareable-tree-object."
+(defn conflux-tree-object?
+  "Return true if entity is the output of make-conflux-tree-object."
   [entity]
   (and (vector? entity)
-       (= (first entity) :shareable-object)))
+       (= (first entity) :conflux-object)))
 
-(defn shareable-uninterned-object?
-  "Return true if the entity is an object whose identity can be
-  recognized across multiple references without being interned: either
-  a shareable tree-object (which carries an explicit id) or a stored
-  object that is not presumed-interned."
+(defn conflux-uninterned-object?
+  "Return true if the entity is an object that might be the content of
+  multiple elementts, even though it's not interned or even presumed
+  interned."
   [entity]
-  (or (shareable-tree-object? entity)
+  (or (conflux-tree-object? entity)
       (and (stored-entity? entity)
            (object? entity)
            (not (presumed-interned-object? entity)))))
@@ -495,32 +551,32 @@
                            (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
         (let [new-elements (keep f (elements entity))]
-          (if (shareable-tree-object? entity)
-            (make-shareable-tree-object (entity-key entity) new-elements)
+          (if (conflux-tree-object? entity)
+            (make-conflux-tree-object (entity-key entity) new-elements)
             (make-tree-object new-elements)))
         :else
         entity))
 
-(defn pre-walk-entity
+(defn pre-traverse-entity
   "Recursively run the function on all the elements of the entity, from
   the top down up, going through objects that are not presumed
   interned. The function must return the same kid of entity as it
   gets. If the function turns an element into nil, that element will
   be removed."
   [f entity]
-  (map-subparts #(pre-walk-entity f %) (f entity)))
+  (map-subparts #(pre-traverse-entity f %) (f entity)))
 
-(defn post-walk-entity
+(defn post-traverse-entity
   "Recursively run the function on all the elements of the entity and
   their content, from the leaves up, going through objects that are
   not presumed interned. The function must return an element or a
   primitive. If the function turns an element into nil, that element
   will be removed."
   [f entity]
-  (f (map-subparts #(post-walk-entity f %) entity)))
+  (f (map-subparts #(post-traverse-entity f %) entity)))
 
-(defn threaded-traversal-helper
-  "Build the recursive worker for threaded-traversal. Given pre-fn
+(defn threaded-traverse-helper
+  "Build the recursive worker for threaded-traverse. Given pre-fn
   and post-fn, return a function traverse [parent-entity
   original-entity caller-data] that performs the traversal and
   returns [entity caller-data]. The caller-data is opaque to
@@ -565,15 +621,15 @@
 
                 :else
                 ;; Object: Traverse the elements. Then if the entity
-                ;; was a shareable-tree-object, put them in a
-                ;; shareable-tree-object with the same identity,
+                ;; was a conflux-tree-object, put them in a
+                ;; conflux-tree-object with the same identity,
                 ;; otherwise put them in a tree-object.
                 (let [[new-elements caller-data]
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (let [assembled (if (shareable-tree-object? entity)
-                                      (make-shareable-tree-object
+                    (let [assembled (if (conflux-tree-object? entity)
+                                      (make-conflux-tree-object
                                        (entity-key entity) new-elements)
                                       (make-tree-object new-elements))]
                       (post-fn original-entity assembled
@@ -602,7 +658,7 @@
              (elements entity)))]
     traverse))
 
-(defn threaded-traversal
+(defn threaded-traverse
   "Treats an entity as a graph, with elements corresponding to edges,
   while objects and primitives correspond to nodes. Does a depth
   first traversal of the graph, which logically overlays a tree on
@@ -624,7 +680,7 @@
   and the purpose of the tree form is to represent entities that may
   not be in a store.
 
-  Everything else is traversed. And threaded-traversal, itself, does
+  Everything else is traversed. And threaded-traverse, itself, does
   not detect cycles or make repeated references to the same
   non-presumed-interned object reference the same result: an input
   that contains either will cause it to loop or produce a tree with
@@ -633,10 +689,10 @@
   them in different ways.
 
   One way is provided here: wrap pre-fn with
-  wrap-pre-fn-with-loop-avoidance and post-fn with
-  wrap-post-fn-with-loop-avoidance, and supply caller-data wrapped
-  with wrap-caller-data-with-loop-avoidance-data.  Together those
-  wrappers will emit a shareable-tree-object the first time a repeated
+  wrap-pre-fn-with-repeat-avoiding and post-fn with
+  wrap-post-fn-with-repeat-avoiding, and supply caller-data wrapped
+  with wrap-caller-data-with-repeat-avoiding-data.  Together those
+  wrappers will emit a conflux-tree-object the first time a repeated
   object is reached and bare references thereafter.
 
   The pre-fn is called just before an entity is traversed, passing in
@@ -677,32 +733,31 @@
   and only the final caller-data is returned. This supports code that
   traverses purely for their effect on caller-data."
   [entity pre-fn post-fn caller-data]
-  (let [result ((threaded-traversal-helper pre-fn post-fn)
+  (let [result ((threaded-traverse-helper pre-fn post-fn)
                 nil nil entity caller-data)]
     (if post-fn
       result
       (second result))))
 
 (defn identity-pre-fn
-  "An identity pre-fn for threaded-traversal: returns its entity and
+  "An identity pre-fn for threaded-traverse: returns its entity and
   caller-data unchanged."
   [_ entity _ caller-data]
   [entity caller-data])
 
 (defn identity-post-fn
-  "An identity post-fn for threaded-traversal: returns its entity and
+  "An identity post-fn for threaded-traverse: returns its entity and
   caller-data unchanged."
   [_ entity _ caller-data]
   [entity caller-data])
 
 (defn record-encounter
   "Update a seen map for entering an entity: the first time a
-  shareable-uninterned-object is encountered, add its key with value
-  nil; on the next encounter, assign a fresh tree-id (drawn from
-  :next-number) so the construction step knows to produce a shareable
-  form with that id."
+  conflux-uninterned-object is encountered, assign a fresh tree-id (drawn from
+  :next-number) so that each time the entity is encountered, the
+  traversal will make a conflux-tree-object with that id."
   [seen entity]
-  (if-not (shareable-uninterned-object? entity)
+  (if-not (conflux-uninterned-object? entity)
     seen
     (let [k (entity-key entity)]
       (if (contains? seen k)
@@ -715,18 +770,18 @@
   "Call user-fn with the remaining arguments, expect it to return
   [user-entity new-user-data], and assemble the final result
   [user-entity [new-user-data seen-out]] expected by callers of the
-  loop-avoidance wrappers."
+  repeat-avoiding wrappers."
   [seen-out user-fn & args]
   (let [[user-entity new-user-data] (apply user-fn args)]
     [user-entity [new-user-data seen-out]]))
 
-(defn wrap-caller-data-with-loop-avoidance-data
+(defn wrap-caller-data-with-repeat-avoiding-data
   "Wrap user caller-data with the bookkeeping state that
-  wrap-pre-fn-with-loop-avoidance and
-  wrap-post-fn-with-loop-avoidance expect.
+  wrap-pre-fn-with-repeat-avoiding and
+  wrap-post-fn-with-repeat-avoiding expect.
 
   If starting-entity is a stored element, the endpoint opposite its
-  content is examined: when that endpoint is a shareable-uninterned
+  content is examined: when that endpoint is a conflux-uninterned
   object, its entity-key is pre-populated into the initial seen map
   (with value nil). This prevents the traversal from going through
   the object that starting-entity is an element of -- any back-link
@@ -738,48 +793,48 @@
         seen (record-encounter {:next-number 1} originating)]
     [user-data seen]))
 
-(defn extract-caller-data-from-loop-avoidance-data
-  "Return the user caller-data from a loop-avoidance caller-data
-  pair (as produced by wrap-caller-data-with-loop-avoidance-data)."
-  [loop-avoidance-data]
-  (first loop-avoidance-data))
+(defn extract-caller-data-from-repeat-avoiding-data
+  "Return the user caller-data from a repeat-avoiding caller-data
+  pair (as produced by wrap-caller-data-with-repeat-avoiding-data)."
+  [repeat-avoiding-data]
+  (first repeat-avoiding-data))
 
-(defn wrap-pre-fn-with-loop-avoidance
+(defn wrap-pre-fn-with-repeat-avoiding
   "Wrap a user pre-fn so that the resulting pre-fn prevents
-  threaded-traversal from descending into cycles or repeated
+  threaded-traverse from descending into cycles or repeated
   references to the same non-presumed-interned object. The wrapped
   function expects caller-data of the form [user-data seen] and
   threads user-data through the user pre-fn. seen is a map that
   records every non-presumed-interned object that has been entered
   (see record-encounter). When the wrapped pre-fn would otherwise
   cause traversal to revisit such an object, it short-circuits:
-    - For an element of a shareable parent whose content has already
+    - For an element of a conflux parent whose content has already
       been seen, it returns :entity/omit so the element is dropped;
       the element will be traversed in the other direction.
     - For a non-presumed-interned object whose key has already been
       seen, it returns a plain tree-object with no elements, so there
       is nothing for the traversal toe descend into
-  Use together with wrap-post-fn-with-loop-avoidance."
+  Use together with wrap-post-fn-with-repeat-avoiding."
   [user-pre-fn]
   (fn [parent-entity entity [parent-user-data parent-seen] [user-data seen]]
     (cond
       (and (element? entity)
-           (shareable-uninterned-object? parent-entity)
-           (shareable-uninterned-object? (content entity))
+           (conflux-uninterned-object? parent-entity)
+           (conflux-uninterned-object? (content entity))
            (contains? parent-seen (entity-key (content entity))))
       ;; This link has or will be handled from the other direction.
       ;; Drop the element without consulting user-pre-fn.
       [:entity/omit [user-data seen]]
 
-      (shareable-uninterned-object? entity)
-      ;; Record the encounter and substitute a shareable-tree- object
+      (conflux-uninterned-object? entity)
+      ;; Record the encounter and substitute a conflux-tree- object
       ;; whose id is the value record-encounter assigned, carrying the
       ;; original entity's elements on first encounter and no elements
       ;; on subsequent encounters (so the traversal will not descend
       ;; into the object's elements again).
       (let [orig-had-key? (contains? seen (entity-key entity))
             new-seen (record-encounter seen entity)
-            new-tree (make-shareable-tree-object
+            new-tree (make-conflux-tree-object
                       (get new-seen (entity-key entity))
                       (if orig-had-key? [] (elements entity)))]
         (call-user-fn-adding-seen
@@ -791,73 +846,87 @@
        seen user-pre-fn parent-entity entity
        parent-user-data user-data))))
 
-(defn wrap-post-fn-with-loop-avoidance
+(defn wrap-post-fn-with-repeat-avoiding
   "Wrap a user post-fn so that the resulting post-fn links all multiple
   visits to a non-presumed-interned object together by giving them a
   shared id. The wrapped function expects caller-data of the
   form [user-data seen] and threads user-data through the user
   post-fn. seen is the same map maintained by
-  wrap-pre-fn-with-loop-avoidance. When the user post-fn's result is a
+  wrap-pre-fn-with-repeat-avoiding. When the user post-fn's result is a
   plain tree-object and seen has a non-nil tree-id for the original
   object's key (assigned at the point of the first repeat reference),
-  the wrapper returns a shareable-tree-object carrying that id."
+  the wrapper returns a conflux-tree-object carrying that id.
+  If the user-post-fn is nil, just return nil; don't wrap."
   [user-post-fn]
-  (fn [original-entity assembled [orig-user _] [new-user new-seen]]
-    (let [result (if-let
-                     [id (when (non-shareable-tree-object? assembled)
-                           (get new-seen (entity-key original-entity)))]
-                   (make-shareable-tree-object id (elements assembled))
-                   assembled)]
-      (call-user-fn-adding-seen
-       new-seen user-post-fn original-entity result orig-user new-user))))
+  (when user-post-fn
+    (fn [original-entity assembled [orig-user _] [new-user new-seen]]
+      (let [result (if-let
+                       [id (when (non-conflux-tree-object? assembled)
+                             (get new-seen (entity-key original-entity)))]
+                     (make-conflux-tree-object id (elements assembled))
+                     assembled)]
+        (call-user-fn-adding-seen
+         new-seen user-post-fn original-entity result orig-user new-user)))))
+
+(defn repeat-avoiding-threaded-traverse
+  "Do a threaded traversal that avoids descending into cycles or into
+  the elements of a non-presumed-interned object more than once. Each
+  link will be traversed exactly once. Each node will be traversed
+  exactly once with its elements, while the other traversals will have
+  no objects."
+  [entity pre-fn post-fn caller-data]
+  (let [[tree caller-data]
+        (threaded-traverse
+         entity
+         (wrap-pre-fn-with-repeat-avoiding pre-fn)
+         (wrap-post-fn-with-repeat-avoiding post-fn)
+         (wrap-caller-data-with-repeat-avoiding-data entity caller-data))]
+    [tree (extract-caller-data-from-repeat-avoiding-data caller-data)]))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."
   [entity store]
-  (post-walk-entity #(if (stored-entity? %)
+  (post-traverse-entity #(if (stored-entity? %)
                              (in-different-store % store)
                              %)
                     entity))
 
-(defn convert-unneeded-shareable-tree-objects
+(defn convert-unneeded-conflux-tree-objects
   "Threaded traverse tree, counting occurrences of each
-  shareable-tree-object id, then post walk it, demoting any
-  shareable-tree-object whose id appears only once to a plain
+  conflux-tree-object id, then post walk it, demoting any
+  conflux-tree-object whose id appears only once to a plain
   tree-object."
   [tree]
-  (let [count-shareable-pre-fn (fn [_ e _ cd]
-                                 [e (cond-> cd
-                                      (shareable-tree-object? e)
-                                      (update (entity-key e) (fnil inc 0)))])
-        counts (threaded-traversal tree count-shareable-pre-fn nil {})
-        convert-unshared (fn [e] (if (and (shareable-tree-object? e)
+  (let [count-conflux-pre-fn (fn [_ e _ cd]
+                               [e (cond-> cd
+                                    (conflux-tree-object? e)
+                                    (update (entity-key e) (fnil inc 0)))])
+        counts (threaded-traverse tree count-conflux-pre-fn nil {})
+        convert-unshared (fn [e] (if (and (conflux-tree-object? e)
                                           (= (get counts (entity-key e)) 1))
                                    (make-tree-object (elements e))
                                    e))] 
-    (post-walk-entity convert-unshared tree)))
+    (post-traverse-entity convert-unshared tree)))
 
 (defn to-tree
   "Return a tree form of the entity. Cycles and repeated references
   to the same non-presumed-interned object are coalesced via
-  shareable-tree-objects; objects that are referenced only once
+  conflux-tree-objects; objects that are referenced only once
   collapse back to plain tree-objects."
   [entity]
-  ;; A loop-avoiding traversal builds the tree, producing a shareable-
-  ;; tree-object for every non-presumed-interned object. The post-fn
-  ;; flips user-data to true if any shareable-tree-object is produced.
-  ;; If none was, no further work is needed; otherwise hand off to
-  ;; convert-unneeded-shareable-tree-objects to demote any that turn
-  ;; out to be referenced only once.
-  (let [[assembled [needs-cleanup? _]]
-        (threaded-traversal
-         entity
-         (wrap-pre-fn-with-loop-avoidance identity-pre-fn)
-         (wrap-post-fn-with-loop-avoidance
-          (fn [_ e _ cd]
-            [e (or cd (shareable-tree-object? e))]))
-         (wrap-caller-data-with-loop-avoidance-data entity false))]
+  ;; A repeat-avoiding traversal builds the tree, producing a
+  ;; conflux-tree-object for every non-presumed-interned object. The
+  ;; post-fn flips user-data to true if any conflux-tree-object is
+  ;; produced.  If none was, no further work is needed; otherwise hand
+  ;; off to convert-unneeded-conflux-tree-objects to demote any that
+  ;; turn out to be referenced only once.
+  (let [conflux-post-fn (fn [_ e _ cd]
+                          [e (or cd (conflux-tree-object? e))])
+        [assembled needs-cleanup? ]
+        (repeat-avoiding-threaded-traverse
+         entity identity-pre-fn conflux-post-fn false)]
     (cond-> assembled
-      needs-cleanup? convert-unneeded-shareable-tree-objects)))
+      needs-cleanup? convert-unneeded-conflux-tree-objects)))
 
 (defn entity-complexity
   "Return the complexity of the element, which is the total number of

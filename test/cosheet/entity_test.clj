@@ -416,17 +416,17 @@
     (is (not (uniquely-identified-object? [:object `(~'anything ~name-label)])))
     (is (uniquely-identified-object? [:object `("Joe" ~name-label)]))))
 
-(deftest shareable-vector-test
-  ;; A shareable tree-object behaves like an object for the Entity
-  ;; protocol, but its entity-key is just [:shareable-object id] (the
+(deftest conflux-tree-object-test
+  ;; A conflux-tree-object behaves like an object for the Entity
+  ;; protocol, but its entity-key is just [:conflux-object id] (the
   ;; elements don't participate), so two references with the same id
   ;; but different elements are recognized as the same object.
   (let [tid1 (make-tree-id 1)
         tid2 (make-tree-id 2)
-        obj (make-shareable-tree-object tid1 [1 2])]
-    (is (= obj [:shareable-object tid1 1 2]))
-    (is (shareable-tree-object? obj))
-    (is (not (shareable-tree-object? [:object 1 2])))
+        obj (make-conflux-tree-object tid1 [1 2])]
+    (is (= obj [:conflux-object tid1 1 2]))
+    (is (conflux-tree-object? obj))
+    (is (not (conflux-tree-object? [:object 1 2])))
     (is (not (primitive? obj)))
     (is (not (element? obj)))
     (is (object? obj))
@@ -435,34 +435,34 @@
     (is (= (content obj) nil))
     (is (= (orientation obj) nil))
     (is (= (entity-key obj) tid1))
-    (is (= (entity-key (make-shareable-tree-object tid1 [3 4]))
+    (is (= (entity-key (make-conflux-tree-object tid1 [3 4]))
            (entity-key obj)))
-    (is (not= (entity-key (make-shareable-tree-object tid2 [1 2]))
+    (is (not= (entity-key (make-conflux-tree-object tid2 [1 2]))
               (entity-key obj))))
-  (let [obj (make-shareable-tree-object (make-tree-id 1)
+  (let [obj (make-conflux-tree-object (make-tree-id 1)
                                         '[(2 :foo) (4 3)])]
     (is (= (label->elements obj :foo) '[(2 :foo)]))
     (is (= (content->elements obj 4) '[(4 3)]))))
 
-(deftest shareable-uninterned-object?-test
-  ;; Shareable tree-objects are uninterned.
-  (is (shareable-uninterned-object?
-       (make-shareable-tree-object (make-tree-id 1) [])))
-  ;; Plain primitives and non-shareable tree-objects are not.
-  (is (not (shareable-uninterned-object? 1)))
-  (is (not (shareable-uninterned-object? "foo")))
-  (is (not (shareable-uninterned-object? [:object 1 2])))
+(deftest conflux-uninterned-object?-test
+  ;; conflux-tree-objects are uninterned.
+  (is (conflux-uninterned-object?
+       (make-conflux-tree-object (make-tree-id 1) [])))
+  ;; Plain primitives and non-conflux-tree-objects are not.
+  (is (not (conflux-uninterned-object? 1)))
+  (is (not (conflux-uninterned-object? "foo")))
+  (is (not (conflux-uninterned-object? [:object 1 2])))
   ;; Stored anonymous objects (have a store and no name) are uninterned.
   (let [[s id] (get-new-object-id (new-element-store))
         stored-anon (id->object id s)
         stored-no-store (id->object id nil)]
-    (is (shareable-uninterned-object? stored-anon))
+    (is (conflux-uninterned-object? stored-anon))
     ;; A stored entity with no :store is presumed-interned and thus
-    ;; not shareable-uninterned.
-    (is (not (shareable-uninterned-object? stored-no-store)))
+    ;; not conflux-uninterned.
+    (is (not (conflux-uninterned-object? stored-no-store)))
     ;; An interned object (e.g., the name-label one) is not
-    ;; shareable-uninterned either.
-    (is (not (shareable-uninterned-object?
+    ;; conflux-uninterned either.
+    (is (not (conflux-uninterned-object?
               (id->object (make-item-id "name") s))))))
 
 (deftest constant-test
@@ -560,8 +560,8 @@
     (is (= (map-subparts incrementer (make-tree-object '(5 (2 3) 4)))
            (make-tree-object '(6 (2 3) 5))))))
 
-(deftest post-walk-entity-test
-  (is (check (post-walk-entity
+(deftest post-traverse-entity-test
+  (is (check (post-traverse-entity
               #(cond (number? %) (inc %)
                      (interned-object? %) (id->object (make-item-id "bar") nil)
                      (= % '(3 4)) nil
@@ -574,8 +574,8 @@
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
 
-(deftest pre-walk-entity-test
-  (is (check (pre-walk-entity
+(deftest pre-traverse-entity-test
+  (is (check (pre-traverse-entity
               #(cond (number? %) (inc %)
                      (interned-object? %) (id->object (make-item-id "bar") nil)
                      (= % '(2 3)) nil
@@ -588,7 +588,7 @@
                     `(5 (6 7))))
                  (~(id->object (make-item-id "bar") nil))))))
 
-(deftest threaded-traversal-test
+(deftest threaded-traverse-test
   (let [;; Trivial pre/post: leave the entity unchanged, but use the
         ;; caller-data as a counter or accumulator.
         counter-pre (fn [_ e _ cd] [e (inc cd)])
@@ -598,13 +598,13 @@
         ;; final-user-data].
         run (fn [entity user-pre user-post initial-user]
               (let [[r cd]
-                    (threaded-traversal
+                    (threaded-traverse
                      entity
-                     (wrap-pre-fn-with-loop-avoidance user-pre)
-                     (wrap-post-fn-with-loop-avoidance user-post)
-                     (wrap-caller-data-with-loop-avoidance-data
+                     (wrap-pre-fn-with-repeat-avoiding user-pre)
+                     (wrap-post-fn-with-repeat-avoiding user-post)
+                     (wrap-caller-data-with-repeat-avoiding-data
                       entity initial-user))]
-                [r (extract-caller-data-from-loop-avoidance-data cd)]))]
+                [r (extract-caller-data-from-repeat-avoiding-data cd)]))]
     ;; Primitive sub-elements are wrapped as one-element lists before
     ;; descent, so each primitive sub-element generates two pre-fn
     ;; calls: one for the wrapped element, one for its content.
@@ -640,15 +640,15 @@
                          cd])
           [result _] (run '(1 2 (5 6) (3 4)) identity-pre-fn drop-5-post nil)]
       (is (= result '(1 2 (3 4)))))
-    ;; When the same shareable object appears as both the content of
+    ;; When the same conflux-tree-object appears as both the content of
     ;; the outer entity and the content of one of its sub-elements,
     ;; the second occurrence is dropped at the element level (because
-    ;; the outer entity isn't shareable, the second appearance reaches
+    ;; the outer entity isn't conflux, the second appearance reaches
     ;; the object via traverse, where it short-circuits to a bare
     ;; reference). Because every first encounter of a non-presumed-
     ;; interned object now gets a tree-id, the first occurrence is
-    ;; assembled as a shareable-tree-object too, sharing that id.
-    (let [obj (make-shareable-tree-object (make-tree-id 1) [])
+    ;; assembled as a conflux-tree-object too, sharing that id.
+    (let [obj (make-conflux-tree-object (make-tree-id 1) [])
           structure `(~obj (~obj))
           [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, obj (the content), (obj) (the element via
@@ -657,22 +657,22 @@
       (is (= count 4))
       (is (= result `(~obj (~obj)))))
     ;; When the skip check fires and the parent IS a
-    ;; shareable-uninterned-object, the child is dropped entirely.
-    (let [y-obj (make-shareable-tree-object (make-tree-id 1) [])
-          x-obj (make-shareable-tree-object (make-tree-id 2) [`(~y-obj)])
+    ;; conflux-uninterned-object, the child is dropped entirely.
+    (let [y-obj (make-conflux-tree-object (make-tree-id 1) [])
+          x-obj (make-conflux-tree-object (make-tree-id 2) [`(~y-obj)])
           structure `(~y-obj (~x-obj))
           [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, y-obj, (x-obj), x-obj = 4. The (y-obj) sub-
-      ;; element is dropped by wrap-pre-fn-with-loop-avoidance before
-      ;; user-pre-fn is consulted, because x-obj is shareable-
-      ;; uninterned and y-obj is already in seen.
+      ;; element is dropped by wrap-pre-fn-with-repeat-avoiding before
+      ;; user-pre-fn is consulted, because x-obj is conflux-uninterned
+      ;; and y-obj is already in seen.
       (is (= count 4))
-      ;; Each of y-obj and x-obj is assembled as a shareable-tree-
+      ;; Each of y-obj and x-obj is assembled as a conflux-tree-
       ;; object carrying the tree-id assigned at its first encounter
       ;; (y-obj is constructed with no elements, x-obj's only element
       ;; was dropped so it is too).
       (is (= result `(~y-obj
-                      (~(make-shareable-tree-object
+                      (~(make-conflux-tree-object
                          (make-tree-id 2) []))))))
     ;; The skip check uses the seen set as it was when this entity's
     ;; elements were entered, so additions made by one sibling's
@@ -680,8 +680,8 @@
     ;; constructed twice: the first time it gets the tree-id assigned
     ;; by record-encounter and is produced with its elements; the
     ;; second time the key is already in seen, so a bare reference
-    ;; (a shareable tree-object with no elements) is produced.
-    (let [obj (make-shareable-tree-object (make-tree-id 1) [1])
+    ;; (a conflux-tree-object with no elements) is produced.
+    (let [obj (make-conflux-tree-object (make-tree-id 1) [1])
           structure `(0 (~obj) (~obj))
           [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, 0, (obj), obj, (1), 1, (obj), obj = 8.
@@ -689,7 +689,7 @@
       ;; map, so traversal does not descend into its elements.
       (is (= count 8))
       (is (= result `(0 (~obj)
-                        (~(make-shareable-tree-object
+                        (~(make-conflux-tree-object
                            (make-tree-id 1) []))))))
     ;; post-fn receives the caller-data that was input to this level
     ;; (before pre-fn ran), and the caller-data threaded back up
@@ -699,21 +699,21 @@
           ;; Primitive 42, no children: orig=:start, back=:modified.
           [_ result-cd] (run 42 pre post :start)]
       (is (= result-cd {:orig :start :back :modified})))
-    ;; A shareable object at the top level is traversed through its
-    ;; elements and re-assembled as a shareable-tree-object using the
+    ;; A conflux-tree-object at the top level is traversed through its
+    ;; elements and re-assembled as a conflux-tree-object using the
     ;; tree-id assigned by record-encounter on first encounter (which
     ;; matches obj's original id, since :next-number starts at 1).
     ;; The accumulator records every entity visited, in order: the
-    ;; outer object, the wrapped (1), its content 1, the element
-    ;; (2 3), its content 2, the wrapped (3), its content 3.
-    (let [obj (make-shareable-tree-object (make-tree-id 1) [1 '(2 3)])
+    ;; outer object, the wrapped (1), its content 1, the element (2
+    ;; 3), its content 2, the wrapped (3), its content 3.
+    (let [obj (make-conflux-tree-object (make-tree-id 1) [1 '(2 3)])
           [result visited] (run obj collector-pre identity-post-fn [])]
       (is (= visited [obj '(1) 1 '(2 3) 2 '(3) 3]))
       (is (= result obj)))
     ;; When the starting entity is a stored element of a non-
     ;; presumed-interned object, the traversal must not loop back
     ;; through that object via a back-link from a descendant.
-    ;; wrap-caller-data-with-loop-avoidance-data invokes
+    ;; wrap-caller-data-with-repeat-avoiding-data invokes
     ;; originating-entity on the element and pre-populates the seen
     ;; map with that ancestor's key, so the back-link is dropped on
     ;; first encounter.
@@ -724,36 +724,37 @@
           [s id1] (add-link s2 ia-id ib-id)
           element (id->element id1 s)
           [_ [count _]]
-          (threaded-traversal
+          (threaded-traverse
            element
-           (wrap-pre-fn-with-loop-avoidance counter-pre)
-           (wrap-post-fn-with-loop-avoidance identity-post-fn)
-           (wrap-caller-data-with-loop-avoidance-data element 0))]
+           (wrap-pre-fn-with-repeat-avoiding counter-pre)
+           (wrap-post-fn-with-repeat-avoiding identity-post-fn)
+           (wrap-caller-data-with-repeat-avoiding-data element 0))]
       ;; Visits: the element itself and its content ib = 2. The one
       ;; element ib has (the back-link to ia) is dropped by
-      ;; wrap-pre-fn-with-loop-avoidance before user-pre-fn is
+      ;; wrap-pre-fn-with-repeat-avoiding before user-pre-fn is
       ;; consulted, because ia was pre-seeded in seen. Without the
       ;; pre-seeding the back-link would be followed into ia and
       ;; ia's elements, yielding a higher count.
       (is (= count 2)))))
 
 (deftest to-tree-multi-ref-test
-  ;; An element has three sub-elements: one wrapping a shareable-tree-
-  ;; object with id 1 (referenced once), and two wrapping a shareable-
-  ;; tree-object with id 2 (referenced twice). to-tree demotes the
-  ;; singly-referenced object to a plain tree-object, and keeps both
-  ;; references to the multiply-referenced object as shareable-tree-
-  ;; objects with the same id so their shared identity is preserved.
-  (let [obj1 (make-shareable-tree-object (make-tree-id 1) [1 2])
-        obj2 (make-shareable-tree-object (make-tree-id 2) [3])]
+  ;; An element has three sub-elements: one wrapping a
+  ;; conflux-tree-object with id 1 (referenced once), and two wrapping
+  ;; a conflux-tree-object with id 2 (referenced twice). to-tree
+  ;; demotes the singly-referenced object to a plain tree-object, and
+  ;; keeps both references to the multiply-referenced object as
+  ;; conflux-tree- objects with the same id so their shared identity
+  ;; is preserved.
+  (let [obj1 (make-conflux-tree-object (make-tree-id 1) [1 2])
+        obj2 (make-conflux-tree-object (make-tree-id 2) [3])]
     (is (check (to-tree `(0 (~obj1) (~obj2) (~obj2)))
                `(0 (~(make-tree-object [1 2]))
-                     (~(make-shareable-tree-object (make-tree-id 2) [3]))
-                     (~(make-shareable-tree-object (make-tree-id 2) [])))))
+                     (~(make-conflux-tree-object (make-tree-id 2) [3]))
+                     (~(make-conflux-tree-object (make-tree-id 2) [])))))
     ;; If we put obj1 last, the earlier id should go to obj2.
     (is (check (to-tree `(0 (~obj2) (~obj2) (~obj1)))
-               `(0 (~(make-shareable-tree-object (make-tree-id 1) [3]))
-                   (~(make-shareable-tree-object (make-tree-id 1) []))
+               `(0 (~(make-conflux-tree-object (make-tree-id 1) [3]))
+                   (~(make-conflux-tree-object (make-tree-id 1) []))
                    (~(make-tree-object [1 2]))))))
   ;; to-tree on an uninterned stored object whose elements include
   ;; another uninterned stored object. Both objects are reached only
@@ -773,20 +774,20 @@
     ;; Add a sub-element to the z-element whose content is a. The new
     ;; reference reaches a after a has already been recorded by the
     ;; top-level traversal, so a is referenced twice in the result
-    ;; tree. Pass 3 leaves both occurrences as shareable-tree-objects
+    ;; tree. Pass 3 leaves both occurrences as conflux-tree-objects
     ;; with the same id so the shared identity is preserved.
     (let [[s' _] (add-link s z-link-id a-id)
           item-a' (id->object a-id s')
           item-b' (id->object b-id s')]
       (is (check (to-tree item-a')
                  (as-set
-                  (make-shareable-tree-object
+                  (make-conflux-tree-object
                    (make-tree-id 1)
                    ["x"
                     `(~(as-set
                         (make-tree-object
                          ["y"
-                          `("z" (~(make-shareable-tree-object
+                          `("z" (~(make-conflux-tree-object
                                    (make-tree-id 1) [])))])))]))))
       ;; Starting from b, a is referenced twice regardless of the
       ;; iteration order of b's elements: once via the reverse-
@@ -808,11 +809,11 @@
                        (make-tree-object
                         [(make-tree-element
                           :target
-                          (make-shareable-tree-object
+                          (make-conflux-tree-object
                            (make-tree-id 2) ["x"])
                           [])
                          "y"
-                         `("z" (~(make-shareable-tree-object
+                         `("z" (~(make-conflux-tree-object
                                   (make-tree-id 2) [])))])))))
              ;; z-link visited first.
              (nil?
@@ -822,11 +823,11 @@
                        (make-tree-object
                         [(make-tree-element
                           :target
-                          (make-shareable-tree-object
+                          (make-conflux-tree-object
                            (make-tree-id 2) [])
                           [])
                          "y"
-                         `("z" (~(make-shareable-tree-object
+                         `("z" (~(make-conflux-tree-object
                                   (make-tree-id 2) ["x"])))])))))))))))
 
 (deftest entity-complexity-test

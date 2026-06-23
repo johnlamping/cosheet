@@ -327,7 +327,7 @@
 ;;;   [:object element element ...]
 ;;; Or, for an object whose identity should be recognizable across
 ;;; multiple references:
-;;;   [:shareable-object identifier element element ...]
+;;;   [:conflux-object identifier element element ...]
 (extend-type clojure.lang.PersistentVector
 
   Entity
@@ -337,7 +337,7 @@
   (primitive? [this] false)
   (element? [this] false)
   (object? [this] (or (= (first this) :object)
-                      (= (first this) :shareable-object)))
+                      (= (first this) :conflux-object)))
 
   (content [this] nil)
 
@@ -345,7 +345,7 @@
     (assert (object? this) this)
     (seq (case (first this)
            :object (rest this)
-           :shareable-object (nthrest this 2))))
+           :conflux-object (nthrest this 2))))
 
   (forward-elements [this] (seq (filter #(not= (orientation %) :target)
                                         (elements this))))
@@ -366,7 +366,7 @@
 
   (entity-key [this]
     (case (first this)
-      :shareable-object (second this)
+      :conflux-object (second this)
       this))
 
   (updating-immutable [this] this))

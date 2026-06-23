@@ -18,7 +18,7 @@
                     content elements orientation containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
-                    map-subparts pre-walk-entity post-walk-entity
+                    map-subparts pre-traverse-entity
                     target-entity entity-key
                     make-tree-element make-tree-object
                     add-elements-to-entity
@@ -291,7 +291,7 @@
   ([query]
    (fixed-term-to-template query ""))
   ([query nil-replacement]
-   (pre-walk-entity
+   (pre-traverse-entity
     (fn [query] (cond (nil? query) nil-replacement
                       (element? query) (when (not (or (= query '(nil :order))
                                                       (special-form? query)))

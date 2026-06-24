@@ -564,7 +564,8 @@
   gets. If the function turns an element into nil, that element will
   be removed."
   [f entity]
-  (map-subparts #(pre-traverse-entity f %) (f entity)))
+  (letfn [(recurse [e] (map-subparts recurse (f e)))]
+    (recurse entity)))
 
 (defn post-traverse-entity
   "Recursively run the function on all the elements of the entity and
@@ -573,7 +574,8 @@
   primitive. If the function turns an element into nil, that element
   will be removed."
   [f entity]
-  (f (map-subparts #(post-traverse-entity f %) entity)))
+  (letfn [(recurse [e] (f (map-subparts recurse e)))]
+    (recurse entity)))
 
 (defn threaded-traverse-helper
   "Build the recursive worker for threaded-traverse. Given pre-fn
@@ -800,21 +802,27 @@
   (first repeat-avoiding-data))
 
 (defn wrap-pre-fn-with-repeat-avoiding
-  "Wrap a user pre-fn so that the resulting pre-fn prevents
-  threaded-traverse from descending into cycles or repeated
-  references to the same non-presumed-interned object. The wrapped
-  function expects caller-data of the form [user-data seen] and
-  threads user-data through the user pre-fn. seen is a map that
-  records every non-presumed-interned object that has been entered
+  "Use together with wrap-post-fn-with-repeat-avoiding.
+  Wrap a user pre-fn so that the resulting pre-fn prevents
+  threaded-traverse from descending into cycles or repeated references
+  to the same non-presumed-interned object. The wrapped function
+  expects caller-data of the form [user-data seen] and threads
+  user-data through the user pre-fn. seen is a map that records every
+  non-presumed-interned object that has been entered
   (see record-encounter). When the wrapped pre-fn would otherwise
-  cause traversal to revisit such an object, it short-circuits:
+  cause traversal to revisit such an object, it intervenes before
+  calling user-pre-fn:
     - For an element of a conflux parent whose content has already
       been seen, it returns :entity/omit so the element is dropped;
       the element will be traversed in the other direction.
-    - For a non-presumed-interned object whose key has already been
-      seen, it returns a plain tree-object with no elements, so there
-      is nothing for the traversal toe descend into
-  Use together with wrap-post-fn-with-repeat-avoiding."
+    - For a non-presumed-interned object, it looks to see if its key
+      has already been assigned a conflux id. If not, it assigns a key
+      and makes a conflux-tree-object with that key and all the
+      elements of the original object. If there already was an id, it
+      makes a conflux-tree-object that id, but no elements, so there
+      will be nothing for the traversal to descend further into.
+  It intervenes before calling user-pre-fn, so that that function will
+  never be called with something that should be avoided."
   [user-pre-fn]
   (fn [parent-entity entity [parent-user-data parent-seen] [user-data seen]]
     (cond
@@ -827,7 +835,7 @@
       [:entity/omit [user-data seen]]
 
       (conflux-uninterned-object? entity)
-      ;; Record the encounter and substitute a conflux-tree- object
+      ;; Record the encounter and substitute a conflux-tree-object
       ;; whose id is the value record-encounter assigned, carrying the
       ;; original entity's elements on first encounter and no elements
       ;; on subsequent encounters (so the traversal will not descend
@@ -852,11 +860,12 @@
   shared id. The wrapped function expects caller-data of the
   form [user-data seen] and threads user-data through the user
   post-fn. seen is the same map maintained by
-  wrap-pre-fn-with-repeat-avoiding. When the user post-fn's result is a
-  plain tree-object and seen has a non-nil tree-id for the original
-  object's key (assigned at the point of the first repeat reference),
-  the wrapper returns a conflux-tree-object carrying that id.
-  If the user-post-fn is nil, just return nil; don't wrap."
+  wrap-pre-fn-with-repeat-avoiding. When the user post-fn's result is
+  a plain tree-object, and a key was recorded for the original object
+  before that object was reached, the wrapper returns a
+  conflux-tree-object carrying that id.  The user-post-fn is called
+  after the substitution.  If the user-post-fn is nil, just return
+  nil; don't wrap."
   [user-post-fn]
   (when user-post-fn
     (fn [original-entity assembled [orig-user _] [new-user new-seen]]

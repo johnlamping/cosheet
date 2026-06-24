@@ -10,7 +10,19 @@
 ;;; entity, and for operating on the canonical description. The
 ;;; canonical description doesn't support access to the parts of an
 ;;; entity, but two entities are equal if and only if their canonical
-;;; forms are identical.
+;;; forms are identical, unless they have cycles that might be
+;;; traversed in different directions.
+
+;;; (We can't guarantee equality for entities with cycles that can be
+;;; traversed in different directions, because the tree we end up with
+;;; can depend on the order we traverse elements. But the whole point
+;;; of canonicalization is to be able to ignore the order of
+;;; elements.)
+
+;;; TODO: !!! use threaded-traversal for this. Assign ids to
+;;; conflux-uninterned-objects, which are represented by their
+;;; ids. Then when the first one is complete, add the canonical of its
+;;; id to the representation.
 
 ;;; The canonical form depends on the type of entity
 ;;;                            Strings: Their trimmed lower case

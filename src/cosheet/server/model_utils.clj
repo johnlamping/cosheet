@@ -21,6 +21,11 @@
                     map-subparts pre-traverse-entity
                     target-entity entity-key
                     make-tree-element make-tree-object
+                    make-conflux-tree-object conflux-tree-object?
+                    non-conflux-tree-object?
+                    convert-unneeded-conflux-tree-objects
+                    identity-post-fn
+                    repeat-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
                     in-different-store]]
@@ -84,6 +89,12 @@
   [immutable-entity]
   (filter semantic-element? (elements immutable-entity)))
 
+(defn ordered-semantic-elements
+  "Return the semantic elements of an entity, in the order that the
+  :order information calls for."
+  [immutable-entity]
+  (ordered-entities (semantic-elements immutable-entity)))
+
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
@@ -103,59 +114,58 @@
             immutable-store
             (map :item-id (semantic-elements item)))))
 
-(def internal-semantic-to-tree)
-
-(defn internal-object-semantic-to-tree
-  "The skipped element lets semantic-to-tree avoid going back up a link
-  it just traversed to this object."
-  [object use-order expand-identified skipped-element]
-  (if (or expand-identified (not (interned-object? object)))
-    (->> (cond-> (semantic-elements object)
-           use-order (ordered-entities))
-         (remove #(= (entity-key %) (entity-key skipped-element)))
-         (map #(internal-semantic-to-tree % use-order))
-         (make-tree-object))
-    object))
-
 (defn internal-semantic-to-tree
-  [immutable-entity use-order]
-  (cond (primitive? immutable-entity)
-        immutable-entity
-        (object? immutable-entity)
-        (internal-object-semantic-to-tree immutable-entity use-order false nil)
-        true
-        (let [content (content immutable-entity)
-              elements (cond-> (semantic-elements immutable-entity)
-                         use-order (ordered-entities))
-              content-semantic (if (object? content)
-                                 (internal-object-semantic-to-tree
-                                  content use-order false immutable-entity)
-                                 (internal-semantic-to-tree content use-order))
-              element-semantics (map #(internal-semantic-to-tree % use-order)
-                                     elements)]
-          (make-tree-element (orientation immutable-entity)
-                             content-semantic
-                             element-semantics))))
+  "Make a tree form of the entity that includes only its semantic
+  information. Interned objects encountered during the traversal are
+  not expanded; they appear as references. elements-fn is called on
+  each entity to obtain its semantic elements and their order."
+  [entity elements-fn]
+  (letfn [(pre-fn [_ e _ conflux-seen]
+            (cond (conflux-tree-object? e)
+                  [(make-conflux-tree-object
+                    (entity-key e) (elements-fn e))
+                   true]
+                  
+                  (non-conflux-tree-object? e)
+                  [(make-tree-object (elements-fn e))
+                   conflux-seen]
+                  
+                  (element? e)
+                  [(make-tree-element
+                    (orientation e) (content e) (elements-fn e))
+                   conflux-seen]
+                  
+                  :else
+                  [e conflux-seen]))]
+    (let [[tree conflux-seen] (repeat-avoiding-threaded-traverse
+                               entity pre-fn identity-post-fn false)]
+      (cond-> tree
+        conflux-seen convert-unneeded-conflux-tree-objects))))
 
 (defn semantic-to-tree
   "Given an immutable entity, make a list representation of the
   semantic information of the entity."
   [immutable-entity]
-  (internal-semantic-to-tree immutable-entity false))
+  (internal-semantic-to-tree immutable-entity semantic-elements))
 
 (defn ordered-semantic-to-tree
   "Given an immutable entity, make a list representation of the
   semantic information of the entity, putting elements in the order that the
   :order information calls for."
   [immutable-entity]
-  (internal-semantic-to-tree immutable-entity true))
+  (internal-semantic-to-tree immutable-entity ordered-semantic-elements))
 
 (defn object-semantic-to-tree
   "Given an immutable object, make a list representation of its semantic
   information, even if the object is identified. Put elements in the
   order that the :order information calls for."
   [immutable-entity]
-  (internal-object-semantic-to-tree immutable-entity true true nil))
+  ;; internal-semantic-to-tree wouldn't expand an interned object, so
+  ;; do the first expansion here and call internal-semantic-to-tree on
+  ;; each of the resulting sub-elements.
+  (->> (ordered-semantic-elements immutable-entity)
+       (map ordered-semantic-to-tree)
+       make-tree-object))
 
 (defn entity->canonical-semantic
   "Return the canonical form of the semantic information for the entity.

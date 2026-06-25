@@ -4,6 +4,7 @@
                       [entity :refer [in-different-store stored-entity?
                                       link-type object-type name-label
                                       make-tree-object make-tree-element
+                                      make-conflux-tree-object make-tree-id
                                       object?
                                       recursively-in-different-store
                                       id->object id->entity
@@ -12,7 +13,8 @@
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
-                                     make-item-id]]
+                                     make-item-id get-new-object-id
+                                     add-link]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -202,7 +204,30 @@
     (is (check
          (object-semantic-to-tree joe)
          ;; We can't be sure of the order of elements.
-         (as-set (recursively-in-different-store named-joe-list store))))))
+         (as-set (recursively-in-different-store named-joe-list store)))))
+  ;; semantic-to-tree on a non-interned object that participates in a
+  ;; cycle: a has an "x" element and an element whose content is b;
+  ;; b has a "y" element and a "z" element whose sub-element refers
+  ;; back to a. Without repeat-avoiding-threaded-traverse, this would
+  ;; loop forever.
+  (let [[s1 a-id] (get-new-object-id (new-element-store))
+        [s2 b-id] (get-new-object-id s1)
+        [s3 _]         (add-link s2 a-id "x")
+        [s4 _]         (add-link s3 b-id "y")
+        [s5 z-link-id] (add-link s4 b-id "z")
+        [s6 _]         (add-link s5 a-id b-id)
+        [s  _]         (add-link s6 z-link-id a-id)
+        item-a (id->object a-id s)]
+    (is (check (semantic-to-tree item-a)
+               (as-set
+                (make-conflux-tree-object
+                 (make-tree-id 1)
+                 ["x"
+                  `(~(as-set
+                      (make-tree-object
+                       ["y"
+                        `("z" (~(make-conflux-tree-object
+                                 (make-tree-id 1) [])))])))]))))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))

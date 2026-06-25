@@ -8,6 +8,7 @@
                    name-label-id link-type-id object-type-id]]
     [entity :refer [StoredEntity
                     element? object? stored-entity?
+                    presumed-interned-object?
                     uniquely-identified-object?
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
@@ -33,6 +34,9 @@
   "Add an object with the given elements. Return the revised store and
   the id of the new object."
   [store elements]
+  (doseq [e elements]
+    (when (stored-entity? e)
+      (assert (presumed-interned-object? e))))
   (let [[store object-id] (get-new-object-id store)
         store (add-elements store object-id elements)]
     [store object-id]))
@@ -62,6 +66,8 @@
   and template type, but doesn't satisfy the template. Return the new
   store and the id of the matching object."
   [store name template]
+  (when (stored-entity? template)
+    (assert (presumed-interned-object? template)))
   (assert object? template)
   (if-let [object (find-object-by-name store name template)]
     (do (assert (extended-by? template object)
@@ -85,6 +91,8 @@
   store already has a uniquely identified object with the same id,
   and return the unmodified store and that id."
   [store template]
+  (when (stored-entity? template)
+    (assert (presumed-interned-object? template)))
   (assert object? template)
   (cond (id-identified-object? template)
         [store (:item-id template)]
@@ -111,6 +119,7 @@
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
+  (assert (not (stored-entity? template)))
   (assert (not (object? template)) template) ; Use add-object.
   (assert (not (element? (content template))) template)
   (let [[store content-endpoint]

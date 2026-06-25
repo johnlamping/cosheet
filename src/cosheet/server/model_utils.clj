@@ -25,9 +25,10 @@
                     non-conflux-tree-object?
                     convert-unneeded-conflux-tree-objects
                     identity-post-fn
-                    repeat-avoiding-threaded-traverse
+                    repetition-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
+                    presumed-interned-object?
                     in-different-store]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects
@@ -137,7 +138,7 @@
                   
                   :else
                   [e conflux-seen]))]
-    (let [[tree conflux-seen] (repeat-avoiding-threaded-traverse
+    (let [[tree conflux-seen] (repetition-avoiding-threaded-traverse
                                entity pre-fn identity-post-fn false)]
       (cond-> tree
         conflux-seen convert-unneeded-conflux-tree-objects))))
@@ -227,6 +228,8 @@
       pattern is an object, add a '(nil :order) element to make it only
       match user editable items."
   [pattern {:keys [require-not-type require-orders] :as options}]
+  (when (stored-entity? pattern)
+    (assert (presumed-interned-object? pattern)))
   (cond
     (primitive? pattern)
     (replace-anything-by-nil pattern)

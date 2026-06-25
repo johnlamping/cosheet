@@ -600,11 +600,11 @@
               (let [[r cd]
                     (threaded-traverse
                      entity
-                     (wrap-pre-fn-with-repeat-avoiding user-pre)
-                     (wrap-post-fn-with-repeat-avoiding user-post)
-                     (wrap-caller-data-with-repeat-avoiding-data
+                     (wrap-pre-fn-with-repetition-avoidance user-pre)
+                     (wrap-post-fn-with-repetition-avoidance user-post)
+                     (wrap-caller-data-with-repetition-avoidance-data
                       entity initial-user))]
-                [r (extract-caller-data-from-repeat-avoiding-data cd)]))]
+                [r (extract-caller-data-from-repetition-avoidance-data cd)]))]
     ;; Primitive sub-elements are wrapped as one-element lists before
     ;; descent, so each primitive sub-element generates two pre-fn
     ;; calls: one for the wrapped element, one for its content.
@@ -663,7 +663,7 @@
           structure `(~y-obj (~x-obj))
           [result count] (run structure counter-pre identity-post-fn 0)]
       ;; Visits: outer, y-obj, (x-obj), x-obj = 4. The (y-obj) sub-
-      ;; element is dropped by wrap-pre-fn-with-repeat-avoiding before
+      ;; element is dropped by wrap-pre-fn-with-repetition-avoidance before
       ;; user-pre-fn is consulted, because x-obj is conflux-uninterned
       ;; and y-obj is already in seen.
       (is (= count 4))
@@ -713,7 +713,7 @@
     ;; When the starting entity is a stored element of a non-
     ;; presumed-interned object, the traversal must not loop back
     ;; through that object via a back-link from a descendant.
-    ;; wrap-caller-data-with-repeat-avoiding-data invokes
+    ;; wrap-caller-data-with-repetition-avoidance-data invokes
     ;; originating-entity on the element and pre-populates the seen
     ;; map with that ancestor's key, so the back-link is dropped on
     ;; first encounter.
@@ -726,12 +726,12 @@
           [_ [count _]]
           (threaded-traverse
            element
-           (wrap-pre-fn-with-repeat-avoiding counter-pre)
-           (wrap-post-fn-with-repeat-avoiding identity-post-fn)
-           (wrap-caller-data-with-repeat-avoiding-data element 0))]
+           (wrap-pre-fn-with-repetition-avoidance counter-pre)
+           (wrap-post-fn-with-repetition-avoidance identity-post-fn)
+           (wrap-caller-data-with-repetition-avoidance-data element 0))]
       ;; Visits: the element itself and its content ib = 2. The one
       ;; element ib has (the back-link to ia) is dropped by
-      ;; wrap-pre-fn-with-repeat-avoiding before user-pre-fn is
+      ;; wrap-pre-fn-with-repetition-avoidance before user-pre-fn is
       ;; consulted, because ia was pre-seeded in seen. Without the
       ;; pre-seeding the back-link would be followed into ia and
       ;; ia's elements, yielding a higher count.

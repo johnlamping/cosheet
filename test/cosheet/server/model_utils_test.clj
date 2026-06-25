@@ -208,7 +208,7 @@
   ;; semantic-to-tree on a non-interned object that participates in a
   ;; cycle: a has an "x" element and an element whose content is b;
   ;; b has a "y" element and a "z" element whose sub-element refers
-  ;; back to a. Without repeat-avoiding-threaded-traverse, this would
+  ;; back to a. Without repetition-avoiding-threaded-traverse, this would
   ;; loop forever.
   (let [[s1 a-id] (get-new-object-id (new-element-store))
         [s2 b-id] (get-new-object-id s1)

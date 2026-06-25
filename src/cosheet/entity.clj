@@ -67,7 +67,7 @@
 ;;; This means that any traversal of an entity structure has to avoid
 ;;; looping forever through circularities. And it should also avoid
 ;;; re-processing objects that can be reached via multiple paths. The
-;;; repeat-avoiding-threaded-traverse function handles these cases in
+;;; repetition-avoiding-threaded-traverse function handles these cases in
 ;;; a general enough way to meet most needs. It is built on the more
 ;;; basic threaded-traverse function which threads user data through a
 ;;; depth first traversal; that enables repeat avoidance, without
@@ -526,12 +526,17 @@
   "Add elements an entity, using a tree form for its top level if
   anything changed."
   [entity elements-to-add]
+  (when (stored-entity? entity)
+    (assert (presumed-interned-object? entity)))
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
           (make-tree-element (orientation entity)
                              (content entity)
                              (concat (elements entity) elements-to-add))
+          (conflux-tree-object? entity)
+          (make-conflux-tree-object
+           (entity-key entity) (concat (elements entity) elements-to-add))
           (object? entity)
           (make-tree-object (concat (elements entity) elements-to-add))
           :else (make-tree-element :source entity elements-to-add))))
@@ -564,6 +569,8 @@
   gets. If the function turns an element into nil, that element will
   be removed."
   [f entity]
+  (when (stored-entity? entity)
+    (assert (presumed-interned-object? entity)))
   (letfn [(recurse [e] (map-subparts recurse (f e)))]
     (recurse entity)))
 
@@ -691,9 +698,9 @@
   them in different ways.
 
   One way is provided here: wrap pre-fn with
-  wrap-pre-fn-with-repeat-avoiding and post-fn with
-  wrap-post-fn-with-repeat-avoiding, and supply caller-data wrapped
-  with wrap-caller-data-with-repeat-avoiding-data.  Together those
+  wrap-pre-fn-with-repetition-avoidance and post-fn with
+  wrap-post-fn-with-repetition-avoidance, and supply caller-data wrapped
+  with wrap-caller-data-with-repetition-avoidance-data.  Together those
   wrappers will emit a conflux-tree-object the first time a repeated
   object is reached and bare references thereafter.
 
@@ -772,15 +779,15 @@
   "Call user-fn with the remaining arguments, expect it to return
   [user-entity new-user-data], and assemble the final result
   [user-entity [new-user-data seen-out]] expected by callers of the
-  repeat-avoiding wrappers."
+  repetition-avoidance wrappers."
   [seen-out user-fn & args]
   (let [[user-entity new-user-data] (apply user-fn args)]
     [user-entity [new-user-data seen-out]]))
 
-(defn wrap-caller-data-with-repeat-avoiding-data
+(defn wrap-caller-data-with-repetition-avoidance-data
   "Wrap user caller-data with the bookkeeping state that
-  wrap-pre-fn-with-repeat-avoiding and
-  wrap-post-fn-with-repeat-avoiding expect.
+  wrap-pre-fn-with-repetition-avoidance and
+  wrap-post-fn-with-repetition-avoidance expect.
 
   If starting-entity is a stored element, the endpoint opposite its
   content is examined: when that endpoint is a conflux-uninterned
@@ -795,14 +802,14 @@
         seen (record-encounter {:next-number 1} originating)]
     [user-data seen]))
 
-(defn extract-caller-data-from-repeat-avoiding-data
-  "Return the user caller-data from a repeat-avoiding caller-data
-  pair (as produced by wrap-caller-data-with-repeat-avoiding-data)."
-  [repeat-avoiding-data]
-  (first repeat-avoiding-data))
+(defn extract-caller-data-from-repetition-avoidance-data
+  "Return the user caller-data from a repetition-avoidance caller-data
+  pair (as produced by wrap-caller-data-with-repetition-avoidance-data)."
+  [repetition-avoidance-data]
+  (first repetition-avoidance-data))
 
-(defn wrap-pre-fn-with-repeat-avoiding
-  "Use together with wrap-post-fn-with-repeat-avoiding.
+(defn wrap-pre-fn-with-repetition-avoidance
+  "Use together with wrap-post-fn-with-repetition-avoidance.
   Wrap a user pre-fn so that the resulting pre-fn prevents
   threaded-traverse from descending into cycles or repeated references
   to the same non-presumed-interned object. The wrapped function
@@ -854,13 +861,13 @@
        seen user-pre-fn parent-entity entity
        parent-user-data user-data))))
 
-(defn wrap-post-fn-with-repeat-avoiding
+(defn wrap-post-fn-with-repetition-avoidance
   "Wrap a user post-fn so that the resulting post-fn links all multiple
   visits to a non-presumed-interned object together by giving them a
   shared id. The wrapped function expects caller-data of the
   form [user-data seen] and threads user-data through the user
   post-fn. seen is the same map maintained by
-  wrap-pre-fn-with-repeat-avoiding. When the user post-fn's result is
+  wrap-pre-fn-with-repetition-avoidance. When the user post-fn's result is
   a plain tree-object, and a key was recorded for the original object
   before that object was reached, the wrapper returns a
   conflux-tree-object carrying that id.  The user-post-fn is called
@@ -877,7 +884,7 @@
         (call-user-fn-adding-seen
          new-seen user-post-fn original-entity result orig-user new-user)))))
 
-(defn repeat-avoiding-threaded-traverse
+(defn repetition-avoiding-threaded-traverse
   "Do a threaded traversal that avoids descending into cycles or into
   the elements of a non-presumed-interned object more than once. Each
   link will be traversed exactly once. Each node will be traversed
@@ -887,10 +894,10 @@
   (let [[tree caller-data]
         (threaded-traverse
          entity
-         (wrap-pre-fn-with-repeat-avoiding pre-fn)
-         (wrap-post-fn-with-repeat-avoiding post-fn)
-         (wrap-caller-data-with-repeat-avoiding-data entity caller-data))]
-    [tree (extract-caller-data-from-repeat-avoiding-data caller-data)]))
+         (wrap-pre-fn-with-repetition-avoidance pre-fn)
+         (wrap-post-fn-with-repetition-avoidance post-fn)
+         (wrap-caller-data-with-repetition-avoidance-data entity caller-data))]
+    [tree (extract-caller-data-from-repetition-avoidance-data caller-data)]))
 
 (defn recursively-in-different-store
   "Recursively put all stored entities in the entity into a different store."
@@ -906,6 +913,8 @@
   conflux-tree-object whose id appears only once to a plain
   tree-object."
   [tree]
+  (when (stored-entity? tree)
+    (assert (presumed-interned-object? tree)))
   (let [count-conflux-pre-fn (fn [_ e _ cd]
                                [e (cond-> cd
                                     (conflux-tree-object? e)
@@ -923,7 +932,7 @@
   conflux-tree-objects; objects that are referenced only once
   collapse back to plain tree-objects."
   [entity]
-  ;; A repeat-avoiding traversal builds the tree, producing a
+  ;; A repetition-avoiding traversal builds the tree, producing a
   ;; conflux-tree-object for every non-presumed-interned object. The
   ;; post-fn flips user-data to true if any conflux-tree-object is
   ;; produced.  If none was, no further work is needed; otherwise hand
@@ -932,7 +941,7 @@
   (let [conflux-post-fn (fn [_ e _ cd]
                           [e (or cd (conflux-tree-object? e))])
         [assembled needs-cleanup? ]
-        (repeat-avoiding-threaded-traverse
+        (repetition-avoiding-threaded-traverse
          entity identity-pre-fn conflux-post-fn false)]
     (cond-> assembled
       needs-cleanup? convert-unneeded-conflux-tree-objects)))

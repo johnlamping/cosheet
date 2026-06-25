@@ -13,7 +13,8 @@
     [entity :refer [content elements orientation
                     label->elements label->content
                     id->entity make-tree-element make-tree-object
-                    element? object? interned-object?]]
+                    element? object? interned-object?
+                    stored-entity? presumed-interned-object?]]
     [query :refer [matching-items special-form?]]
     [utils :refer [threaded-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
@@ -228,9 +229,11 @@
 
 (defn add-order-elements-inside-object
   "Use the specified order to add order information to all the object's
-  subparts. Return a list form for the new object and the unused part
+  subparts. Return a tree form for the new object and the unused part
   of order."
   [object order]
+  (when (stored-entity? object)
+    (assert (presumed-interned-object? object)))
   (let [[elements remainder] (threaded-map add-order-elements-to-element
                                          (elements object) order)]
     [(make-tree-object elements) remainder]))
@@ -240,6 +243,8 @@
   it were an element, and to all its subparts. Return a list form for
   the new entity and the unused part of order."
     [entity order]
+    (when (stored-entity? entity)
+      (assert (presumed-interned-object? entity)))
     (cond
       (element? entity)
       (let [[elements remainder] (threaded-map add-order-elements-to-element

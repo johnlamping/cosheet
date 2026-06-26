@@ -1,11 +1,12 @@
 (ns cosheet.server.render-utils
   (:require (cosheet [entity :refer [target-entity elements element?
-                                      label-element? object? label-object?
-                                      link-type-object? object-type-object?
-                                      name-element?
-                                      link-type object-type name-label make-tree-object
-                                      label->elements
-                                      make-tree-element content orientation]]
+                                     label-element? object? label-object?
+                                     link-type-object? object-type-object?
+                                     name-element?
+                                     link-type object-type name-label
+                                     label->elements
+                                     make-tree-element make-tree-object
+                                     content orientation]]
                       [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty

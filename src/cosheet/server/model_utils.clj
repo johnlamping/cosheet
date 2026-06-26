@@ -21,8 +21,8 @@
                     map-subparts pre-traverse-entity
                     target-entity entity-key
                     make-tree-element make-tree-object
-                    make-conflux-tree-object conflux-tree-object?
-                    non-conflux-tree-object?
+                    make-conflux-tree-object conflux-tree-object-id
+                    conflux-tree-object? non-conflux-tree-object?
                     convert-unneeded-conflux-tree-objects
                     identity-post-fn
                     repetition-avoiding-threaded-traverse
@@ -124,7 +124,7 @@
   (letfn [(pre-fn [_ e _ conflux-seen]
             (cond (conflux-tree-object? e)
                   [(make-conflux-tree-object
-                    (entity-key e) (elements-fn e))
+                    (conflux-tree-object-id e) (elements-fn e))
                    true]
                   
                   (non-conflux-tree-object? e)

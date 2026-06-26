@@ -512,6 +512,13 @@
   (and (vector? entity)
        (= (first entity) :conflux-object)))
 
+(defn tree-object?
+  "Return trun if the entity is the output of make-tree-object or
+  make-conflux-tree-object."
+  [entity]
+  (and (vector? entity)
+       (#{:object :conflux-object} (first entity))))
+
 (defn conflux-uninterned-object?
   "Return true if the entity is an object that might be the content of
   multiple elementts, even though it's not interned or even presumed
@@ -521,6 +528,22 @@
       (and (stored-entity? entity)
            (object? entity)
            (not (presumed-interned-object? entity)))))
+
+(defn conflux-tree-object-id
+  "Return the id of a conflux-tree-object."
+  [entity]
+  (assert conflux-tree-object? entity)
+  (second entity))
+
+(defn make-tree-object-copying-id
+  "Given a template object and a seq of elements, Make a tree object
+  with the given elements. It the template is a conflux-tree-object,
+  then make the object a conflux-tree-object with the same
+  identity. Otherwise, make it a plain tree object."
+  [template elements]
+  (if (conflux-tree-object? template)
+    (make-conflux-tree-object (conflux-tree-object-id template) elements)
+    (make-tree-object elements)))
 
 (defn add-elements-to-entity
   "Add elements an entity, using a tree form for its top level if
@@ -534,11 +557,9 @@
           (make-tree-element (orientation entity)
                              (content entity)
                              (concat (elements entity) elements-to-add))
-          (conflux-tree-object? entity)
-          (make-conflux-tree-object
-           (entity-key entity) (concat (elements entity) elements-to-add))
           (object? entity)
-          (make-tree-object (concat (elements entity) elements-to-add))
+          (make-tree-object-copying-id
+           entity (concat (elements entity) elements-to-add))
           :else (make-tree-element :source entity elements-to-add))))
 
 (defn map-subparts
@@ -556,9 +577,7 @@
                            (keep f (elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
         (let [new-elements (keep f (elements entity))]
-          (if (conflux-tree-object? entity)
-            (make-conflux-tree-object (entity-key entity) new-elements)
-            (make-tree-object new-elements)))
+          (make-tree-object-copying-id entity new-elements))
         :else
         entity))
 
@@ -637,10 +656,8 @@
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (let [assembled (if (conflux-tree-object? entity)
-                                      (make-conflux-tree-object
-                                       (entity-key entity) new-elements)
-                                      (make-tree-object new-elements))]
+                    (let [assembled (make-tree-object-copying-id
+                                     entity new-elements)]
                       (post-fn original-entity assembled
                                original-caller-data caller-data))
                     [nil caller-data])))))
@@ -918,10 +935,13 @@
   (let [count-conflux-pre-fn (fn [_ e _ cd]
                                [e (cond-> cd
                                     (conflux-tree-object? e)
-                                    (update (entity-key e) (fnil inc 0)))])
+                                    (update (conflux-tree-object-id e)
+                                            (fnil inc 0)))])
         counts (threaded-traverse tree count-conflux-pre-fn nil {})
         convert-unshared (fn [e] (if (and (conflux-tree-object? e)
-                                          (= (get counts (entity-key e)) 1))
+                                          (= (get counts
+                                                  (conflux-tree-object-id e))
+                                             1))
                                    (make-tree-object (elements e))
                                    e))] 
     (post-traverse-entity convert-unshared tree)))

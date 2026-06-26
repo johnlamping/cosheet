@@ -9,7 +9,7 @@
                     label-object? name-element?
                     elements label->elements content->elements
                     name-label link-type object-type
-                    make-tree-object recursively-in-different-store
+                    recursively-in-different-store
                     entity-complexity
                     add-elements-to-entity]]
     [query :refer [matching-elements]]

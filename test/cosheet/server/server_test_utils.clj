@@ -7,8 +7,8 @@
              [task-queue :refer [make-priority-task-queue]]
              [store :refer [new-mutable-store]]
              [entity :refer [content elements orientation
-                             element? object? interned-object?
-                             make-tree-element make-tree-object
+                             element? object? tree-object? interned-object?
+                             make-tree-element make-tree-object-copying-id
                              stored-entity? presumed-interned-object?]]
              [utils :refer [threaded-map]]
              mutable-store-impl)
@@ -31,11 +31,10 @@
   subparts. Return a tree form for the new object and the unused part
   of order."
   [object order]
-  (when (stored-entity? object)
-    (assert (presumed-interned-object? object)))
+  (assert (tree-object? object))
   (let [[elements remainder] (threaded-map add-order-elements-to-element
                                          (elements object) order)]
-    [(make-tree-object elements) remainder]))
+    [(make-tree-object-copying-id object elements) remainder]))
 
 (defn add-order-elements-to-element
   "Use the specified order to add order information to the entity, as if

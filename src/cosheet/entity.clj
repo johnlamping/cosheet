@@ -600,6 +600,8 @@
   primitive. If the function turns an element into nil, that element
   will be removed."
   [f entity]
+  (when (stored-entity? entity)
+    (assert (presumed-interned-object? entity)))
   (letfn [(recurse [e] (f (map-subparts recurse e)))]
     (recurse entity)))
 
@@ -917,12 +919,17 @@
     [tree (extract-caller-data-from-repetition-avoidance-data caller-data)]))
 
 (defn recursively-in-different-store
-  "Recursively put all stored entities in the entity into a different store."
+  "Recursively traverse the entity, changing the store of all
+  presumed-interned objects to the given store."
   [entity store]
-  (post-traverse-entity #(if (stored-entity? %)
-                             (in-different-store % store)
-                             %)
-                    entity))
+  (let [post-fn (fn [original assembled _ caller-data]
+                  [(if (presumed-interned-object? original)
+                     (in-different-store original store)
+                     assembled)
+                   caller-data])
+        [tree _] (repetition-avoiding-threaded-traverse
+                  entity identity-pre-fn post-fn nil)]
+    tree))
 
 (defn convert-unneeded-conflux-tree-objects
   "Threaded traverse tree, counting occurrences of each

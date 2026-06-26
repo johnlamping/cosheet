@@ -14,8 +14,6 @@
                             ->ItemId]]
              store-impl
              mutable-store-impl
-             [calculator :refer [make-calculator-data computation-value]]
-             [task-queue :refer [make-priority-task-queue]]
              [store-utils :refer [add-element add-object
                                   add-universal-objects
                                   add-link-type-object]]
@@ -28,6 +26,7 @@
              [render-utils :refer [make-sequential-template
                                    make-virtual-label-template
                                    ensure-label-object]]
+             [server-test-utils :refer [run-renderer]]
              [action-data :refer [default-get-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data
@@ -78,15 +77,6 @@
   get-item-do-batch-edit-action-data)
 (defn parallel-do-batch-AD []
   parallel-items-get-do-batch-edit-action-data)
-
-(defn run-renderer
-  "Run the renderer on the output of the data getter, then run the
-  resulting dom-R, to get the final dom."
-  [renderer spec mutable-store]
-  (let [queue (make-priority-task-queue 0)
-        cd (make-calculator-data queue)
-        dom-R (renderer spec mutable-store)]
-    (computation-value dom-R cd)))
 
 (defn make-joe-and-jane-store
   "Make a store with labels test-object and foo-object and with

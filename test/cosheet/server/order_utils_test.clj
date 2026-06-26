@@ -1,10 +1,7 @@
 (ns cosheet.server.order-utils-test
   (:require [clojure.test :refer [deftest is]]
-            [clojure.data :refer [diff]]
-            [clojure.pprint :refer [pprint]]
             (cosheet
-             [entity :as entity :refer [id->entity to-tree
-                                        label->elements elements
+             [entity :as entity :refer [id->entity elements
                                         make-tree-element make-tree-object]]
              [orderable :as orderable]
              [reporter :refer [reporter-value-or-invalid make-reporter invalid
@@ -12,21 +9,15 @@
              [reporter-macros :refer [app-R]]
              [task-queue :refer [make-priority-task-queue]]
              [calculator :refer [make-calculator-data request compute]]
-             [debug :refer [simplify-for-print]]
              entity-impl
              [query :refer [matching-elements]]
              query-impl
-             [store :refer [new-element-store new-mutable-store store-update!
-                            make-item-id]]
+             [store :refer [new-element-store new-mutable-store store-update!]]
              store-impl
              mutable-store-impl
              [store-utils :refer [add-element remove-entity-by-id
-                                  add-universal-objects
-                                  add-link-type-object
-                                  find-object-by-name
                                   link-type-object]]
-             [canonical :refer [canonicalize]]
-             [test-utils :refer [check any]])
+             [test-utils :refer [check]])
             (cosheet.server
              [order-utils :refer :all]
              [model-utils :refer [semantic-to-tree]])
@@ -152,37 +143,3 @@
   (is (= (furthest-element joe :after) joe-45))
   (is (= (furthest-element joe :before) joe-male)))
 
-(deftest add-order-elements-test
-  ;; Pre-store the link-type-object so add-order-elements does not
-  ;; recurse into it and pollute its internal structure with orders.
-  (let [s0 (-> (new-element-store)
-               add-universal-objects
-               (add-link-type-object "e") first)
-        e-label (find-object-by-name s0 "e" (link-type-object ""))
-        ordered (add-order-elements
-                 `("a"
-                   ("b" "c")
-                   "d"
-                   (~e-label)
-                   (~(make-tree-object `("f")))
-                   (~(id->entity (make-item-id "test") nil))))]
-    (is (check ordered
-               `("a" ("b" ("c" (~(any) :order))
-                      (~(any) :order))
-                 ("d" (~(any) :order))
-                 (~e-label (~(any) :order))
-                 (~(make-tree-object `(("f" (~(any) :order))))
-                  (~(any) :order))
-                 (~(id->entity (make-item-id "test") nil)
-                  (~(any) :order))
-                 (~(any) :order))))
-    (is (orderable/earlier? (-> ordered second second second first)
-                            (-> ordered second (nth 2) first)))
-    (is (orderable/earlier? (-> ordered second (nth 2) first)
-                            (-> ordered (nth 2) second first)))
-    ;; The last element is not semantic, as it is order information.
-    (let [semantic-elements (butlast (elements ordered))]
-      (is (check (ordered-entities semantic-elements)
-                 semantic-elements))
-      (is (check (ordered-entities (reverse semantic-elements))
-                 semantic-elements)))))

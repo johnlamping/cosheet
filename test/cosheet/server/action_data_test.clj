@@ -14,9 +14,9 @@
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
             (cosheet.server [action-data :refer :all]
-                             [order-utils :refer [add-order-elements
-                                                  ordered-entities
+                             [order-utils :refer [ordered-entities
                                                   order-recursively]]
+                             [server-test-utils :refer [add-order-elements]]
                              [model-utils :refer [semantic-to-tree
                                                   semantic-elements]]
                              [render-utils :refer [make-sequential-template]])

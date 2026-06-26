@@ -15,8 +15,6 @@
                                          label->elements elements to-tree
                                          make-tree-object
                                          link-type name-label]]
-             [calculator :refer [make-calculator-data computation-value]]
-             [task-queue :refer [make-priority-task-queue]]
              [store :refer [->ItemId]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -40,7 +38,8 @@
              [render-utils :refer [make-virtual-label-template
                                    make-sequential-template
                                    ensure-label-object]]
-             [order-utils :refer [ordered-entities add-order-elements]]
+             [order-utils :refer [ordered-entities]]
+             [server-test-utils :refer [run-renderer add-order-elements]]
              [model-utils :refer [semantic-to-tree semantic-elements
                                   table-row-condition-object]]
              [table-render :refer :all])
@@ -89,15 +88,6 @@
   get-item-do-batch-edit-action-data)
 (defn parallel-do-batch-AD []
   parallel-items-get-do-batch-edit-action-data)
-
-(defn run-renderer
-  "Run the renderer, then run the resulting dom-R, to get the final
-  dom."
-  [renderer spec mutable-store]
-  (let [queue (make-priority-task-queue 0)
-        cd (make-calculator-data queue)
-        dom-R (renderer spec mutable-store)]
-    (computation-value dom-R cd)))
 
 (deftest get-virtual-column-cell-action-data-test
   (let [s (add-universal-objects (new-element-store))

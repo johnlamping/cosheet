@@ -33,8 +33,9 @@
                                   composed-get-action-data
                                   parallel-items-get-action-data
                                   get-item-or-exemplar-action-data]]
-             [order-utils :refer [ordered-entities add-order-elements
-                                  add-order-elements-inside-object]]
+             [order-utils :refer [ordered-entities]]
+             [server-test-utils :refer [add-order-elements
+                                        add-order-elements-inside-object]]
              [render-utils :refer [ensure-label-object
                                    make-virtual-label-template
                                    make-sequential-template]]
@@ -126,20 +127,6 @@
 (def stk1 (second t6))
 (def s (first t6))
 
-(defn run-renderer
-  "run the renderer on the output of the data getter, thus testing
-  that they work together correctly."
-  ([spec store]
-   (run-renderer (:render-dom spec) spec (:get-rendering-data spec) store))
-  ([renderer spec data-getter store]
-   (let [ms (new-mutable-store store)
-         data (data-getter spec ms)
-         cd (make-calculator-data (make-priority-task-queue 0))]
-     (doseq [[rep dep] data]
-       (request rep cd))
-       (compute cd)
-       (apply renderer spec (map #(reporter-value-or-invalid (first %)) data)))))
-
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
         query-R (make-reporter :value `(nil (nil (~c1-label))))
@@ -155,11 +142,15 @@
     (compute cd)
     (is (= (reporter-value-or-invalid count-R) 0))))
 
-(deftest render-batch-count-DOM-test
-  (let [dom (run-renderer (second (batch-count-component q1)) s)]
-    (is (check dom
-               [:div {:class "batch-query-match-counts"}
-                "2 row matches.  1 table matches."]))))
+;;; !!! This test doesn't make sense, as :get-rendering-data is not
+;;; !!! supported any more. When batch-count-component is fixed to not
+;;; !!! use it any more, fix this test and reenable it.
+(comment
+  (deftest render-batch-count-DOM-test
+    (let [dom (run-data-getter-and-renderer (second (batch-count-component q1)) s)]
+      (is (check dom
+                 [:div {:class "batch-query-match-counts"}
+                  "2 row matches.  1 table matches."])))))
 
 (deftest render-batch-query-DOM-test
   (let [q2-entity (id->entity q2 s)

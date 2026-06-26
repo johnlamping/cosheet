@@ -1,7 +1,7 @@
 (ns cosheet.server.order-utils
   (:require
    (cosheet
-    [orderable :refer [split earlier? initial]]
+    [orderable :refer [earlier? initial]]
     [reporter :refer [reporter-data set-value! set-attendee!
                       inform-attendees data-attended? remove-attendee!
                       make-reporter reporter-value-or-invalid reporter?
@@ -10,13 +10,11 @@
                         update-to-invalid]]
     [store :refer [update-source add-link
                    target-label->ids id->source ImmutableStore]]
-    [entity :refer [content elements orientation
+    [entity :refer [content elements
                     label->elements label->content
-                    id->entity make-tree-element make-tree-object
-                    element? object? interned-object?
-                    stored-entity? presumed-interned-object?]]
+                    id->entity object?]]
     [query :refer [matching-items special-form?]]
-    [utils :refer [threaded-map with-latest-value update-new-further-action]]
+    [utils :refer [with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 
 ;;; Utilities for creating and using orders.
@@ -225,55 +223,3 @@
   (or (first (label->elements item :order))
       (first (matching-items '(nil :unused-orderable) store))))
 
-(def add-order-elements-to-element)
-
-(defn add-order-elements-inside-object
-  "Use the specified order to add order information to all the object's
-  subparts. Return a tree form for the new object and the unused part
-  of order."
-  [object order]
-  (when (stored-entity? object)
-    (assert (presumed-interned-object? object)))
-  (let [[elements remainder] (threaded-map add-order-elements-to-element
-                                         (elements object) order)]
-    [(make-tree-object elements) remainder]))
-
-(defn add-order-elements-to-element
-  "Use the specified order to add order information to the entity, as if
-  it were an element, and to all its subparts. Return a list form for
-  the new entity and the unused part of order."
-    [entity order]
-    (when (stored-entity? entity)
-      (assert (presumed-interned-object? entity)))
-    (cond
-      (element? entity)
-      (let [[elements remainder] (threaded-map add-order-elements-to-element
-                                             (rest entity) order)
-            contents (content entity)
-            [contents remainder] (if (and (object? contents)
-                                          (not (interned-object? contents)))
-                                   (add-order-elements-inside-object
-                                    contents remainder)
-                                   [contents remainder])
-            [before after] (split remainder :after)]
-        [(make-tree-element (orientation entity)
-                            contents
-                            (concat elements [`(~before :order)]))
-         after])
-      (orderable-entity? entity)
-      ;; We have an orderable primitive acting like an element. Turn
-      ;; it into an element, with an order.
-      (let [[before after] (split order :after)]
-        [`(~entity (~before :order))
-         after])
-      true
-      [entity order]))
-
-(defn add-order-elements
-  "Given the list form of semantic part of an element, add order
-  information to each user selectable sub-part so they are in the same
-  order as in the list form. (If order information isn't added to a
-  new item, queries may fail to find it, as the presence of order
-  information is how queries restrict to semantic elements."
-  [entity]
-  (first (add-order-elements-to-element entity initial)))

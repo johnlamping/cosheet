@@ -82,7 +82,7 @@
   (println "getting ACTION DATA" getter)
   (println "  from spec" (dissoc specification
                                  :reporter :id-R :client-state
-                                 :get-rendering-data :hierarchy-R
+                                 :hierarchy-R
                                  :column-descriptions-R :row-template-R
                                  :row-ids-R))
   (let [store (or (:store inherited-action-data) immutable-store)

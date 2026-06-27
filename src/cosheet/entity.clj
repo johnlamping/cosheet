@@ -726,20 +726,20 @@
   The pre-fn is called just before an entity is traversed, passing in
   the parent entity, the entity, the parent caller data, and the
   caller data; it must return a pair of a revised entity and revised
-  caller data. The parent entity is nil for the top-level call and
-  the original entity of the enclosing traversal for nested calls.
-  The parent caller data is the caller data as it was when the parent
+  caller data. The parent entity is nil for the top-level call and the
+  original entity of the enclosing traversal for nested calls.  The
+  parent caller data is the caller data as it was when the parent
   entity was passed to traverse (and is nil for the top-level call).
-  The traversal will then proceed from the revised entity, rather
-  than on the original one, and the revised caller data will be
-  passed on to the next invocation of a caller provided function. If
-  the entity is an element, pre-fn may return :entity/omit for the
-  revised entity, which tells the traversal to behave as if the
-  entity weren't there: don't traverse it or include it in the
-  resulting tree entity. In the case where an element would
-  ordinarily be represented by a primitive, pre-fn will be passed a
-  full element, not the primitive, so it will know it can return
-  :entity/omit.
+  The traversal will then proceed from the revised entity, rather than
+  on the original one, and the revised caller data will be passed on
+  to the next invocation of a caller provided function. If the entity
+  is an element, pre-fn may return :entity/omit for the revised
+  entity, which tells the traversal to behave as if the entity weren't
+  there: don't traverse it or include it in the resulting tree
+  entity. In the case where an element would ordinarily be represented
+  by a primitive, pre-fn will be passed a full element, not the
+  primitive, so it will know it is working on an element, and may
+  return :entity/omit.
 
   The post-fn is called after the traversal has finished for an
   entity. It gets passed the original entity, a tree entity the
@@ -974,24 +974,34 @@
       needs-cleanup? convert-unneeded-conflux-tree-objects)))
 
 (defn entity-complexity
-  "Return the complexity of the element, which is the total number of
-   elements, sub-elements, etc, with sub-elements counting less."
-  [item]
-  (let [content (content item)
-        content-is-interned (interned-object? content)
-        all-elements (cond-> (elements item)
-                       (and (object? content) (not content-is-interned))
-                       (concat (elements content)))]
-    ;; We count generic content less, but enough that a generic
-    ;; content plus an element is considered higher complexity than a
-    ;; primitive.
-    (+ (if (object? content)
-         ;; A non-interned object counts like a primitive, while a
-         ;; non-interned object get its elements counted, plus a bit.
-         (if content-is-interned 1.0 0.3)
-         (get {nil 0.3   'anything 0.3   "" 0.4}
-              content 1.0))
-       (* 0.75 (apply + (map entity-complexity all-elements))))))
+  "Return the complexity of the entity, a measure of the total number
+   of elements, sub-elements, etc, with sub-elements counting less.
+   Repeated references to a non-presumed-interned object only count
+   its elements once."
+  [entity]
+  (letfn [(post-fn [original assembled original-cd cd-after-children]
+            (if (element? original)
+              ;; The element's contribution to its parent's
+              ;; children-sum is the self-cost of its content plus a
+              ;; discounted sum of its own children's contributions.
+              (let [c (content original)
+                    content-cost (if (object? c)
+                                   (if (presumed-interned-object? c) 1.0 0.3)
+                                   (get {nil 0.3 'anything 0.3 "" 0.4} c 1.0))]
+                [:entity/omit ; We don't need this element any more. 
+                 (+ original-cd
+                    content-cost
+                    (* 0.75 (- cd-after-children original-cd)))])
+              ;; Everything besides entities pass their children's sum
+              ;; through unchanged: the element that has them as
+              ;; content uses that sum directly.
+              [assembled cd-after-children]))]
+    ;; Since only elements add to the complexity, we need to wrap a
+    ;; non-element in an element.
+    (let [wrapped (if (element? entity) entity (list entity))
+          [_ complexity] (repetition-avoiding-threaded-traverse
+                          wrapped identity-pre-fn post-fn 0)]
+      complexity)))
 
 (defn label->element
   "Return the element with the given label.

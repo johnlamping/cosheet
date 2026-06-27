@@ -13,8 +13,7 @@
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
-                                     make-item-id get-new-object-id
-                                     add-link]]
+                                     make-item-id]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -32,7 +31,8 @@
                       [test-utils :refer [check any as-set]])
             (cosheet.server
              [model-utils :refer :all]
-             [order-utils :refer [ordered-entities]])
+             [order-utils :refer [ordered-entities]]
+             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 
@@ -206,18 +206,10 @@
          ;; We can't be sure of the order of elements.
          (as-set (recursively-in-different-store named-joe-list store)))))
   ;; semantic-to-tree on a non-interned object that participates in a
-  ;; cycle: a has an "x" element and an element whose content is b;
-  ;; b has a "y" element and a "z" element whose sub-element refers
-  ;; back to a. Without repetition-avoiding-threaded-traverse, this would
+  ;; cycle. Without repetition-avoiding-threaded-traverse, this would
   ;; loop forever.
-  (let [[s1 a-id] (get-new-object-id (new-element-store))
-        [s2 b-id] (get-new-object-id s1)
-        [s3 _]         (add-link s2 a-id "x")
-        [s4 _]         (add-link s3 b-id "y")
-        [s5 z-link-id] (add-link s4 b-id "z")
-        [s6 _]         (add-link s5 a-id b-id)
-        [s  _]         (add-link s6 z-link-id a-id)
-        item-a (id->object a-id s)]
+  (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-shared-store)]
     (is (check (semantic-to-tree item-a)
                (as-set
                 (make-conflux-tree-object

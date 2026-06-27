@@ -20,6 +20,8 @@
                       [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
                       [test-utils :refer [check any as-set differences]])
+            (cosheet.server
+             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 
@@ -761,24 +763,20 @@
   ;; once (the back-link from the inner object to the outer one is
   ;; dropped by loop avoidance), so each is demoted to a plain
   ;; tree-object in the result.
-  (let [[s1 a-id] (get-new-object-id (new-element-store))
-        [s2 b-id] (get-new-object-id s1)
-        [s3 _]         (add-link s2 a-id "x")
-        [s4 _]         (add-link s3 b-id "y")
-        [s5 z-link-id] (add-link s4 b-id "z")
-        [s _]          (add-link s5 a-id b-id)
-        item-a (id->object a-id s)]
+  (let [{:keys [cyclic-store cyclic-shared-store a-id b-id]}
+        (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-store)]
     (is (check (to-tree item-a)
                (as-set (make-tree-object
                         ["x" `(~(as-set (make-tree-object ["y" "z"])))]))))
-    ;; Add a sub-element to the z-element whose content is a. The new
-    ;; reference reaches a after a has already been recorded by the
-    ;; top-level traversal, so a is referenced twice in the result
-    ;; tree. Pass 3 leaves both occurrences as conflux-tree-objects
-    ;; with the same id so the shared identity is preserved.
-    (let [[s' _] (add-link s z-link-id a-id)
-          item-a' (id->object a-id s')
-          item-b' (id->object b-id s')]
+    ;; In :cyclic-shared-store, the z-element has a sub-element whose
+    ;; content is a. The new reference reaches a after a has already
+    ;; been recorded by the top-level traversal, so a is referenced
+    ;; twice in the result tree. Pass 3 leaves both occurrences as
+    ;; conflux-tree-objects with the same id, so the shared identity
+    ;; is preserved.
+    (let [item-a' (id->object a-id cyclic-shared-store)
+          item-b' (id->object b-id cyclic-shared-store)]
       (is (check (to-tree item-a')
                  (as-set
                   (make-conflux-tree-object
@@ -837,6 +835,24 @@
   (is (= (entity-complexity '(1 (2 "a"))) (+ 1 (* 0.75 (+ 1 0.75)))))
   (is (= (entity-complexity `(~(make-tree-object '(1 2)) (2 "a")))
          (+ 0.3 (* 0.75 (+ 1 1)) (* 0.75 (+ 1 0.75))))))
+
+(deftest entity-complexity-cycle-test
+  ;; entity-complexity on a non-interned stored object that
+  ;; participates in a cycle. Without repetition-avoiding-threaded-
+  ;; traverse, this would loop forever. The second encounter of a
+  ;; contributes nothing beyond a 0.3 self-cost for its appearance as
+  ;; content.
+  (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-shared-store)]
+    (is (= (entity-complexity item-a)
+           (+ 0.3 (* 0.75
+                     (+ 1.0          ; "x" element of a
+                        (+ 0.3       ; b-link's self-cost
+                           (* 0.75
+                              (+ 1.0 ; "y" element of b
+                                 (+ 1.0  ; "z" self-cost in z-link
+                                    (* 0.75
+                                       0.3))))))))))))
 
 (deftest label-object?-test
   (let [special-object (fn [id] (id->object (make-item-id id) nil))]

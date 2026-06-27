@@ -972,7 +972,7 @@
   ;; turn out to be referenced only once.
   (let [conflux-post-fn (fn [_ e _ cd]
                           [e (or cd (conflux-tree-object? e))])
-        [assembled needs-cleanup? ]
+        [assembled needs-cleanup?]
         (repetition-avoiding-threaded-traverse
          entity identity-pre-fn conflux-post-fn false)]
     (cond-> assembled

@@ -4,7 +4,10 @@
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
                     content elements orientation in-different-store
-                    make-tree-element interned-object?]])))
+                    make-tree-element interned-object?
+                    conflux-tree-object? conflux-tree-object-id
+                    make-conflux-tree-object
+                    to-tree]])))
 
 ;;; Utilities for converting to and from a canonical description of an
 ;;; entity, and for operating on the canonical description. The
@@ -19,11 +22,6 @@
 ;;; of canonicalization is to be able to ignore the order of
 ;;; elements.)
 
-;;; TODO: !!! use threaded-traversal for this. Assign ids to
-;;; conflux-uninterned-objects, which are represented by their
-;;; ids. Then when the first one is complete, add the canonical of its
-;;; id to the representation.
-
 ;;; The canonical form depends on the type of entity
 ;;;                            Strings: Their trimmed lower case
 ;;;                   Other primitives: Themselves
@@ -32,6 +30,10 @@
 ;;;                                     store set to nil.
 ;;;   Immutable non-identified objects: A pair of
 ;;;              [:object
+;;;               A multiset of the canonical descriptions of their elements.]
+;;;       Immutable conflux-tree-objects: A triple of
+;;;              [:conflux-object
+;;;               The conflux-tree-object's id.
 ;;;               A multiset of the canonical descriptions of their elements.]
 ;;;           Other immutable elements: A triple of
 ;;;              [Their orientation.
@@ -84,8 +86,11 @@
         canonical-content
         true [orientation canonical-content canonical-elements]))
 
-(defn canonicalize
-  "Given an entity, return a canonical representation of it."
+(defn internal-canonicalize
+  "Given a tree-form entity, return a canonical representation of it.
+  Conflux-tree-object identity is preserved (the canonical form for a
+  conflux-tree-object carries its id) so shared references are
+  recognizable in the canonical form."
   [entity]
   (cond (mutable-entity? entity)
         entity
@@ -96,15 +101,23 @@
           (in-different-store entity nil)
           ;; Since the object is not interned, we have to expand it
           ;; out, so it can match other non-interned objects.
-          [:object
-           (multiset (map canonicalize (elements entity)))])
+          (let [canonicals (multiset (map internal-canonicalize
+                                          (elements entity)))]
+            (if (conflux-tree-object? entity)
+              [:conflux-object (conflux-tree-object-id entity) canonicals]
+              [:object canonicals])))
         true
         (do
           (assert (element? entity))
           (simplest-canonical
            (orientation entity)
-           (canonicalize (content entity))
-           (multiset (map canonicalize (elements entity)))))))
+           (internal-canonicalize (content entity))
+           (multiset (map internal-canonicalize (elements entity)))))))
+
+(defn canonicalize
+  "Given an entity, return a canonical representation of it."
+  [entity]
+  (internal-canonicalize (to-tree entity)))
 
 (def canonical-to-tree)
 
@@ -121,31 +134,28 @@
   "Given a canonicalized list form of an entity, return a list form for it."
   [entity]
   (if (vector? entity)
-    (if (= (first entity) :object)
-      (do (assert (= (count entity) 2))
-          (apply vector :object (canonical-set-to-list (second entity))))
-      (do (assert (= (count entity) 3))
-          (let [[orientation content elements] entity]
-            (make-tree-element orientation
-                               (canonical-to-tree content)
-                               (canonical-set-to-list elements)))))
+    (cond (= (first entity) :object)
+          (do (assert (= (count entity) 2))
+              (apply vector :object (canonical-set-to-list (second entity))))
+          (= (first entity) :conflux-object)
+          (do (assert (= (count entity) 3))
+              (make-conflux-tree-object
+               (second entity)
+               (canonical-set-to-list (nth entity 2))))
+          :else
+          (do (assert (= (count entity) 3))
+              (let [[orientation content elements] entity]
+                (make-tree-element orientation
+                                   (canonical-to-tree content)
+                                   (canonical-set-to-list elements)))))
     entity))
 
 (def common-canonical)
 
-(defn canonical-content
-  "Return the content of a canonical representation (as a
-  canonical). For objects, return :object as the content."
-  [r]
-  (if (vector? r)
-    (if (= (count r) 3)
-      (second r)
-      :object)
-    r))
-
 (defn canonical-orientation-and-content
-  "Return the orientation and content of a canonical
-  representation (returning the canonical form of the content)."
+  "Given a canonical representation of an entity, return its orientation
+  and the canonical form of its content. If the entity can't be an
+  element, return :source and :object"
   [r]
   (if (vector? r)
     (if (= (count r) 3) 
@@ -179,6 +189,7 @@
   (if (vector? r)
     (let [[orientation content elements] r]
       (assert (= (count r) 3))
+      (assert (#{:source :target} (first r)))
       (simplest-canonical orientation content {}))
     r))
 
@@ -220,10 +231,10 @@
           (multiset-conj {} (clear-canonical-elements example))))))
 
 (defn partition-by-orientation-and-content
-  "Given a multiset of canonical representations, partition by content
-  and orientation, and return a map from [orientation content] to
-  multiset of canonical representations with that orientation and
-  content."
+  "Given a multiset of canonical representations of elements, partition
+  by content and orientation, and return a map from [orientation
+  content] to multiset of canonical representations with that
+  orientation and content."
   [m]
   (reduce
    (fn [accum [entity count]]

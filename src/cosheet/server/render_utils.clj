@@ -192,19 +192,19 @@
   (canonicalize (entity->fixed-term entity)))
 
 (defn competing-siblings
-  "Given an entity that is functioning as a query, return a seq of its
+  "Given an element that is functioning as a query, return a seq of its
   siblings that compete with matching for it. This is all siblings
   that have a common elaboration and for which the element is not a
   pure elaboration.  In other words, the sibling has to either be
   identical, or not contradict the item and have something that the
   item doesn't have.  Don't include redundant siblings more than
   once."
-  [entity]
-  (let [entity-canonical (entity->canonical-term entity)
-        siblings (semantic-elements (target-entity entity))
+  [element]
+  (let [element-canonical (entity->canonical-term element)
+        siblings (semantic-elements (target-entity element))
         [labels non-labels] (separate-by label-element? siblings)
-        candidates (if ((set labels) entity) labels non-labels)
-        matching (filter #(= entity-canonical (entity->canonical-term %))
+        candidates (if ((set labels) element) labels non-labels)
+        matching (filter #(= element-canonical (entity->canonical-term %))
                          candidates)]
     (cond-> (vals
              ;; We make a map from canonical to candidate so we can not
@@ -214,19 +214,19 @@
                                                   candidate)]
                          (cond-> so-far
                            (and (canonical-have-common-elaboration?
-                                 entity-canonical candidate-canonical)
+                                 element-canonical candidate-canonical)
                                 (not (canonical-extended-by?
-                                      candidate-canonical entity-canonical))
+                                      candidate-canonical element-canonical))
                                 (not (so-far candidate-canonical)))
                            (assoc candidate-canonical candidate))))
                      {} candidates))
-      ;; The matching list includes the entity, so there is an identical
+      ;; The matching list includes the element, so there is an identical
       ;; candidate if there is more than one element.
       (not (empty? (rest matching)))
       ;; We only need one matching candidate. If the entities are
-      ;; distinguishable, choose one different from the entity we
+      ;; distinguishable, choose one different from the element we
       ;; started with.
-      (conj (or (first (remove #(= % entity) matching)) (first matching))))))
+      (conj (or (first (remove #(= % element) matching)) (first matching))))))
 
 ;;; DOM creators that are used by several files.
 

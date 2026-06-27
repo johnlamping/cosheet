@@ -6,8 +6,11 @@
                       store-impl
                       [store-utils :refer [add-object add-universal-objects]]
                       [entity :refer [make-tree-object id->object
+                                      make-conflux-tree-object make-tree-id
                                       in-different-store]]
                       [entity-impl])
+            (cosheet.server
+             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 
@@ -46,12 +49,36 @@
     (is (= (canonicalize joe-named-object)
            (in-different-store joe-named-object nil))))
 
+(deftest canonicalize-cycle-test
+  ;; canonicalize on a stored entity that participates in a cycle.
+  ;; The to-tree call dedupes shared references via conflux-tree-
+  ;; objects, so internal-canonicalize doesn't loop; and because
+  ;; internal-canonicalize uses make-tree-object-copying-id, the
+  ;; conflux-tree-object id is preserved in the canonical form.
+  (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-shared-store)
+        canonical (canonicalize item-a)]
+    ;; canonicalize must terminate and be deterministic.
+    (is (= canonical (canonicalize item-a)))
+    ;; The top-level result is a :conflux-object form preserving the
+    ;; tree's conflux id (rather than a plain :object form).
+    (is (= :conflux-object (first canonical)))))
+
 (deftest canonical-to-tree-test
   (let [starting `("starting" ~joe-list ~jane-list ~jane-list)
         canonical (canonicalize starting)]
     (is (check (canonicalize (canonical-to-tree canonical))
                canonical)))
   (let [starting `[:object ~joe-list ~jane-list ~jane-list]
+        canonical (canonicalize starting)]
+    (is (check (canonicalize (canonical-to-tree canonical))
+               canonical)))
+  ;; Two references to the same conflux-tree-object keep the conflux
+  ;; id alive through to-tree, so the canonical form contains a
+  ;; :conflux-object that canonical-to-tree must handle.
+  (let [starting [:object
+                  (make-conflux-tree-object (make-tree-id 1) ["x"])
+                  (make-conflux-tree-object (make-tree-id 1) [])]
         canonical (canonicalize starting)]
     (is (check (canonicalize (canonical-to-tree canonical))
                canonical))))
@@ -78,9 +105,13 @@
   (is (= (common-canonical (canonicalize [:object "male"])
                            (canonicalize joe-anonymous-object))
          (canonicalize [:object "male"])))
-  (is (= (common-canonical (canonicalize '("joe" [:object "male" "junk"]))
-                           (canonicalize `("joe" ~joe-anonymous-object)))
-         (canonicalize '("joe" [:object "male"]))))
+  ;; With the objects wrapped as elements, common-canonical compares
+  ;; their containing elements by content equality; the two contents
+  ;; (different objects) don't match, so no nested commonality is
+  ;; surfaced and only the bare "joe" content remains.
+  (is (= (common-canonical (canonicalize '("joe" ([:object "male" "junk"])))
+                           (canonicalize `("joe" (~joe-anonymous-object))))
+         (canonicalize "joe")))
   (is (= (common-canonical (canonicalize joe-anonymous-object)
                            (canonicalize joe-anonymous-object))
          (canonicalize joe-anonymous-object)))
@@ -144,11 +175,14 @@
        (canonicalize '("joe" ("name" "e" "c") ("name" "c") "b"))
        (canonicalize '("joe" "b" ("name" "c" "e") ("name" "c")))))
   (is (not (canonical-extended-by?
-            (canonicalize '("joe" ((:target "name") "e" "c") ("name" "c") "b"))
+            (canonicalize
+             [:object "joe" '((:target "name") "e" "c") '("name" "c") "b"])
             (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c"))))))
   (is (canonical-extended-by?
-       (canonicalize '("joe" ((:target "name") "e" "c") ("name" "c") "b"))
-       (canonicalize '("joe" "a" "b" ((:target "name") "c" "e") ("name" "c")))))
+       (canonicalize
+        [:object "joe" '((:target "name") "e" "c") '("name" "c") "b"])
+       (canonicalize
+        [:object "joe" "a" "b" '((:target "name") "c" "e") '("name" "c")])))
   (is (canonical-extended-by?
        (canonicalize '("joe" ((:source "name") "e" "c") ("name" "c") "b"))
        (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c")))))

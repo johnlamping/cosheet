@@ -8,7 +8,7 @@
                    name-label-id link-type-id object-type-id]]
     [entity :refer [StoredEntity
                     element? object? stored-entity?
-                    presumed-interned-object?
+                    tree-entity?
                     uniquely-identified-object?
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
@@ -35,8 +35,7 @@
   the id of the new object."
   [store elements]
   (doseq [e elements]
-    (when (stored-entity? e)
-      (assert (presumed-interned-object? e))))
+    (assert (tree-entity? e)))
   (let [[store object-id] (get-new-object-id store)
         store (add-elements store object-id elements)]
     [store object-id]))
@@ -66,8 +65,7 @@
   and template type, but doesn't satisfy the template. Return the new
   store and the id of the matching object."
   [store name template]
-  (when (stored-entity? template)
-    (assert (presumed-interned-object? template)))
+  (assert (tree-entity? template))
   (assert object? template)
   (if-let [object (find-object-by-name store name template)]
     (do (assert (extended-by? template object)
@@ -91,8 +89,7 @@
   store already has a uniquely identified object with the same id,
   and return the unmodified store and that id."
   [store template]
-  (when (stored-entity? template)
-    (assert (presumed-interned-object? template)))
+  (assert (tree-entity? template))
   (assert object? template)
   (cond (id-identified-object? template)
         [store (:item-id template)]

@@ -28,7 +28,7 @@
                     repetition-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
-                    presumed-interned-object?
+                    tree-entity?
                     in-different-store]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects
@@ -228,8 +228,7 @@
       pattern is an object, add a '(nil :order) element to make it only
       match user editable items."
   [pattern {:keys [require-not-type require-orders] :as options}]
-  (when (stored-entity? pattern)
-    (assert (presumed-interned-object? pattern)))
+  (assert (tree-entity? pattern))
   (cond
     (primitive? pattern)
     (replace-anything-by-nil pattern)

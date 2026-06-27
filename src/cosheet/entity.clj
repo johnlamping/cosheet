@@ -393,6 +393,15 @@
            (object? entity)
            (nil? (:store entity)))))
 
+(defn tree-entity?
+  "Return true if the entity is safe to recurse through without a
+  repetition-avoiding traversal: either it is not stored (so it is
+  already in tree form), or it is a presumed-interned object (which
+  is treated as atomic)."
+  [entity]
+  (or (not (stored-entity? entity))
+      (presumed-interned-object? entity)))
+
 (defn link-type-object?
   "Return true if the entity is an object that is a link type."
   [entity]
@@ -549,8 +558,7 @@
   "Add elements an entity, using a tree form for its top level if
   anything changed."
   [entity elements-to-add]
-  (when (stored-entity? entity)
-    (assert (presumed-interned-object? entity)))
+  (assert (tree-entity? entity))
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
@@ -588,8 +596,7 @@
   gets. If the function turns an element into nil, that element will
   be removed."
   [f entity]
-  (when (stored-entity? entity)
-    (assert (presumed-interned-object? entity)))
+  (assert (tree-entity? entity))
   (letfn [(recurse [e] (map-subparts recurse (f e)))]
     (recurse entity)))
 
@@ -600,8 +607,7 @@
   primitive. If the function turns an element into nil, that element
   will be removed."
   [f entity]
-  (when (stored-entity? entity)
-    (assert (presumed-interned-object? entity)))
+  (assert (tree-entity? entity))
   (letfn [(recurse [e] (f (map-subparts recurse e)))]
     (recurse entity)))
 
@@ -937,8 +943,7 @@
   conflux-tree-object whose id appears only once to a plain
   tree-object."
   [tree]
-  (when (stored-entity? tree)
-    (assert (presumed-interned-object? tree)))
+  (assert (tree-entity? tree))
   (let [count-conflux-pre-fn (fn [_ e _ cd]
                                [e (cond-> cd
                                     (conflux-tree-object? e)

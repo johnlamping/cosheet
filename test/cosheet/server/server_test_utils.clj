@@ -10,7 +10,7 @@
              [entity :refer [content elements orientation
                              element? object? tree-object? interned-object?
                              make-tree-element make-tree-object-copying-id
-                             stored-entity? presumed-interned-object?]]
+                             tree-entity?]]
              [utils :refer [threaded-map]]
              store-impl
              mutable-store-impl)
@@ -43,8 +43,7 @@
   it were an element, and to all its subparts. Return a list form for
   the new entity and the unused part of order."
     [entity order]
-    (when (stored-entity? entity)
-      (assert (presumed-interned-object? entity)))
+    (assert (tree-entity? entity))
     (cond
       (element? entity)
       (let [[elements remainder] (threaded-map add-order-elements-to-element

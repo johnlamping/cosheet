@@ -14,6 +14,8 @@
              [task-queue :refer [make-priority-task-queue]]
              [canonical :refer [canonicalize]]
              [test-utils :refer [check as-set]])
+            (cosheet.server
+             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 
@@ -59,7 +61,23 @@
     (is (= id7 id6))
     (is (check (map to-tree (elements (id->object id6 s)))
                (as-set [`(1 (~(id->object (make-item-id "name") s)))
-                         2])))))
+                         2]))))
+  ;; In cyclic-shared-store, the tree-form starting at a contains a
+  ;; shared reference to a (via z-link's sub-element); starting at b
+  ;; it contains two references to a (the reverse-direction back-link
+  ;; and z-link's sub-element). Adding either tree-form to a fresh
+  ;; store should preserve the sharing: the conflux-map threaded
+  ;; through internal-add-object/internal-add-element causes the
+  ;; second occurrence of the same conflux-tree-object id to resolve
+  ;; to the item-id allocated for the first occurrence, instead of
+  ;; creating a duplicate object.
+  (let [{:keys [cyclic-shared-store a-id b-id]}
+        (cyclic-and-shared-a-b-stores)]
+    (doseq [start-id [a-id b-id]]
+      (let [original-tree (to-tree (id->object start-id cyclic-shared-store))
+            [new-store new-id] (add-object (new-element-store) original-tree)]
+        (is (check (canonicalize (to-tree (id->object new-id new-store)))
+                   (canonicalize original-tree)))))))
 
 (deftest remove-entity-by-id-test
   (let [;; Pre-store the link-type-objects so they exist in added-store

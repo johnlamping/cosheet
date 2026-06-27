@@ -12,6 +12,7 @@
                     uniquely-identified-object?
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
+                    conflux-tree-object? conflux-tree-object-id
                     content orientation elements to-tree
                     in-different-store
                     label->elements content->elements
@@ -19,26 +20,15 @@
     [query :refer [matching-items extended-by?]]
     query-impl)))
 
-;;; These are utilities for adding and removing element and object
-;;; entities from the store.
+;;; These are utilities for adding and removing elements and objects
+;;; from the store.
 
-(def add-element)
+;;; The conflux-map threaded through the internal-* functions maps a
+;;; conflux-tree-object's id to the item-id of the stored object made
+;;; for it Then when a conflux-tree-object re-encountered that item-id
+;;; is used, instead of making a duplicate object.
 
-(defn- add-elements [store container-id elements]
-  "Add the given elements, all to the given container."
-  (reduce (fn [store element]
-            (first (add-element store container-id element)))
-          store elements))
-
-(defn add-object-with-given-elements
-  "Add an object with the given elements. Return the revised store and
-  the id of the new object."
-  [store elements]
-  (doseq [e elements]
-    (assert (tree-entity? e)))
-  (let [[store object-id] (get-new-object-id store)
-        store (add-elements store object-id elements)]
-    [store object-id]))
+(declare internal-add-elements)
 
 (defn template-type-test
   "Return a function that tests whether an object's type (link-type or
@@ -53,32 +43,76 @@
    the template's type."
   [store name template]
   (let [query (make-tree-object [`(~name (~name-label))])
-        matches (matching-items query store) 
+        matches (matching-items query store)
         filtered (filter (template-type-test template) matches)]
     (when (seq filtered)
       (assert (= (count filtered) 1))
       (first filtered))))
 
-(defn get-or-make-object-by-name
+(defn- internal-add-object-with-given-elements
+  "Allocate a new item-id for an object, record the template's
+  conflux-id -> item-id in the conflux-map (when the template is a
+  conflux-tree-object), then add the given elements to the new
+  object. Return [store object-id conflux-map]."
+  [store conflux-map template elements]
+  (let [[store object-id] (get-new-object-id store)
+        conflux-map (cond-> conflux-map
+                      (conflux-tree-object? template)
+                      (assoc (conflux-tree-object-id template) object-id))
+        [store conflux-map] (internal-add-elements
+                             store conflux-map object-id elements)]
+    [store object-id conflux-map]))
+
+(defn internal-get-or-make-object-by-name
   "Find or make an object with the given name, and satisfying the
-  template. Throw an error an object is found that matches the name
-  and template type, but doesn't satisfy the template. Return the new
-  store and the id of the matching object."
-  [store name template]
+  template. Throw an error if an object is found that matches the
+  name and template type, but doesn't satisfy the template. Threads
+  the conflux-map.
+  Return [store object-id conflux-map]."
+  [store conflux-map name template]
   (assert (tree-entity? template))
   (assert object? template)
   (if-let [object (find-object-by-name store name template)]
     (do (assert (extended-by? template object)
                 [(map to-tree (elements template))
                  (map to-tree (elements object))])
-        [store (:item-id object)])
+        [store (:item-id object) conflux-map])
     (let [;; Remove any existing name in the template, replacing it
           ;; with the name we are looking for.
           pattern (-> (remove #(seq (content->elements % name-label))
                               (elements template))
                       (conj `(~name (~name-label)))
                       make-tree-object)]
-      (add-object-with-given-elements store (elements pattern)))))
+      (internal-add-object-with-given-elements
+       store conflux-map template (elements pattern)))))
+
+(defn internal-add-object
+  "Like add-object, but also thread and consult the conflux-map.
+  Return [store object-id conflux-map]."
+  [store conflux-map template]
+  (assert (tree-entity? template))
+  (assert object? template)
+  (cond (id-identified-object? template)
+        [store (:item-id template) conflux-map]
+        ;; Accept references to uniquely identified ids that are
+        ;; already in the store.
+        (and (stored-entity? template) (nil? (:store template)))
+        (do (assert (uniquely-identified-object?
+                     (in-different-store template store))
+                    template)
+            [store (:item-id template) conflux-map])
+        (uniquely-identified-object? template)
+        ;; The template doesn't have a string id, so it must have a name.
+        (let [name (->> (label->elements template name-label)
+                        (map content)
+                        (remove generic-name?)
+                        first)
+              _ (assert name name)]
+          (internal-get-or-make-object-by-name
+           store conflux-map name template))
+        true
+        (internal-add-object-with-given-elements
+         store conflux-map template (elements template))))
 
 (defn add-object
   "Add an object to the store, unless it is uniquely identified and is
@@ -89,50 +123,67 @@
   store already has a uniquely identified object with the same id,
   and return the unmodified store and that id."
   [store template]
-  (assert (tree-entity? template))
-  (assert object? template)
-  (cond (id-identified-object? template)
-        [store (:item-id template)]
-        ;; Accept references to uniquely identified ids that are
-        ;; already in the store.
-        (and (stored-entity? template) (nil? (:store template)))
-        (do (assert (uniquely-identified-object?
-                     (in-different-store template store))
-                    template)
-            [store (:item-id template)])
-        (uniquely-identified-object? template)
-        ;; The template doesn't have a string id, so it must have a name.
-        (let [name (->> (label->elements template name-label)
-                        (map content)
-                        (remove generic-name?)
-                        first)
-              _ (assert name name)]
-          (get-or-make-object-by-name store name template))
-        true
-        (add-object-with-given-elements store (elements template))))
+  (let [[store object-id _] (internal-add-object store {} template)]
+    [store object-id]))
+
+(defn internal-add-element
+  "Like add-element, but also thread and consult the conflux-map.
+  Return [store entity-link conflux-map]."
+  [store conflux-map container-id template]
+  (assert (not (stored-entity? template)))
+  (assert (not (object? template)) template) ; Use add-object.
+  (assert (not (element? (content template))) template)
+  (let [element-content (content template)
+        ;; A conflux-tree-object whose id has already been added
+        ;; resolves to the same item-id.
+        repeated-object-id (when (conflux-tree-object? element-content)
+                             (let [id (conflux-tree-object-id element-content)]
+                               (get conflux-map id)))
+        ;; Look up or make the content, if needed
+        [store content-endpoint conflux-map]
+        (cond
+          repeated-object-id
+          [store repeated-object-id conflux-map]
+          
+          ;; If we have an expanded object, we need to make an instance of it.
+          (and (object? element-content)
+               (not (stored-entity? element-content)))
+          (internal-add-object store conflux-map element-content)
+          
+          :else
+          (let [content-representation (if (stored-entity? element-content)
+                                         (:item-id element-content)
+                                         element-content)]
+            [store content-representation conflux-map]))
+        ;; Add the link
+        [store entity-link] (apply add-link store
+                                   (if (= (orientation template) :target)
+                                     [content-endpoint container-id]
+                                     [container-id content-endpoint]))
+        ;; Add the elements.
+        [store conflux-map] (internal-add-elements
+                             store conflux-map entity-link
+                             (elements template))]
+    [store entity-link conflux-map]))
+
+(defn- internal-add-elements
+  "Add the given elements, all to the given container, threading the
+  conflux-map. Return [store conflux-map]."
+  [store conflux-map container-id elements]
+  (reduce (fn [[store conflux-map] element]
+            (let [[store _ conflux-map]
+                  (internal-add-element store conflux-map
+                                        container-id element)]
+              [store conflux-map]))
+          [store conflux-map] elements))
 
 (defn add-element
   "In the store, add an element matching the template to the containing
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
-  (assert (not (stored-entity? template)))
-  (assert (not (object? template)) template) ; Use add-object.
-  (assert (not (element? (content template))) template)
-  (let [[store content-endpoint]
-        (let [element-content (content template)]
-          ;; If we have an expanded object, we need to make an instance of it.
-          (if (and (object? element-content)
-                   (not (stored-entity? element-content)))
-            (add-object store element-content)
-            [store (if (stored-entity? element-content)
-                     (:item-id element-content)
-                     element-content)]))
-        [store entity-link] (apply add-link store
-                                   (if (= (orientation template) :target)
-                                     [content-endpoint container-id]
-                                     [container-id content-endpoint]))
-        store (add-elements store entity-link (elements template))]
+  (let [[store entity-link _] (internal-add-element
+                               store {} container-id template)]
     [store entity-link]))
 
 (defn add-universal-objects

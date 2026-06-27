@@ -530,7 +530,7 @@
 
 (defn conflux-uninterned-object?
   "Return true if the entity is an object that might be the content of
-  multiple elementts, even though it's not interned or even presumed
+  multiple elements, even though it's not interned or even presumed
   interned."
   [entity]
   (or (conflux-tree-object? entity)

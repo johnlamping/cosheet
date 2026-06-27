@@ -1,9 +1,10 @@
 (ns cosheet.query
-  (:require (cosheet [entity :refer [content elements
-                                      label->elements label->content
-                                      to-tree object? primitive? orientation
-                                      make-tree-element
-                                      add-elements-to-entity]])))
+  (:require (cosheet [entity :refer [content elements orientation
+                                     label->elements label->content
+                                     to-tree object? primitive?
+                                     tree-entity? 
+                                     make-tree-element
+                                     add-elements-to-entity]])))
 
 ;;; Querying involves looking for entities that are extensions of a
 ;;; query term.  For an entity to be an extension, it must be possible
@@ -233,6 +234,7 @@
 (defn extended-by?
   "Return true if the fixed-term is extended by the subject entity"
   [fixed-term subject]
+  (assert (tree-entity? fixed-term))
   (extended-by-m? fixed-term subject))
 
 (defmulti matching-extensions-m

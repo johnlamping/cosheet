@@ -47,7 +47,7 @@
     (cond
       (element? entity)
       (let [[elements remainder] (threaded-map add-order-elements-to-element
-                                             (rest entity) order)
+                                             (elements entity) order)
             contents (content entity)
             [contents remainder] (if (and (object? contents)
                                           (not (interned-object? contents)))

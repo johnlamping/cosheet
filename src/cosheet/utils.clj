@@ -310,17 +310,6 @@
                 [[] state] items)]
     [(if (seq? items) (list* mapped) mapped) state]))
 
-(defn threaded-recursive-map
-  "Walk the possibly nested sequence, calling f on each element,
-  passing it the current state as its first argument. f must return a
-  pair of a value and the new state
-  Return the nested sequence of values the final state."
-  [f items state]
-  (if (sequential? items)
-    (threaded-map (fn [items state] (threaded-recursive-map f items state))
-                items state)
-    (f items state)))
-
 ;;; Parsing
 
 (defn parse-string-as-number

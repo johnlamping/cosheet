@@ -214,12 +214,6 @@
     (is (= state [1 2 3 4]))
     (is (= result [2 4 6 8]))))
 
-(deftest thread-recursive-map-test
-  (let [[result state] (threaded-recursive-map (fn [i s] [(* i 2) (conj s i)])
-                                             [[1 2] [3 4]] [])]
-    (is (= state [1 2 3 4]))
-    (is (= result [[2 4] [6 8]]))))
-
 (deftest parse-string--as-number-test
   (is (= (parse-string-as-number "x") "x"))
   (is (= (parse-string-as-number "1") 1))

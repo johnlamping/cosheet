@@ -1,7 +1,8 @@
 (ns cosheet.store-impl
   (:require (cosheet [store :refer :all :as store]
-                      [entity :refer [stored-entity?]
-                              :as entity]
+                      [entity :refer [stored-entity?
+                                      object? elements content
+                                      orientation entity-key]]
                       [utils :refer [pseudo-set-set
                                      pseudo-set-seq
                                      pseudo-set-set-membership
@@ -176,19 +177,19 @@
        false]
       (let [[estimate ids precise]
             (candidate-matching-ids-and-estimate this template)
-            id-filter (if (entity/object? template)
+            id-filter (if (object? template)
                         object-id?
                         link-id?)]
         (if (nil? estimate)
           ;; The template is so generic that none of our indices can narrow
           ;; it down based on any of its elements. Return basically everything.
-          [(seq (if (seq (entity/elements template))
+          [(seq (if (seq (elements template))
                   ;; The template has an element.
                   ;; Return all ids of the right kind that have elements.
                   (filter id-filter (keys target->ids))
                   ;; Nothing in the index helps. Find all of the right kind
                   ;; of ids that the store knows about.
-                  (filter id-filter (if (entity/object? template)
+                  (filter id-filter (if (object? template)
                                       (union-seqs (keys target->ids)
                                                   (keys source->ids))
                                       (keys id->source)))))
@@ -566,10 +567,10 @@
    a non-interned object."
   (concat [id]
           (mapcat #(descendant-ids store %) (target->ids store id))
-          (let [content (id->source store id)]
-            (when (and (object-id? content)
-                       (not (interned-object-id? store content)))
-              (descendant-ids store content)))))
+          (let [contents (id->source store id)]
+            (when (and (object-id? contents)
+                       (not (interned-object-id? store contents)))
+              (descendant-ids store contents)))))
 
 (defn all-ephemeral-ids [store]
   "Return a set of all declared ephemeral ids and their descendant elements."
@@ -610,21 +611,21 @@
   return a boolean that is true if an id in the intersection of the
   candidate lists is always a match."
   [store template]
-  (let [elements (entity/elements template)]
-    (if (empty? elements)
+  (let [template-elements (elements template)]
+    (if (empty? template-elements)
       [nil true]
       (let [candidates
             (keep (fn [element]
                     (let [[estimate element-ids precise]
                           (candidate-matching-ids-and-estimate store element)]
                       (when estimate
-                        (let [subject-getter (if (= (entity/orientation element)
+                        (let [subject-getter (if (= (orientation element)
                                                     :target)
                                                id->source
                                                id->target)
                               ids (keep #(subject-getter store %) element-ids)]
                           [estimate ids precise]))))
-                  elements)]
+                  template-elements)]
         [(map (fn [[estimate ids precise]] [estimate ids])
               candidates)
          ;; For us to be precise we require
@@ -632,11 +633,11 @@
          ;;   * A match for one element is never a match for another.
          ;;     (Otherwise, we might, for example, return a one
          ;;     element item for a template that requires two elements.)
-         (and (= (count elements) (count candidates))
+         (and (= (count template-elements) (count candidates))
               (every? (fn [[estimate ids precise]] precise) candidates)
-              (let [contents (map entity/content elements)]
+              (let [contents (map content template-elements)]
                 (and (not-any? #(or (nil? %)
-                                    (and (entity/object? %)
+                                    (and (object? %)
                                          (not (stored-entity? %))))
                                contents)
                      (apply distinct? contents))))]))))
@@ -649,23 +650,23 @@
   [store template]
   (let [[element-matches element-matches-precise]
         (subsuming-ids-and-estimates-from-elements store template)
-        content (entity/content template)]
+        contents (content template)]
     (cond
-      (nil? content)
+      (nil? contents)
       [element-matches element-matches-precise]
-      
+
       ;; TODO: !!! When the content is an non-interned object, get
       ;;       candidate ids for it, then use those as if they were
       ;;       content?
-      (and (entity/object? content)
-           (not (stored-entity? content)))
+      (and (object? contents)
+           (not (stored-entity? contents)))
       [element-matches false]
-      
+
       true
-      (let [content-index (if (= (entity/orientation template) :target)
+      (let [content-index (if (= (orientation template) :target)
                             target->ids
                             source->ids)
-            content-ids (content-index store (entity/entity-key content))]
+            content-ids (content-index store (entity-key contents))]
         [(concat [[(count content-ids) content-ids]]
                  element-matches)
          element-matches-precise]))))
@@ -708,7 +709,7 @@
                         (map second)
                         (map set)
                         (apply clojure.set/intersection)
-                        (filter (if (entity/object? template)
+                        (filter (if (object? template)
                                   object-id?
                                   link-id?))))
          (and precise

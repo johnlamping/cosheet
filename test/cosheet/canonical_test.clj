@@ -105,13 +105,9 @@
   (is (= (common-canonical (canonicalize [:object "male"])
                            (canonicalize joe-anonymous-object))
          (canonicalize [:object "male"])))
-  ;; With the objects wrapped as elements, common-canonical compares
-  ;; their containing elements by content equality; the two contents
-  ;; (different objects) don't match, so no nested commonality is
-  ;; surfaced and only the bare "joe" content remains.
   (is (= (common-canonical (canonicalize '("joe" ([:object "male" "junk"])))
                            (canonicalize `("joe" (~joe-anonymous-object))))
-         (canonicalize "joe")))
+         (canonicalize '("joe" ([:object "male"])))))
   (is (= (common-canonical (canonicalize joe-anonymous-object)
                            (canonicalize joe-anonymous-object))
          (canonicalize joe-anonymous-object)))
@@ -156,7 +152,46 @@
   (is (= (common-canonical
           (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c")))
           (canonicalize '("joe" ("name" "e" "c") ("name" "c") "b")))
-         (canonicalize '("joe" "b" ("name" "e" "c") ("name" "c"))))))
+         (canonicalize '("joe" "b" ("name" "e" "c") ("name" "c")))))
+  ;; Two plain objects share their common elements; no common elements
+  ;; produces an empty :object.
+  (is (= (common-canonical [:object {"a" 1}]
+                           [:object {"b" 1}])
+         [:object {}]))
+  (is (= (common-canonical [:object {"a" 1 "x" 1}]
+                           [:object {"x" 1 "y" 1}])
+         [:object {"x" 1}]))
+  ;; Two conflux-objects with the same id keep that id.
+  (is (= (common-canonical
+          [:conflux-object (make-tree-id 1) {"x" 1 "y" 1}]
+          [:conflux-object (make-tree-id 1) {"x" 1 "z" 1}])
+         [:conflux-object (make-tree-id 1) {"x" 1}]))
+  ;; Two conflux-objects with different ids collapse to a plain object.
+  (is (= (common-canonical
+          [:conflux-object (make-tree-id 1) {"x" 1 "y" 1}]
+          [:conflux-object (make-tree-id 2) {"x" 1 "z" 1}])
+         [:object {"x" 1}]))
+  ;; A plain object and a conflux-object give a plain object.
+  (is (= (common-canonical [:object {"x" 1 "y" 1}]
+                           [:conflux-object (make-tree-id 1)
+                            {"x" 1 "z" 1}])
+         [:object {"x" 1}]))
+  ;; An object and an element are not commensurable.
+  (is (= (common-canonical [:object {"x" 1}]
+                           [:source "joe" {"x" 1}])
+         nil))
+  (is (= (common-canonical [:conflux-object (make-tree-id 1) {"x" 1}]
+                           "joe")
+         nil))
+  ;; Two element-wrapped objects on the c1 side, one on the c2 side, all
+  ;; in the same partition (object content) but with differing object
+  ;; multisets. common-canonical-multiset's third branch must surface
+  ;; the nested-object commonality (here [:object 1]) rather than
+  ;; picking one entry arbitrarily.
+  (is (= (common-canonical
+          (canonicalize '("joe" ([:object 1 2]) ([:object 1 3])))
+          (canonicalize '("joe" ([:object 1 4]))))
+         (canonicalize '("joe" ([:object 1]))))))
 
 (deftest canonical-extended-by?-test
   (is (canonical-extended-by?
@@ -206,7 +241,33 @@
             (canonicalize joe-list))))
   (is (not (canonical-extended-by?
             (canonicalize joe-list)
-            (canonicalize joe-anonymous-object)))))
+            (canonicalize joe-anonymous-object))))
+  ;; Plain object extended-by plain object: elements subset.
+  (is (canonical-extended-by? [:object {"x" 1}]
+                              [:object {"x" 1 "y" 1}]))
+  (is (not (canonical-extended-by? [:object {"x" 1 "y" 1}]
+                                   [:object {"x" 1}])))
+  ;; Plain object extended-by conflux: c1 has no id requirement, so
+  ;; conflux c2 satisfies it as long as the elements are a superset.
+  (is (canonical-extended-by? [:object {"x" 1}]
+                              [:conflux-object (make-tree-id 1) {"x" 1}]))
+  ;; Conflux extended-by plain: c1 demands an id that c2 doesn't have.
+  (is (not (canonical-extended-by?
+            [:conflux-object (make-tree-id 1) {"x" 1}]
+            [:object {"x" 1}])))
+  ;; Conflux extended-by same-id conflux: elements check.
+  (is (canonical-extended-by?
+       [:conflux-object (make-tree-id 1) {"x" 1}]
+       [:conflux-object (make-tree-id 1) {"x" 1 "y" 1}]))
+  ;; Conflux extended-by different-id conflux: id mismatch.
+  (is (not (canonical-extended-by?
+            [:conflux-object (make-tree-id 1) {"x" 1}]
+            [:conflux-object (make-tree-id 2) {"x" 1}])))
+  ;; Object vs non-object: not commensurable.
+  (is (not (canonical-extended-by? [:object {"x" 1}]
+                                   [:source "joe" {"x" 1}])))
+  (is (not (canonical-extended-by? "joe"
+                                   [:object {}]))))
 
 (deftest canonical-have-common-elaboration?-test
   (is (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
@@ -220,4 +281,24 @@
   (is (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
                                           (canonicalize '(nil "b"))))
   (is (not (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
-                                               (canonicalize '("fred" "a"))))))
+                                               (canonicalize '("fred" "a")))))
+  ;; Two plain objects can always be elaborated together.
+  (is (canonical-have-common-elaboration? [:object {"x" 1}]
+                                          [:object {"y" 1}]))
+  ;; A plain object and a conflux-object can be elaborated together
+  ;; (the conflux just adds an id constraint).
+  (is (canonical-have-common-elaboration?
+       [:object {"x" 1}]
+       [:conflux-object (make-tree-id 1) {"y" 1}]))
+  ;; Same-id conflux-objects can be elaborated together.
+  (is (canonical-have-common-elaboration?
+       [:conflux-object (make-tree-id 1) {"x" 1}]
+       [:conflux-object (make-tree-id 1) {"y" 1}]))
+  ;; Different-id conflux-objects can not.
+  (is (not (canonical-have-common-elaboration?
+            [:conflux-object (make-tree-id 1) {"x" 1}]
+            [:conflux-object (make-tree-id 2) {"y" 1}])))
+  ;; Object vs non-object: not commensurable.
+  (is (not (canonical-have-common-elaboration? [:object {"x" 1}]
+                                               [:source "joe" {"x" 1}])))
+  (is (not (canonical-have-common-elaboration? "joe" [:object {}]))))

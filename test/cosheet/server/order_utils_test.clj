@@ -1,8 +1,10 @@
 (ns cosheet.server.order-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet
-             [entity :as entity :refer [id->entity elements
-                                        make-tree-element make-tree-object]]
+             [entity :as entity :refer [id->entity elements content
+                                        make-tree-element make-tree-object
+                                        make-conflux-tree-object make-tree-id
+                                        conflux-tree-object? tree-object?]]
              [orderable :as orderable]
              [reporter :refer [reporter-value-or-invalid make-reporter invalid
                                set-value!]]
@@ -98,7 +100,32 @@
 
 (deftest order-recursively-test
   (is (check (semantic-to-tree (order-recursively joe-reversed-list))
-             (semantic-to-tree joe-list))))
+             (semantic-to-tree joe-list)))
+  ;; Make a circular tree form, where the order in the tree doesn't
+  ;; match the declared orders. Then check that order-recursively sorts it out.
+  (let [item-a (make-conflux-tree-object
+                (make-tree-id 1)
+                [`(~(make-tree-object
+                     [`("z" (~o4 :order))
+                      `("y" (~o3 :order))
+                      (make-tree-element
+                       :target
+                       (make-conflux-tree-object (make-tree-id 1) [])
+                       [`(~o2 :order)])])
+                   (~o2 :order))
+                 `("x" (~o1 :order))])]
+    (is (check (order-recursively item-a)
+               (make-conflux-tree-object
+                (make-tree-id 1)
+                [`("x" (~o1 :order))
+                 `(~(make-tree-object
+                      [(make-tree-element
+                        :target
+                        (make-conflux-tree-object (make-tree-id 1) [])
+                        [`(~o2 :order)])
+                       `("y" (~o3 :order))
+                       `("z" (~o4 :order))])
+                    (~o2 :order))])))))
 
 (deftest ordered-ids-R-test
   (let [joe-semantic-elements (filter semantic-element? (elements joe))

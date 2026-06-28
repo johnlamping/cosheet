@@ -10,9 +10,12 @@
                         update-to-invalid]]
     [store :refer [update-source add-link
                    target-label->ids id->source ImmutableStore]]
-    [entity :refer [content elements
+    [entity :refer [content elements orientation
                     label->elements label->content
-                    id->entity object?]]
+                    id->entity object? element? tree-object?
+                    make-tree-element make-tree-object-copying-id
+                    identity-pre-fn
+                    repetition-avoiding-threaded-traverse]]
     [query :refer [matching-items special-form?]]
     [utils :refer [with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
@@ -74,13 +77,29 @@
       (sort-by-order entities order-info))))
 
 (defn order-recursively
-  "Return the list form of the immutable entity with the elements at
-  each level ordered."
+  "Return a tree form of the immutable entity with the elements at
+  each level sorted by their :order information."
   [entity]
-  (if (elements entity)
-    (cons (content entity)
-          (ordered-entities (map order-recursively (elements entity))))
-    entity))
+  (let [post-fn (fn [_ assembled _ cd]
+                  [(cond ;; Tree-form object.
+                         (tree-object? assembled)
+                         (make-tree-object-copying-id
+                          assembled
+                          (ordered-entities (elements assembled)))
+                         ;; Tree-form element (a list whose first item
+                         ;; or content drives orientation).
+                         (element? assembled)
+                         (make-tree-element
+                          (orientation assembled)
+                          (content assembled)
+                          (ordered-entities (elements assembled)))
+                         ;; Atomic (primitive or presumed-interned
+                         ;; object): nothing to reorder.
+                         :else assembled)
+                   cd])
+        [tree _] (repetition-avoiding-threaded-traverse
+                  entity identity-pre-fn post-fn nil)]
+    tree))
 
 ;;; The next few functions implement a reporter that orders a set of
 ;;; ids, updating as either the set membership or their order

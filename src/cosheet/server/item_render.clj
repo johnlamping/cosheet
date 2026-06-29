@@ -23,8 +23,7 @@
    (cosheet.server
     [model-utils :refer [semantic-elements
                          semantic-non-label-elements semantic-label-elements
-                         semantic-to-tree entity->canonical-semantic
-                         elements-to-change-to-satisfy-fixed-term-elements]]
+                         semantic-to-tree entity->canonical-semantic]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves

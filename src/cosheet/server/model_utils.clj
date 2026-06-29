@@ -21,21 +21,22 @@
                     map-subparts pre-traverse-entity
                     target-entity entity-key
                     make-tree-element make-tree-object
+                    make-tree-object-copying-id
                     make-conflux-tree-object conflux-tree-object-id
                     conflux-tree-object? non-conflux-tree-object?
                     convert-unneeded-conflux-tree-objects
-                    identity-post-fn
+                    identity-pre-fn identity-post-fn
                     repetition-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
-                    tree-entity?
+                    tree-entity? presumed-interned-object?
                     in-different-store]]
     [store-utils :refer [add-object add-element remove-entity-by-id
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
     [query :refer [matching-items matching-elements
                    not-query special-form?
-                   special-form-type sub-query
+                   special-form-type sub-query variable-query
                    extended-by?]]
     [query-impl :refer [separate-negations]]
     [query-calculator :refer [matching-item-ids-R]])
@@ -177,8 +178,8 @@
 ;;; We have various list forms of entities for different purposes:
 ;;;      query: a form suitable for use as a query. It can have nils,
 ;;;             which means it can't be saved in the store. It may
-;;;             include non-semantic information, like :order or
-;;;             :top-level to restrict what it matches.
+;;;             include non-semantic information, like :order to
+;;;             restrict what it matches.
 ;;;    pattern: a form of a query that can be saved in the store. It
 ;;;             uses 'anything for wildcards, where a query would have
 ;;;             nil. We need to distiguish wildcards from an empty
@@ -197,30 +198,20 @@
   [value]
   (if (= 'anything value) nil value))
 
-(def transform-pattern-toward-fixed-term)
-
 (defn add-non-selector-to-fixed-term
   "Given a fixed-term pattern, return a pattern that additionally
   requires that the matched item not have a (:selector) element."
   [pattern]
   (add-elements-to-entity pattern [(not-query '(:selector))]))
 
-(defn transform-pattern-elements-toward-fixed-term
-  "Given elements of a pattern, alter them according to the options for
-  transform-pattern-toward-fixed-term."
-  [pattern-elements options]
-  (->> pattern-elements
-       ;; First turn nils into elements so they'll get :order if
-       ;; needed.
-       (map #(if (nil? (replace-anything-by-nil %)) '(nil) %))
-       (map #(transform-pattern-toward-fixed-term % options))))
-
-;; TODO: !!! How do you prevent matching a system object? User objects
-;; don't have :order elements to mark them as non-system. Do system
-;; objects need a special element to mark them as such?
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
     * Replace 'anything by nil.
+    * Replace conflux-tree-objects with reference variables. The first
+      occurrence of a conflux gets a fresh name and a qualifier whose
+      elements are the original conflux's elements; later occurrences
+      use just the name. The caller-data is a map from conflux-id to
+      variable name.
     * If require-not-type is true and an object is not a type, then
       require it not to have a link-type or object-type element, so it
       won't match those.
@@ -229,40 +220,62 @@
       match user editable items."
   [pattern {:keys [require-not-type require-orders] :as options}]
   (assert (tree-entity? pattern))
-  (cond
-    (primitive? pattern)
-    (replace-anything-by-nil pattern)
-    
-    (element? pattern)
-    (let [new-content
-          (let [replaced-content (replace-anything-by-nil (content pattern))]
-            (cond-> replaced-content
-              (object? replaced-content)
-              (transform-pattern-toward-fixed-term options)))]
-      (make-tree-element
-       (orientation pattern)
-       new-content
-       (cond-> (transform-pattern-elements-toward-fixed-term
-                (elements pattern) options)
-         (and (nil? new-content) require-orders)
-         (concat ['(nil :order)]))))
-    
-    (interned-object? pattern)
-    pattern
-    
-    (object? pattern)
-    (let [non-type (and (not (link-type-object? pattern))
-                        (not (object-type-object? pattern)))]
-      (make-tree-object
-       (cond-> (transform-pattern-elements-toward-fixed-term
-                (elements pattern) options)
-         (and require-not-type non-type)
-         (concat [(not-query `(~link-type)) (not-query `(~object-type))])
-         require-orders
-         (concat ['(nil :order)]))))
-    
-    true
-    (assert false pattern)))
+  (letfn [(pre-fn [_ entity _ conflux-map]
+            (cond
+              (= entity 'anything)
+              [nil conflux-map]
+
+              (conflux-tree-object? entity)
+              (let [id (conflux-tree-object-id entity)]
+                (if-let [name (get conflux-map id)]
+                  [(variable-query name :reference true) conflux-map]
+                  (let [name (gensym "v")]
+                    [(variable-query
+                      name
+                      :qualifier (make-tree-object (elements entity))
+                      :reference true)
+                     (assoc conflux-map id name)])))
+
+              :else
+              [entity conflux-map]))
+          (post-fn [original assembled _ conflux-map]
+            [(cond
+               (element? original)
+               (let [c (content assembled)
+                     new-elements
+                     (cond-> (or (elements assembled) [])
+                       (and (nil? c) require-orders)
+                       (concat ['(nil :order)]))]
+                 (make-tree-element
+                  (orientation original) c new-elements))
+
+               (presumed-interned-object? original)
+               original
+
+               (conflux-tree-object? original)
+               ;; pre-fn substituted this conflux with a reference
+               ;; variable; pass that substitute through unchanged
+               ;; rather than re-wrapping as a conflux.
+               assembled
+
+               (object? original)
+               (let [non-type (and (not (link-type-object? original))
+                                   (not (object-type-object? original)))]
+                 (make-tree-object-copying-id
+                  original
+                  (cond-> (or (elements assembled) [])
+                    (and require-not-type non-type)
+                    (concat [(not-query `(~link-type))
+                             (not-query `(~object-type))])
+                    require-orders
+                    (concat ['(nil :order)]))))
+
+               :else  ; primitive
+               assembled)
+             conflux-map])]
+    (let [[tree _] (repetition-avoiding-threaded-traverse
+                    pattern pre-fn post-fn {})]
+      tree)))
 
 (defn entity->fixed-term
   "Convert the entity to a list, and change 'anything to nil."

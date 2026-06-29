@@ -8,7 +8,8 @@
                                       object?
                                       recursively-in-different-store
                                       id->object id->entity
-                                      label->elements content->elements
+                                      label->elements label->content
+                                      content->elements
                                       content elements
                                       to-tree]]
                       [orderable :as orderable]
@@ -21,7 +22,7 @@
                                            object-type-object
                                            link-type-object]]
                       [query :refer [matching-items matching-elements
-                                     not-query]]
+                                     not-query variable-query]]
                       entity-impl
                       [reporter :refer [reporter-value-or-invalid]]
                       [calculator :refer [request compute make-calculator-data]]
@@ -109,7 +110,35 @@
                                          ~(not-query `(~link-type))
                                          ~(not-query `(~object-type))
                                          (nil :order))))
-                  '(nil :order)])))))
+                  '(nil :order)])))
+      ;; In cyclic-shared-store, a is reachable via two paths (the back-
+  ;; link from b and z-link's sub-element), so to-tree preserves a
+  ;; as a conflux-tree-object. transform-pattern-toward-fixed-term
+  ;; substitutes each occurrence with a reference variable (the
+  ;; first carries a qualifier whose elements are the conflux's
+  ;; elements; the second uses just the name). Using the term as a
+  ;; query against the store should still pick out item-a.
+  (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-shared-store)
+        pattern (to-tree item-a)
+        fixed-term (transform-pattern-toward-fixed-term pattern {})
+        v-name (label->content fixed-term :cosheet.query/name)
+        inner-var (variable-query v-name :reference true)]
+    (is (= fixed-term
+           (variable-query
+            v-name
+            :qualifier (make-tree-object
+                        [(make-tree-element
+                          :source
+                          (make-tree-object
+                           [(make-tree-element
+                             :source "z"
+                             [(make-tree-element :source inner-var [])])
+                            "y"])
+                          [])
+                         "x"])
+            :reference true)))
+    (is (= [item-a] (matching-items fixed-term cyclic-shared-store))))))
 
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term

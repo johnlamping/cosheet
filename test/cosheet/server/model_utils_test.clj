@@ -22,7 +22,7 @@
                                            object-type-object
                                            link-type-object]]
                       [query :refer [matching-items matching-elements
-                                     not-query variable-query]]
+                                     not-query variable-query variable-name]]
                       entity-impl
                       [reporter :refer [reporter-value-or-invalid]]
                       [calculator :refer [request compute make-calculator-data]]
@@ -111,13 +111,13 @@
                                          ~(not-query `(~object-type))
                                          (nil :order))))
                   '(nil :order)])))
-      ;; In cyclic-shared-store, a is reachable via two paths (the back-
-  ;; link from b and z-link's sub-element), so to-tree preserves a
-  ;; as a conflux-tree-object. transform-pattern-toward-fixed-term
-  ;; substitutes each occurrence with a reference variable (the
-  ;; first carries a qualifier whose elements are the conflux's
-  ;; elements; the second uses just the name). Using the term as a
-  ;; query against the store should still pick out item-a.
+  ;; In cyclic-shared-store, a is reachable via two paths (the back-
+  ;; link from b and z-link's sub-element), so to-tree preserves a as
+  ;; a conflux-tree-object. transform-pattern-toward-fixed-term
+  ;; substitutes each occurrence with a reference variable (the first
+  ;; carries a qualifier whose elements are the conflux's elements;
+  ;; the second uses just the name). Using the term as a query against
+  ;; the store should still pick out item-a.
   (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
         item-a (id->object a-id cyclic-shared-store)
         pattern (to-tree item-a)
@@ -138,7 +138,49 @@
                           [])
                          "x"])
             :reference true)))
-    (is (= [item-a] (matching-items fixed-term cyclic-shared-store))))))
+    (is (= [item-a] (matching-items fixed-term cyclic-shared-store))))
+  ;; A conflux-tree-object whose elements include a back-reference to
+  ;; itself. The back-reference shows up inside the qualifier as the
+  ;; same reference variable.
+  (let [pattern (make-conflux-tree-object
+                 (make-tree-id 1)
+                 ["x"
+                  `(~(make-conflux-tree-object (make-tree-id 1) []))])
+        fixed-term (transform-pattern-toward-fixed-term pattern {})
+        v-name (variable-name fixed-term)
+        inner-var (variable-query v-name :reference true)]
+    (is (= fixed-term
+           (variable-query
+            v-name
+            :qualifier (make-tree-object
+                        ["x" (make-tree-element :source inner-var [])])
+            :reference true))))
+  ;; A second reference to a conflux tree object, outside of the first
+  ;; one. Both should have the qualifier.
+  (let [pattern `("y"
+                  ~(make-conflux-tree-object (make-tree-id 1) ["x"])
+                  ~(make-conflux-tree-object (make-tree-id 1) []))
+        fixed-term (transform-pattern-toward-fixed-term pattern {})
+        variable (content (first (elements fixed-term)))]
+    (is (check variable
+               (variable-query
+                (variable-name variable)
+                :qualifier (make-tree-object ["x"])
+                :reference true)))
+    (is (check fixed-term
+               `("y"
+                 ~(make-tree-element :source variable [])
+                 ~(make-tree-element :source variable [])))))
+  ;; All changes should apply to the qualifier elements.
+  (let [pattern (make-conflux-tree-object (make-tree-id 1) ['anything "x"])
+        fixed-term (transform-pattern-toward-fixed-term
+                    pattern {:require-orders true})
+        v-name (label->content fixed-term :cosheet.query/name)]
+    (is (= fixed-term
+           (variable-query
+            v-name
+            :qualifier (make-tree-object ['(nil (nil :order)) "x"])
+            :reference true))))))
 
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term

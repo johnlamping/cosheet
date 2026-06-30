@@ -184,9 +184,20 @@
           ;; The template is so generic that none of our indices can narrow
           ;; it down based on any of its elements. Return basically everything.
           [(seq (if (seq (elements template))
-                  ;; The template has an element.
-                  ;; Return all ids of the right kind that have elements.
-                  (filter id-filter (keys target->ids))
+                  ;; The template has elements. For each orientation
+                  ;; that some element of the template uses, take the
+                  ;; ids with element in that orientation, then
+                  ;; intersect across orientations.
+                  (let [orientations (set (map orientation
+                                               (elements template)))
+                        id-sets (keep
+                                 (fn [[o index]]
+                                   (when (orientations o)
+                                     (into #{} (filter id-filter
+                                                       (keys index)))))
+                                 [[:source target->ids]
+                                  [:target source->ids]])]
+                    (apply clojure.set/intersection id-sets))
                   ;; Nothing in the index helps. Find all of the right kind
                   ;; of ids that the store knows about.
                   (filter id-filter (if (object? template)

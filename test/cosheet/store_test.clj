@@ -617,6 +617,19 @@
                [(as-set [(make-object-id "object") foo-oid bar-oid])
                 false]))
     (is (check (candidate-matching-ids
+                test-store (make-tree-object
+                            `(~(make-tree-element :target nil nil))))
+               [(as-set [(make-object-id "name")
+                         (make-object-id "link-type")
+                         foo-oid
+                         bar-oid])
+                false]))
+    (is (check (candidate-matching-ids
+                test-store (make-tree-object
+                            `((nil) ~(make-tree-element :target nil nil))))
+               [(as-set [foo-oid bar-oid])
+                false]))
+    (is (check (candidate-matching-ids
                 test-store (make-tree-object '((44) (44))))
                [[(make-object-id "object")] false]))
     (is (check (candidate-matching-ids test-store (make-tree-object '(("Foo"))))

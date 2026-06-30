@@ -209,11 +209,11 @@
     and that has the given label as its source.")
 
   (candidate-matching-ids [this template]
-    "Takes a template, which must be the list form of an entity. Return a
-     seq of ids that includes the ids all entities that could
-     potentially be extensions of the given template. Also return a
-     boolean that is true if the list of ids is precise; if all of
-     them represent items that are extensions of the template."))
+    "Takes a template, which must be the tree form of an entity.
+    Return a seq of ids that includes the ids all entities that could
+    potentially be extensions of the given template. Also return a
+    boolean that is true if the list of ids is precise; if all of them
+    represent items that are extensions of the template."))
 
   ;; TODO: Add a candidate-matching-element-ids method that takes a
   ;; template and gives a superset of all elements that could match

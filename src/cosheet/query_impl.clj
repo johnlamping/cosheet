@@ -63,15 +63,32 @@
 
 (declare extended-by?)
 
-(defn combine-exact-matches
-  "Given two exact match indicators from different parts of a term,
-  return their joint indicator.
-  The possible input values are:
-                       false: not an exact match
-                        true: an exact match
-     a set of variable names: an exact match, provided no other unbound
-                              references to those variables appear
-  The output is in the same format."
+(defn combine-template-exactness
+  "When a term is converted to a template, some of the constraints of
+  the term may be lost. For example, if the same named variable occurs
+  in several places, there may be no way to express its equality
+  constraint in the template. It is OK to lose constraints, if the
+  template is just going to be used to ask the store for candidate
+  matches, as each of those candidates can then be checked against the
+  full query. But if the template is an exact match, and if the store
+  can guarantee that its of its candidates for the template is also
+  guaranteed to match the template, then there is no need to check the
+  candidates that it returns; they are guaranteed to be exactly the
+  matches for the query.
+  
+  This case is actually quite frequent, so we want to recognize it and
+  exploit it. One part of doing that is to characterize how exactly a
+  template or part of a template matches a query. The possible cases
+  are:
+     false: not an exact match
+     true: an exact match
+     a set of variable names: an exact match, provided no unbound
+                              references to those variables appear in
+                              other parts of the template.
+
+  This function takes two exactness characterizations for different
+  parts of a template, and returns the exactness characterization for
+  the combination."
   [m1 m2]
   (if (and m1 m2)
    (if (= m1 true)
@@ -101,7 +118,7 @@
   "If the term is a variable, replace it by it's value in the environment,
   or if there is no value, then by its qualifier. Also return the
   information for whether the contextualized result is an exact match
-  for the term, using the format expected by combine-exact-matches.)"
+  for the term, using the format expected by combine-template-exactness.)"
   [term env]
   (if (variable-query? term)
     (let [var-name (variable-name term)
@@ -113,9 +130,10 @@
         ;; pattern, not the object.
         [value (or (not (variable-reference term))
                    (interned-object? value))]
-        (let [[contextual exact]
+        (let [[contextualized contextualized-exact]
               (contextualize-variable (variable-qualifier term) env)]
-          [contextual (combine-exact-matches exact #{var-name})])))
+          [contextualized (combine-template-exactness contextualized-exact
+                                                      #{var-name})])))
     [term true]))
 
 (defn minimal-label?
@@ -137,7 +155,8 @@
   has the right orientation, and has that label. The labels we return
   are the label values, the contents of label elements."
   [element env]
-  (let [[contextualized exact-match] (contextualize-variable element env)
+  (let [[contextualized contextualized-exact] (contextualize-variable
+                                               element env)
         elems (map #(first (contextualize-variable % env))
                    (elements contextualized))
         [positive negative] (separate-negations elems)
@@ -146,7 +165,7 @@
     ;; with a primitive value. That is the case where we can return a
     ;; single label which is a perfect fit.
     (if (and (nil? (content contextualized))
-             (= exact-match true)
+             (= contextualized-exact true)
              (empty? negative)
              (not (empty? candidates))
              (empty? (rest positive))
@@ -256,37 +275,37 @@
      or their qualifier.
      Remove any other special forms (to eliminate any not-query terms).
   Also return whether matching the template is exactly equal to matching
-  the term, using the format of combine-exact-matches."
+  the term, using the format of combine-template-exactness."
   [term env]
-  (let [[contextualized exact-match] (contextualize-variable term env)]
+  (let [[contextualized contextualized-exact] (contextualize-variable term env)]
     (let [as-list (to-tree contextualized)]
       (if (is-fixed-term-special-form? as-list)
         [nil false]
         (do (assert (not (special-form? as-list)))
             (if (or (primitive? as-list) (interned-object? as-list))
-              [as-list exact-match]
+              [as-list contextualized-exact]
               (let [{dropped-elements true
                      kept-elements false}
                     (group-by is-fixed-term-special-form? (elements as-list))
                     [converted-kept-elements converted-kept-exact]
                     (unzip (map #(closest-template % env)
                                 kept-elements))
-                    exact-element-match (reduce combine-exact-matches
-                                                (list*
-                                                 exact-match
-                                                 (not (some special-form?
-                                                            dropped-elements))
-                                                 converted-kept-exact))]
+                    elements-exact (reduce combine-template-exactness
+                                           (list*
+                                            contextualized-exact
+                                            (not (some special-form?
+                                                       dropped-elements))
+                                            converted-kept-exact))]
                 (if (object? as-list)
                   [(make-tree-object converted-kept-elements)
-                   exact-element-match]
+                   elements-exact]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
                     [(make-tree-element (orientation as-list)
                                         converted-content
                                         converted-kept-elements)
-                     (combine-exact-matches content-exact
-                                            exact-element-match)])))))))))
+                     (combine-template-exactness content-exact
+                                                 elements-exact)])))))))))
 
 (def matching-extensions)
 

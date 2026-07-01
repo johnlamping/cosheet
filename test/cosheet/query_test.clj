@@ -4,7 +4,8 @@
             (cosheet [store :refer [new-element-store make-item-id
                                      get-new-object-id ->ItemId]]
                       store-impl
-                      [store-utils :refer [add-element link-type-object
+                      [store-utils :refer [add-element add-object
+                                           link-type-object
                                            add-link-type-object]]
                       [entity :refer [to-tree id->element id->object content
                                       recursively-in-different-store
@@ -18,6 +19,8 @@
                       [debug :refer [envs-to-trees]]
                       [query-impl :refer [closest-template minimal-label?]]
                       [test-utils :refer [check as-set]])
+            (cosheet.server
+             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 
@@ -452,14 +455,6 @@
                                   (~(variable "bar") :bar)) {:a :b}
                               '(1 (2 :foo) (3 :bar)))
          [{:a :b, "foo" 2, "bar" 3}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)
-                                  (~(variable nil) :bar)) {:a :b}
-                              '(1 (2 :foo) (3 :bar)))
-         [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(1 (~(variable nil) :foo)
-                                  (~(variable nil) :bar)) {:a :b}
-                              '(1 (2 :foo) (3 :bar)))
-         [{:a :b}]))
   (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
                               '(1 (2 :foo)))
          [{:a :b, "foo" 2}]))
@@ -690,7 +685,7 @@
                                            (variable "v"))
                                 s2)))
            #{{"v" '(2 3)} {"v" '(2 4)}}))
-    ;; variables inside items
+    ;; variables inside entities
     (is (= (set
             (envs-to-trees
              (query-matches `(nil (1 ~(variable "v"))) s2)))
@@ -716,7 +711,7 @@
     (let [matches (query-matches
                    `(1 (~(variable "v" nil true) 3))
                    s2)]
-      (is (= (count matches) 0)))
+      (is (= matches [{"v" 2}])))
     (let [matches (query-matches
                    `(1 ~(variable "v" '(2 3) true))
                    s2)]
@@ -846,3 +841,71 @@
     (let [matches (matching-items
                    (make-tree-object [`(nil (2 ~(not-query 3)))]) s3)]
       (is (= (map :item-id matches) [ib])))))
+
+(deftest reference-variable-test
+  (let [s0 (new-element-store)
+        [x-x-store _] (add-object s0 (make-tree-object ["x" "x"]))
+        [x-y-store _] (add-object s0 (make-tree-object ["x" "y"]))
+        [s1 x-id] (add-object s0 (make-tree-object [`("x" (~name-label))]))
+        x-obj (id->object x-id s1)
+        [x-obj-store _] (add-object
+                         s1 (make-tree-object [`(1 (~x-obj)) `(1 (~x-obj))]))
+        v-query (variable-query "v")
+        v-ref-query (variable-query "v" :reference true)
+        u-ref-query (variable-query "u" :reference true)]
+    
+    ;; Two ways to match the two objects.
+    (is (= (count (query-matches
+                   (make-tree-object [`~v-query v-query])
+                   x-x-store))
+           2))
+    ;; The same non-reference variable can't match two different entities
+    (is (nil? (query-matches
+               (make-tree-object [v-query v-query])
+               x-y-store)))
+    ;; No way to match different elements with a reference.
+    (is (nil? (query-matches
+               (make-tree-object [v-ref-query v-ref-query])
+               x-x-store)))
+    ;; Two ways to match when the queries use different reference variables.
+    (is (= (count (query-matches
+                   (make-tree-object [v-ref-query u-ref-query])
+                   x-x-store))
+           2))
+    (is (= (query-matches
+            (make-tree-object [`(1 (~v-ref-query)) `(1 (~v-ref-query))])
+            x-obj-store)
+           [{"v" (recursively-in-different-store x-obj x-obj-store)}])))
+  ;; In cyclic-shared-store, object a is reachable by two paths, so its
+  ;; tree form is a conflux-tree-object. transform-pattern-toward-fixed-
+  ;; term turns each occurrence into a reference variable, with the
+  ;; first occurrence carrying a qualifier whose elements are a's
+  ;; elements. Because a participates in a cycle, that qualifier
+  ;; mentions the same reference variable (the z element's sub-element
+  ;; whose content is a). Matching such a query exercises binding the
+  ;; reference variable to the entity before processing its qualifier.
+  (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
+        item-a (id->object a-id cyclic-shared-store)
+        inner-var (variable-query "v" :reference true)
+        query (variable-query
+               "v"
+               :qualifier (make-tree-object
+                           [(make-tree-element
+                             :source
+                             (make-tree-object
+                              [(make-tree-element
+                                :source "z"
+                                [(make-tree-element :source inner-var [])])
+                               "y"])
+                             [])
+                            "x"])
+               :reference true)]
+    ;; The variable binds to the entity it matched.
+    (is (= (matching-extensions query item-a)
+           [{"v" item-a}]))
+    ;; The query picks out a, and only a, from the store.
+    (is (= (matching-items query cyclic-shared-store)
+           [item-a]))
+    (is (= (query-matches query cyclic-shared-store)
+           [{"v" item-a}]))))
+

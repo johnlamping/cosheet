@@ -48,23 +48,40 @@
 ;;;         equivalent element, but with orientation :source, plus the
 ;;;         keywords ::reversed and ::sub-query.
 
-;;; A variable can match anything, and what it matches is recorded.
+;;; A variable can match anything, and the entity it matches is recorded.
 ;;;   (::special-form (:variable ::type)
 ;;;                   (<name> ::name)
 ;;;                   <qualifier> encoded as a sub-query
 ;;;                   (true ::reference))
 ;;;
-;;; Each of the elements except for the type is optional.
-;;;   * A variable with a name of nil is considered distinct from any
-;;;     other variable.
+;;; The qualifier and ::reference are optional
+
+;;;   * If a term contains several variables with the same name, each
+;;;     occurrence must match equivalent entities (entities that
+;;;     canonicalize the same). What is recorded is the entity matched
+;;;     by the first variable occurrence the query processing
+;;;     encounters.
+
+;;;   * Further, if the variables with the same name are marked
+;;;     ::reference, all their occurrences must match the exact same
+;;;     entity. (If there is more than one instance of the variable,
+;;;     this means it can only match named objects or constants, since
+;;;     those are the only things that can be identical at different
+;;;     sites.)
+
 ;;;   * A variable with a qualifier can only match entities satisfying
-;;;     the qualifier.
-;;;   * A variable with ::reference binds to an item in the
-;;;     store, rather than to an abstract pattern.
-;;;     If more than one instance of a reference variable with a given
-;;;     name occurs in a query, it can only match named objects or
-;;;     constants, since those are the only things that can be
-;;;     identical at different sites.
+;;;     the qualifier. If a term has several variables with the same
+;;;     name, they should each have the same qualifier, with one
+;;;     exception: The qualifier of a ::reference variable might,
+;;;     itself, contain a ::reference variable with that same name;
+;;;     that instance doesn't need to have a qualifier. (In fact, it
+;;;     couldn't have the same qualifier without creating
+;;;     circularity.) (The implementation of queries only checks the
+;;;     qualifier for the first occurrence of a variable with any
+;;;     given name that it encounters. There are no guarantees about
+;;;     which occurrence it will encounter first, except that it will
+;;;     encounter a variable before it encounters any variable in its
+;;;     qualifier.)
 
 ;;; A not matches if its sub-query does not match.
 ;;;   (::special-form (:not ::type) <sub-query>)
@@ -143,6 +160,7 @@
 (defn variable-query
   [name & {:keys [qualifier reference]
            :as keywords}]
+  (assert (or (symbol? name) (string? name)) name)
   (assert (every? #{:qualifier :reference} (keys keywords)))
   (when reference (assert (= reference true)))
   (apply list

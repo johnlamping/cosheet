@@ -292,24 +292,21 @@
 
 (defn variable-match-extensions
   "Return a seq of environments for which the variable matches the entity.
-  Each environment will a binding for this variable, if it has a name,
-  plus bindings for any other variables in the qualifier."
+  Each environment will have a binding for this variable, if it has a
+  name, plus bindings for any other variables in its qualifier."
   [var variable-element-filter env entity entity-element-filter]
   (let [name (variable-name var)
         qualifier (variable-qualifier var)
         reference (variable-reference var)]
     (let [value (env name)]
       (if (nil? value)
-        (when (and (not (nil? entity))
-                   (or (not reference) (stored-entity? entity)))
-          (let [envs (if (nil? qualifier)
-                       [env]
+        (when (not (nil? entity))
+          (let [extended-env (assoc env name entity)]
+            (if (nil? qualifier)
+                       [extended-env]
                        (matching-extensions
-                        qualifier variable-element-filter env
-                        entity entity-element-filter))]
-            (if (nil? name)
-              envs
-              (seq (map #(assoc % name entity) envs)))))
+                        qualifier variable-element-filter extended-env
+                        entity entity-element-filter))))
         (if reference
           (when (and (= value entity) (stored-entity? entity))
                 [env])

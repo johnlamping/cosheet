@@ -130,7 +130,7 @@
   "Like add-element, but also thread and consult the conflux-map.
   Return [store entity-link conflux-map]."
   [store conflux-map container-id template]
-  (assert (not (stored-entity? template)))
+  (assert (not (stored-entity? template)) template)
   (assert (not (object? template)) template) ; Use add-object.
   (assert (not (element? (content template))) template)
   (let [element-content (content template)

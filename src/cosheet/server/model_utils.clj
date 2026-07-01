@@ -234,8 +234,11 @@
                   [cached-var conflux-map]
                   ;; First encounter: store a qualifier-less reference
                   ;; variable in the map, to use when recursing into
-                  ;; the conflux's elements, which can mention the
-                  ;; same conflux id.
+                  ;; the conflux's elements, which might mention the
+                  ;; same conflux id. They will turn into the
+                  ;; qualifier for the variable, and that is the one
+                  ;; place where variables with the same name don't
+                  ;; have to repeat the qualifier.
                   [entity
                    (assoc conflux-map id
                           (variable-query (gensym "v") :reference true))]))
@@ -263,7 +266,8 @@
                 ;; with post-recursion elements. Build the qualifier
                 ;; from them, produce a reference variable carrying
                 ;; that qualifier, and record it in the map, to use
-                ;; for occurrences of the same conflux-id elsewhere.
+                ;; for all occurrences of the same conflux-id
+                ;; elsewhere.
                 (let [id (conflux-tree-object-id original)
                       v-name (label->content (get conflux-map id)
                                              :cosheet.query/name)

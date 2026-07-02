@@ -39,7 +39,7 @@
                                    make-sequential-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities]]
-             [server-test-utils :refer [run-renderer add-order-elements]]
+             [server-test-setup :refer [run-renderer add-order-elements]]
              [model-utils :refer [semantic-to-tree semantic-elements
                                   table-row-condition-object]]
              [table-render :refer :all])

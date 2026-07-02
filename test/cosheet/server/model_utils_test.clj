@@ -30,10 +30,11 @@
                       [canonical :refer [canonicalize]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
+            (cosheet
+             [test-setup :refer [cyclic-and-shared-a-b-stores]])
             (cosheet.server
              [model-utils :refer :all]
-             [order-utils :refer [ordered-entities]]
-             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
+             [order-utils :refer [ordered-entities]])
             ; :reload
             ))
 

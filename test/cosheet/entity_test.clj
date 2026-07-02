@@ -20,8 +20,8 @@
                       [task-queue :refer [make-priority-task-queue
                                           run-all-pending-tasks]]
                       [test-utils :refer [check any as-set differences]])
-            (cosheet.server
-             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
+            (cosheet
+             [test-setup :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 

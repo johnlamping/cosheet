@@ -19,8 +19,8 @@
                       [debug :refer [envs-to-trees]]
                       [query-impl :refer [closest-template minimal-label?]]
                       [test-utils :refer [check as-set]])
-            (cosheet.server
-             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
+            (cosheet
+             [test-setup :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 

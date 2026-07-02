@@ -14,8 +14,8 @@
              [task-queue :refer [make-priority-task-queue]]
              [canonical :refer [canonicalize]]
              [test-utils :refer [check as-set]])
-            (cosheet.server
-             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
+            (cosheet
+             [test-setup :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 

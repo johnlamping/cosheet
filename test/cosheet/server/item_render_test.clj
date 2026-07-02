@@ -26,7 +26,7 @@
              [render-utils :refer [make-sequential-template
                                    make-virtual-label-template
                                    ensure-label-object]]
-             [server-test-utils :refer [run-renderer]]
+             [server-test-setup :refer [run-renderer]]
              [action-data :refer [default-get-action-data
                                   composed-get-action-data
                                   parallel-items-get-action-data

@@ -9,8 +9,8 @@
                                       make-conflux-tree-object make-tree-id
                                       in-different-store]]
                       [entity-impl])
-            (cosheet.server
-             [server-test-utils :refer [cyclic-and-shared-a-b-stores]])
+            (cosheet
+             [test-setup :refer [cyclic-and-shared-a-b-stores]])
             ; :reload
             ))
 

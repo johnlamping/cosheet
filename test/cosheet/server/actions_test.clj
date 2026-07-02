@@ -43,7 +43,7 @@
              [action-data :refer [get-id-action-data default-get-action-data
                                   update-action-data-for-component]]
              [order-utils :refer [ordered-entities]]
-             [server-test-utils :refer [add-order-elements]]
+             [server-test-setup :refer [add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements selector?
                                   semantic-to-tree object-semantic-to-tree

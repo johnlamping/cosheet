@@ -1,4 +1,4 @@
-(ns cosheet.server.server-test-utils-test
+(ns cosheet.server.server-test-setup-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet
              [orderable :as orderable]
@@ -13,7 +13,7 @@
              [test-utils :refer [check any]])
             (cosheet.server
              [order-utils :refer [ordered-entities]]
-             [server-test-utils :refer [add-order-elements]])))
+             [server-test-setup :refer [add-order-elements]])))
 
 (deftest add-order-elements-test
   ;; Pre-store the link-type-object so add-order-elements does not

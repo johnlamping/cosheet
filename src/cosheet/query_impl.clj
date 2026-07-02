@@ -313,7 +313,7 @@
   "Return a seq of environments for which the variable matches the entity.
   Each environment will have a binding for this variable, if it has a
   name, plus bindings for any other variables in its qualifier."
-  [var variable-element-filter env entity entity-element-filter]
+  [var env entity entity-element-filter]
   (let [name (variable-name var)
         qualifier (variable-qualifier var)
         reference (variable-reference var)]
@@ -324,7 +324,7 @@
             (if (nil? qualifier)
                        [extended-env]
                        (matching-extensions
-                        qualifier variable-element-filter extended-env
+                        qualifier extended-env
                         entity entity-element-filter))))
         (if reference
           (when (and (= value entity) (stored-entity? entity))
@@ -332,14 +332,6 @@
           (when (= (canonicalize value)
                    (canonicalize entity))
             [env]))))))
-
-(defn make-element-filter
-  "Given an element, return a function that removes elements
-  with the same item id from a list of elements." 
-  [element]
-  (let [key (entity-key element)]
-    (fn [elements]
-      (remove #(= key (entity-key %)) elements))))
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the entity,
@@ -352,7 +344,7 @@
       (let [unfiltered-candidates (candidate-elements
                                    labels (term-orientation term env) entity)
             candidates (entity-element-filter unfiltered-candidates)
-            match-envs (map #(matching-extensions term identity env % identity)
+            match-envs (map #(matching-extensions term env % identity)
                             candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -429,8 +421,8 @@
   "Return all extensions of the environments for which the the elements
   of the entity match the elements of the item, ignoring filtered out
   elements."
-  [item item-element-filter envs entity entity-element-filter]
-  (let [item-elements (item-element-filter (elements item))]
+  [item envs entity entity-element-filter]
+  (let [item-elements (elements item)]
     (if (empty? item-elements)
       envs
       (let [[positive negative] (separate-negations item-elements)]
@@ -459,21 +451,42 @@
   "Return all extensions of the environment for which the entity matches
   the item, which must be an object. Filtered out elements are
   ignored."
-  [item item-element-filter env entity entity-element-filter]
+  [item env entity entity-element-filter]
   (when (object? entity)
     (if (= (entity-key item) (entity-key entity))
       [env]
       ;; And interned object, can only match itself. But can be
       ;; matched, in the other direction, by a pattern.
       (when (not (interned-object? item))
-        (sub-elements-match-extensions item item-element-filter [env]
+        (sub-elements-match-extensions item [env]
                                        entity entity-element-filter)))))
+
+(defn make-element-filter
+  "Given an element, return a function that removes elements
+  with the same item id from a list of elements.
+  
+  The element filter handles the issue that a link between two objects
+  generates an element in each direction, but for purposes of
+  matching, we only want to count one of them. That is, we don't want
+  to match a link twice, once in each direction, since everywhere else
+  in matching, we match a link at most once. To handle this, when we
+  traverse a link, which we do by going to the content of an element,
+  we create a filter that removes elements that have the same id as
+  that link. That gets passed in to functions that can lead to
+  traversing the elements of an entity, to make those functions ignore
+  that link, so they won't not traverse back on it."
+  [element]
+  (if (stored-entity? element)
+    (let [key (entity-key element)]
+      (fn [elements]
+        (remove #(= key (entity-key %)) elements)))
+    identity))
 
 (defn element-match-extensions
    "Return all extensions of the environment for which the entity matches
   the item, which must be an element. Filtered out elements are
   ignored."
-  [item item-element-filter env entity entity-element-filter]
+  [item env entity entity-element-filter]
   (when (and (not (object? entity)) ;; We might match a primitive.
              (= (orientation item) (orientation entity)))
     (let [extensions
@@ -487,26 +500,25 @@
           ;; subsequent checks to filter out our element before
           ;; checking.
           (matching-extensions
-           (content item) (make-element-filter item) env
+           (content item) env
            (content entity) (make-element-filter entity))]
       (when (seq extensions)
-        (sub-elements-match-extensions item item-element-filter extensions
+        (sub-elements-match-extensions item extensions
                                        entity entity-element-filter)))))
 
-(defn matching-extensions [term term-element-filter env
-                           entity entity-element-filter]
+(defn matching-extensions [term env entity entity-element-filter]
   (assert (not (mutable-entity? term)))
   (cond (primitive? term) (when (extended-by? term entity) [env])
         (variable-query? term) (variable-match-extensions
-                                term term-element-filter env
+                                term env
                                 entity entity-element-filter)
-        (object? term) (object-match-extensions term term-element-filter env
+        (object? term) (object-match-extensions term env
                                                 entity entity-element-filter)
-        true (element-match-extensions term term-element-filter env
+        true (element-match-extensions term env
                                        entity entity-element-filter)))
 
 (defmethod matching-extensions-m true [term env entity]
-  (matching-extensions term identity env entity identity))
+  (matching-extensions term env entity identity))
 
 (defmethod matching-elements-m true [term entity]
   (if (or (nil? term) (= term '()))
@@ -516,7 +528,7 @@
 
 (defn matching-items [term store]
   (filter
-   #(not (empty? (matching-extensions term identity {} % identity)))
+   #(not (empty? (matching-extensions term {} % identity)))
    ;; TODO: Make this use precise information.
    (let [[template precise] (closest-template term {})]
      (map #(id->entity % store)
@@ -536,7 +548,7 @@
             ;; TODO: Make this use precise information.
             candidate-ids (first (candidate-matching-ids store template))
             matches (map #(variable-match-extensions
-                           var identity env (id->entity % store) identity)
+                           var env (id->entity % store) identity)
                          candidate-ids)]
         (distinct-concat matches))
       (when (seq (query-matches value env store)) [env]))))
@@ -599,7 +611,7 @@
       (when (seq candidates)
         [env])
       (let [matches (seq (map #(matching-extensions
-                                item identity env % identity)
+                                item env % identity)
                               candidates))]
         (distinct-concat matches)))))
 

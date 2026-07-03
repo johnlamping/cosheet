@@ -124,12 +124,14 @@
     (let [var-name (variable-name term)
           value (env var-name)]
       (if value
-        ;; We are not an exact match if we are looking for a
-        ;; particular entity for this variable, unless it is an interned
-        ;; object, because for anything else we'll just return a
-        ;; pattern, not the object.
-        [value (or (not (variable-reference term))
-                   (interned-object? value))]
+        [value
+        ;; A reference variable can't normally be an exact match,
+        ;; because we only contextualize to the tree form of its
+        ;; value, not the identity that a reference requires. However,
+        ;; if the that tree form is an interned object, we are exact,
+        ;; as the only way to match it is with the same entity.
+         (or (not (variable-reference term))
+             (interned-object? value))]
         (let [[contextualized contextualized-exact]
               (contextualize-variable (variable-qualifier term) env)]
           [contextualized (combine-template-exactness contextualized-exact
@@ -293,8 +295,7 @@
                     elements-exact (reduce combine-template-exactness
                                            (list*
                                             contextualized-exact
-                                            (not (some special-form?
-                                                       dropped-elements))
+                                            (empty? dropped-elements)
                                             converted-kept-exact))]
                 (if (object? as-list)
                   [(make-tree-object converted-kept-elements)

@@ -183,6 +183,32 @@
             :qualifier (make-tree-object ['(nil (nil :order)) "x"])
             :reference true))))))
 
+(deftest fixed-term-to-template-test
+  ;; nil becomes the replacement, (nil :order) elements and negations
+  ;; are removed.
+  (is (= (fixed-term-to-template
+          `(nil "x" (nil :order) ~(not-query 5)))
+         '("" "x")))
+  (is (= (fixed-term-to-template
+          `(nil "x" (nil :order) ~(not-query 5)) 'anything)
+         '(anything "x")))
+  ;; A reference variable becomes a conflux tree object whose elements
+  ;; match the variable's qualifier. This round-trips a conflux with a
+  ;; cyclic back-reference to itself.
+  (let [pattern (make-conflux-tree-object
+                 (make-tree-id 1)
+                 ["x" `(~(make-conflux-tree-object (make-tree-id 1) []))])
+        fixed-term (transform-pattern-toward-fixed-term pattern {})]
+    (is (check (canonicalize (fixed-term-to-template fixed-term))
+               (canonicalize pattern))))
+  ;; Two separate references to the same conflux share an identity.
+  (let [pattern `("y"
+                  ~(make-conflux-tree-object (make-tree-id 1) ["x"])
+                  ~(make-conflux-tree-object (make-tree-id 1) []))
+        fixed-term (transform-pattern-toward-fixed-term pattern {})]
+    (is (check (canonicalize (fixed-term-to-template fixed-term))
+               (canonicalize pattern)))))
+
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term
               (make-tree-object [`(~(link-type-object "hi"))]))

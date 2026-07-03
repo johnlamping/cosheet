@@ -19,14 +19,15 @@
                     link-type object-type name-label
                     content->elements label->elements label->element
                     label->content
-                    map-subparts pre-traverse-entity
+                    map-subparts
                     target-entity entity-key
                     make-tree-element make-tree-object
-                    make-tree-object-copying-id
+                    make-tree-object-copying-id make-tree-id
                     make-conflux-tree-object conflux-tree-object-id
                     conflux-tree-object? non-conflux-tree-object?
                     convert-unneeded-conflux-tree-objects
                     identity-pre-fn identity-post-fn
+                    threaded-traverse
                     repetition-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
@@ -37,6 +38,7 @@
                          link-type-object object-type-object]]
     [query :refer [matching-items matching-elements
                    not-query special-form? variable-query?
+                   variable-name variable-qualifier variable-reference
                    special-form-type sub-query variable-query
                    extended-by?]]
     [query-impl :refer [separate-negations]]
@@ -336,18 +338,38 @@
 
 (defn fixed-term-to-template
   "Given a fixed-term, turn it into a template by removing any (nil :order),
-   removing any negations, and replacing any nil by the specified replacement,
-   which defaults to the empty string."
+  removing any negations, replacing any nil by the specified
+  replacement (which defaults to the empty string) and turning
+  reference variables into conflux tree objects.
+  The first occurrence of a reference variable becomes a conflux tree
+  object with a fresh identity and with elements matching the
+  variable's qualifier; later occurrences of the same variable become
+  conflux tree objects with that identity and no elements."
   ([query]
    (fixed-term-to-template query ""))
   ([query nil-replacement]
-   (pre-traverse-entity
-    (fn [query] (cond (nil? query) nil-replacement
-                      (element? query) (when (not (or (= query '(nil :order))
-                                                      (special-form? query)))
-                                         query)
-                      true query))
-    query)))
+   (letfn [(pre-fn [_ entity _ conflux-map]
+             (cond
+               (and (variable-query? entity) (variable-reference entity))
+               (let [name (variable-name entity)]
+                 (if-let [id (get conflux-map name)]
+                   [(make-conflux-tree-object id []) conflux-map]
+                   (let [id (make-tree-id (:next-number conflux-map))]
+                     [(make-conflux-tree-object
+                       id (elements (variable-qualifier entity)))
+                      (-> conflux-map
+                          (assoc name id)
+                          (update :next-number inc))])))
+               (nil? entity)
+               [nil-replacement conflux-map]
+               (and (element? entity)
+                    (or (= entity '(nil :order)) (special-form? entity)))
+               [:entity/omit conflux-map]
+               true
+               [entity conflux-map]))]
+     (first
+      (threaded-traverse
+       query pre-fn identity-post-fn {:next-number 1})))))
 
 ;;; Adding new elements and objects, noting the orders in their
 ;;; templates.

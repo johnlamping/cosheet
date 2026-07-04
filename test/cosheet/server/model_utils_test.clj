@@ -6,7 +6,7 @@
                                       make-tree-object make-tree-element
                                       make-conflux-tree-object make-tree-id
                                       object?
-                                      recursively-in-different-store
+                                      all-presumed-interned-in-different-store
                                       id->object id->entity
                                       label->elements label->content
                                       content->elements
@@ -302,7 +302,7 @@
     (is (check
          (object-semantic-to-tree joe)
          ;; We can't be sure of the order of elements.
-         (as-set (recursively-in-different-store named-joe-list store)))))
+         (as-set (all-presumed-interned-in-different-store named-joe-list store)))))
   ;; semantic-to-tree on a non-interned object that participates in a
   ;; cycle. Without repetition-avoiding-threaded-traverse, this would
   ;; loop forever.
@@ -446,7 +446,7 @@
     
     ;; The new Tina object should match the template.
     (is (check (object-semantic-to-tree (id->object id1 s1))
-               (as-set (recursively-in-different-store
+               (as-set (all-presumed-interned-in-different-store
                         (make-tree-object [`("Tina" (~name-label)) 1 2])
                         s1))))
     ;; Nothing should have changed when it was asked for again.
@@ -465,20 +465,20 @@
     ;; matches the additional template.
     (is (= id1 id5))
     (is (check (object-semantic-to-tree (id->object id1 s5))
-               (as-set (recursively-in-different-store
+               (as-set (all-presumed-interned-in-different-store
                         (make-tree-object [`("Tina" (~name-label)) 1 2 '(3 4)])
                         s5))))
     ;; The Tina object should have gotten rid of a redundant element.
     (is (= id1 id6))
     (is (check (object-semantic-to-tree (id->object id1 s6))
-               (as-set (recursively-in-different-store
+               (as-set (all-presumed-interned-in-different-store
                         (make-tree-object
                          [`("Tina" (~name-label)) '(1 2) 2 '(3 4)])
                         s6))))
     ;; The new Tony object should match its (empty) template.
     (is (not= id1 id7))
     (is (check (object-semantic-to-tree (id->object id7 s7))
-               (as-set (recursively-in-different-store
+               (as-set (all-presumed-interned-in-different-store
                         (make-tree-object [`("Tony" (~name-label))])
                         s7))))))
 
@@ -546,7 +546,7 @@
     (is (check (ordered-semantic-to-tree new-entity)
                `(6 (~tina))))
     (is (check (object-semantic-to-tree tina)
-               (as-set (recursively-in-different-store
+               (as-set (all-presumed-interned-in-different-store
                         (make-tree-object [`("Tina" (~name-label)) 1 2])
                         s))))
     ;; Now try adding another element that references the same object.
@@ -562,7 +562,7 @@
                  `(7 (~tina))))
       (is (check (object-semantic-to-tree tina)
                  (as-set
-                  (recursively-in-different-store
+                  (all-presumed-interned-in-different-store
                    ;; Tina should have gotten an extra property.
                    (make-tree-object [`("Tina" (~name-label)) 1 2 3])
                    s1))))))

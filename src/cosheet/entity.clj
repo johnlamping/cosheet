@@ -273,7 +273,10 @@
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,
-    but with the specified store or the store of the second entity."))
+    but with the specified store or the store of the second entity.
+    The new may be nil, but in that case, if the entity is an object,
+    it must be a uniquely identified one, because objects with a nil
+    store are presumed to be uniquely identified."))
 
 (defn id->element 
   ([id store]
@@ -368,10 +371,10 @@
 (defn uniquely-identified-object?
   "Return true if the entity, which must be immutable, is an object that
   is uniquely identified, either by its name or by its id."
-  [entity]
-  (and (object? entity)
-       (or (id-identified-object? entity)
-           (when-let [names (label->elements entity name-label)]
+  [immutable-entity]
+  (and (object? immutable-entity)
+       (or (id-identified-object? immutable-entity)
+           (when-let [names (label->elements immutable-entity name-label)]
              (some #(not (generic-name? %))
                    (map content names))))))
 
@@ -379,19 +382,19 @@
   "Return true if the entity, which must be immutable, is a uniquely
   identified object, and is stored. (That implies that it has been
   interned."
-  [entity]
-  (and (stored-entity? entity)
-       (uniquely-identified-object? entity)))
+  [immutable-entity]
+  (and (stored-entity? immutable-entity)
+       (uniquely-identified-object? immutable-entity)))
 
 (defn presumed-interned-object?
   "Return true if the entity, which must be immutable, is a uniquely
   identified object, and is stored, or is a stored object entity, but
   with no store given."
-  [entity]
-  (or (interned-object? entity)
-      (and (stored-entity? entity)
-           (object? entity)
-           (nil? (:store entity)))))
+  [immutable-entity]
+  (or (interned-object? immutable-entity)
+      (and (stored-entity? immutable-entity)
+           (object? immutable-entity)
+           (nil? (:store immutable-entity)))))
 
 (defn tree-entity?
   "Return true if the entity is safe to recurse through without a
@@ -924,7 +927,7 @@
          (wrap-caller-data-with-repetition-avoidance-data entity caller-data))]
     [tree (extract-caller-data-from-repetition-avoidance-data caller-data)]))
 
-(defn recursively-in-different-store
+(defn all-presumed-interned-in-different-store
   "Recursively traverse the entity, changing the store of all
   presumed-interned objects to the given store."
   [entity store]

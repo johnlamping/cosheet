@@ -8,7 +8,7 @@
                                            link-type-object
                                            add-link-type-object]]
                       [entity :refer [to-tree id->element id->object content
-                                      recursively-in-different-store
+                                      all-presumed-interned-in-different-store
                                       elements label->elements mutable-entity?
                                       primitive? entity-key
                                       make-tree-object make-tree-element
@@ -587,17 +587,17 @@
     (is (= (matching-elements blank-label-template (id->object oid1 s))
            [(id->element blank-label-element-id s)]))
     ;; Test matching a label template in a store.
-    (is (= (matching-elements (recursively-in-different-store
+    (is (= (matching-elements (all-presumed-interned-in-different-store
                                blank-label-template s)
                               (id->object oid1 s))
            [(id->element blank-label-element-id s)]))
     ;; Test matching a label template in a store.
-    (is (= (matching-elements (recursively-in-different-store
+    (is (= (matching-elements (all-presumed-interned-in-different-store
                                blank-label-template s)
                               (id->element blank-label-element-id s))
            [(id->element lx s)]))
     ;; Test matching a label template in a different store.
-    (is (= (matching-elements (recursively-in-different-store
+    (is (= (matching-elements (all-presumed-interned-in-different-store
                                blank-label-template sa)
                               (id->object oid1 s))
            [(id->element blank-label-element-id s)]))
@@ -875,7 +875,7 @@
     (is (= (query-matches
             (make-tree-object [`(1 (~v-ref-query)) `(1 (~v-ref-query))])
             x-obj-store)
-           [{"v" (recursively-in-different-store x-obj x-obj-store)}])))
+           [{"v" (all-presumed-interned-in-different-store x-obj x-obj-store)}])))
   ;; In cyclic-shared-store, object a is reachable by two paths, so its
   ;; tree form is a conflux-tree-object. transform-pattern-toward-fixed-
   ;; term turns each occurrence into a reference variable, with the

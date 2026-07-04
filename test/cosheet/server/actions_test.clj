@@ -14,7 +14,7 @@
                                         make-tree-object make-tree-element
                                         uniquely-identified-object?
                                         in-different-store
-                                        recursively-in-different-store]]
+                                        all-presumed-interned-in-different-store]]
              [calculator :refer [make-calculator-data compute]]
              [debug :refer [store-as-list simplify-for-print]]
              entity-impl
@@ -417,10 +417,10 @@
                                  :session-state session-state})
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)
-        generic-label (recursively-in-different-store
+        generic-label (all-presumed-interned-in-different-store
                        label-object-template
                        new-store)
-        blank-label (recursively-in-different-store
+        blank-label (all-presumed-interned-in-different-store
                      (make-tree-object [`("" (~name-label))
                                         `(~link-type)])
                      new-store)]

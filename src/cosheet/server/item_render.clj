@@ -9,7 +9,7 @@
                     label-object? name-element?
                     elements label->elements content->elements
                     name-label link-type object-type
-                    recursively-in-different-store
+                    all-presumed-interned-in-different-store
                     entity-complexity
                     add-elements-to-entity]]
     [query :refer [matching-elements]]
@@ -640,9 +640,9 @@
        ;; with the same id, but from different stores. That shouldn't
        ;; count as a difference.
        (= (entity->canonical-semantic
-           (recursively-in-different-store object nil))
+           (all-presumed-interned-in-different-store object nil))
           (entity->canonical-semantic
-           (recursively-in-different-store template nil)))))
+           (all-presumed-interned-in-different-store template nil)))))
 
 (defn element-content-DOM
   "Make dom for the content of an element."

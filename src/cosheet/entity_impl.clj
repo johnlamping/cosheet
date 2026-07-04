@@ -94,11 +94,12 @@
          (source->ids store item-id)))
   
   (in-different-store [this store-or-entity]
-    (id->entity-m item-id
-                  orientation
-                  (if (satisfies? Store store-or-entity)
-                    store-or-entity
-                    (:store store-or-entity))))
+    (let [new-store (if (satisfies? Store store-or-entity)
+                      store-or-entity
+                      (:store store-or-entity))]
+      (when (and (nil? new-store) (object? this))
+        (assert (uniquely-identified-object? this) this))
+      (id->entity-m item-id orientation new-store)))
   
   Entity
 
@@ -182,11 +183,14 @@
            link-ids)))
 
   (in-different-store [this store-or-entity]
-    (id->entity-m item-id 
-                  orientation
-                  (if (satisfies? Store store-or-entity)
-                    store-or-entity
-                    (:store store-or-entity))))
+    (let [new-store (if (satisfies? Store store-or-entity)
+                      store-or-entity
+                      (:store store-or-entity))]
+      (when (and (nil? new-store) (object? this))
+        (assert (uniquely-identified-object?
+                 (in-different-store this (current-store store)))
+                this))
+      (id->entity-m item-id orientation new-store)))
 
   Entity
 

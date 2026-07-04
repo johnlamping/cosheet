@@ -207,7 +207,16 @@
                   ~(make-conflux-tree-object (make-tree-id 1) []))
         fixed-term (transform-pattern-toward-fixed-term pattern {})]
     (is (check (canonicalize (fixed-term-to-template fixed-term))
-               (canonicalize pattern)))))
+               (canonicalize pattern))))
+  ;; A non-reference variable is replaced by its qualifier, or by the
+  ;; replacement if it has none.
+  (is (= (fixed-term-to-template (variable-query "v" :qualifier '(2 3)))
+         '(2 3)))
+  (is (= (fixed-term-to-template (variable-query "v")) ""))
+  (is (= (fixed-term-to-template (variable-query "v") 'anything)
+         'anything))
+  (is (= (fixed-term-to-template `(1 ~(variable-query "v" :qualifier '(2 3))))
+         '(1 (2 3)))))
 
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term

@@ -344,22 +344,26 @@
   The first occurrence of a reference variable becomes a conflux tree
   object with a fresh identity and with elements matching the
   variable's qualifier; later occurrences of the same variable become
-  conflux tree objects with that identity and no elements."
+  conflux tree objects with that identity and no elements.
+  A non-reference variable is replaced by its qualifier, if it has one,
+  and otherwise by the replacement."
   ([query]
    (fixed-term-to-template query ""))
   ([query nil-replacement]
    (letfn [(pre-fn [_ entity _ conflux-map]
              (cond
-               (and (variable-query? entity) (variable-reference entity))
-               (let [name (variable-name entity)]
-                 (if-let [id (get conflux-map name)]
-                   [(make-conflux-tree-object id []) conflux-map]
-                   (let [id (make-tree-id (:next-number conflux-map))]
-                     [(make-conflux-tree-object
-                       id (elements (variable-qualifier entity)))
-                      (-> conflux-map
-                          (assoc name id)
-                          (update :next-number inc))])))
+               (variable-query? entity)
+               (if (variable-reference entity)
+                 (let [name (variable-name entity)]
+                   (if-let [id (get conflux-map name)]
+                     [(make-conflux-tree-object id []) conflux-map]
+                     (let [id (make-tree-id (:next-number conflux-map))]
+                       [(make-conflux-tree-object
+                         id (elements (variable-qualifier entity)))
+                        (-> conflux-map
+                            (assoc name id)
+                            (update :next-number inc))])))
+                 [(or (variable-qualifier entity) nil-replacement) conflux-map])
                (nil? entity)
                [nil-replacement conflux-map]
                (and (element? entity)

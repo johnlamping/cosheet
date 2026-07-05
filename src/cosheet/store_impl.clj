@@ -491,7 +491,7 @@
       ;; whose source is that target a label. So we need to re-index
       ;; all such links when a typing link changes.
       (let [typing-source? #{link-type-id object-type-id}
-            target-if-affected ; Return [target] is whether it's a label changes.
+            target-if-affected ; Return [target] if whether it's a label changes.
             (fn [s] (let [target (id->target s id)]
                       (when (and (typing-source? (id->source s id))
                                  (object-id? target)

@@ -28,7 +28,7 @@
     [query :refer [matching-items]]
     mutable-store-impl
     [hiccup-utils :refer [dom-attributes map-combiner]]
-    [query :refer [matching-elements matching-extensions]]
+    [query :refer [matching-elements]]
     query-impl
     [orderable :refer [initial split]])
    (cosheet.server

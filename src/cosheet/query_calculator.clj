@@ -19,13 +19,14 @@
                       [utils :refer [with-latest-value
                                      update-new-further-action]])))
 
-;;; query-calculator calculates the (re)computation of a term against
-;;; a store for a reporter. It makes the value of its reporter be the
-;;; set of ids whose items satisfy the term.
+;;; query-calculator calculates the (re)computation of a reporter
+;;; whose value is a seq of the ids of a matching-items request
+;;; against a store.
 
 ;;; When the reporter's value changes to a valid value, the change's
-;;; description and its changed categories are both the set or all ids
-;;; that either got added or removed since the last valid value.
+;;; description and its changed categories are either both all the ids
+;;; or all ids that either got added or removed since the last valid
+;;; value.
 
 ;;; This manager adds following fields to the reporter:
 ;;;                :term The term whose matches we report.

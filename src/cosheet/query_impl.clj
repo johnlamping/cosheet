@@ -528,12 +528,12 @@
       (distinct-concat (vals match-map)))))
 
 (defn matching-items [term store]
-  (filter
-   #(not (empty? (matching-extensions term {} % identity)))
-   ;; TODO: Make this use precise information.
-   (let [[template precise] (closest-template term {})]
-     (map #(id->entity % store)
-          (first (candidate-matching-ids store template))))))
+  (let [[template template-precise] (closest-template term {})
+        [candidate-ids ids-precise] (candidate-matching-ids store template)
+        candidate-entities (map #(id->entity % store) candidate-ids)]
+    (cond->> candidate-entities
+      (not (and template-precise ids-precise))
+      (filter #(not (empty? (matching-extensions term {} % identity)))))))
 
 (defmethod matching-items-m true [term store]
   (matching-items term store))

@@ -331,13 +331,14 @@
        (#{name-label-id link-type-id object-type-id} (:item-id entity))))
 
 ;;; There are several ways that objects might be identified.
+
 ;;; First, there are objects can be located in a store, based on their
 ;;; properties:
 ;;;          id-identified: The object's item-id is a know string,
 ;;;                         like "link-type"
 ;;;    uniquely-idenfified: The object is either id-identified or it
 ;;;                         has a name that isn't just the empty string.
-;;;                         If it is not in the store, then stands for
+;;;                         If it is not in the store, then it stands for
 ;;;                         a similarly named object in the store.
 ;;;               interned: The object is uniquely identified, and stored.
 ;;;                         In tree form, these objects are
@@ -349,6 +350,7 @@
 ;;;                         and then gotten its store dropped. When put
 ;;;                         in the context of a store, that store should
 ;;;                         have an interned object with the same id.
+
 ;;; Second, there are objects that might have several elements that
 ;;; reference them, but that don't have any notable identifying
 ;;; characteristics. They can only be referenced in terms of a numeric
@@ -357,7 +359,7 @@
 ;;;                               presumed interned, but that supports
 ;;;                               a way of being identified for
 ;;;                               purposes of attaching multiple
-;;;                               links. Any stored object that is nor
+;;;                               links. Any stored object that is not
 ;;;                               presumed-interned qualifies, as does
 ;;;                               a conflux-tree-object.
 

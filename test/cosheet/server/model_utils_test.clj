@@ -451,7 +451,13 @@
        [s7 id7 order7] (get-or-make-ordered-object-by-name
                         s6
                         "Tony" (make-tree-object [])
-                        order6 :before false)]
+                        order6 :before false)
+       ;; Ask for Tina, passing the already-interned Tina object as the
+       ;; fixed term.
+       [s8 id8 order8] (get-or-make-ordered-object-by-name
+                        s7
+                        "Tina" (id->object id1 s7)
+                        order7 :before false)]
     
     ;; The new Tina object should match the template.
     (is (check (object-semantic-to-tree (id->object id1 s1))
@@ -489,7 +495,23 @@
     (is (check (object-semantic-to-tree (id->object id7 s7))
                (as-set (all-presumed-interned-in-different-store
                         (make-tree-object [`("Tony" (~name-label))])
-                        s7))))))
+                        s7))))
+    ;; Passing an already-interned object as the fixed term returns that
+    ;; object unchanged.
+    (is (= id1 id8))
+    (is (= s7 s8))
+    (is (= order7 order8))
+    ;; The -without-revisiting version registers the object under
+    ;; seen-key.
+    (let [[_ id _ seen]
+          (get-or-make-ordered-object-by-name-without-revisiting
+           s7 "Tina" (id->object id1 s7) order7 :before false {} :k)]
+      (is (= id id1))
+      (is (= (:k seen) id1)))
+    ;; A name that doesn't match the interned object's name is an error.
+    (is (thrown? java.lang.AssertionError
+                 (get-or-make-ordered-object-by-name
+                  s7 "Nobody" (id->object id1 s7) order7 :before false)))))
 
 (deftest update-add-element-with-order-and-ephemeral-test
   (let [[s id order] (update-add-element-with-order-and-ephemeral

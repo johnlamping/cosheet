@@ -6,7 +6,7 @@
                    extract-first]]
     [orderable :refer [initial split]]
     [reporter-macros :refer [app-R let-R]]
-    [canonical :refer [canonicalize]]
+    [canonical :refer [canonicalize equivalent-primitives?]]
     [store :refer [new-element-store
                    update-source add-link declare-ephemeral-id
                    target-label->ids get-new-object-id]]
@@ -554,24 +554,38 @@
    additional elements. Return [store object-id order seen]."
   [store name fixed-term order position use-bigger seen seen-key]
   (assert (object? fixed-term) fixed-term)
-  ;; First, get or make an object with the given name.
-  (let [[store object-id order seen]
-        (if-let [object (find-object-by-name store name fixed-term)]
-          [store (:item-id object) order
-           (cond-> seen seen-key (assoc seen-key (:item-id object)))]
-          (update-add-object-with-given-elements-and-order-without-revisiting
-           store `((~name (~name-label))) order position use-bigger seen
-           seen-key))
-        ;; Now make it satisfy the fixed term.
-        [templates-to-add elements-to-remove]
-        (elements-to-change-to-satisfy-fixed-term-elements
-         fixed-term (id->entity object-id store))
-        [store order seen]
-        (update-add-elements-with-order-without-revisiting
-         store object-id templates-to-add order position seen)
-        store (reduce remove-entity-by-id store
-                      (map :item-id elements-to-remove))]
-    [store object-id order seen]))
+  (if (presumed-interned-object? fixed-term)
+    
+    ;; The fixed term is an interned object. Make sure it is the
+    ;; object we are looking for, and return it
+    (do (assert (equivalent-primitives?
+                 name (content (label->element fixed-term name-label))))
+        (let [object-id (:item-id fixed-term)]
+          [store object-id order
+           (cond-> seen seen-key (assoc seen-key object-id))]))
+    
+    ;; It's not interned.
+    (let [;; First, get or make an object with the given name.
+          [store object-id order seen]
+          (if-let [object (find-object-by-name store name fixed-term)]
+            [store (:item-id object) order
+             (cond-> seen seen-key (assoc seen-key (:item-id object)))]
+            (update-add-object-with-given-elements-and-order-without-revisiting
+             store `((~name (~name-label))) order position use-bigger seen
+             seen-key))
+          ;; Now make it satisfy the fixed term.
+          [templates-to-add elements-to-remove]
+          (if (presumed-interned-object? fixed-term)
+            ;; Don't change anything if the template is already interned.
+            [nil nil]
+            (elements-to-change-to-satisfy-fixed-term-elements
+             fixed-term (id->entity object-id store)))
+          [store order seen]
+          (update-add-elements-with-order-without-revisiting
+           store object-id templates-to-add order position seen)
+          store (reduce remove-entity-by-id store
+                        (map :item-id elements-to-remove))]
+      [store object-id order seen])))
 
 (defn update-add-object-with-order-without-revisiting
   "Like update-add-object-with-order, but checks seen for cycle

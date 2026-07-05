@@ -2,14 +2,16 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet [orderable :as orderable]
-                      [entity :as entity  :refer [id->entity
-                                                  elements to-tree content
-                                                  in-different-store]]
+            (cosheet [orderable :refer [split initial]]
+                     [entity :refer [id->entity elements to-tree content
+                                     make-tree-object in-different-store]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source
-                                     target-label->ids]] 
-                      [store-utils :refer [add-element link-type-object]]
+                                     target-label->ids
+                                     get-new-object-id]] 
+                      [store-utils :refer [add-element add-object
+                                           add-object-type-object
+                                           link-type-object]]
                       [query :refer [matching-elements]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
@@ -45,10 +47,9 @@
           {:spec "spec"} {:value 2 :store "foo"} :action :store)
          {:value 3})))
 
-(def orderables (reduce (fn [os _]
-                          (vec (concat (pop os)
-                                       (orderable/split (peek os) :after))))
-                        [orderable/initial]
+(def orderables (reduce (fn [os _] (vec (concat (pop os)
+                                                (split (peek os) :after))))
+                        [initial]
                         (range 4)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))

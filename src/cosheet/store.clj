@@ -301,8 +301,11 @@
   In addition to these methods, a MutableStore is also a Reporter,
   whose value is its current immutable store. When the store changes,
   the change is associated with a set of categories: the ids of items
-  that might be most affected by the change. Being affected propagate
-  upwards from source to target:
+  that might be most affected by the change. It can't inform of all
+  possible changes through objects, as unlimited propagation could
+  cause almost all objects in the system to be considered to
+  change. The restriction is that being affected propagates upwards
+  from source to target:
      * A change to a link implies a change to its target.
      * A change to a non-interned object implies a change to any links
        for which it is the source.

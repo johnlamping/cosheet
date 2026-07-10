@@ -250,3 +250,48 @@
         (run-all-pending-tasks queue)
         (is (= (set (reporter-value-or-invalid label-ids))
                (set (target-label->ids store element by-label-id))))))))
+
+(deftest categories-affected-by-ids-test
+  ;; No modified ids.
+  (is (nil? (categories-affected-by-ids
+             [] (new-element-store) (new-element-store))))
+  ;; An object with no links stores adds nothing.
+  (let [iobj (make-item-id "I")]
+    (is (= (categories-affected-by-ids [iobj] (new-element-store)
+                                       (new-element-store))
+           #{iobj})))
+  ;; A link/element id: only its target is added.
+  (let [iobj (make-item-id "I")
+        [s1 obj] (get-new-object-id (new-element-store))
+        [store link] (add-link s1 iobj obj)]
+    (is (= (categories-affected-by-ids [link] store store)
+           #{link iobj})))
+  ;; An object that is not interned adds the links for which it is the
+  ;; source, but not the ones for which it is the target.
+  (let [iobj (make-item-id "I")
+        [s1 obj] (get-new-object-id (new-element-store))
+        [s2 src-link] (add-link s1 iobj obj)   ;; obj is the source
+        [store tgt-link] (add-link s2 obj "s")] ;; obj is the target
+    (is (not (interned-object-id? store obj)))
+    (is (= (categories-affected-by-ids [obj] store store)
+           #{obj src-link iobj})))
+  ;; An object whose interned status differs between the two stores
+  ;; adds the links for which it is the source, and the links for
+  ;; which it is the target whose source is an object. Here obj is
+  ;; unnamed in the before store and named in the after store.
+  (let [iobj (make-item-id "I")
+        jobj (make-item-id "J")
+        [s1 obj] (get-new-object-id (new-element-store))
+        [s2 src-link] (add-link s1 iobj obj)
+        [s3 obj-tgt-link] (add-link s2 obj jobj)
+        [s4 prim-tgt-link] (add-link s3 obj "u")
+        before-store s4
+        [s5 name-link] (add-link s4 obj "Fred")
+        [after-store label-link] (add-link s5 name-link name-label-id)]
+    (is (not (interned-object-id? before-store obj)))
+    (is (interned-object-id? after-store obj))
+    (is (= (categories-affected-by-ids [obj] before-store after-store)
+           #{obj src-link obj-tgt-link iobj}))
+    ;; Nothing extra if the interned status didn't change.
+    (is (= (categories-affected-by-ids [obj] after-store after-store)
+           #{obj}))))

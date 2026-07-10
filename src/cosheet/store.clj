@@ -40,12 +40,13 @@
 ;;; Objects are not saved in the store, as such. All that is known
 ;;; about objects comes from the links that link to them.
 
-;;; There are two special objects, whose ids are the strings "Type"
-;;; and "Name", respectively. An object counts as a label or a class
-;;; if it is qualified by the "Type" object. And a link counts as a
-;;; name if it is qualified by the "Name" object. And a couple of
-;;; links are added to the store so that the "Name" object has the
-;;; name, "Name".
+;;; There are three special objects, whose ids are the strings
+;;; "link-type", "object-type", and "name", respectively. An object
+;;; counts as a link type if it is qualified by the "link-type"
+;;; object, and counts as a class if it is qualified by the
+;;; "object-type" object. Both of these are considered to be
+;;; labels. Finally, a link counts as a name if it is qualified by the
+;;; "name" object.
 
 ;;; The store maintains a map from name to object. It uses this to
 ;;; return the object id for a given name, and to ensure that no two
@@ -224,27 +225,8 @@
    from which higher levels functions are built.
 
    Immutable stores also have an :ephemeral-data field, which holds a
-   map. It is primarily used to store what should be selected after an
-   undo or redo, in order to put the focus on the change. These are
-   stored in:
-       :preceding-selection  Select this after an undo *from* this state.
-       :following-selection  Select this after an redo *to* this state.
-   In addition, a selection put in :following-selection by an action
-   handler will be passed on to the client. This is primarily useful
-   when the action handler has created a new entity, so it is natural
-   for the selection to go there.
-  
-   Finally, if an action wants a dom showing a store id to be selected
-   after any redo to this state, but the dom may not have been created
-   yet, they can record a [client-id store-ids] pair
-   in :following-selection-by-ids here, and put the same pair in
-   a :selection-by-ids client request for the ajax handler. The pair
-   asks for a select to be sent to the client when a dom showing one of
-   the store-id pairs is creaated. If several doms qualify, the one
-   whose client id is most similar to the client-id is selected. Once
-   the dom has been made and the handler sends the select request, they
-   replace the :following-selection-by-ids by a :following-selection
-   with the actual client id."
+   map. It is used by the server code to store what should be selected
+   after an undo or redo."
 
   (add-link [this target source]
     "Add an item with the given target and source. The target must be an
@@ -315,8 +297,24 @@
 (defprotocol MutableStore
   "The basic methods that mutable stores support to change themselves,
   from which higher levels functions are built.
-  
-  In addition to these methods, a MutableStore is also a Reporter."
+
+  In addition to these methods, a MutableStore is also a Reporter,
+  whose value is its current immutable store. When the store changes,
+  the change is associated with a set of categories: the ids of items
+  that might be most affected by the change. Being affected propagate
+  upwards from source to target:
+     * A change to a link implies a change to its target.
+     * A change to a non-interned object implies a change to any links
+       for which it is the source.
+  Together, these mean that anything that registers interest in an
+  entity will be informed of changes to all sub-entities implied by
+  forward oriented links.
+  Changes to interned objects, on the other hand, are not propagated
+  beyond them, as from the outside, the objects are considered to be
+  simple atoms. But if an object transitions betweeen interned and
+  non-interned, that is propagated to all links that reference the
+  object, since it completely changes the presumption of how the
+  object is viewed."
   
   (current-store [this]
     "The current immutable store of the mutable store.")

@@ -75,8 +75,10 @@
   change to any of them. (In concrete terms, it contains all of their
   targets and contains all ids that contain any of them.) Add the
   given id and restore the closure property. The store must be
-  immutable."
-  [affected store id]
+  immutable. The alternate store is the other store involved in the
+  change, used to tell whether an object's interned status differs
+  between the two stores."
+  [affected store alternate-store id]
   (loop [pending-ids [id]
          affected affected]
     (if (empty? pending-ids)
@@ -85,19 +87,36 @@
         (if (contains? affected id)
           (recur remaining-ids affected)
           (recur (concat remaining-ids
-                         (when-let [target (id->target store id)]
-                           [target]))
+                         (if (object-id? id)
+                           (cond
+                             ;; Interned in one store but not the other:
+                             ;; all links with the object as source are
+                             ;; affected, as are links with the object as
+                             ;; target whose source is an object.
+                             (not= (interned-object-id? store id)
+                                   (interned-object-id? alternate-store id))
+                             (concat (source->ids store id)
+                                     (filter #(object-id? (id->source store %))
+                                             (target->ids store id)))
+                             ;; Not interned: all links with the object
+                             ;; as source are affected.
+                             (not (interned-object-id? store id))
+                             (source->ids store id))
+                           (when-let [target (id->target store id)]
+                             [target])))
                  (conj affected id)))))))
 
 (defn categories-in-one-store-affected-by-ids
   "Return a set of categories that might be affected by a change to a
   set of modified ids in the given store.  A category is any id whose
   elements or source could be affected by one of the changed ids. The
-  store must be immutable."
-  [modified-ids store]
+  store must be immutable. The alternate store is the other store
+  involved in the change."
+  [modified-ids store alternate-store]
   (when (seq modified-ids)
-    (reduce (fn [accum id] (add-id-to-affected-ids accum store id))
-            #{} 
+    (reduce (fn [accum id]
+              (add-id-to-affected-ids accum store alternate-store id))
+            #{}
             modified-ids)))
 
 (defn categories-affected-by-ids
@@ -109,8 +128,10 @@
   [modified-ids before-store after-store]
   (when (seq modified-ids)
     (clojure.set/union
-     (categories-in-one-store-affected-by-ids modified-ids before-store)
-     (categories-in-one-store-affected-by-ids modified-ids after-store))))
+     (categories-in-one-store-affected-by-ids
+      modified-ids before-store after-store)
+     (categories-in-one-store-affected-by-ids
+      modified-ids after-store before-store))))
 
 (defmacro cache-and-categorize
   "Return the result of the operation on the store, caching, and using

@@ -371,7 +371,7 @@
 
 (defn concat-maps
   "Given a sequence of maps from key to sequence of values, return a single
-  map that concatenates all the values for a given key."
+  map that concatenates all the values for each key."
   [maps]
   (when (seq maps)
     (reduce (fn [m1 m2]

@@ -286,6 +286,40 @@
 ;;;            :file-path  The file path (with suffix omitted) corresponding
 ;;;                        to the store.
 ;;;                :store  The mutable store that holds the data.
+;;;                        In addition to the persistent data, we also
+;;;                        make use of the :ephemeral-data of the
+;;;                        store. It is primarily used to store what
+;;;                        should be selected after an undo or redo,
+;;;                        in order to put the focus on the
+;;;                        change. These are stored in:
+;;;                          :preceding-selection Select this after an
+;;;                                               undo *from* this state.
+;;;                          :following-selection Select this after an
+;;;                                               redo *to* this state.
+;;;                        In addition, a selection put in
+;;;                        :following-selection by an action handler
+;;;                        will be passed on to the client. This is
+;;;                        primarily useful when the action handler
+;;;                        has created a new entity, so it is natural
+;;;                        for the selection to go there.
+;;;                        Finally, if an action wants a dom showing a
+;;;                        store id to be selected after any redo to
+;;;                        this state, but the dom may not have been
+;;;                        created yet, they can record a [client-id
+;;;                        store-ids] pair in
+;;;                        :following-selection-by-ids here, and put
+;;;                        the same pair in a :selection-by-ids client
+;;;                        request for the ajax handler. The pair asks
+;;;                        for a select to be sent to the client when
+;;;                        a dom showing one of the store-id pairs is
+;;;                        creaated. If several doms qualify, the one
+;;;                        whose client id is most similar to the
+;;;                        client-id is selected. Once the dom has
+;;;                        been made and the handler sends the select
+;;;                        request, they replace the
+;;;                        :following-selection-by-ids by a
+;;;                        :following-selection with the actual client
+;;;                        id.
 ;;; :session-ephemeral-id  The id of the root ephemeral item in the store used
 ;;;                        for holding information specific to this session.
 ;;;          :dom-manager  The dom manager for the session.

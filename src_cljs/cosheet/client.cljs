@@ -54,7 +54,7 @@
    js/window "" "CosheetExpandPopup",
    (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
-(defn command-click-handler
+(defn request-command-action
   [logical-target]
   (let [id (.-id logical-target)
         command-name (if (or (clojure.string.ends-with? id "-tool")
@@ -79,7 +79,7 @@
                              "batch-edit" :batch-edit
                              nil)
         selection @selected]
-    (.log js/console (str "menu click " id))
+    (.log js/console (str "command " id))
     (cond keyword
           (request-action [keyword])
           (and contextual-keyword
@@ -88,7 +88,33 @@
               (request-action [contextual-keyword
                                (when selection (.-id selection))])))))
 
+(defn toolbar-click-handler
+  "Handle a click in the toolbar."
+  [event]
+  (let [target (.-target event)] 
+    (.log js/console (str "Command click on id " (.-id target) "."))
+    (when-let [command-target
+               ;; Many tool clicks are on images. We promote them to
+               ;; be on the tool.
+               (find-ancestor-with-class target "tool" 1)]
+      (store-and-close-popups)
+      (request-command-action command-target))))
+
+(defn context-menu-click-handler
+  "Handle a click in the context menu."
+  [event]
+  (let [target (.-target event)]
+    (.log js/console (str "Menu click on id " (.-id target) "."))
+    ;; Tell the server we have selected the item the menu was opened
+    ;; on, then to run the chosen command on it.
+    (when-let [selection @selected]
+      (request-action [:selected (.-id selection)]))
+    (request-command-action target)
+    ;; We don't close the menu until we've done the command.
+    (store-and-close-popups)))
+
 (defn click-handler
+  "Handle a click in the main app."
   [event]
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
@@ -112,26 +138,8 @@
           ;; it needs to know when a different tab has been selected.
           (request-action [:selected (and editable (.-id editable))]))))))
 
-(defn toolbar-click-handler
-  [event]
-  (let [target (.-target event)] 
-    (.log js/console (str "Command click on id " (.-id target) "."))
-    (when-let [command-target
-               ;; Many tool clicks are on images. We promote them to
-               ;; be on the tool.
-               (find-ancestor-with-class target "tool" 1)]
-      (store-and-close-popups)
-      (command-click-handler command-target))))
-
-(defn context-menu-click-handler
-  [event]
-  (let [target (.-target event)]
-    (.log js/console (str "Menu click on id " (.-id target) "."))
-    (command-click-handler target)
-    ;; We don't close the menu until we've done the command.
-    (store-and-close-popups)))
-
 (defn double-click-handler
+  "Handle a double click in the main app."
   [event]
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
@@ -154,6 +162,7 @@
           (request-action [:selected (and editable (.-id editable))]))))))
 
 (defn contextmenu-handler
+  "Handle a contextmenu click in the main app."
   [event]
   (let [target (.-target event)
         ;; If a cell is selected, but not being edited, the select holder
@@ -162,7 +171,7 @@
                            @selected target)]
     (.log js/console (str "Context menu on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
-    (.preventDefault event) ;; Stop the browser menu from appearing
+    (.preventDefault event) ;; Stop the browser menu from appearing.
     (when (not (target-in-select-holder? effective-target))
       (store-and-close-popups))
     (if-let [editable (find-editable effective-target event)]

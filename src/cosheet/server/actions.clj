@@ -12,8 +12,10 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
-                   id->target target-label->ids id-valid-link?
+                   id->target target-label->ids target-source->ids
+                   id-valid-link?
                    object-id? link-id? item-id? interned-object-id?
+                   get-new-object-id
                    undo! redo!
                    name-label-id
                    current-store
@@ -251,6 +253,28 @@
                        :before false store)]
       (add-following-selection-by-ids store client-id ids))))
 
+;;; TODO: !!! This needs to handle reversed links.
+(defn do-add-object
+  "Make a new object, and set the content of the subject element(s) to
+  it. Does nothing to subjects that are not elements or that are an
+  element that gives a name."
+  [store {:keys [subject-ids client-id]}]
+  (println "SUBJECT-IDS" subject-ids)
+  (let [[store oids]
+        (reduce (fn [[store oids] subject-id]
+                  (if (or (object-id? subject-id)
+                          (seq (target-source->ids
+                                 store subject-id name-label-id)))
+                    [store oids]
+                    (let [[s1 object-id] (get-new-object-id store)
+                          s2 (update-source store subject-id object-id)]
+                      (if (= s1 (abandon-problem-changes s1 s2 subject-id))
+                        [store oids]
+                        [s2 (conj oids object-id)]))))
+                [store []] subject-ids)]
+    (when (seq oids)
+      (add-following-selection-by-ids store client-id oids))))
+
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]
   (println "adding row")
@@ -441,6 +465,7 @@
   [action]
   ({:add-element do-add-element
     :add-label do-add-label
+    :add-object do-add-object
     :add-twin do-add-twin
     :add-row do-add-row
     :add-column do-add-column

@@ -13,17 +13,18 @@
                                         name-label link-type object-type
                                         make-tree-object make-tree-element
                                         uniquely-identified-object?
-                                        in-different-store
-                                        all-presumed-interned-in-different-store]]
+                                        all-presumed-interned-in-different-store
+                                        in-different-store]]
              [calculator :refer [make-calculator-data compute]]
              [debug :refer [store-as-list simplify-for-print]]
              entity-impl
              [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
+                            name-label-id target->ids id->source
                             target-label->ids
                             current-store id-valid-link?
                             id->source id->target
-                            get-new-object-id
+                            get-new-object-id object-id? id-known-object?
                             update-source store-update!
                             update-equivalent-undo-point]]
              [store-utils :refer [add-element add-object
@@ -77,6 +78,7 @@
                     (add-link-type-object "name") first))
 (def age-label (find-object-by-name base-store "age" (link-type-object "")))
 (def c2-label (find-object-by-name base-store "c2" (link-type-object "")))
+
 (def joe-list (add-order-elements
                `("Joe"
                  "male"
@@ -124,7 +126,6 @@
 
 ;;; TODO: !!! This is the new format for table rows, where each is an object.
 ;;;       Replace the previous store by this.
-;;; TODO: !!! The labels need to be converted to label objects.
 (def new-joe-object-list
   (make-tree-object
    (map add-order-elements
@@ -138,7 +139,7 @@
    (map add-order-elements
         `(("Jane" (~name-label)) :selector "female"
           (45 (~age-label))))))
-(def new-t0 (add-element (new-element-store) nil table-list))
+(def new-t0 (add-element base-store nil table-list))
 (def new-table-id (second new-t0))
 (def new-t1 (add-object (first new-t0) new-joe-object-list))
 (def new-joe-id (second new-t1))
@@ -443,6 +444,33 @@
                              {:subject-ids [(:item-id joe-age-label)]
                               :session-state session-state})]
     (is (not result))))
+
+(deftest do-add-object-test
+  ;; When the argument is the content of an element (its subject is the
+  ;; element link), set the element's content to a new object. A virtual
+  ;; element is handled the same way, since its element has already been
+  ;; created by the action data getter.
+  (let [new-store (do-add-object store
+                                 {:subject-ids [(:item-id joe-age)]
+                                  :client-id nil})
+       new-content-id (id->source new-store (:item-id joe-age))]
+    (is (object-id? new-content-id))
+    ;; It is a fresh object, not one that was already in the store.
+    (is (not (id-known-object? store new-content-id)))
+    (is (id-known-object? new-store new-content-id))
+    ;; The new content is queued to be selected.
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids [nil [new-content-id]]})))
+  ;; Does nothing when the content is a name.
+  (let [age-name (first (label->elements age-label name-label))]
+    (assert (= (content age-name) "age"))
+    (is (not (do-add-object new-store
+                            {:subject-ids [(:item-id age-name)]
+                             :client-id nil}))))
+  ;; Does nothing when the subject is not an element.
+  (is (not (do-add-object store
+                          {:subject-ids [(:item-id age-label)]
+                           :client-id nil}))))
 
 (deftest do-delete-test
   (let [new-store (do-delete store

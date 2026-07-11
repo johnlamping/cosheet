@@ -212,7 +212,8 @@
   [:div#context-menu.popup.context_menu
    [:div#add-twin-menu.menu-item "add twin (same labels)"]
    [:div#add-element-menu.menu-item "add child"]
-   [:div#add-label-menu.menu-item "add label"]])
+   [:div#add-label-menu.menu-item "add label"]
+   [:div#add-object-menu.menu-item "add object"]])
 
 (defn initial-page [file-path servlet-path root-id-string]
   (println (now-string) "initial page"

@@ -17,6 +17,7 @@
                    map-with-first-last
                    separate-by]]
     [debug :refer [simplify-for-print]]
+    [calculator :refer [current-value]]
     [hiccup-utils :refer [dom-attributes into-attributes add-attributes
                           merge-classes]]
     [reporter-macros :refer [app-R let-R]])
@@ -660,10 +661,12 @@
                     (content template) contents)))
           (object-reference-component contents specification)
           true
-          ;; TODO: !!! We don't currently handle ordinary content that
-          ;; is itself a structured entity. We will need that for
-          ;; anonymous objects.
-          (assert false contents))))
+          (do (assert (object? contents))
+              (item-component
+               contents
+               (-> specification
+                   (assoc :exclude-elements-by-ids [(:item-id element)])
+                   (into-attributes {:class "object"})))))))
 
 (defn render-content-only-DOM
   "Given an item that represents an element, render a dom spec for only
@@ -756,15 +759,15 @@
         elem-spec (transform-specification-for-elements specification)
         names-dom (non-label-elements-DOM
                    names nil (boolean (seq others)) :vertical elem-spec)
-        others-dom (when (seq others)
+        others-dom (if (seq others)
                      (non-label-elements-DOM
-                      others template true :vertical elem-spec))
-        inner-dom (if (seq others)
-                    (nest-if-multiple-DOM
-                     [names-dom
-                      [:div {:class "indent-wrapper-right"} others-dom]]
-                     :vertical)
-                    names-dom)]
+                      others template true :vertical elem-spec)
+                     (virtual-DOM-component
+                      (assoc elem-spec :relative-id :virtual)))
+        inner-dom (nest-if-multiple-DOM
+                   [names-dom
+                    [:div {:class "indent-wrapper-right"} others-dom]]
+                   :vertical)]
     (cond-> (if (seq labels)
               (wrap-with-labels-DOM
                (label-stack-DOM
@@ -782,20 +785,21 @@
   group of items). This is the default renderer."
   [{:keys [relative-id] :as specification}  store]
   (println "Generating DOM for" (simplify-for-print relative-id))
-  (assert (:width specification)
-          [specification
-           (semantic-to-tree (id->entity relative-id store))])
-  (assert (not (:auxiliary-item-id specification))
-          [specification
-           (semantic-to-tree (id->entity relative-id store))])
-  (let-R [entity (id->updating-entity-R
-                  (specification-item-id specification) store)]
-    (cond (element? entity)
-          (element-DOM entity specification)
-          (object? entity)
-          (object-DOM entity specification)
-          :else
-          (assert false "Can only handle elements and objects."))))
+  (let [updating-entity (id->updating-entity-R
+                         (specification-item-id specification) store)]
+     (assert (:width specification)
+             [specification
+              (semantic-to-tree (current-value updating-entity))])
+     (assert (not (:auxiliary-item-id specification))
+             [specification
+              (semantic-to-tree (current-value updating-entity))])
+     (let-R [entity updating-entity]
+       (cond (element? entity)
+             (element-DOM entity specification)
+             (object? entity)
+             (object-DOM entity specification)
+             :else
+             (assert false "Can only handle elements and objects.")))))
 
 (defmethod print-method
   cosheet.server.item_render$render_item_DOM_R

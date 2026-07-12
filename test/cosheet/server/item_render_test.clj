@@ -811,6 +811,50 @@
                       :render-dom render-item-DOM-R
                       :get-action-data (default-AD)}]]]]]]))))
 
+(deftest render-item-DOM-R-object-empty-others-test
+  ;; An object with only a name and no other (non-name, non-label)
+  ;; elements. object-DOM uses a virtual label for the empty "others"
+  ;; section, so it always appears indented to the right.
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 obj-id] (get-new-object-id s0)
+        [s2 name-id] (add-element s1 obj-id `("Fred" (~o1 :order)))
+        [store name-label-id] (add-element s2 name-id `(~name-label))
+        dom (run-renderer render-item-DOM-R
+                          (assoc basic-dom-specification
+                                 :relative-id obj-id
+                                 :class "item")
+                          store)]
+    (is (check dom
+               [:div {:class "vertical-stack item"}
+                ;; The name.
+                [:div {:class "horizontal-labels-element link-type wide"}
+                 [:div {:class
+                        "link-type horizontal-header top-border bottom-border"}
+                  [:component
+                   {:width 0.375
+                    :template label-template
+                    :omit-universal-elements true
+                    :parallel-ids [name-id]
+                    :class "link-type"
+                    :relative-id name-label-id
+                    :render-dom render-item-DOM-R
+                    :get-action-data (default-AD)}]]
+                 [:component
+                  {:width 1.03125
+                   :template (as-set (list 'anything (list name-label)))
+                   :exclude-elements-by-ids [name-label-id]
+                   :relative-id name-id
+                   :render-dom render-item-DOM-R
+                   :get-action-data (default-AD)}]]
+                ;; The empty "others" section is a virtual element.
+                [:div {:class "indent-wrapper-right"}
+                 [:component
+                  {:width 1.5
+                   :template 'anything
+                   :relative-id :virtual
+                   :render-dom (virt-DOM)
+                   :get-action-data (virt-AD)}]]]))))
+
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
   (let [[store fred-id] (add-element (new-element-store) nil

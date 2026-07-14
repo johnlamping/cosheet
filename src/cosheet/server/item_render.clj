@@ -737,10 +737,9 @@
   "Render a dom spec given the immutable entity for an item (which may
   be an exemplar of a group of items)."
   [entity {:keys [exclude-elements-by-ids] :as specification}]
-  (let [elements (remove
-                  (set (map #(id->entity % (:store entity))
-                            exclude-elements-by-ids))
-                  (semantic-elements entity))
+  (let [excluded-set (set exclude-elements-by-ids)
+        elements (remove #(excluded-set (:item-id %))
+                         (semantic-elements entity))
         [labels non-labels] (separate-by label-element? elements)
         labels (cond->> labels
                  (:omit-universal-elements specification)
@@ -755,10 +754,10 @@
   "Render a dom for an object. Shows labels (classes) wrapping names,
   then other elements. Labels are indented to the right."
   [entity {:keys [exclude-elements-by-ids template] :as specification}]
-  (let [excluded (set (map #(id->entity % (:store entity))
-                           exclude-elements-by-ids))
-        all-elements (remove excluded (semantic-elements entity))
-        [labels non-labels] (separate-by label-element? all-elements)
+  (let [excluded-set (set exclude-elements-by-ids)
+        elements (remove #(excluded-set (:item-id %))
+                         (semantic-elements entity))
+        [labels non-labels] (separate-by label-element? elements)
         [names others] (separate-by name-element? non-labels)
         elem-spec (transform-specification-for-elements specification)
         names-dom (non-label-elements-DOM

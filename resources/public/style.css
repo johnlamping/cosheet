@@ -377,6 +377,11 @@ body {
     border-width: var(--bw);
 }
 
+.object {
+    border-radius: var(--radius);
+    border-width: var(--bw);
+}
+
 /* --- names --- */
 
 .name {

@@ -649,16 +649,20 @@
   "Make dom for the content of an element."
   [element {:keys [immutable template] :as specification}]
   (let [contents (content element)
-        editable (not immutable)
+        reference-contents (and (object? contents)
+                                (or (interned-object? contents)
+                                    (display-content-object-as-if-interned?
+                                     (content template) contents)))
+        ;; An non-reference object contents is not itself editable
+        ;; (although its parts may be.
+        editable (and (not immutable)
+                      (or reference-contents (not (object? contents))))
         specification (cond-> (-> (select-keys specification [:class :width])
                                   (assoc :template (content template)))
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
           (element-primitive-content-DOM element contents specification)
-          (and (object? contents)
-               (or (interned-object? contents)
-                   (display-content-object-as-if-interned?
-                    (content template) contents)))
+          reference-contents
           (object-reference-component contents specification)
           true
           (do (assert (object? contents))
@@ -765,18 +769,17 @@
                      (virtual-DOM-component
                       (assoc elem-spec :relative-id :virtual)))
         inner-dom (nest-if-multiple-DOM
-                   [names-dom
-                    [:div {:class "indent-wrapper-right"} others-dom]]
-                   :vertical)]
-    (cond-> (if (seq labels)
-              (wrap-with-labels-DOM
-               (label-stack-DOM
-                labels (transform-specification-for-labels
-                        specification :link-type))
-               :object-type
-               inner-dom
-               :vertical)
-              inner-dom)
+                   [names-dom others-dom]
+                   :vertical)
+        labels-spec (transform-specification-for-labels
+                     specification :object-type)]
+    (cond-> (wrap-with-labels-DOM
+             (if (seq labels)
+               (label-stack-DOM labels labels-spec)
+               (virtual-label-DOM-component labels-spec))
+             :object-type
+             inner-dom
+             :vertical)
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 

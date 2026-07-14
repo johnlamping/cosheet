@@ -516,6 +516,26 @@
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}]))))
 
+(deftest element-content-DOM-object-test
+  ;; An element whose content is a non-interned object is rendered in
+  ;; full (by object-DOM). Even though the content is not immutable, the
+  ;; resulting component gets class "object" but not "editable", since
+  ;; the object itself is not directly-editable text.
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 obj-content-id] (get-new-object-id s0)
+        [s2 _] (add-element s1 obj-content-id "x")
+        [store elem-id] (add-element s2 nil
+                                     `(~(id->object obj-content-id s2)))
+        element (id->element elem-id store)]
+    (is (check (element-content-DOM element {:width 1.5 :template 'anything})
+               [:component {:width 1.5
+                            :template 'anything
+                            :relative-id obj-content-id
+                            :exclude-elements-by-ids [elem-id]
+                            :class "object"
+                            :render-dom render-item-DOM-R
+                            :get-action-data (default-AD)}]))))
+
 (deftest render-item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[store fred-id] (add-element (new-element-store) nil "Fred")
@@ -696,120 +716,133 @@
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "vertical-stack item"}
-                [:div {}]
-                [:div {:class "indent-wrapper-right"}
+               [:div {:class "wrapped-element object-type item"}
+                ;; With no labels, the object gets a virtual (object-type)
+                ;; label.
+                [:component
+                 {:template object-type-virtual-label-template
+                  :omit-universal-elements true
+                  :is-object-name true
+                  :width 1.5
+                  :relative-id :virtual-label
+                  :class "object-type"
+                  :render-dom (virt-DOM)
+                  :position :after
+                  :get-action-data (virt-AD)}]
+                [:div {:class "indent-wrapper right-indent"}
                  [:div {:class "vertical-stack"}
-                  ;; test-id, with no labels, gets a virtual label.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class
-                          "link-type horizontal-header top-border bottom-border"}
-                    [:component
-                     {:is-object-name true
-                      :omit-universal-elements true
-                      :width 0.375
-                      :template virtual-label-template
-                      :render-dom (virt-DOM)
-                      :get-action-data [(comp-AD)
-                                        [(parallel-AD) (item-AD)]
-                                        (virt-AD)]
-                      :class "link-type"
-                      :position :after
-                      :parallel-ids [test-id]
-                      :relative-id [test-id :virtual-label]}]]
-                   [:component {:width 1.03125
-                                :template 'anything
-                                :relative-id test-id
-                                :render-dom render-item-DOM-R
-                                :get-action-data (default-AD)}]]
-                  ;; elem-id, with no labels, gets a virtual label.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class
-                          "link-type horizontal-header top-border bottom-border"}
-                    [:component
-                     {:is-object-name true
-                      :omit-universal-elements true
-                      :width 0.375
-                      :template virtual-label-template
-                      :render-dom (virt-DOM)
-                      :get-action-data [(comp-AD)
-                                        [(parallel-AD) (item-AD)]
-                                        (virt-AD)]
-                      :class "link-type"
-                      :position :after
-                      :parallel-ids [elem-id]
-                      :relative-id [elem-id :virtual-label]}]]
-                   [:component {:width 1.03125
-                                :template 'anything
-                                :relative-id elem-id
-                                :render-dom render-item-DOM-R
-                                :get-action-data (default-AD)}]]
-                  ;; The "common" label, shared by e1 and e2, heads the
-                  ;; hierarchy.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class "link-type horizontal-header top-border"}
-                    [:component
-                     {:width 0.375
-                      :template label-template
-                      :omit-universal-elements true
-                      :parallel-ids [e1-id e2-id]
-                      :class "link-type"
-                      :relative-id e1-common-id
-                      :render-dom render-item-DOM-R
-                      :get-action-data (default-AD)}]]
-                   [:component {:width 1.03125
-                                :template (list 'anything (list common-object))
-                                :relative-id :virtual
-                                :sibling true
-                                :position :after
-                                :render-dom (virt-DOM)
-                                :get-action-data (virt-AD)}]]
-                  ;; e1, under the shared label, shows its own "a" label.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class "link-type horizontal-header indent"}
+                  [:div {}]
+                  [:div {:class "vertical-stack"}
+                   ;; test-id, with no labels, gets a virtual label.
+                   [:div {:class "horizontal-labels-element link-type wide"}
                     [:div {:class
                            "link-type horizontal-header top-border bottom-border"}
+                     [:component
+                      {:is-object-name true
+                       :omit-universal-elements true
+                       :width 0.375
+                       :template virtual-label-template
+                       :render-dom (virt-DOM)
+                       :get-action-data [(comp-AD)
+                                         [(parallel-AD) (item-AD)]
+                                         (virt-AD)]
+                       :class "link-type"
+                       :position :after
+                       :parallel-ids [test-id]
+                       :relative-id [test-id :virtual-label]}]]
+                    [:component {:width 1.03125
+                                 :template 'anything
+                                 :relative-id test-id
+                                 :render-dom render-item-DOM-R
+                                 :get-action-data (default-AD)}]]
+                   ;; elem-id, with no labels, gets a virtual label.
+                   [:div {:class "horizontal-labels-element link-type wide"}
+                    [:div {:class
+                           "link-type horizontal-header top-border bottom-border"}
+                     [:component
+                      {:is-object-name true
+                       :omit-universal-elements true
+                       :width 0.375
+                       :template virtual-label-template
+                       :render-dom (virt-DOM)
+                       :get-action-data [(comp-AD)
+                                         [(parallel-AD) (item-AD)]
+                                         (virt-AD)]
+                       :class "link-type"
+                       :position :after
+                       :parallel-ids [elem-id]
+                       :relative-id [elem-id :virtual-label]}]]
+                    [:component {:width 1.03125
+                                 :template 'anything
+                                 :relative-id elem-id
+                                 :render-dom render-item-DOM-R
+                                 :get-action-data (default-AD)}]]
+                   ;; The "common" label, shared by e1 and e2, heads the
+                   ;; hierarchy.
+                   [:div {:class "horizontal-labels-element link-type wide"}
+                    [:div {:class "link-type horizontal-header top-border"}
                      [:component
                       {:width 0.375
                        :template label-template
                        :omit-universal-elements true
-                       :parallel-ids [e1-id]
+                       :parallel-ids [e1-id e2-id]
                        :class "link-type"
-                       :relative-id e1-a-id
+                       :relative-id e1-common-id
                        :render-dom render-item-DOM-R
-                       :get-action-data (default-AD)}]]]
-                   [:component
-                    {:width 1.03125
-                     :template (as-set (list 'anything (list a-object)
-                                             (list common-object)))
-                     :exclude-elements-by-ids [e1-a-id e1-common-id]
-                     :relative-id e1-id
-                     :render-dom render-item-DOM-R
-                     :get-action-data (default-AD)}]]
-                  ;; e2, the last child, shows its own "b" label.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class
-                          "link-type horizontal-header indent bottom-border"}
-                    [:div {:class
-                           "link-type horizontal-header top-border bottom-border"}
-                     [:component
-                      {:width 0.375
-                       :template label-template
-                       :omit-universal-elements true
-                       :parallel-ids [e2-id]
-                       :class "link-type"
-                       :relative-id e2-b-id
-                       :render-dom render-item-DOM-R
-                       :get-action-data (default-AD)}]]]
-                   [:div {:class "horizontal-value-last"}
+                       :get-action-data (default-AD)}]]
+                    [:component {:width 1.03125
+                                 :template (list 'anything (list common-object))
+                                 :relative-id :virtual
+                                 :sibling true
+                                 :position :after
+                                 :render-dom (virt-DOM)
+                                 :get-action-data (virt-AD)}]]
+                   ;; e1, under the shared label, shows its own "a" label.
+                   [:div {:class "horizontal-labels-element link-type wide"}
+                    [:div {:class "link-type horizontal-header indent"}
+                     [:div {:class
+                            "link-type horizontal-header top-border bottom-border"}
+                      [:component
+                       {:width 0.375
+                        :template label-template
+                        :omit-universal-elements true
+                        :parallel-ids [e1-id]
+                        :class "link-type"
+                        :relative-id e1-a-id
+                        :render-dom render-item-DOM-R
+                        :get-action-data (default-AD)}]]]
                     [:component
                      {:width 1.03125
-                      :template (as-set (list 'anything (list common-object)
-                                              (list b-object)))
-                      :exclude-elements-by-ids [e2-common-id e2-b-id]
-                      :relative-id e2-id
+                      :template (as-set (list 'anything (list a-object)
+                                              (list common-object)))
+                      :exclude-elements-by-ids [e1-a-id e1-common-id]
+                      :relative-id e1-id
                       :render-dom render-item-DOM-R
-                      :get-action-data (default-AD)}]]]]]]))))
+                      :get-action-data (default-AD)}]]
+                   ;; e2, the last child, shows its own "b" label.
+                   [:div {:class "horizontal-labels-element link-type wide"}
+                    [:div {:class
+                           "link-type horizontal-header indent bottom-border"}
+                     [:div {:class
+                            "link-type horizontal-header top-border bottom-border"}
+                      [:component
+                       {:width 0.375
+                        :template label-template
+                        :omit-universal-elements true
+                        :parallel-ids [e2-id]
+                        :class "link-type"
+                        :relative-id e2-b-id
+                        :render-dom render-item-DOM-R
+                        :get-action-data (default-AD)}]]]
+                    [:div {:class "horizontal-value-last"}
+                     [:component
+                      {:width 1.03125
+                       :template (as-set (list 'anything (list common-object)
+                                               (list b-object)))
+                       :exclude-elements-by-ids [e2-common-id e2-b-id]
+                       :relative-id e2-id
+                       :render-dom render-item-DOM-R
+                       :get-action-data (default-AD)}]]]]]]]))))
 
 (deftest render-item-DOM-R-object-empty-others-test
   ;; An object with only a name and no other (non-name, non-label)
@@ -825,35 +858,48 @@
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "vertical-stack item"}
-                ;; The name.
-                [:div {:class "horizontal-labels-element link-type wide"}
-                 [:div {:class
-                        "link-type horizontal-header top-border bottom-border"}
+               [:div {:class "wrapped-element object-type item"}
+                ;; With no labels, the object gets a virtual (object-type)
+                ;; label.
+                [:component
+                 {:template object-type-virtual-label-template
+                  :omit-universal-elements true
+                  :is-object-name true
+                  :width 1.5
+                  :relative-id :virtual-label
+                  :class "object-type"
+                  :render-dom (virt-DOM)
+                  :position :after
+                  :get-action-data (virt-AD)}]
+                [:div {:class "indent-wrapper right-indent"}
+                 [:div {:class "vertical-stack"}
+                  ;; The name.
+                  [:div {:class "horizontal-labels-element link-type wide"}
+                   [:div {:class
+                          "link-type horizontal-header top-border bottom-border"}
+                    [:component
+                     {:width 0.375
+                      :template label-template
+                      :omit-universal-elements true
+                      :parallel-ids [name-id]
+                      :class "link-type"
+                      :relative-id name-label-id
+                      :render-dom render-item-DOM-R
+                      :get-action-data (default-AD)}]]
+                   [:component
+                    {:width 1.03125
+                     :template (as-set (list 'anything (list name-label)))
+                     :exclude-elements-by-ids [name-label-id]
+                     :relative-id name-id
+                     :render-dom render-item-DOM-R
+                     :get-action-data (default-AD)}]]
+                  ;; The empty "others" section is a virtual element.
                   [:component
-                   {:width 0.375
-                    :template label-template
-                    :omit-universal-elements true
-                    :parallel-ids [name-id]
-                    :class "link-type"
-                    :relative-id name-label-id
-                    :render-dom render-item-DOM-R
-                    :get-action-data (default-AD)}]]
-                 [:component
-                  {:width 1.03125
-                   :template (as-set (list 'anything (list name-label)))
-                   :exclude-elements-by-ids [name-label-id]
-                   :relative-id name-id
-                   :render-dom render-item-DOM-R
-                   :get-action-data (default-AD)}]]
-                ;; The empty "others" section is a virtual element.
-                [:div {:class "indent-wrapper-right"}
-                 [:component
-                  {:width 1.5
-                   :template 'anything
-                   :relative-id :virtual
-                   :render-dom (virt-DOM)
-                   :get-action-data (virt-AD)}]]]))))
+                   {:width 1.5
+                    :template 'anything
+                    :relative-id :virtual
+                    :render-dom (virt-DOM)
+                    :get-action-data (virt-AD)}]]]]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels

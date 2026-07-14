@@ -134,12 +134,9 @@
   [labels-dom label-type inner-dom orientation]
   (assert (#{:link-type :object-type} label-type))
   (if (= orientation :vertical)
-    [:div {:class (str "wrapped-element " (name label-type))}
+    [:div {:class (str "label-wrapping-elements " (name label-type))}
      labels-dom
-     [:div {:class (str "indent-wrapper"
-                        (case label-type
-                          :link-type " left-indent"
-                          :object-type " right-indent"))}
+     [:div {:class "wrapped-elements"}
       inner-dom]]
     (add-labels-DOM labels-dom inner-dom orientation)))
 
@@ -849,11 +846,11 @@
                         (not top-level)
                         (add-attributes {:class "merge-with-parent"}))]
         (assert leaf leaf)
-        [:div {:class (cond-> "link-type wrapped-element virtual-wrapper"
+        [:div {:class (cond-> "link-type label-wrapping-elements virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
          label-dom
-         [:div {:class "indent-wrapper link-type"} leaf-component]])
+         [:div {:class "wrapped-elements link-type"} leaf-component]])
       
       (empty? (:child-nodes node))
       leaf-component

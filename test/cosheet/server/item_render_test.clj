@@ -238,7 +238,7 @@
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node))
                                               {:width 0.75})
          [:div {:class
-                "link-type wrapped-element virtual-wrapper merge-with-parent"}
+                "link-type label-wrapping-elements virtual-wrapper merge-with-parent"}
           [:component {:template virtual-label-template
                        :is-object-name true
                        :width 0.75
@@ -250,7 +250,7 @@
                        :relative-id [(:jane-id ids) :nested]
                        :class "link-type merge-with-parent"
                        :render-dom (virt-DOM)}]
-          [:div {:class "indent-wrapper link-type"}
+          [:div {:class "wrapped-elements link-type"}
            [:component {:relative-id (:jane-id ids)
                         :render-dom render-item-DOM-R
                         :get-action-data (default-AD)
@@ -273,7 +273,7 @@
          (labels-and-elements-DOM
           [joe jane] nil false false :vertical
           {:template 'anything :width 0.8} :object-type)
-         [:div {:class "wrapped-element link-type"}
+         [:div {:class "label-wrapping-elements link-type"}
           [:component {:width 0.8, :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
                        :class "link-type"
@@ -281,9 +281,9 @@
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper left-indent"}
+          [:div {:class "wrapped-elements"}
            [:div {:class "vertical-stack"}
-            [:div {:class "wrapped-element link-type"}
+            [:div {:class "label-wrapping-elements link-type"}
              [:component {:width 0.8, :template label-template
                           :parallel-ids [(:joe-id ids)]
                           :class "link-type"
@@ -291,7 +291,7 @@
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper left-indent"}
+             [:div {:class "wrapped-elements"}
               [:component {:template (as-set `(~'anything
                                                (~test-label-object)
                                                (~foo-label-object)))
@@ -312,7 +312,7 @@
          (labels-and-elements-DOM
           [joe jane] nil false false :horizontal
           {:template 'anything :width 0.8} :link-type)
-         [:div {:class "wrapped-element link-type"}
+         [:div {:class "label-wrapping-elements link-type"}
           [:component {:width 0.8
                        :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
@@ -321,9 +321,9 @@
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper left-indent"}
+          [:div {:class "wrapped-elements"}
            [:div {:class "horizontal-stack"}
-            [:div {:class "wrapped-element link-type"}
+            [:div {:class "label-wrapping-elements link-type"}
              [:component {:width 0.8
                           :template label-template
                           :parallel-ids [(:joe-id ids)]
@@ -332,7 +332,7 @@
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper left-indent"}
+             [:div {:class "wrapped-elements"}
               [:component {:template (as-set `(~'anything
                                                (~test-label-object)
                                                (~foo-label-object)))
@@ -371,14 +371,14 @@
          (labels-and-elements-DOM
           [sally joe-test] nil false false :vertical
           {:template ' anything :width 0.8} :link-type)
-         [:div {:class "wrapped-element link-type"}
+         [:div {:class "label-wrapping-elements link-type"}
           [:component {:template label-template
                        :width 0.8
                        :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
-          [:div {:class "indent-wrapper left-indent"}
+          [:div {:class "wrapped-elements"}
            [:component {:template 'anything
                           :width 0.8
                         :relative-id sally-id
@@ -389,7 +389,7 @@
          (labels-and-elements-DOM
           [sally] nil true true :vertical
           {:template 'anything :width 0.8} :object-type)
-         [:div {:class "wrapped-element object-type"}
+         [:div {:class "label-wrapping-elements object-type"}
           [:component {:template object-type-virtual-label-template
                        :omit-universal-elements true
                        :is-object-name true
@@ -399,7 +399,7 @@
                        :render-dom (virt-DOM)
                        :position :after
                        :get-action-data (virt-AD)}]
-          [:div {:class "indent-wrapper right-indent"}
+          [:div {:class "wrapped-elements"}
            [:div {:class
                   "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
@@ -628,7 +628,7 @@
                                  :exclude-elements-by-ids [(:label-one-id ids)])
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element link-type item"}
+               [:div {:class "label-wrapping-elements link-type item"}
                 [:component {:template label-template
                              :relative-id (:label-two-id ids)
                              :omit-universal-elements true
@@ -636,7 +636,7 @@
                              :get-action-data (default-AD)
                              :class "link-type"
                              :width 1.5}]
-                [:div {:class "indent-wrapper left-indent"}
+                [:div {:class "wrapped-elements"}
                  [:component {:template (as-set `(""
                                                   (~one-object)
                                                   (~two-object)))
@@ -716,7 +716,7 @@
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element object-type item"}
+               [:div {:class "label-wrapping-elements object-type item"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -729,7 +729,7 @@
                   :render-dom (virt-DOM)
                   :position :after
                   :get-action-data (virt-AD)}]
-                [:div {:class "indent-wrapper right-indent"}
+                [:div {:class "wrapped-elements"}
                  [:div {:class "vertical-stack"}
                   [:div {}]
                   [:div {:class "vertical-stack"}
@@ -858,7 +858,7 @@
                                  :class "item")
                           store)]
     (is (check dom
-               [:div {:class "wrapped-element object-type item"}
+               [:div {:class "label-wrapping-elements object-type item"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -871,7 +871,7 @@
                   :render-dom (virt-DOM)
                   :position :after
                   :get-action-data (virt-AD)}]
-                [:div {:class "indent-wrapper right-indent"}
+                [:div {:class "wrapped-elements"}
                  [:div {:class "vertical-stack"}
                   ;; The name.
                   [:div {:class "horizontal-labels-element link-type wide"}
@@ -980,7 +980,7 @@
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
-                 [:div {:class "wrapped-element link-type"}
+                 [:div {:class "label-wrapping-elements link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-1-id ids)]
@@ -989,14 +989,14 @@
                                :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper left-indent"}
+                  [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
                                 :template `(~'anything (~one-object))
                                 :relative-id (:element-1-id ids)
                                 :exclude-elements-by-ids [(:label-one-id ids)]
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
-                 [:div {:class "wrapped-element link-type"}
+                 [:div {:class "label-wrapping-elements link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-2-id ids)]
@@ -1005,7 +1005,7 @@
                                :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper left-indent"}
+                  [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
                                 :template `(~'anything (~two-object))
                                 :relative-id (:element-2-id ids)
@@ -1031,7 +1031,7 @@
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
-                 [:div {:class "wrapped-element link-type"}
+                 [:div {:class "label-wrapping-elements link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids [(:element-0-id ids)]
@@ -1040,14 +1040,14 @@
                                :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper left-indent"}
+                  [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
                                 :template `(~'anything (~zero-object))
                                 :exclude-elements-by-ids [(:label-zero-id ids)]
                                 :relative-id (:element-0-id ids)
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
-                 [:div {:class "wrapped-element link-type"}
+                 [:div {:class "label-wrapping-elements link-type"}
                   [:component {:width 0.9
                                :template label-template
                                :parallel-ids (as-set [(:element-1-id ids)
@@ -1057,9 +1057,9 @@
                                :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
-                  [:div {:class "indent-wrapper left-indent"}
+                  [:div {:class "wrapped-elements"}
                    [:div {:class "vertical-stack"}
-                    [:div {:class "wrapped-element link-type"}
+                    [:div {:class "label-wrapping-elements link-type"}
                      [:component {:width 0.9
                                   :template label-template
                                   :parallel-ids[(:element-1-id ids)]
@@ -1068,7 +1068,7 @@
                                   :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
-                     [:div {:class "indent-wrapper left-indent"}
+                     [:div {:class "wrapped-elements"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
                                                        (~one-object)
@@ -1079,7 +1079,7 @@
                                    :relative-id (:element-1-id ids)
                                    :render-dom render-item-DOM-R
                                    :get-action-data (default-AD)}]]]
-                    [:div {:class "wrapped-element link-type"}
+                    [:div {:class "label-wrapping-elements link-type"}
                      [:component {:width 0.9
                                   :template label-template
                                   :parallel-ids [(:element-2-id ids)]
@@ -1088,7 +1088,7 @@
                                   :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
-                     [:div {:class "indent-wrapper left-indent"}
+                     [:div {:class "wrapped-elements"}
                       [:component {:width 0.9
                                    :template (as-set `(~'anything
                                                        (~two-object)

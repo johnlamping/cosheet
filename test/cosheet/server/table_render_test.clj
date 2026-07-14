@@ -310,7 +310,7 @@
                        :get-action-data (virt-AD)}]
            ;; The condition element.
            [:div {:class "horizontal-stack"}
-            [:div {:class "wrapped-element link-type"}
+            [:div {:class "label-wrapping-elements link-type"}
              [:component {:template label-template
                           :width 0.75
                           :parallel-ids [rc1-id]
@@ -319,7 +319,7 @@
                           :relative-id (any)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
-             [:div {:class "indent-wrapper left-indent"}
+             [:div {:class "wrapped-elements"}
               [:component {:template `(~'anything (~(id->object age-oid nil)))
                            :width 0.75
                            :exclude-elements-by-ids [(any)]
@@ -327,7 +327,7 @@
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
             ;; A virtual element for more condition.
-            [:div {:class "wrapped-element link-type virtual-column"}
+            [:div {:class "label-wrapping-elements link-type virtual-column"}
              [:component {:relative-id :virtual-label
                           :auxiliary-item-id rc1-id
                           :width 0.75
@@ -344,7 +344,7 @@
                                             (virt-AD)]
                           :class "link-type"
                           :render-dom render-virtual-DOM}]
-             [:div  {:class "indent-wrapper left-indent"}
+             [:div  {:class "wrapped-elements"}
               [:component {:template 'anything
                            :sibling true
                            :width 0.75
@@ -387,7 +387,7 @@
                         :class "link-type with-children"}]
            [:div {:class "column-header-sequence"}
             ;; A column with only a virtual label
-            [:div {:class (str "link-type wrapped-element virtual-wrapper"
+            [:div {:class (str "link-type label-wrapping-elements virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
               {:column-ids [c2-id]
@@ -403,7 +403,7 @@
                :relative-id [c2-id :nested]
                :class "link-type merge-with-parent"
                :render-dom (virt-DOM)}]
-             [:div {:class "indent-wrapper link-type"}
+             [:div {:class "wrapped-elements link-type"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                 :column-ids [c2-id]
@@ -426,7 +426,7 @@
               :exclude-elements-by-ids [c3-name-id]
               :class "column-header leaf"}]
             ;; A column with only a virtual label
-            [:div {:class (str "link-type wrapped-element virtual-wrapper"
+            [:div {:class (str "link-type label-wrapping-elements virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
               {:column-ids [c4-id]
@@ -442,7 +442,7 @@
                :relative-id [c4-id :nested]
                :class "link-type merge-with-parent"
                :render-dom (virt-DOM)}]
-             [:div {:class "indent-wrapper link-type"}
+             [:div {:class "wrapped-elements link-type"}
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                 :column-ids [c4-id]
@@ -463,7 +463,7 @@
                        :relative-id c5-id
                        :class "column-header leaf"}]
           ;; One column with no labels
-          [:div {:class (str "link-type wrapped-element virtual-wrapper"
+          [:div {:class (str "link-type label-wrapping-elements virtual-wrapper"
                              " column-header leaf")}
            [:component {:column-ids [c6-id]
                         :width 0.75
@@ -477,7 +477,7 @@
                         :class "link-type"
                         :relative-id [c6-id :nested]
                         :render-dom (virt-DOM)}]
-           [:div {:class "indent-wrapper link-type"}
+           [:div {:class "wrapped-elements link-type"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :column-ids [c6-id]
                          :width 0.75
@@ -486,7 +486,7 @@
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]
           ;; One column with no labels and non-empty content.
-          [:div {:class (str "link-type wrapped-element virtual-wrapper"
+          [:div {:class (str "link-type label-wrapping-elements virtual-wrapper"
                              " column-header leaf")}
            [:component {:column-ids [c7-id]
                         :width 0.75
@@ -500,7 +500,7 @@
                         :class "link-type"
                         :relative-id [c7-id :nested]
                         :render-dom (virt-DOM)}]
-           [:div {:class "indent-wrapper link-type"}
+           [:div {:class "wrapped-elements link-type"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :column-ids [c7-id]
                          :width 0.75
@@ -509,7 +509,7 @@
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]
           ;; The virtual column.
-          [:div {:class (str "wrapped-element link-type"
+          [:div {:class (str "label-wrapping-elements link-type"
                              " column-header virtual-column")}
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
@@ -525,7 +525,7 @@
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "link-type"
                         :render-dom (virt-DOM)}]
-           [:div {:class "indent-wrapper left-indent"}
+           [:div {:class "wrapped-elements"}
             [:component {:relative-id :virtual-column
                          :template 'anything
                          :width 0.75
@@ -682,7 +682,7 @@
                                 `(~name-label-object) joe-joe)))]
              :get-do-batch-edit-action-data
              (table-cell-item-do-batch-AD)}]]
-          [:div {:class "wrapped-element link-type"}
+          [:div {:class "label-wrapping-elements link-type"}
            [:component {:width 0.75
                         :template label-template
                         :parallel-ids [joe-joseph-id]
@@ -696,7 +696,7 @@
                         :class "link-type"
                         :omit-universal-elements true
                         :relative-id (any)}]
-            [:div {:class "indent-wrapper left-indent"}
+            [:div {:class "wrapped-elements"}
              [:component
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM-R

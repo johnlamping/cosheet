@@ -171,7 +171,7 @@
                        :immutable true
                        :stack-id stk1
                        :width 0.75}]
-          [:div {:class "wrapped-element link-type"}
+          [:div {:class "label-wrapping-elements link-type"}
            [:component
             {:template label-template
              :query-id q2
@@ -184,7 +184,7 @@
              :relative-id q2-c1-l
              :immutable true
              :width 0.75}]
-           [:div {:class "indent-wrapper left-indent"}
+           [:div {:class "wrapped-elements"}
             [:component {:relative-id q2-c1
                          :template `(~'anything
                                      (~(in-different-store c1-label nil)))

@@ -160,28 +160,36 @@
                       condition-elements))
        canonical-elements elements))))
 
+;;; The specification keys that should always be inherited by
+;;; sub-components, unless explicitly overridden.
+(def inherited-specification-keys
+  [:width :immutable])
+
 (defn transform-specification-for-elements
   [specification]
-  (assoc (select-keys specification [:width :immutable])
+  (assoc (select-keys specification inherited-specification-keys)
          :template 'anything))
 
 (defn transform-specification-for-labels
   [specification label-type]
-  (assoc (select-keys specification [:width :immutable])
+  (assoc (select-keys specification inherited-specification-keys)
          :template `(~(ensure-label-object 'anything label-type))
          :omit-universal-elements true))
 
 (defn transform-specification-for-non-contained-labels
   [specification label-type]
   ;; The label's dom is not contained in a component for the items it
-  ;; applies to. We have to keep the action data functions for the
+  ;; applies to. We have to keep the action data information for the
   ;; items the labels pertain to, and the information they use,
   ;; because the label needs to use them as part of its action data
   ;; function.
-  (assoc (select-keys specification [:width :immutable
-                                     :query-id :stack-id
-                                     :excluding-ids :get-action-data
-                                     :get-do-batch-edit-action-data])
+  ;; TODO: !!! Most of the added keys are for batch-editing. Review them
+  ;;       once batch-editing is fixed.
+  (assoc (select-keys specification (concat inherited-specification-keys
+                                            [:get-action-data
+                                             :query-id :stack-id
+                                             :excluding-ids 
+                                             :get-do-batch-edit-action-data]))
          :template `(~(ensure-label-object 'anything label-type))
          :omit-universal-elements true))
 

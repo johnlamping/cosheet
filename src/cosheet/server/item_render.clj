@@ -42,6 +42,7 @@
                           condition-satisfiers
                           hierarchy-node-DOM
                           final-template
+                          inherited-specification-keys
                           transform-specification-for-elements
                           transform-specification-for-labels
                           transform-specification-for-non-contained-labels
@@ -654,8 +655,9 @@
         ;; (although its parts may be.
         editable (and (not immutable)
                       (or reference-contents (not (object? contents))))
-        specification (cond-> (-> (select-keys specification [:class :width])
-                                  (assoc :template (content template)))
+        kept-spec (select-keys specification
+                               (concat [:class] inherited-specification-keys))
+        specification (cond-> (assoc kept-spec :template (content template))
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
           (element-primitive-content-DOM element contents specification)
@@ -689,7 +691,8 @@
   (let [content-dom
         (make-component
          (cond-> (-> (select-keys specification
-                                  [:template :class :width])
+                                  (concat [:template :class]
+                                          inherited-specification-keys))
                      (assoc :relative-id :content
                             :auxiliary-item-id (:item-id element)
                             :render-dom render-content-only-DOM

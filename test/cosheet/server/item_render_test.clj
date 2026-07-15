@@ -230,7 +230,7 @@
                                               {:width 0.75})
          [:component {:relative-id (:joe-id ids)
                       :width 0.75
-                      :exclude-elements-by-ids [(:joe-test-id ids)]
+                      :element-ids-to-exclude #{(:joe-test-id ids)}
                       :render-dom render-item-DOM-R
                       :get-action-data (default-AD)}]))
     ;; A node with leaves, no properties, and no children
@@ -255,7 +255,7 @@
                         :render-dom render-item-DOM-R
                         :get-action-data (default-AD)
                         :width 0.75
-                        :exclude-elements-by-ids [(:jane-test-id ids)]}]]]))))
+                        :element-ids-to-exclude #{(:jane-test-id ids)}}]]]))))
 
 (deftest labels-and-elements-DOM-test
   (let [[s ids] (make-joe-and-jane-store)
@@ -296,14 +296,14 @@
                                                (~test-label-object)
                                                (~foo-label-object)))
                            :width 0.8
-                           :exclude-elements-by-ids (as-set [(:joe-test-id ids)
-                                                             (:joe-foo-id ids)])
+                           :element-ids-to-exclude #{(:joe-test-id ids)
+                                                      (:joe-foo-id ids)}
                            :relative-id (:joe-id ids)
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
             [:component {:template `(~'anything (~test-label-object))
                          :width 0.8
-                         :exclude-elements-by-ids [(:jane-test-id ids)]
+                         :element-ids-to-exclude #{(:jane-test-id ids)}
                          :relative-id (:jane-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]]))
@@ -337,14 +337,14 @@
                                                (~test-label-object)
                                                (~foo-label-object)))
                            :width 0.8
-                           :exclude-elements-by-ids (as-set [(:joe-test-id ids)
-                                                             (:joe-foo-id ids)])
+                           :element-ids-to-exclude #{(:joe-test-id ids)
+                                                      (:joe-foo-id ids)}
                            :relative-id (:joe-id ids)
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
             [:component {:template `(~'anything (~test-label-object))
                          :width 0.8
-                         :exclude-elements-by-ids [(:jane-test-id ids)]
+                         :element-ids-to-exclude #{(:jane-test-id ids)}
                          :relative-id (:jane-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]]))
@@ -531,7 +531,7 @@
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id
-                            :exclude-elements-by-ids [elem-id]
+                            :element-ids-to-exclude #{elem-id}
                             :class "object"
                             :render-dom render-item-DOM-R
                             :get-action-data (default-AD)}]))))
@@ -625,7 +625,7 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id (:fred-id ids)
-                                 :exclude-elements-by-ids [(:label-one-id ids)])
+                                 :element-ids-to-exclude #{(:label-one-id ids)})
                           store)]
     (is (check dom
                [:div {:class "label-wrapping-elements link-type item"}
@@ -749,10 +749,12 @@
                        :class "link-type"
                        :position :after
                        :parallel-ids [test-id]
-                       :relative-id [test-id :virtual-label]}]]
+                       :relative-id [test-id :virtual-label]
+                       :object-ids-to-contract #{obj-id}}]]
                     [:component {:width 1.03125
                                  :template 'anything
                                  :relative-id test-id
+                                 :object-ids-to-contract #{obj-id}
                                  :render-dom render-item-DOM-R
                                  :get-action-data (default-AD)}]]
                    ;; elem-id, with no labels, gets a virtual label.
@@ -771,10 +773,12 @@
                        :class "link-type"
                        :position :after
                        :parallel-ids [elem-id]
-                       :relative-id [elem-id :virtual-label]}]]
+                       :relative-id [elem-id :virtual-label]
+                       :object-ids-to-contract #{obj-id}}]]
                     [:component {:width 1.03125
                                  :template 'anything
                                  :relative-id elem-id
+                                 :object-ids-to-contract #{obj-id}
                                  :render-dom render-item-DOM-R
                                  :get-action-data (default-AD)}]]
                    ;; The "common" label, shared by e1 and e2, heads the
@@ -788,10 +792,12 @@
                        :parallel-ids [e1-id e2-id]
                        :class "link-type"
                        :relative-id e1-common-id
+                       :object-ids-to-contract #{obj-id}
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]]
                     [:component {:width 1.03125
                                  :template (list 'anything (list common-object))
+                                 :object-ids-to-contract #{obj-id}
                                  :relative-id :virtual
                                  :sibling true
                                  :position :after
@@ -809,14 +815,16 @@
                         :parallel-ids [e1-id]
                         :class "link-type"
                         :relative-id e1-a-id
+                        :object-ids-to-contract #{obj-id}
                         :render-dom render-item-DOM-R
                         :get-action-data (default-AD)}]]]
                     [:component
                      {:width 1.03125
                       :template (as-set (list 'anything (list a-object)
                                               (list common-object)))
-                      :exclude-elements-by-ids [e1-a-id e1-common-id]
+                      :element-ids-to-exclude #{e1-a-id e1-common-id}
                       :relative-id e1-id
+                      :object-ids-to-contract #{obj-id}
                       :render-dom render-item-DOM-R
                       :get-action-data (default-AD)}]]
                    ;; e2, the last child, shows its own "b" label.
@@ -832,6 +840,7 @@
                         :parallel-ids [e2-id]
                         :class "link-type"
                         :relative-id e2-b-id
+                        :object-ids-to-contract #{obj-id}
                         :render-dom render-item-DOM-R
                         :get-action-data (default-AD)}]]]
                     [:div {:class "horizontal-value-last"}
@@ -839,8 +848,9 @@
                       {:width 1.03125
                        :template (as-set (list 'anything (list common-object)
                                                (list b-object)))
-                       :exclude-elements-by-ids [e2-common-id e2-b-id]
+                       :element-ids-to-exclude #{e2-common-id e2-b-id}
                        :relative-id e2-id
+                       :object-ids-to-contract #{obj-id}
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]]]]]]]))))
 
@@ -884,22 +894,90 @@
                       :parallel-ids [name-id]
                       :class "link-type"
                       :relative-id name-label-id
+                      :object-ids-to-contract #{obj-id}
                       :render-dom render-item-DOM-R
                       :get-action-data (default-AD)}]]
                    [:component
                     {:width 1.03125
                      :template (as-set (list 'anything (list name-label)))
-                     :exclude-elements-by-ids [name-label-id]
+                     :element-ids-to-exclude #{name-label-id}
                      :relative-id name-id
+                     :object-ids-to-contract #{obj-id}
                      :render-dom render-item-DOM-R
                      :get-action-data (default-AD)}]]
                   ;; The empty "others" section is a virtual element.
                   [:component
                    {:width 1.5
                     :template 'anything
+                    :object-ids-to-contract #{obj-id}
                     :relative-id :virtual
                     :render-dom (virt-DOM)
                     :get-action-data (virt-AD)}]]]]))))
+
+(deftest render-item-DOM-R-object-contract-test
+  ;; When the object's own id is in :object-ids-to-contract, object-DOM still
+  ;; renders its name and its simple labels, but drops its other
+  ;; elements and any label that itself has other elements.
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 obj-id] (get-new-object-id s0)
+        [s2 name-id] (add-element s1 obj-id `("Fred" (~o1 :order)))
+        [s3 name-label-id] (add-element s2 name-id `(~name-label))
+        [s4 test-id] (add-element s3 obj-id `("test" (~o2 :order)))
+        [s5 simple-oid] (add-link-type-object s4 "simple")
+        [s6 complex-oid] (add-link-type-object s5 "complex")
+        ;; A simple label, with no other elements, is kept.
+        [s7 simple-label-id] (add-element s6 obj-id
+                                          `(~(id->object simple-oid s6)
+                                            (~o3 :order)))
+        ;; A complex label, which itself has another element, is dropped.
+        [s8 complex-label-id] (add-element s7 obj-id
+                                           `(~(id->object complex-oid s7)
+                                             (~o4 :order)))
+        [store extra-id] (add-element s8 complex-label-id
+                                      `("extra" (~o1 :order)))
+        dom (run-renderer render-item-DOM-R
+                          (assoc basic-dom-specification
+                                 :relative-id obj-id
+                                 :class "item"
+                                 :object-ids-to-contract #{obj-id})
+                          store)]
+    (is (check dom
+               [:div {:class "label-wrapping-elements object-type item"}
+                ;; The simple label is shown. The complex label, which
+                ;; itself has another element, is dropped.
+                [:component
+                 {:width 1.5
+                  :object-ids-to-contract #{obj-id}
+                  :template (list object-type-label-object-template)
+                  :omit-universal-elements true
+                  :class "link-type"
+                  :relative-id simple-label-id
+                  :render-dom render-item-DOM-R
+                  :get-action-data (default-AD)}]
+                ;; The name is still shown, but the "test" other element
+                ;; is not.
+                [:div {:class "wrapped-elements"}
+                 [:div {:class "horizontal-labels-element link-type wide"}
+                  [:div {:class
+                         "link-type horizontal-header top-border bottom-border"}
+                   [:component
+                    {:width 0.375
+                     :template label-template
+                     :omit-universal-elements true
+                     :object-ids-to-contract #{obj-id}
+                     :parallel-ids [name-id]
+                     :class "link-type"
+                     :relative-id name-label-id
+                     :render-dom render-item-DOM-R
+                     :get-action-data (default-AD)}]]
+                  [:component
+                   {:width 1.03125
+                    :template (as-set (list 'anything (list name-label)))
+                    :element-ids-to-exclude #{name-label-id}
+                    :object-ids-to-contract #{obj-id}
+                    :relative-id name-id
+                    :render-dom render-item-DOM-R
+                    :get-action-data (default-AD)}]]]]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
@@ -993,7 +1071,7 @@
                    [:component {:width 0.9
                                 :template `(~'anything (~one-object))
                                 :relative-id (:element-1-id ids)
-                                :exclude-elements-by-ids [(:label-one-id ids)]
+                                :element-ids-to-exclude #{(:label-one-id ids)}
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
                  [:div {:class "label-wrapping-elements link-type"}
@@ -1009,7 +1087,7 @@
                    [:component {:width 0.9
                                 :template `(~'anything (~two-object))
                                 :relative-id (:element-2-id ids)
-                                :exclude-elements-by-ids [(:label-two-id ids)]
+                                :element-ids-to-exclude #{(:label-two-id ids)}
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]]])))
   ;; Test an item with four elements, with link-type sharing among them.
@@ -1043,7 +1121,7 @@
                   [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
                                 :template `(~'anything (~zero-object))
-                                :exclude-elements-by-ids [(:label-zero-id ids)]
+                                :element-ids-to-exclude #{(:label-zero-id ids)}
                                 :relative-id (:element-0-id ids)
                                 :render-dom render-item-DOM-R
                                 :get-action-data (default-AD)}]]]
@@ -1073,9 +1151,9 @@
                                    :template (as-set `(~'anything
                                                        (~one-object)
                                                        (~both-object)))
-                                   :exclude-elements-by-ids
-                                   (as-set [(:label-1-both-id ids)
-                                            (:label-one-id ids)])
+                                   :element-ids-to-exclude
+                                   #{(:label-1-both-id ids)
+                                     (:label-one-id ids)}
                                    :relative-id (:element-1-id ids)
                                    :render-dom render-item-DOM-R
                                    :get-action-data (default-AD)}]]]
@@ -1093,9 +1171,9 @@
                                    :template (as-set `(~'anything
                                                        (~two-object)
                                                        (~both-object)))
-                                   :exclude-elements-by-ids
-                                   (as-set [(:label-2-both-id ids)
-                                            (:label-two-id ids)])
+                                   :element-ids-to-exclude
+                                   #{(:label-2-both-id ids)
+                                     (:label-two-id ids)}
                                    :relative-id (:element-2-id ids)
                                    :render-dom render-item-DOM-R
                                    :get-action-data (default-AD)}]]]]]]
@@ -1134,7 +1212,7 @@
                                     :relative-id fred-id
                                     :width 1.5
                                     :must-show-label :wide
-                                    :exclude-elements-by-ids [id3])
+                                    :element-ids-to-exclude #{id3})
                              store)]
     (is (check
          dom
@@ -1226,7 +1304,7 @@
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~one-object))
-                         :exclude-elements-by-ids [(:label-one-id ids)]
+                         :element-ids-to-exclude #{(:label-one-id ids)}
                          :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
@@ -1242,7 +1320,7 @@
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~two-object))
-                         :exclude-elements-by-ids [(:label-two-id ids)]
+                         :element-ids-to-exclude #{(:label-two-id ids)}
                          :relative-id (:element-2-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]]])))
@@ -1278,7 +1356,7 @@
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~zero-object))
-                         :exclude-elements-by-ids [(:label-zero-id ids)]
+                         :element-ids-to-exclude #{(:label-zero-id ids)}
                          :relative-id (:element-0-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
@@ -1315,9 +1393,8 @@
                          :template (as-set `(~'anything
                                              (~both-object)
                                              (~one-object)))
-                         :exclude-elements-by-ids (as-set
-                                                   [(:label-1-both-id ids)
-                                                    (:label-one-id ids)])
+                         :element-ids-to-exclude #{(:label-1-both-id ids)
+                                                    (:label-one-id ids)}
                          :relative-id (:element-1-id ids)
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)}]]
@@ -1337,9 +1414,8 @@
                           :template (as-set `(~'anything
                                               (~both-object)
                                               (~two-object)))
-                          :exclude-elements-by-ids (as-set
-                                                    [(:label-2-both-id ids)
-                                                     (:label-two-id ids)])
+                          :element-ids-to-exclude #{(:label-2-both-id ids)
+                                                     (:label-two-id ids)}
                           :relative-id (:element-2-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]]

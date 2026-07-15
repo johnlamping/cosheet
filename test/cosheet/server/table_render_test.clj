@@ -322,7 +322,7 @@
              [:div {:class "wrapped-elements"}
               [:component {:template `(~'anything (~(id->object age-oid nil)))
                            :width 0.75
-                           :exclude-elements-by-ids [(any)]
+                           :element-ids-to-exclude #{(any)}
                            :relative-id rc1-id
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
@@ -413,7 +413,7 @@
                 :relative-id c2-id
                 :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
-                :exclude-elements-by-ids [c2-name-id]}]]]
+                :element-ids-to-exclude #{c2-name-id}}]]]
             ;; A column with an additional label
             [:component
              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -423,7 +423,7 @@
               :relative-id c3-id
               :render-dom render-item-DOM-R
               :get-action-data (default-AD)
-              :exclude-elements-by-ids [c3-name-id]
+              :element-ids-to-exclude #{c3-name-id}
               :class "column-header leaf"}]
             ;; A column with only a virtual label
             [:div {:class (str "link-type label-wrapping-elements virtual-wrapper"
@@ -452,7 +452,7 @@
                 :render-dom render-item-DOM-R
                 :get-action-data (default-AD)
                 :relative-id c4-id
-                :exclude-elements-by-ids [(any)]}]]]]]
+                :element-ids-to-exclude #{(any)}}]]]]]
           ;; One column with two labels
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                        :column-ids [c5-id]
@@ -677,9 +677,9 @@
              :get-action-data (default-AD)
              :template `("" (~name-label-object))
              :width 0.75
-             :exclude-elements-by-ids
-             [(:item-id (first (matching-elements
-                                `(~name-label-object) joe-joe)))]
+             :element-ids-to-exclude
+             #{(:item-id (first (matching-elements
+                                 `(~name-label-object) joe-joe)))}
              :get-do-batch-edit-action-data
              (table-cell-item-do-batch-AD)}]]
           [:div {:class "label-wrapping-elements link-type"}
@@ -704,12 +704,11 @@
                :template `("" (~name-label-object)
                               (~(id->object id-oid nil)))
                :width 0.75
-               :exclude-elements-by-ids
-               (as-set
-                [(:item-id (first (matching-elements
+               :element-ids-to-exclude
+               #{(:item-id (first (matching-elements
                                    `(~name-label-object) joe-joseph)))
                  (:item-id (first (matching-elements
-                                   `(~id-label-object) joe-joseph)))])
+                                   `(~id-label-object) joe-joseph)))}
                :get-do-batch-edit-action-data
                (table-cell-item-do-batch-AD)}]]]]))
 

@@ -83,14 +83,14 @@
   "Make a component dom to display the given item, minus the excluded
   elements."
   [item excluded-elements specification]
-  (assert (empty? (:exclude-elements-by-ids specification))
-          [excluded-elements (:exclude-elements-by-ids specification)])
+  (assert (empty? (:element-ids-to-exclude specification))
+          [excluded-elements (:element-ids-to-exclude specification)])
   (assert (not (:get-action-data specification))
           (:get-action-data specification))
   (let [new-spec (cond-> specification
                    (seq excluded-elements)
-                   (assoc :exclude-elements-by-ids
-                          (vec (map :item-id excluded-elements))))]
+                   (assoc :element-ids-to-exclude
+                          (set (map :item-id excluded-elements))))]
     (item-component item new-spec)))
 
 (defn item-stack-DOM
@@ -308,7 +308,7 @@
   satisfy the :template of the specification. The specification should
   be the one for the overall hierarchy."
   [hierarchy-node specification]
-  (assert (empty? (:exclude-elements-by-ids specification)) specification)
+  (assert (empty? (:element-ids-to-exclude specification)) specification)
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
@@ -341,7 +341,7 @@
   of an element, which is either :source or :target)."
   [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
-  (assert (empty? (:exclude-elements-by-ids specification)) specification)
+  (assert (empty? (:element-ids-to-exclude specification)) specification)
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
@@ -668,7 +668,7 @@
               (item-component
                contents
                (-> specification
-                   (assoc :exclude-elements-by-ids [(:item-id element)])
+                   (assoc :element-ids-to-exclude #{(:item-id element)})
                    (into-attributes {:class "object"})))))))
 
 (defn render-content-only-DOM
@@ -736,10 +736,10 @@
 (defn element-DOM
   "Render a dom spec given the immutable entity for an item (which may
   be an exemplar of a group of items)."
-  [entity {:keys [exclude-elements-by-ids] :as specification}]
-  (let [excluded-set (set exclude-elements-by-ids)
-        elements (remove #(excluded-set (:item-id %))
-                         (semantic-elements entity))
+  [entity {:keys [element-ids-to-exclude] :as specification}]
+  (let [elements (cond->> (semantic-elements entity)
+                   element-ids-to-exclude
+                   (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)
         labels (cond->> labels
                  (:omit-universal-elements specification)
@@ -753,23 +753,35 @@
 (defn object-DOM
   "Render a dom for an object. Shows labels (classes) wrapping names,
   then other elements. Labels are indented to the right."
-  [entity {:keys [exclude-elements-by-ids template] :as specification}]
-  (let [excluded-set (set exclude-elements-by-ids)
-        elements (remove #(excluded-set (:item-id %))
-                         (semantic-elements entity))
+  [entity {:keys [template element-ids-to-exclude object-ids-to-contract]
+           :as specification}]
+  (let [entity-id (:item-id entity)
+        contract (contains? object-ids-to-contract entity-id)
+        elements (cond->> (semantic-elements entity)
+                   element-ids-to-exclude
+                   (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)
+        ;; When contracting, also hide any label that itself has
+        ;; other elements.
+        labels (cond->> labels
+                 contract (remove #(seq (semantic-elements %))))
         [names others] (separate-by name-element? non-labels)
-        elem-spec (transform-specification-for-elements specification)
+        elem-spec (update (transform-specification-for-elements specification)
+                          :object-ids-to-contract (fnil conj #{}) entity-id)
+        ;; The name is shown even when contracting; the other elements
+        ;; are shown only when not contracting.
         names-dom (non-label-elements-DOM
-                   names nil (boolean (seq others)) :vertical elem-spec)
-        others-dom (if (seq others)
-                     (non-label-elements-DOM
-                      others template true :vertical elem-spec)
-                     (virtual-DOM-component
-                      (assoc elem-spec :relative-id :virtual)))
-        inner-dom (nest-if-multiple-DOM
-                   [names-dom others-dom]
-                   :vertical)
+                   names nil (boolean (and (not contract) (seq others)))
+                   :vertical elem-spec)
+        inner-dom (if contract
+                    names-dom
+                    (let [others-dom
+                          (if (seq others)
+                            (non-label-elements-DOM
+                             others template true :vertical elem-spec)
+                            (virtual-DOM-component
+                             (assoc elem-spec :relative-id :virtual)))]
+                      (nest-if-multiple-DOM [names-dom others-dom] :vertical)))
         labels-spec (transform-specification-for-labels
                      specification :object-type)]
     (cond-> (wrap-with-labels-DOM
@@ -826,12 +838,12 @@
                                (clojure.set/difference
                                 (set labels)
                                 (set (hierarchy-node-example-elements node)))
-                               ancestor-ids (map :item-id ancestor-props)]
+                               ancestor-ids (set (map :item-id ancestor-props))]
                            (item-component
                             leaf
                             (cond-> (assoc specification :width 0.75)
                               (seq ancestor-ids)
-                              (assoc :exclude-elements-by-ids ancestor-ids)))))
+                              (assoc :element-ids-to-exclude ancestor-ids)))))
         descendant-ids (map #(-> % :item :item-id)
                             (hierarchy-node-descendants node)) ]
     (cond

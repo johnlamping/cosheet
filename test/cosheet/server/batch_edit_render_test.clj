@@ -193,7 +193,7 @@
                          :render-dom render-item-DOM-R
                          :get-action-data (default-AD)
                          :immutable true
-                         :exclude-elements-by-ids [q2-c1-l]
+                         :element-ids-to-exclude #{q2-c1-l}
                          :width 0.75}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test

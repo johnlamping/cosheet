@@ -236,9 +236,17 @@
 ;;;                         all of a named object, we want to show
 ;;;                         the label of the name, so then we don't
 ;;;                         use this.
-;;; :exclude-elements-by-ids  If present, this is a list of ids of
+;;; :element-ids-to-exclude   If present, this is a set of ids of
 ;;;                         elements of the entity being shown that should
 ;;;                         not be displayed.
+;;; :object-ids-to-contract   If present, a set of ids of objects, most of
+;;;                         whose elements should not be shown when
+;;;                         the object is rendered. This is inherited
+;;;                         to child elements. When an object renders
+;;;                         its elements, it adds its own id to this
+;;;                         set for its elements' specifications, so
+;;;                         that cycles of links won't lead to
+;;;                         infinite expansion of objects.
 ;;;     :auxiliary-item-id  If this is present, :relative-id will be a
 ;;;                         keyword, and this field will give an id
 ;;;                         needed by the component. Its meaning

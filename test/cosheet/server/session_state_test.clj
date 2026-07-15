@@ -146,7 +146,7 @@
       (let [root-component (client-id->component @dom-manager "root")]
         (is (check (reporter-value-or-invalid (:dom-R @root-component))
                    [:div {}
-                    [:component {:width 0.75,
+                    [:component {:width 3.0,
                                  :template ""
                                  :relative-id (:item-id row1)
                                  :must-show-label true

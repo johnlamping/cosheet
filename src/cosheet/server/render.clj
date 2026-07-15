@@ -449,7 +449,7 @@
                        :render-dom render-item-DOM-R
                        :get-action-data default-get-action-data
                        :must-show-label true
-                       :width 0.75
+                       :width 3.0
                        :get-action-data [get-id-action-data
                                          (:item-id immutable-item)])))]))))))
 

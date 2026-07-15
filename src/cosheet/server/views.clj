@@ -427,10 +427,13 @@
           (do-replay session-state replay))
         (process-acknowledgements dom-manager acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
-          (let [client-info (cond-> (do-actions
-                                     store session-state action-sequence)
-                              clean (assoc :set-url
-                                           (remove-url-file-extension clean)))]
+          (let [client-info (do-actions
+                             store session-state action-sequence)
+                client-info (cond-> client-info
+                              ;; Don't override a set-url coming back.
+                              (and clean (not (:set-url client-info)))
+                              (assoc :set-url
+                                     (remove-url-file-extension clean)))]
             (update-store-file file-path)
             ;; We copy a select-by-ids request into the client info,
             ;; where it can hang around until we generate dom that

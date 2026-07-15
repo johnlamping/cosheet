@@ -141,7 +141,7 @@ body {
     margin: 0px 2px 5px 3px;
 }
 
-.vertical-stack > .item + .item {
+.vertical-stack > .item + :not(.object) {
     border-width: 1px 0px 0px 0px;
 }
 

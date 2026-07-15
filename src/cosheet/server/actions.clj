@@ -13,7 +13,7 @@
                    fetch-and-clear-modified-ids
                    store-update! store-update-control-return!
                    id->target target-label->ids target-source->ids
-                   id-valid-link?
+                   id-known?
                    object-id? link-id? item-id? interned-object-id?
                    get-new-object-id
                    undo! redo!
@@ -259,7 +259,6 @@
   it. Does nothing to subjects that are not elements or that are an
   element that gives a name."
   [store {:keys [subject-ids client-id]}]
-  (println "SUBJECT-IDS" subject-ids)
   (let [[store oids]
         (reduce (fn [[store oids] subject-id]
                   (if (or (object-id? subject-id)
@@ -267,7 +266,7 @@
                                  store subject-id name-label-id)))
                     [store oids]
                     (let [[s1 object-id] (get-new-object-id store)
-                          s2 (update-source store subject-id object-id)]
+                          s2 (update-source s1 subject-id object-id)]
                       (if (= s1 (abandon-problem-changes s1 s2 subject-id))
                         [store oids]
                         [s2 (conj oids object-id)]))))
@@ -346,10 +345,12 @@
                  (= (count column-ids) 1)) ; Don't remove multiple columns.
         (remove-entity-by-id store (first column-ids))))))
 
+;;; TODO: This needs to handle reversed links.
 (defn do-expand
     [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
-    (let [root-id (map-reporter-get-current (:client-state session-state) :root-id)
+    (let [root-id (map-reporter-get-current (:client-state session-state)
+                                            :root-id)
           target (id->target store subject-id)
           ;; In two cases we want to show the target of the
           ;; subject, rather than the subject, itself:
@@ -661,7 +662,7 @@
         ;; that id, we will try to focus on it.
         (if (and root-id
                  (not (:set-url client-info))
-                 (not (id-valid-link? (current-store mutable-store) root-id)))
+                 (not (id-known? (current-store mutable-store) root-id)))
           (do
             (map-reporter-change-value! client-state :root-id (constantly nil))
             (assoc client-info :set-url (str (:url-path session-state) "?")))

@@ -1,7 +1,7 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements matching-items]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [id-valid-link? id-known?]]
+                      [store :refer [id-known?]]
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
                       [reporter :refer [reporter-value-or-invalid universal-category]]

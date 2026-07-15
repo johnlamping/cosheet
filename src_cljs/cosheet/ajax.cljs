@@ -31,7 +31,7 @@
   ([params]
    (ajax-request params 5000))
   ([params timeout]
-   (timed-log "sending ajax request.")
+   (timed-log (str "sending ajax request: " params))
    (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
          {:params params
           :response-format (transit-response-format)

@@ -15,7 +15,6 @@
      [calculator :refer [make-calculator-data compute]]
      [task-queue :refer [make-priority-task-queue finished-all-tasks?]]
      [hiccup-utils :refer [dom-attributes add-attributes]]
-     [reporter :as reporter]
      [map-reporter :refer [map-reporter-reset! map-reporter-get-current]])
     (cosheet.server
       [dom-manager :refer [request-client-refresh
@@ -408,6 +407,7 @@
         {:keys [actions replay unload clean acknowledge]} params
         user-id (get-in request [:session :identity] "unknown")
         session-state (ensure-session-state user-id params)]
+    (println "GOT AJAX REQUEST" params)
     (if session-state
       (let [{:keys [dom-manager file-path store client-state
                     session-ephemeral-id]} session-state]

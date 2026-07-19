@@ -583,8 +583,8 @@
 (defn css-class-for-name
   "Return the class to use in formatting the name of this object"
   [object]
-  (cond (seq (content->elements object link-type)) "link-type"
-        (seq (content->elements object object-type)) "object-type"
+  (cond (seq (content->elements object link-type)) "name link-type"
+        (seq (content->elements object object-type)) "name object-type"
         true "name"))
 
 (defn render-object-reference-DOM-R
@@ -769,10 +769,12 @@
         elem-spec (update (transform-specification-for-elements specification)
                           :object-ids-to-contract (fnil conj #{}) entity-id)
         ;; The name is shown even when contracting; the other elements
-        ;; are shown only when not contracting.
+        ;; are shown only when not contracting. We give the name the
+        ;; "name" class and exclude its name label from what is shown.
         names-dom (non-label-elements-DOM
-                   names nil (boolean (and (not contract) (seq others)))
-                   :vertical elem-spec)
+                   names `(~'anything (~name-label))
+                   (boolean (and (not contract) (seq others)))
+                   :vertical (assoc elem-spec :class "name"))
         inner-dom (if contract
                     names-dom
                     (let [others-dom

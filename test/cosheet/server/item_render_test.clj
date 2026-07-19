@@ -883,28 +883,17 @@
                   :get-action-data (virt-AD)}]
                 [:div {:class "wrapped-elements"}
                  [:div {:class "vertical-stack"}
-                  ;; The name.
-                  [:div {:class "horizontal-labels-element link-type wide"}
-                   [:div {:class
-                          "link-type horizontal-header top-border bottom-border"}
-                    [:component
-                     {:width 0.375
-                      :template label-template
-                      :omit-universal-elements true
-                      :parallel-ids [name-id]
-                      :class "link-type"
-                      :relative-id name-label-id
-                      :object-ids-to-contract #{obj-id}
-                      :render-dom render-item-DOM-R
-                      :get-action-data (default-AD)}]]
-                   [:component
-                    {:width 1.03125
-                     :template (as-set (list 'anything (list name-label)))
-                     :element-ids-to-exclude #{name-label-id}
-                     :relative-id name-id
-                     :object-ids-to-contract #{obj-id}
-                     :render-dom render-item-DOM-R
-                     :get-action-data (default-AD)}]]
+                  ;; The name, shown with the "name" class and its name
+                  ;; label excluded.
+                  [:component
+                   {:width 1.5
+                    :template 'anything
+                    :class "name"
+                    :element-ids-to-exclude #{name-label-id}
+                    :relative-id name-id
+                    :object-ids-to-contract #{obj-id}
+                    :render-dom render-item-DOM-R
+                    :get-action-data (default-AD)}]
                   ;; The empty "others" section is a virtual element.
                   [:component
                    {:width 1.5
@@ -954,30 +943,18 @@
                   :relative-id simple-label-id
                   :render-dom render-item-DOM-R
                   :get-action-data (default-AD)}]
-                ;; The name is still shown, but the "test" other element
-                ;; is not.
+                ;; The name is still shown, with the "name" class and its
+                ;; name label excluded, but the "test" other element is not.
                 [:div {:class "wrapped-elements"}
-                 [:div {:class "horizontal-labels-element link-type wide"}
-                  [:div {:class
-                         "link-type horizontal-header top-border bottom-border"}
-                   [:component
-                    {:width 0.375
-                     :template label-template
-                     :omit-universal-elements true
-                     :object-ids-to-contract #{obj-id}
-                     :parallel-ids [name-id]
-                     :class "link-type"
-                     :relative-id name-label-id
-                     :render-dom render-item-DOM-R
-                     :get-action-data (default-AD)}]]
-                  [:component
-                   {:width 1.03125
-                    :template (as-set (list 'anything (list name-label)))
-                    :element-ids-to-exclude #{name-label-id}
-                    :object-ids-to-contract #{obj-id}
-                    :relative-id name-id
-                    :render-dom render-item-DOM-R
-                    :get-action-data (default-AD)}]]]]))))
+                 [:component
+                  {:width 1.5
+                   :object-ids-to-contract #{obj-id}
+                   :template 'anything
+                   :class "name"
+                   :element-ids-to-exclude #{name-label-id}
+                   :relative-id name-id
+                   :render-dom render-item-DOM-R
+                   :get-action-data (default-AD)}]]]))))
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels

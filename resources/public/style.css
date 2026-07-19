@@ -378,6 +378,7 @@ body {
 
 .name {
     background-color: var(--name-type-color);
+    font-style: italic;
 }
 
 .link-type {

@@ -250,7 +250,7 @@
       (add-following-selection-by-ids store client-id ids))))
 
 ;;; TODO: !!! This needs to handle reversed links.
-(defn do-add-object
+(defn do-make-object
   "Make a new object, and set the content(s) of the subject element(s)
   to it. Does nothing to subjects that are not elements or that are an
   element that gives a name."
@@ -272,10 +272,12 @@
         (if (object? template)
           (reduce (fn [[store oids] subject-id]
                     (if ; Don't set the content if our subject isn't an
-                        ; element or if it is a name.
+                        ; element, if it is a name, or if its content is
+                        ; already an object.
                         (or (not (link-id? subject-id))
                             (seq (target-source->ids
-                                  store subject-id name-label-id)))
+                                  store subject-id name-label-id))
+                            (object-id? (id->source store subject-id)))
                       [store oids]
                       (let [[s1 object-id]
                             (create-possible-selector-entity
@@ -482,7 +484,7 @@
   [action]
   ({:add-element do-add-element
     :add-label do-add-label
-    :add-object do-add-object
+    :make-object do-make-object
     :add-twin do-add-twin
     :add-row do-add-row
     :add-column do-add-column

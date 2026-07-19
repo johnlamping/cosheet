@@ -71,7 +71,7 @@
                              "add-twin" :add-twin
                              "add-element" :add-element
                              "add-label" :add-label
-                             "add-object" :add-object
+                             "make-object" :make-object
                              "add-sibling" :add-sibling
                              "add-row" :add-row
                              "add-column" :add-column

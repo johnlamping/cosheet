@@ -414,12 +414,12 @@
                               :session-state session-state})]
     (is (not result))))
 
-(deftest do-add-object-test
+(deftest do-make-object-test
   ;; When the argument is the content of an element (its subject is the
   ;; element link), set the element's content to a new object. A virtual
   ;; element is handled the same way, since its element has already been
   ;; created by the action data getter.
-  (let [new-store (do-add-object store
+  (let [new-store (do-make-object store
                                  {:subject-ids [(:item-id joe-age)]
                                   :client-id nil})
        new-content-id (id->source new-store (:item-id joe-age))]
@@ -433,11 +433,11 @@
   ;; Does nothing when the content is a name.
   (let [age-name (first (label->elements age-label name-label))]
     (assert (= (content age-name) "age"))
-    (is (not (do-add-object store
+    (is (not (do-make-object store
                             {:subject-ids [(:item-id age-name)]
                              :client-id nil}))))
   ;; Does nothing when the subject is not an element.
-  (is (not (do-add-object store
+  (is (not (do-make-object store
                           {:subject-ids [(:item-id age-label)]
                            :client-id nil}))))
 

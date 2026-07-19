@@ -47,8 +47,9 @@
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
+                         create-possible-selector-entity
                          object-semantic-to-tree]]
-    [render-utils :refer [sequential-template?]]
+    [render-utils :refer [final-template]]
     [order-utils :refer [furthest-item order-element-for-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -141,19 +142,14 @@
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
-    (let [last-template (if (sequential-template? template)
-                          ;; We need to get to the last template, which
-                          ;; should be an object reference.
-                          (last (:template-sequence template))
-                          ;; The incoming template is for the whole
-                          ;; element or its content.
-                          template)
-          ;; Usually, the template would be for the content we are
-          ;; setting. But if an element has nothing but its content,
-          ;; then there is not necessarily a separate component for
-          ;; the content, and we will get the template from the
-          ;; element. So we have to check if the template is an
-          ;; element, and get its content in that case.
+    (let [;; We need to get to the last template, which should
+          ;; describe our content.
+          last-template (final-template template)
+          ;; When our subject is the element holding the content, the
+          ;; template we get is often the template for the element as
+          ;; a whole. If the template we are given is an element,
+          ;; we're in that case, and we need to use its content as our
+          ;; template.
           template (if (element? last-template)
                      (content last-template)
                      last-template)]
@@ -231,10 +227,10 @@
                                                 `(~template))
                          true template)
           [ids store] (create-possible-selector-entities
-                      template
-                      (map #(id->target store %) subject-ids)
-                      subject-ids
-                      :after true store)]
+                       template
+                       (map #(id->target store %) subject-ids)
+                       subject-ids
+                       :after true store)]
       (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-element
@@ -255,22 +251,43 @@
 
 ;;; TODO: !!! This needs to handle reversed links.
 (defn do-add-object
-  "Make a new object, and set the content of the subject element(s) to
-  it. Does nothing to subjects that are not elements or that are an
+  "Make a new object, and set the content(s) of the subject element(s)
+  to it. Does nothing to subjects that are not elements or that are an
   element that gives a name."
-  [store {:keys [subject-ids client-id]}]
-  (let [[store oids]
-        (reduce (fn [[store oids] subject-id]
-                  (if (or (object-id? subject-id)
-                          (seq (target-source->ids
-                                 store subject-id name-label-id)))
-                    [store oids]
-                    (let [[s1 object-id] (get-new-object-id store)
-                          s2 (update-source s1 subject-id object-id)]
-                      (if (= s1 (abandon-problem-changes s1 s2 subject-id))
-                        [store oids]
-                        [s2 (conj oids object-id)]))))
-                [store []] subject-ids)]
+  [store {:keys [subject-ids template client-id]}]
+  (let [;; Since our subject is an element holding the
+        ;; current content, the template we get is
+        ;; typically the template for the element as a
+        ;; whole. If the template we are given is an
+        ;; element, we're in that case, and we need to
+        ;; use its content as our template.template   
+        template (if (element? template) (content template) template)
+        template (if (or (not template) (#{'anything ""} template))
+                   (make-tree-object [:selector])
+                   ;; TODO: !!! What should happen when our subject is
+                   ;; the id of an object? Should we require our
+                   ;; subject to be an element?
+                   template)
+        [store oids]
+        (if (object? template)
+          (reduce (fn [[store oids] subject-id]
+                    (if ; Don't set the content if our subject isn't an
+                        ; element or if it is a name.
+                        (or (not (link-id? subject-id))
+                            (seq (target-source->ids
+                                  store subject-id name-label-id)))
+                      [store oids]
+                      (let [[s1 object-id]
+                            (create-possible-selector-entity
+                             template subject-id subject-id :after false store)]
+                        (if (= store
+                               (abandon-problem-changes store s1 subject-id))
+                          [store oids]
+                          [s1 (conj oids object-id)]))))
+                  [store []] subject-ids)
+          ;; Our template is not an object, and couldn't be converted
+          ;; into one. Do nothing.
+          [store []])]
     (when (seq oids)
       (add-following-selection-by-ids store client-id oids))))
 
@@ -280,9 +297,8 @@
   (when (and row-id table-id)
     (let [table-entity (id->entity table-id store)
           row-template (table-row-template table-entity)
-          row-parent-id (id->target store row-id)
           [ids store] (create-possible-selector-entities
-                       row-template [row-parent-id] [row-id]
+                       row-template [nil] [row-id]
                        :after false store)]
       (if (and column-ids client-id)
         ;; Select the cell in the new row that is in the same column

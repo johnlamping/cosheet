@@ -432,6 +432,9 @@
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]
+           (assert (or (not (object? template))
+                       (every? nil? targets))
+                   [targets template])
            (let [[ids store] (create-possible-selector-entities
                               template targets adjacents
                               (or position :after) use-bigger store)]

@@ -14,7 +14,7 @@
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
-                                     make-item-id]]
+                                     id->source make-item-id]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -761,6 +761,21 @@
                                          `(~(any) :order)])))
                      (~(any) :order))
                    `(~(any) :order)]))))))
+
+(deftest create-possible-selector-entity-object-target-test
+  ;; When the template is an object and the target-id is non-nil,
+  ;; create-possible-selector-entity sets the source of the target to
+  ;; the id of the new object.
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 target-id] (add-element s0 nil `("target" (~o1 :order)))
+        object-template (make-tree-object
+                         ['("Fred" ("Flintstone"))
+                          "Wilma"])
+        [s2 new-id] (create-possible-selector-entity
+                     object-template target-id target-id :before false s1)]
+    (is (check (canonicalize object-template)
+               (canonicalize (semantic-to-tree (id->entity new-id s2)))))
+    (is (= (id->source s2 target-id) new-id))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")

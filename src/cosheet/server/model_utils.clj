@@ -762,16 +762,23 @@
 (defn create-possible-selector-entity
   "Create an entity matching the template, but first modifying the
   template to not be a selector if the target-id is not a
-  selector. Return the updated store and the id of the new entity."
+  selector. If the template is an object and the target-id is non-nil,
+  set the source of the target to the new object. Return the updated
+  store and the id of the new entity."
   [template target-id adjacent-id position use-bigger store]
   (let [template (if (and target-id
                           (selector? (id->entity target-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
     (if (object? template)
-      (update-add-object-adjacent-to store template
-                                     (id->entity adjacent-id store)
-                                     position use-bigger)
+      (let [[store id] (update-add-object-adjacent-to
+                        store template
+                        (id->entity adjacent-id store)
+                        position use-bigger)]
+        [(if target-id
+           (update-source store target-id id)
+           store)
+         id])
       (update-add-element-adjacent-to store target-id template
                                       (id->entity adjacent-id store)
                                       position use-bigger))))

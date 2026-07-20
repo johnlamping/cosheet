@@ -212,7 +212,8 @@
    [:div#add-twin-menu.menu-item "add twin (same labels)"]
    [:div#add-element-menu.menu-item "add child"]
    [:div#add-label-menu.menu-item "add label"]
-   [:div#make-object-menu.menu-item "make object"]])
+   [:div#make-object-menu.menu-item "make object"]
+   [:div#make-name-menu.menu-item "make name"]])
 
 (defn initial-page [file-path servlet-path root-id-string]
   (println (now-string) "initial page"

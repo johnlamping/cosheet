@@ -249,6 +249,32 @@
                        :before false store)]
       (add-following-selection-by-ids store client-id ids))))
 
+(defn do-make-name
+  "For each subject that is an object, add a new name element (content
+  'anything, with a name-label). For each subject that is an element
+  whose target is an object and whose content is a string or 'anything,
+  add a name-label element to the subject, making it a name of that
+  object. Does nothing to other subjects."
+  [store {:keys [subject-ids session-state client-id]}]
+  (let [object-ids (filter object-id? subject-ids)
+        name-ids (filter (fn [id]
+                           (and (link-id? id)
+                                (object-id? (id->target store id))
+                                (let [element-content (id->source store id)]
+                                  (or (string? element-content)
+                                      (= element-content 'anything)))))
+                         subject-ids)]
+    (when (or (seq object-ids) (seq name-ids))
+      (let [[object-new-ids store] (create-possible-selector-entities
+                                    `(~'anything (~name-label))
+                                    object-ids object-ids
+                                    :before false store)
+            [name-new-ids store] (create-possible-selector-entities
+                                  `(~name-label) name-ids name-ids
+                                  :before false store)]
+        (add-following-selection-by-ids
+         store client-id (concat object-new-ids name-new-ids))))))
+
 ;;; TODO: !!! This needs to handle reversed links.
 (defn do-make-object
   "Make a new object, and set the content(s) of the subject element(s)
@@ -484,6 +510,7 @@
   [action]
   ({:add-element do-add-element
     :add-label do-add-label
+    :make-name do-make-name
     :make-object do-make-object
     :add-twin do-add-twin
     :add-row do-add-row

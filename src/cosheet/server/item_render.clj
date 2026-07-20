@@ -618,8 +618,9 @@
 (defn object-reference-component
   "Return a component to display an object in object-reference form."
   [object specification]
-  (assert (object? (:template specification))
-          (:template specification))
+  (assert (let [spec (:template specification)]
+            (or (= spec 'anything) (object? spec))
+               specification))
   (make-component (assoc specification
                          :relative-id :content
                          :auxiliary-item-id (:item-id object)

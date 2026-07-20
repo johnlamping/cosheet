@@ -414,6 +414,38 @@
                               :session-state session-state})]
     (is (not result))))
 
+(deftest do-make-name-test
+  ;; Adds a name-label element to a subject that is an element whose
+  ;; target is an object and whose content is a string, making the
+  ;; subject a name of that object.
+  (let [new-store (do-make-name store
+                                {:subject-ids [(:item-id joe-male)]
+                                 :session-state session-state
+                                 :client-id nil})
+        new-joe-male (id->entity (:item-id joe-male) new-store)
+        new-name (first (matching-elements `(~name-label) new-joe-male))]
+    (is (check (entity->canonical-semantic new-joe-male)
+               (canonicalize `("male" (~name-label)))))
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids [nil [(:item-id new-name)]]})))
+  ;; Adds a blank name element to a subject that is an object.
+  (let [new-store (do-make-name store
+                                {:subject-ids [joe-id]
+                                 :session-state session-state
+                                 :client-id nil})
+        new-joe (id->entity joe-id new-store)
+        new-name (first (matching-elements `("" (~name-label)) new-joe))]
+    (is (check (entity->canonical-semantic new-name)
+               (canonicalize `("" (~name-label)))))
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids [nil [(:item-id new-name)]]})))
+  ;; Does nothing to an element whose target is an object but whose
+  ;; content is not a string or 'anything.
+  (is (not (do-make-name store
+                         {:subject-ids [(:item-id joe-age)]
+                          :session-state session-state
+                          :client-id nil}))))
+
 (deftest do-make-object-test
   ;; When the argument is the content of an element (its subject is the
   ;; element link), set the element's content to a new object. A virtual

@@ -544,7 +544,7 @@
                                  :relative-id fred-id)
                           store)]
     (is (check dom
-               [:div {:class "editable content-text item"} "Fred"])))
+               [:div {:class "editable content-text element"} "Fred"])))
 
   ;; Test an entity holding an interned object
   (let [[s1 fred-oid] (-> (new-element-store)
@@ -563,7 +563,7 @@
         inner-dom (run-renderer (:render-dom spec) spec store)]
     (is (check dom
                [:component {:width 1.5
-                            :class "editable item"
+                            :class "editable element"
                             :auxiliary-item-id fred-oid,
                             :relative-id :content
                             :template (make-tree-object
@@ -572,7 +572,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable item name object-reference"
+                            :class "editable element name object-reference"
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
@@ -601,7 +601,7 @@
     (is (not (uniquely-identified-object? (id->object anonymous-oid store))))
     (is (check dom
                [:component {:width 1.5
-                            :class "editable item"
+                            :class "editable element"
                             :auxiliary-item-id anonymous-oid,
                             :relative-id :content
                             :template (make-tree-object
@@ -610,7 +610,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable item name object-reference"
+                            :class "editable element name object-reference"
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id anonymous-name-id
@@ -628,7 +628,7 @@
                                  :element-ids-to-exclude #{(:label-one-id ids)})
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements link-type item"}
+               [:div {:class "label-wrapping-elements link-type element"}
                 [:component {:template label-template
                              :relative-id (:label-two-id ids)
                              :omit-universal-elements true
@@ -658,7 +658,7 @@
          dom
          [:div
           {:class
-           "horizontal-labels-element virtual-wrapper narrow item"}
+           "horizontal-labels-element virtual-wrapper narrow element"}
           [:component {:template virtual-label-template
                        :is-object-name true
                        :position :after
@@ -713,10 +713,10 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id obj-id
-                                 :class "item")
+                                 :class "element")
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type item"}
+               [:div {:class "label-wrapping-elements object-type element"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -865,10 +865,10 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id obj-id
-                                 :class "item")
+                                 :class "element")
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type item"}
+               [:div {:class "label-wrapping-elements object-type element"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -927,11 +927,11 @@
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id obj-id
-                                 :class "item"
+                                 :class "element"
                                  :object-ids-to-contract #{obj-id})
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type item"}
+               [:div {:class "label-wrapping-elements object-type element"}
                 ;; The simple label is shown. The complex label, which
                 ;; itself has another element, is dropped.
                 [:component
@@ -970,7 +970,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements item"}
+               [:div {:class "with-elements element"}
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
@@ -1027,7 +1027,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements item"}
+               [:div {:class "with-elements element"}
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
@@ -1078,7 +1078,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements item"}
+               [:div {:class "with-elements element"}
                 [:component {:template ""
                              :width 0.9
                              :relative-id :content
@@ -1194,7 +1194,7 @@
     (is (check
          dom
          [:div
-          {:class "horizontal-labels-element virtual-wrapper narrow item"}
+          {:class "horizontal-labels-element virtual-wrapper narrow element"}
           [:component
            {:width 1.5
             :template virtual-label-template
@@ -1261,7 +1261,7 @@
                              store)]
     (is (check
          dom
-         [:div {:class "with-elements item"}
+         [:div {:class "with-elements element"}
           [:component {:template ""
                        :width 1.5
                        :relative-id :content
@@ -1313,7 +1313,7 @@
                              store)]
     (is (check
          dom
-         [:div {:class "with-elements item"}
+         [:div {:class "with-elements element"}
           [:component {:template ""
                        :width 1.5
                        :relative-id :content

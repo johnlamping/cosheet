@@ -58,7 +58,7 @@ body {
         min-height: 10px; /* So it will shrink to the screen height */
     }
 
-    &.label-wrapping-elements, &.item {
+    &.label-wrapping-elements, &.element {
         width: 100%;
         flex: 0 1 auto;
         overflow-x: hidden;
@@ -101,11 +101,11 @@ body {
 
 /* --- Basic items and stacks of items --- */
 
-.item.editable, .item > .editable {
+.element.editable, .element > .editable {
     padding: 3px;
 }
 
-.item.with-elements > :last-child {
+.element.with-elements > :last-child {
     margin: 0px 5px 5px 6px;
 }
 
@@ -129,19 +129,19 @@ body {
     background-color: var(--bg-subtle);
 }
 
-.vertical-stack > .item {
+.vertical-stack > .element {
     margin: 0px 3px 0px 3px;
 }
 
-.vertical-item-stack > .item.editable, .vertical-stack > .item > .editable {
+.vertical-item-stack > .element.editable, .vertical-stack > .element > .editable {
     padding: 3px 0px 3px 0px;
 }
 
-.vertical-stack > .item.with-elements > :last-child {
+.vertical-stack > .element.with-elements > :last-child {
     margin: 0px 2px 5px 3px;
 }
 
-.vertical-stack > .item + :not(.object) {
+.vertical-stack > .element + :not(.object) {
     border-width: 1px 0px 0px 0px;
 }
 
@@ -168,7 +168,7 @@ body {
         margin-right: 2px;
     }
 
-    & > .item + .item {
+    & > .element + .element {
         border-width: 0px 0px 0px 1px;
     }
 
@@ -377,7 +377,7 @@ body {
 /* --- names --- */
 
 .name {
-    background-color: var(--name-type-color);
+    background-color: var(--name-color);
     font-style: italic;
 }
 
@@ -393,18 +393,13 @@ body {
     text-align: center;
 }
 
-.item:not(.link-type):not(.object-type),
-.content-text:not(.link-type):not(.object-type),
-.vertical-stack:not(.link-type):not(.object-type) {
+.element:not(.link-type):not(.object-type):not(.name),
+.content-text:not(.link-type):not(.object-type):not(.name) {
     background-color: white;
 }
 
 .link-type.virtual:not(.merge-with-parent)+.wrapped-elements{
     background-color: var(--virtual-link-type-color);
-}
-
-.object-type.virtual:not(.merge-with-parent)+.wrapped-elements{
-    background-color: var(--virtual-object-type-color);
 }
 
 /* --- label-element pairs: one column format --- */
@@ -459,6 +454,9 @@ body {
 .label-wrapping-elements {
     & > .wrapped-elements {
         flex-grow: 0;
+	& > :not(.label-wrapping-elements) { /* Don't override a color */
+	    background-color: white;
+	}
     }
 
     & ~ .horizontal-labels-element {
@@ -1006,7 +1004,7 @@ body {
 
 .link-type {
     & > .link-type {
-	 /* Don't override out parent's shimmer */
+	 /* Don't override our parent's shimmer */
         background-color: transparent;
     }
 
@@ -1023,6 +1021,8 @@ body {
 
     &.virtual:not(.merge-with-parent) {
         background-color: var(--virtual-object-type-color);
+	/* Leave some of our parent's color around us. */
+	margin: 3px;
     }
 }
 

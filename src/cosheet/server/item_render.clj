@@ -732,7 +732,7 @@
                          element non-labels inner-spec)]
           (labels-wrapper-DOM
            inner-dom labels specification)))
-      (add-attributes {:class "item"})))
+      (add-attributes {:class "element"})))
 
 (defn element-DOM
   "Render a dom spec given the immutable entity for an item (which may

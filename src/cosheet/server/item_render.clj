@@ -121,8 +121,7 @@
 
 (defn add-labels-DOM
   "Add a labels dom to an inner dom. Orientation gives the orientation
-  between the doms. It can also be :vertical-wrapped, which puts the
-  label above the inner dom, but with an indentation on the left too."
+  between the doms."
     [labels-dom inner-dom orientation]
   [:div {:class (case orientation
                   :vertical "vertical-labels-element link-type"

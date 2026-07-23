@@ -517,17 +517,20 @@
 ;;; But first, can some commonality in this with other functions here
 ;;; be factored out? It seems to overlap their function, once they
 ;;; have gotten the elements of an item.
+
+;;; This function is only called from outside item-render.
 (defn labels-and-elements-DOM
   "Generate the dom for a set of elements, some of which may be
-  labels. virtual-dom, if present, will appear after the elements.
+  labels. virtual-dom will appear after any elements, and it must be
+  present if there are no elements.
   elements-must-show-labels determines whether the elements must show
   labels of their own.  The specification should be appropriate for
   each of the elements."
-  ;; This function is only called from outside item-render.
   [elements virtual-dom must-show-label elements-must-show-labels
    orientation specification label-type]
   (assert (not (:relative-id specification))
           (:relative-id specification))
+  (assert (or (seq elements) virtual-dom))
   (let [[labels non-labels] (separate-by label-element? elements)
         elements-dom
         (when (or non-labels virtual-dom)
@@ -553,14 +556,9 @@
        label-type
        elements-dom orientation)
 
-      elements-dom
-      elements-dom
-
-      true
-      (virtual-label-DOM-component
-       (-> specification
-           (add-attributes {:class "elements-wrapper"})
-           (transform-specification-for-labels label-type))))))
+      true ; The logic guarantees there will be elements-dom if there
+           ; are no labels.
+      elements-dom)))
 
 ;;; The next functions handle the parts of the dom for an element
 

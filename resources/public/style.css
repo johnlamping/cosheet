@@ -38,8 +38,6 @@
                              A DOM of labels and a DOM of elements, laid out
                              vertically or horizontally. This is typically
                              generated for hierarchies.
-     elements-wrapper        A virtual label standing in for a group of elements
-                             that have no labels of their own.
      horizontal-header       One node of the labels in the two-column label
                              layout.
      horizontal-value-last   The holder of the value(s) in the two-column
@@ -107,7 +105,7 @@
     border-width: 0px;
     border-color: var(--border-color);
     box-sizing: border-box;
-    background-color: transparent;
+    background-color: white;
 }
 
 body {
@@ -161,14 +159,11 @@ body {
 .wrapped-elements {
     display: flex;
     flex-direction: column;
-
-    & > * {
-        flex-grow: 1;
-    }
 }
 
 .link-type > .wrapped-elements {
-    padding-left: 8px;
+    margin-left: 8px;
+    background-color: white;
 }
 
 .object-type > .wrapped-elements {
@@ -233,10 +228,6 @@ body {
 
 .with-elements {
     text-align: left;
-}
-
-.elements-wrapper {
-    padding: 3px 3px 3px 5px;
 }
 
 .horizontal-stack {
@@ -471,11 +462,6 @@ body {
     text-align: center;
 }
 
-.element:not(.link-type):not(.object-type):not(.name),
-.content-text:not(.link-type):not(.object-type):not(.name) {
-    background-color: white;
-}
-
 .link-type.virtual:not(.merge-with-parent)+.wrapped-elements{
     background-color: var(--virtual-link-type-color);
 }
@@ -500,12 +486,6 @@ body {
 
     &.narrow > :last-child {
         flex: 1;
-    }
-
-    & > .elements-wrapper {
-        border-left-width: var(--bw);
-        flex-grow: 1;
-        display: flex;
     }
 }
 

@@ -305,8 +305,19 @@
         ;; TODO: Get our left neighbor as an arg, and pass it
         ;; in the sibling for the virtual dom.
         (virtual-DOM-component (assoc spec :relative-id :virtual))
-        (non-label-elements-DOM
-         entities (:template spec) false :vertical non-virtual-spec)))))
+        (let [elements-dom (non-label-elements-DOM
+                            entities (:template spec) false :vertical
+                            non-virtual-spec)]
+          ;; When the cell is a vertical stack, add a virtual "filler"
+          ;; after the elements. It grows to fill any free space in the
+          ;; cell, so clicking there acts like typing into a virtual
+          ;; element that adds another element to the cell.
+          (cond-> elements-dom
+            (> (count entities) 1)
+            (conj (virtual-DOM-component
+                   (assoc spec :relative-id :virtual
+                          :class "stack-filler"
+                          :adjacent-query query)))))))))
 
 (defmethod print-method
   cosheet.server.table_render$render_table_cell_DOM_R

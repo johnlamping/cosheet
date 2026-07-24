@@ -60,6 +60,9 @@
      column-header-sequence  A row of sibling column headers.
      table-cell              A data cell of a row; adds has-border when it draws
                              its own border.
+     stack-filler            A virtual element at the tail of a cell that is a
+                             vertical stack; grows into the cell's free space to
+                             offer adding an element there.
      table-row               One row; table-rows is the container of the rows.
      virtual-column          The header/cell used to add a new column.
 
@@ -214,8 +217,24 @@ body {
     margin: 0px 2px 5px 3px;
 }
 
-.vertical-stack > .element + :not(.object) {
+.vertical-stack > .element + :not(.object):not(.stack-filler) {
     border-width: 1px 0px 0px 0px;
+}
+
+/* The virtual "filler" at the tail of a stack. It grows into any free
+   space, so the user can add an element by clicking there, and stays
+   invisible (zero height) when there is no free space. */
+.stack-filler {
+    flex-grow: 1;
+    min-height: 0;
+    border-width: 0;
+    /* A line up to 2px wide at the top edge, drawn with the background so
+       it shows only when the filler has non-zero height (i.e. there is
+       free space), and only as wide as that height allows. This gives the
+       last element a bottom divider then, and no stray line when the cell
+       is full. */
+    background-image: linear-gradient(to bottom,
+                                      var(--border-color) 2px, transparent 2px);
 }
 
 .for-multiple, .for-multiple > .vertical-item-stack {

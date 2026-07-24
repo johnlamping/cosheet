@@ -322,7 +322,11 @@
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before
-;;;                         or :after the adjacent item.
+;;;                         or :after the adjacent item. Defaults to :after
+;;;        :adjacent-query  For a virtual item. If present, the new item is
+;;;                         created adjacent to furthest of the target's
+;;;                         elements that match the query (furthest in the
+;;;                         direction of the :adjacent-order).
 ;;;               :table id The id of the table, if any, that the dom is in.
 ;;;                 :row-id The id of the row, if any, that the dom is in.
 ;;;             :column-ids The ids of the columns, if any, that the dom is

@@ -710,7 +710,17 @@
                  (:item-id (first (matching-elements
                                    `(~id-label-object) joe-joseph)))}
                :get-do-batch-edit-action-data
-               (table-cell-item-do-batch-AD)}]]]]))
+               (table-cell-item-do-batch-AD)}]]]
+          ;; A filler that grows into the cell's free space, for adding.
+          [:component
+           {:width 0.75
+            :template `("" (~name-label-object))
+            :relative-id :virtual
+            :class "stack-filler"
+            :adjacent-query (as-set `(nil (~name-label-object)
+                                          (nil :order)))
+            :render-dom (virt-DOM)
+            :get-action-data (virt-AD)}]]))
 
     ;; Check rendering the virtual row
     (is (check

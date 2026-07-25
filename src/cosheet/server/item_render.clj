@@ -94,16 +94,13 @@
     (item-component item new-spec)))
 
 (defn item-stack-DOM
-  "Given a list of items and a matching list of elements to exclude,
-  generate components for each item, and put them in a DOM. If virtual-dom
-  is present, append it after the item components.
-  If there is more than one dom, make the stack in the given orientation."
-  [items excludeds virtual-dom orientation specification]
+  "Given a list of items and a matching list of their elements to exclude,
+  generate components for each item, and put them in a DOM.  If there
+  is more than one item, make the stack in the given orientation."
+  [items excludeds orientation specification]
   (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
-    (nest-if-multiple-DOM
-     (cond-> components virtual-dom (concat [virtual-dom]))
-     orientation)))
+    (nest-if-multiple-DOM components orientation)))
 
 (defn get-virtual-DOM-rendering-data [spec store]
   [])
@@ -237,7 +234,7 @@
         label-type (display-type (content (first label-elements)))]
     (item-stack-DOM ordered-labels
                     (map (constantly '()) ordered-labels)
-                    nil :vertical
+                    :vertical
                     (-> specification
                         (update :template #(ensure-label-object-content
                                             % label-type))
@@ -331,7 +328,7 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            leaves)]
-        (item-stack-DOM items excludeds nil :vertical leaf-spec)))))
+        (item-stack-DOM items excludeds :vertical leaf-spec)))))
 
 (defn hierarchical-elements-node-f-DOM
   "This is a node-f for hierarchy-node-DOM. It takes a node of a
@@ -476,57 +473,72 @@
 
 ;;; The next two functions make stacks of components for entities.
 
-(defn non-label-elements-DOM
-  "Make a dom for a sequence of elements, all of which must not be labels.
-  If implied-template is non-nil, don't show their labels implied by
-  it.  If must-show-label is true, show a space for labels, even if
-  there are none. If, additionally, it is :wide, show them with
-  substantial space, if there is significant space available.
-  If virtual-dom is present, append it after the elements' doms."
-  [elements implied-template must-show-label virtual-dom orientation
-   specification]
+(defn non-label-element-group-doms
+  "Return a seq of doms for a sequence of non-label elements, all treated
+  the same. This is the core used by non-label-elements-DOM. It never
+  shows the elements' name labels. See non-label-elements-DOM for the
+  other arguments."
+  [elements implied-template must-show-label orientation specification]
   (let [ordered-elements (ordered-entities elements)
         all-labels (map semantic-label-elements ordered-elements)
-        excludeds (map (if implied-template
-                         #(condition-satisfiers % implied-template)
-                         (constantly nil))
+        excludeds (map (fn [element]
+                         (concat (when implied-template
+                                   (condition-satisfiers element
+                                                         implied-template))
+                                 (content->elements element name-label)))
                        ordered-elements)
         labels (map (fn [all exclusions]
                       (clojure.set/difference (set all) (set exclusions)))
                     all-labels excludeds)
         no-labels (every? empty? labels)]
     (if (and no-labels (not must-show-label))
-      (item-stack-DOM ordered-elements excludeds virtual-dom orientation
-                      specification)
+      (map #(item-minus-excluded-component %1 %2 specification)
+           ordered-elements excludeds)
       (let [item-maps (item-maps-by-elements ordered-elements labels)
             augmented (map (fn [item-map excluded]
                              (assoc item-map :exclude-elements excluded))
                            item-maps excludeds)
-            hierarchy (hierarchy-by-canonical-info augmented)
-            doms (case orientation
-                   :vertical
-                   ((if (or (< (:width specification) 1.0)
-                            (and no-labels (not (= must-show-label :wide))))
-                      hierarchical-elements-in-one-column-DOM
-                      hierarchical-elements-in-two-column-DOM)
-                    hierarchy specification)
-                   :horizontal
-                   (hierarchical-elements-in-horizontal-DOM
-                    (replace-hierarchy-leaves-by-nodes hierarchy)
-                    specification))]
-        (nest-if-multiple-DOM
-         (cond-> doms virtual-dom (concat [virtual-dom]))
-         orientation)))))
+            hierarchy (hierarchy-by-canonical-info augmented)]
+        (case orientation
+          :vertical
+          ((if (or (< (:width specification) 1.0)
+                   (and no-labels (not (= must-show-label :wide))))
+             hierarchical-elements-in-one-column-DOM
+             hierarchical-elements-in-two-column-DOM)
+           hierarchy specification)
+          :horizontal
+          (hierarchical-elements-in-horizontal-DOM
+           (replace-hierarchy-leaves-by-nodes hierarchy)
+           specification))))))
 
-;;; TODO: !!! This needs to change to be able to support elements of both
-;;; elements or objects, so it needs to know what kind thing they are
-;;; elements of, in order to get the right kind of indentation.
+(defn non-label-elements-DOM
+  "Make a dom for a sequence of elements, all of which must not be labels.
+  Elements that are names are put first, with their name labels hidden
+  but with css class \"name\". The name and non-name elements and the
+  virtual-dom all go in a single stack, so the virtual-dom can expand to
+  fill the available area.
+  If implied-template is non-nil, don't show the elements' labels implied
+  by it.  If must-show-label is true, show a virtual dom for labels where
+  there are none. If, additionally, it is :wide, show them with
+  substantial space, if there is significant space available.
+  If virtual-dom is present, append it after the elements' doms."
+  [elements implied-template must-show-label virtual-dom orientation
+   specification]
+  (let [[names non-names] (separate-by name-element? elements)
+        names-doms (when (seq names)
+                     (non-label-element-group-doms
+                      names implied-template must-show-label orientation
+                      (into-attributes specification {:class "name"})))
+        non-names-doms (when (seq non-names)
+                         (non-label-element-group-doms
+                          non-names implied-template must-show-label
+                          orientation specification))]
+    (nest-if-multiple-DOM
+     (concat names-doms non-names-doms (when virtual-dom [virtual-dom]))
+     orientation)))
 
-;;; But first, can some commonality in this with other functions here
-;;; be factored out? It seems to overlap their function, once they
-;;; have gotten the elements of an item.
-
-;;; This function is only called from outside item-render.
+;;; This function is only called from outside item-render, typically
+;;; for conditions.
 (defn labels-and-elements-DOM
   "Generate the dom for a set of elements, some of which may be
   labels. virtual-dom will appear after any elements, and it must be

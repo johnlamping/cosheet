@@ -30,7 +30,7 @@
                                   table-row-condition-object
                                   object-semantic-to-tree
                                   semantic-to-tree
-                                  semantic-elements semantic-non-label-elements
+                                  semantic-elements
                                   pattern-to-fixed-term fixed-term-to-template
                                   add-non-selector-to-fixed-term
                                   column-header-template
@@ -44,7 +44,6 @@
                                   render-virtual-DOM
                                   virtual-element-and-label-DOM
                                   label-stack-DOM
-                                  element-content-and-non-label-elements-DOM
                                   element-content-DOM
                                   labels-and-elements-DOM
                                   non-label-elements-DOM

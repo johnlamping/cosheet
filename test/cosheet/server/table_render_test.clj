@@ -779,3 +779,51 @@
           {:relative-id joe-id :table-id joe-id}
           store)
          [:div {}]))))
+
+(deftest render-table-cell-DOM-R-single-entity-filler-test
+  ;; A single-entity cell gets a filler (wrapping the value in a vertical
+  ;; stack) only when the entity has a semantic element beyond what the
+  ;; query requires.
+  (let [s (add-universal-objects (new-element-store))
+        [s1 plain-row-id] (add-element s nil
+                                          `("r2" (45 ("required" (~o3 :order))
+                                                     (~o2 :order))))
+        [store extra-row-id] (add-element s1 nil
+                                          `("r1" (45 ("required" (~o3 :order))
+                                                     ("extra" (~o1 :order))
+                                                     (~o2 :order))))
+        query `(nil "required" (nil :order))
+        base-spec {:width 0.75 :query query}]
+    ;; The value has an "extra" element beyond the query, so a filler is
+    ;; added, wrapping the value in a vertical stack.
+    (is (check
+         (run-renderer render-table-cell-DOM-R
+                       (assoc base-spec :row-id extra-row-id) store)
+         [:div {:class "vertical-stack"}
+          [:component {:width 0.75
+                       :template ["" "required"]
+                       :get-do-batch-edit-action-data
+                       (table-cell-item-do-batch-AD)
+                       :relative-id (any)
+                       :element-ids-to-exclude #{(any)}
+                       :render-dom render-item-DOM-R
+                       :get-action-data (default-AD)}]
+          [:component {:width 0.75
+                       :template ["" "required"]
+                       :relative-id :virtual
+                       :class "stack-filler"
+                       :adjacent-query `(nil "required" (nil :order))
+                       :render-dom (virt-DOM)
+                       :get-action-data (virt-AD)}]]))
+    ;; The value has nothing beyond the query, so no filler is added.
+    (is (check
+         (run-renderer render-table-cell-DOM-R
+                       (assoc base-spec :row-id plain-row-id) store)
+         [:component {:width 0.75
+                      :template ["" "required"]
+                      :get-do-batch-edit-action-data
+                      (table-cell-item-do-batch-AD)
+                      :relative-id (any)
+                      :element-ids-to-exclude #{(any)}
+                      :render-dom render-item-DOM-R
+                      :get-action-data (default-AD)}]))))

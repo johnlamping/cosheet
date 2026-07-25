@@ -95,12 +95,15 @@
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
-  generate components for each item, and put them in a DOM.
-  If there is more than one item, make the stack in the given orientation."
-  [items excludeds orientation specification]
+  generate components for each item, and put them in a DOM. If virtual-dom
+  is present, append it after the item components.
+  If there is more than one dom, make the stack in the given orientation."
+  [items excludeds virtual-dom orientation specification]
   (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
-    (nest-if-multiple-DOM components orientation)))
+    (nest-if-multiple-DOM
+     (cond-> components virtual-dom (concat [virtual-dom]))
+     orientation)))
 
 (defn get-virtual-DOM-rendering-data [spec store]
   [])
@@ -234,7 +237,7 @@
         label-type (display-type (content (first label-elements)))]
     (item-stack-DOM ordered-labels
                     (map (constantly '()) ordered-labels)
-                    :vertical
+                    nil :vertical
                     (-> specification
                         (update :template #(ensure-label-object-content
                                             % label-type))
@@ -328,7 +331,7 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            leaves)]
-        (item-stack-DOM items excludeds :vertical leaf-spec)))))
+        (item-stack-DOM items excludeds nil :vertical leaf-spec)))))
 
 (defn hierarchical-elements-node-f-DOM
   "This is a node-f for hierarchy-node-DOM. It takes a node of a
@@ -478,8 +481,10 @@
   If implied-template is non-nil, don't show their labels implied by
   it.  If must-show-label is true, show a space for labels, even if
   there are none. If, additionally, it is :wide, show them with
-  substantial space, if there is significant space available."
-  [elements implied-template must-show-label orientation specification]
+  substantial space, if there is significant space available.
+  If virtual-dom is present, append it after the elements' doms."
+  [elements implied-template must-show-label virtual-dom orientation
+   specification]
   (let [ordered-elements (ordered-entities elements)
         all-labels (map semantic-label-elements ordered-elements)
         excludeds (map (if implied-template
@@ -491,7 +496,8 @@
                     all-labels excludeds)
         no-labels (every? empty? labels)]
     (if (and no-labels (not must-show-label))
-      (item-stack-DOM ordered-elements excludeds orientation specification)
+      (item-stack-DOM ordered-elements excludeds virtual-dom orientation
+                      specification)
       (let [item-maps (item-maps-by-elements ordered-elements labels)
             augmented (map (fn [item-map excluded]
                              (assoc item-map :exclude-elements excluded))
@@ -508,7 +514,9 @@
                    (hierarchical-elements-in-horizontal-DOM
                     (replace-hierarchy-leaves-by-nodes hierarchy)
                     specification))]
-        (nest-if-multiple-DOM doms orientation)))))
+        (nest-if-multiple-DOM
+         (cond-> doms virtual-dom (concat [virtual-dom]))
+         orientation)))))
 
 ;;; TODO: !!! This needs to change to be able to support elements of both
 ;;; elements or objects, so it needs to know what kind thing they are
@@ -538,7 +546,7 @@
                 (when non-labels
                   (non-label-elements-DOM
                    non-labels nil elements-must-show-labels
-                   orientation specification))]
+                   nil orientation specification))]
             (nest-if-multiple-DOM
              (remove nil? [elements-dom virtual-dom]) orientation)))]
     (cond
@@ -703,7 +711,7 @@
               elements-dom (non-label-elements-DOM
                             elements nil
                             (or (:must-show-label specification) true)
-                            :vertical elements-spec)]
+                            nil :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
                           (label-element? element)
                           (merge-classes "link-type"))}
@@ -772,13 +780,13 @@
         names-dom (non-label-elements-DOM
                    names `(~'anything (~name-label))
                    (boolean (and (not contract) (seq others)))
-                   :vertical (assoc elem-spec :class "name"))
+                   nil :vertical (assoc elem-spec :class "name"))
         inner-dom (if contract
                     names-dom
                     (let [others-dom
                           (if (seq others)
                             (non-label-elements-DOM
-                             others template true :vertical elem-spec)
+                             others template true nil :vertical elem-spec)
                             (virtual-DOM-component
                              (assoc elem-spec :relative-id :virtual)))]
                       (nest-if-multiple-DOM [names-dom others-dom] :vertical)))

@@ -38,6 +38,7 @@
                                   exemplar-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
+                                   condition-satisfiers
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
@@ -305,19 +306,24 @@
         ;; TODO: Get our left neighbor as an arg, and pass it
         ;; in the sibling for the virtual dom.
         (virtual-DOM-component (assoc spec :relative-id :virtual))
-        (let [elements-dom (non-label-elements-DOM
-                            entities (:template spec) false :vertical
-                            non-virtual-spec)]
-          ;; When the cell is a vertical stack, add a virtual "filler"
-          ;; after the elements. It grows to fill any free space in the
-          ;; cell, so clicking there acts like typing into a virtual
-          ;; element that adds another element to the cell.
-          (cond-> elements-dom
-            (> (count entities) 1)
-            (conj (virtual-DOM-component
-                   (assoc spec :relative-id :virtual
-                          :class "stack-filler"
-                          :adjacent-query query)))))))))
+        ;; Add a virtual "filler" after the elements when the cell has more
+        ;; than one entity, or when it has a single entity that has a
+        ;; semantic element beyond what the query requires. It grows to
+        ;; fill any free space in the cell, so clicking there acts like
+        ;; typing into a virtual element that adds another element to the
+        ;; cell.
+        (let [filler (when (or (> (count entities) 1)
+                               (when-let [entity (first entities)]
+                                 (seq (remove (set (condition-satisfiers
+                                                    entity (:template spec)))
+                                              (semantic-elements entity)))))
+                       (virtual-DOM-component
+                        (assoc spec :relative-id :virtual
+                               :class "stack-filler"
+                               :adjacent-query query)))]
+          (non-label-elements-DOM
+           entities (:template spec) false filler :vertical
+           non-virtual-spec))))))
 
 (defmethod print-method
   cosheet.server.table_render$render_table_cell_DOM_R

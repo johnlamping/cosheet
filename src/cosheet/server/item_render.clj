@@ -619,9 +619,6 @@
     (let [names (-> (label->elements object name-label)
                     ordered-entities)
           num-names (count names)
-          ;; The name's "name" (and link/object-type) class is added by
-          ;; element-primitive-content-DOM when the name content is
-          ;; rendered, so it lands on the name, not on any label wrapper.
           specification (->
                          specification
                          (dissoc :auxiliary-item-id :relative-id :render-dom)

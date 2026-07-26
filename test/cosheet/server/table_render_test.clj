@@ -305,7 +305,6 @@
                        :relative-id :virtual-label
                        :width 0.75
                        :class "link-type"
-                       :omit-universal-elements true
                        :render-dom render-virtual-DOM
                        :get-action-data (virt-AD)}]
            ;; The condition element.
@@ -315,7 +314,6 @@
                           :width 0.75
                           :parallel-ids [rc1-id]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (any)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
@@ -669,8 +667,7 @@
                                (virt-AD)]
              :render-dom (virt-DOM)
              :class "link-type"
-             :position :after
-             :omit-universal-elements true}]
+             :position :after}]
            [:component
             {:relative-id joe-joe-id
              :render-dom render-item-DOM-R
@@ -694,7 +691,6 @@
                           (table-cell-item-do-batch-AD)]
                          (item-do-batch-AD)]
                         :class "link-type"
-                        :omit-universal-elements true
                         :relative-id (any)}]
             [:div {:class "wrapped-elements"}
              [:component

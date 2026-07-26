@@ -223,19 +223,6 @@
 ;;;                         :auxiliary-item-id will hold id.
 ;;;                 :class  Optional. A subset of the CSS classes the DOM
 ;;;                         will have. The dom may have additional classes.
-;;; :omit-universal-elements  If true, don't show elements of the objects
-;;;                         whose contents are one of the universal
-;;;                         objects: name-label, link-type, and
-;;;                         object-type. This is used when showing
-;;;                         just the name of a named object, because
-;;;                         we don't also want to show that it is
-;;;                         labeled as a name. That's clear from
-;;;                         context, and would lead to infinite
-;;;                         recursion, since the name label also has
-;;;                         name "name". In contrast, when showing
-;;;                         all of a named object, we want to show
-;;;                         the label of the name, so then we don't
-;;;                         use this.
 ;;; :element-ids-to-exclude   If present, this is a set of ids of
 ;;;                         elements of the entity being shown that should
 ;;;                         not be displayed.

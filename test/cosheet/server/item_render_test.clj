@@ -277,7 +277,6 @@
           [:component {:width 0.8, :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
                        :class "link-type"
-                       :omit-universal-elements true
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
@@ -287,7 +286,6 @@
              [:component {:width 0.8, :template label-template
                           :parallel-ids [(:joe-id ids)]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
@@ -317,7 +315,6 @@
                        :template label-template
                        :parallel-ids [(:joe-id ids) (:jane-id ids)]
                        :class "link-type"
-                       :omit-universal-elements true
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
                        :get-action-data (default-AD)}]
@@ -328,7 +325,6 @@
                           :template label-template
                           :parallel-ids [(:joe-id ids)]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
@@ -391,7 +387,6 @@
           {:template 'anything :width 0.8} :object-type)
          [:div {:class "label-wrapping-elements object-type"}
           [:component {:template object-type-virtual-label-template
-                       :omit-universal-elements true
                        :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
@@ -412,8 +407,7 @@
                                            (virt-AD)]
                          :render-dom (virt-DOM)
                          :position :after
-                         :class "link-type"
-                         :omit-universal-elements true}]
+                         :class "link-type"}]
             [:component {:template 'anything
                          :width 0.8
                          :relative-id sally-id
@@ -474,7 +468,6 @@
                             :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
-                            :omit-universal-elements true
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check (render-object-reference-DOM-R
@@ -485,14 +478,12 @@
                               :template template
                               :is-object-name true
                               :relative-id fred-id
-                              :omit-universal-elements true
                               :render-dom render-item-DOM-R
                               :get-action-data (pass-AD)}]
                  [:component {:width 1.5
                               :template template
                               :is-object-name true
                               :relative-id friedrich-id
-                              :omit-universal-elements true
                               :render-dom render-item-DOM-R
                               :get-action-data (pass-AD)}]])))
     (is (check (render-object-reference-DOM-R spec label-store)
@@ -501,7 +492,6 @@
                             :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
-                            :omit-universal-elements true
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check (render-object-reference-DOM-R spec class-store)
@@ -510,7 +500,6 @@
                             :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
-                            :omit-universal-elements true
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}]))))
 
@@ -574,7 +563,6 @@
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
-                            :omit-universal-elements true
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}])))
   ;; Test an entity that is not interned, but that should be displayed
@@ -612,7 +600,6 @@
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id anonymous-name-id
-                            :omit-universal-elements true
                             :render-dom render-item-DOM-R
                             :get-action-data (pass-AD)}])))
   
@@ -629,7 +616,6 @@
                [:div {:class "label-wrapping-elements link-type element"}
                 [:component {:template label-template
                              :relative-id (:label-two-id ids)
-                             :omit-universal-elements true
                              :render-dom render-item-DOM-R
                              :get-action-data (default-AD)
                              :class "link-type"
@@ -661,7 +647,6 @@
                        :is-object-name true
                        :position :after
                        :relative-id :virtual-label
-                       :omit-universal-elements true
                        :class "link-type"
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)
@@ -719,7 +704,6 @@
                 ;; label.
                 [:component
                  {:template object-type-virtual-label-template
-                  :omit-universal-elements true
                   :is-object-name true
                   :width 1.5
                   :relative-id :virtual-label
@@ -737,7 +721,6 @@
                            "link-type horizontal-header top-border bottom-border"}
                      [:component
                       {:is-object-name true
-                       :omit-universal-elements true
                        :width 0.375
                        :template virtual-label-template
                        :render-dom (virt-DOM)
@@ -761,7 +744,6 @@
                            "link-type horizontal-header top-border bottom-border"}
                      [:component
                       {:is-object-name true
-                       :omit-universal-elements true
                        :width 0.375
                        :template virtual-label-template
                        :render-dom (virt-DOM)
@@ -786,7 +768,6 @@
                      [:component
                       {:width 0.375
                        :template label-template
-                       :omit-universal-elements true
                        :parallel-ids [e1-id e2-id]
                        :class "link-type"
                        :relative-id e1-common-id
@@ -809,7 +790,6 @@
                       [:component
                        {:width 0.375
                         :template label-template
-                        :omit-universal-elements true
                         :parallel-ids [e1-id]
                         :class "link-type"
                         :relative-id e1-a-id
@@ -834,7 +814,6 @@
                       [:component
                        {:width 0.375
                         :template label-template
-                        :omit-universal-elements true
                         :parallel-ids [e2-id]
                         :class "link-type"
                         :relative-id e2-b-id
@@ -871,7 +850,6 @@
                 ;; label.
                 [:component
                  {:template object-type-virtual-label-template
-                  :omit-universal-elements true
                   :is-object-name true
                   :width 1.5
                   :relative-id :virtual-label
@@ -936,7 +914,6 @@
                  {:width 1.5
                   :object-ids-to-contract #{obj-id}
                   :template (list object-type-label-object-template)
-                  :omit-universal-elements true
                   :class "link-type"
                   :relative-id simple-label-id
                   :render-dom render-item-DOM-R
@@ -989,8 +966,7 @@
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "link-type"
-                    :position :after
-                    :omit-universal-elements true}]
+                    :position :after}]
                   [:component {:width 0.9
                                :template 'anything
                                :relative-id id1
@@ -1009,8 +985,7 @@
                                       [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "link-type"
-                    :position :after
-                    :omit-universal-elements true}]
+                    :position :after}]
                   [:component {:width 0.9
                                :template 'anything
                                :relative-id id2
@@ -1038,7 +1013,6 @@
                                :template label-template
                                :parallel-ids [(:element-1-id ids)]
                                :class "link-type"
-                               :omit-universal-elements true
                                :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
@@ -1054,7 +1028,6 @@
                                :template label-template
                                :parallel-ids [(:element-2-id ids)]
                                :class "link-type"
-                               :omit-universal-elements true
                                :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
@@ -1089,7 +1062,6 @@
                                :template label-template
                                :parallel-ids [(:element-0-id ids)]
                                :class "link-type"
-                               :omit-universal-elements true
                                :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
@@ -1106,7 +1078,6 @@
                                :parallel-ids (as-set [(:element-1-id ids)
                                                       (:element-2-id ids)])
                                :class "link-type"
-                               :omit-universal-elements true
                                :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM-R
                                :get-action-data (default-AD)}]
@@ -1117,7 +1088,6 @@
                                   :template label-template
                                   :parallel-ids[(:element-1-id ids)]
                                   :class "link-type"
-                                  :omit-universal-elements true
                                   :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
@@ -1137,7 +1107,6 @@
                                   :template label-template
                                   :parallel-ids [(:element-2-id ids)]
                                   :class "link-type"
-                                  :omit-universal-elements true
                                   :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM-R
                                   :get-action-data (default-AD)}]
@@ -1164,8 +1133,7 @@
                               :relative-id [(:element-3-id ids) :virtual-label]
                               :render-dom (virt-DOM)
                               :class "link-type"
-                              :position :after
-                              :omit-universal-elements true}]
+                              :position :after}]
                  [:component {:width 0.9
                               :template 'anything
                               :relative-id (:element-3-id ids)
@@ -1198,7 +1166,6 @@
             :template virtual-label-template
             :is-object-name true
             :relative-id :virtual-label
-            :omit-universal-elements true
             :position :after
             :class "link-type"
             :render-dom (virt-DOM)
@@ -1223,8 +1190,7 @@
                                              (virt-AD)]
                            :render-dom (virt-DOM)
                            :class "link-type"
-                           :position :after
-                           :omit-universal-elements true}]]
+                           :position :after}]]
              [:component {:width 1.03125
                           :template 'anything
                           :relative-id id1
@@ -1242,8 +1208,7 @@
                                              (virt-AD)]
                            :render-dom (virt-DOM)
                            :class "link-type"
-                           :position :after
-                           :omit-universal-elements true}]]
+                           :position :after}]]
              [:component {:width 1.03125
                           :template 'anything
                           :relative-id id2
@@ -1273,7 +1238,6 @@
              [:component {:width 0.375, :template label-template
                           :parallel-ids [(:element-1-id ids)]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:label-one-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]
@@ -1289,7 +1253,6 @@
              [:component {:width 0.375, :template label-template
                           :parallel-ids [(:element-2-id ids)]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:label-two-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]
@@ -1325,7 +1288,6 @@
                           :template label-template
                           :parallel-ids [(:element-0-id ids)]
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:label-zero-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]
@@ -1342,7 +1304,6 @@
                           :parallel-ids (as-set [(:element-1-id ids)
                                                  (:element-2-id ids)])
                           :class "link-type"
-                          :omit-universal-elements true
                           :relative-id (:label-1-both-id ids)
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]]
@@ -1360,7 +1321,6 @@
                            :template label-template
                            :parallel-ids [(:element-1-id ids)]
                            :class "link-type"
-                           :omit-universal-elements true
                            :relative-id (:label-one-id ids)
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
@@ -1380,7 +1340,6 @@
                            :template label-template
                            :parallel-ids [(:element-2-id ids)]
                            :class "link-type"
-                           :omit-universal-elements true
                            :relative-id (:label-two-id ids)
                            :render-dom render-item-DOM-R
                            :get-action-data (default-AD)}]]]
@@ -1406,8 +1365,7 @@
                                             [(parallel-AD) (item-AD)]
                                             (virt-AD)]
                           :class "link-type"
-                          :position :after
-                          :omit-universal-elements true}]]
+                          :position :after}]]
             [:component {:width 1.03125
                          :template 'anything
                          :relative-id (:element-3-id ids)

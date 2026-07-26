@@ -173,8 +173,7 @@
 (defn transform-specification-for-labels
   [specification label-type]
   (assoc (select-keys specification inherited-specification-keys)
-         :template `(~(ensure-label-object 'anything label-type))
-         :omit-universal-elements true))
+         :template `(~(ensure-label-object 'anything label-type))))
 
 (defn transform-specification-for-non-contained-labels
   [specification label-type]
@@ -190,8 +189,7 @@
                                              :query-id :stack-id
                                              :excluding-ids 
                                              :get-do-batch-edit-action-data]))
-         :template `(~(ensure-label-object 'anything label-type))
-         :omit-universal-elements true))
+         :template `(~(ensure-label-object 'anything label-type))))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,

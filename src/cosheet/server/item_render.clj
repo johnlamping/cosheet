@@ -480,12 +480,13 @@
   other arguments."
   [elements implied-template must-show-label orientation specification]
   (let [ordered-elements (ordered-entities elements)
-        all-labels (map semantic-label-elements ordered-elements)
+        all-labels (map (fn [element]
+                          (remove #(universal-object? (content %))
+                                  (semantic-label-elements element)))
+                        ordered-elements)
         excludeds (map (fn [element]
-                         (concat (when implied-template
-                                   (condition-satisfiers element
-                                                         implied-template))
-                                 (content->elements element name-label)))
+                         (when implied-template
+                           (condition-satisfiers element implied-template)))
                        ordered-elements)
         labels (map (fn [all exclusions]
                       (clojure.set/difference (set all) (set exclusions)))
@@ -552,6 +553,7 @@
           (:relative-id specification))
   (assert (or (seq elements) virtual-dom))
   (let [[labels non-labels] (separate-by label-element? elements)
+        labels (seq (remove #(universal-object? (content %)) labels))
         elements-dom
         (when (or non-labels virtual-dom)
           (let [elements-dom
@@ -622,8 +624,7 @@
           specification (->
                          specification
                          (dissoc :auxiliary-item-id :relative-id :render-dom)
-                         (assoc :omit-universal-elements true
-                                :is-object-name true
+                         (assoc :is-object-name true
                                 :get-action-data get-pass-through-action-data))]
       (assert (> num-names 0))
       (if (= num-names 1)
@@ -760,12 +761,10 @@
                    element-ids-to-exclude
                    (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)
-        labels (cond->> labels
-                 (:omit-universal-elements specification)
-                 (remove #(universal-object? (content %))))]
+        labels (seq (remove #(universal-object? (content %)) labels))]
     (cond-> (element-content-labels-and-non-label-elements-DOM
              entity labels non-labels
-             (dissoc specification :class :omit-universal-elements))
+             (dissoc specification :class))
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
@@ -782,8 +781,8 @@
         [labels non-labels] (separate-by label-element? elements)
         ;; When contracting, also hide any label that itself has
         ;; other elements.
-        labels (cond->> labels
-                 contract (remove #(seq (semantic-elements %))))
+        labels (seq (cond->> (remove #(universal-object? (content %)) labels)
+                      contract (remove #(seq (semantic-elements %)))))
         [names others] (separate-by name-element? non-labels)
         elem-spec (update (transform-specification-for-elements specification)
                           :object-ids-to-contract (fnil conj #{}) entity-id)
@@ -806,7 +805,7 @@
         labels-spec (transform-specification-for-labels
                      specification :object-type)]
     (cond-> (wrap-with-labels-DOM
-             (if (seq labels)
+             (if labels
                (label-stack-DOM labels labels-spec)
                (virtual-label-DOM-component labels-spec))
              :object-type

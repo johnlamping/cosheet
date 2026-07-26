@@ -180,7 +180,6 @@
              :render-dom render-item-DOM-R
              :get-action-data (default-AD)
              :class "link-type"
-             :omit-universal-elements true
              :relative-id q2-c1-l
              :immutable true
              :width 0.75}]

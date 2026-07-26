@@ -472,7 +472,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name object-reference"
+                            :class "object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM-R
@@ -484,7 +484,6 @@
                  [:component {:width 1.5
                               :template template
                               :is-object-name true
-                              :class "name"
                               :relative-id fred-id
                               :omit-universal-elements true
                               :render-dom render-item-DOM-R
@@ -492,7 +491,6 @@
                  [:component {:width 1.5
                               :template template
                               :is-object-name true
-                              :class "name"
                               :relative-id friedrich-id
                               :omit-universal-elements true
                               :render-dom render-item-DOM-R
@@ -501,7 +499,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name object-reference"
+                            :class "object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM-R
@@ -510,7 +508,7 @@
                [:component {:width 1.5
                             :template template
                             :is-object-name true
-                            :class "name object-reference"
+                            :class "object-reference"
                             :relative-id fred-id
                             :omit-universal-elements true
                             :render-dom render-item-DOM-R
@@ -563,7 +561,7 @@
         inner-dom (run-renderer (:render-dom spec) spec store)]
     (is (check dom
                [:component {:width 1.5
-                            :class "editable element"
+                            :class "element"
                             :auxiliary-item-id fred-oid,
                             :relative-id :content
                             :template (make-tree-object
@@ -572,7 +570,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable element name object-reference"
+                            :class "element object-reference"
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id fred-name-id
@@ -601,7 +599,7 @@
     (is (not (uniquely-identified-object? (id->object anonymous-oid store))))
     (is (check dom
                [:component {:width 1.5
-                            :class "editable element"
+                            :class "element"
                             :auxiliary-item-id anonymous-oid,
                             :relative-id :content
                             :template (make-tree-object
@@ -610,7 +608,7 @@
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "editable element name object-reference"
+                            :class "element object-reference"
                             :template (make-tree-object [`("" (~name-label))])
                             :is-object-name true
                             :relative-id anonymous-name-id
@@ -1419,4 +1417,3 @@
 (deftest render-virtual-DOM-test
   (is (check (render-virtual-DOM {:class "foo"} new-element-store)
              [:div {:class "foo editable virtual"}])))
-

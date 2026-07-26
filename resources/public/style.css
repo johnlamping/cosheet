@@ -166,7 +166,6 @@ body {
 
 .link-type > .wrapped-elements {
     margin-left: 8px;
-    background-color: white;
 }
 
 .object-type > .wrapped-elements {
@@ -517,8 +516,12 @@ body {
     border-bottom-left-radius: var(--radius);
     border-width: var(--bw);
     margin-right: var(--nbw);
-    margin-bottom: var(--nbw);
     background-image: var(--shimmer-left), var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
+    
+    &:last-child,
+    &:has(+ .label-wrapping-elements, + .stack-filler) {
+	margin-bottom: var(--nbw);
+    }
 }
 
 .vertical-stack.has-border {
@@ -776,10 +779,6 @@ body {
     justify-content: flex-end;
     text-align: center;
     margin-right: var(--nbw);
-
-    &:not(.link-type):not(.object-type):not(.virtual-column) {
-        background-color: white;
-    }
 
     &.leaf {
         width: 150px;

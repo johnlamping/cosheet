@@ -23,6 +23,7 @@
                    Store]]
     [store-utils :refer [remove-entity-by-id add-object]]
     [entity :refer [id->entity id->element make-tree-object
+                    add-elements-to-entity
                     elements content content->elements
                     label->element label->elements label->content
                     name-label object? element? interned-object? label-element?
@@ -293,6 +294,15 @@
                    ;; TODO: !!! What should happen when our subject is
                    ;; the id of an object? Should we require our
                    ;; subject to be an element?
+                   template)
+        ;; If the template is an object with no name, and the first
+        ;; subject's content is a string, add that string as a name.
+        first-content (id->source store (first subject-ids))
+        template (if (and (object? template)
+                          (empty? (label->elements template name-label))
+                          (string? first-content))
+                   (add-elements-to-entity
+                    template [`(~first-content (~name-label))])
                    template)
         [store oids]
         (if (object? template)

@@ -28,7 +28,7 @@
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
                                   labels-and-elements-DOM
-                                  horizontal-label-hierarchy-node-DOM
+                                  hierarchy-node-labels-DOM
                                   virtual-DOM-component
                                   virtual-label-DOM-component]]
              [action-data :refer [best-match
@@ -166,7 +166,7 @@
   the doms for all the children."
   [node child-doms specification]
   (let [is-leaf (empty? child-doms)
-        node-dom (horizontal-label-hierarchy-node-DOM
+        node-dom (hierarchy-node-labels-DOM
                   node
                   (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))

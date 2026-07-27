@@ -47,7 +47,7 @@
                                   element-content-DOM
                                   labels-and-elements-DOM
                                   non-label-elements-DOM
-                                  horizontal-label-hierarchy-node-DOM]]
+                                  hierarchy-node-labels-DOM]]
              [action-data :refer [default-get-action-data
                                   get-id-action-data
                                   get-item-or-exemplar-action-data
@@ -219,7 +219,7 @@
   (let [spec (into (dissoc specification :parent-cover-ids :competing-ids)
                    (table-header-node-specification
                     node (:parent-cover-ids specification)))
-        node-dom (horizontal-label-hierarchy-node-DOM
+        node-dom (hierarchy-node-labels-DOM
                   node spec)
         is-leaf (empty? child-doms)
         class (cond-> "column-header"

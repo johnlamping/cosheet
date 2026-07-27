@@ -268,6 +268,15 @@
           dom])))
     (select-keys specification [:class])))
 
+(defn displayable-example-labels
+  "The example label elements of a hierarchy node that should be
+  displayed: its example elements, minus any whose content is a
+  universal object. Universal-object labels take part in building the
+  hierarchy, so that a leaf's items agree on them, but are not shown."
+  [hierarchy-node]
+  (remove #(universal-object? (content %))
+          (hierarchy-node-example-elements hierarchy-node)))
+
 (defn hierarchical-elements-property-elements-DOM
   "Given a node of a hierarchy of entity info maps for a sequence of
   elements organized by their labels, Return DOM for example elements
@@ -280,8 +289,9 @@
         ;;       we take the first of the descendants.
         example-descendant-id (first descendant-ids)
         labels-spec (transform-specification-for-non-contained-labels
-                     specification :link-type)]
-    (let [dom (if (empty? (:properties hierarchy-node))
+                     specification :link-type)
+        display-labels (displayable-example-labels hierarchy-node)]
+    (let [dom (if (empty? display-labels)
                 (do
                   (assert (label-object? (content (:template labels-spec)))
                           labels-spec)
@@ -293,7 +303,7 @@
                                             :virtual-label])
                        (add-parallel-item-ids descendant-ids))))
                 (label-stack-DOM
-                 (hierarchy-node-example-elements hierarchy-node)
+                 display-labels
                  (add-parallel-item-ids-for-label labels-spec descendant-ids)))]
       ;; Even if stacked, we need to mark the stack as "link-type" too.
       (add-attributes dom {:class "link-type"}))))
@@ -342,6 +352,7 @@
   (assert (#{:horizontal :vertical} orientation) orientation)
   (assert (empty? (:element-ids-to-exclude specification)) specification)
   (let [leaves (hierarchy-node-leaves node)
+        display-labels (displayable-example-labels node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
     (let [leaf-dom (when (seq leaves)
@@ -351,11 +362,11 @@
                                                   (cons leaf-dom child-doms)
                                                   child-doms)
                                                 orientation)
-          properties-dom (when (or (seq (:properties node))
+          properties-dom (when (or (seq display-labels)
                                    must-show-label)
                            (hierarchical-elements-property-elements-DOM
                             node specification))]
-      (cond-> (if (empty? (:properties node))
+      (cond-> (if (empty? display-labels)
                 (if must-show-label
                   (cond-> (add-labels-DOM properties-dom descendants-dom
                                           (opposite-orientation orientation))
@@ -480,10 +491,10 @@
   other arguments."
   [elements implied-template must-show-label orientation specification]
   (let [ordered-elements (ordered-entities elements)
-        all-labels (map (fn [element]
-                          (remove #(universal-object? (content %))
-                                  (semantic-label-elements element)))
-                        ordered-elements)
+        ;; We keep universal-object labels here, so that the hierarchy
+        ;; groups items that differ on them into different leaves. They
+        ;; are dropped when the hierarchy's labels are displayed.
+        all-labels (map semantic-label-elements ordered-elements)
         excludeds (map (fn [element]
                          (when implied-template
                            (condition-satisfiers element implied-template)))
@@ -491,7 +502,11 @@
         labels (map (fn [all exclusions]
                       (clojure.set/difference (set all) (set exclusions)))
                     all-labels excludeds)
-        no-labels (every? empty? labels)]
+        ;; Universal-object labels aren't displayed, so whether there are
+        ;; labels to show depends only on the other labels.
+        no-labels (every? (fn [ls]
+                            (every? #(universal-object? (content %)) ls))
+                          labels)]
     (if (and no-labels (not must-show-label))
       (map #(item-minus-excluded-component %1 %2 specification)
            ordered-elements excludeds)
@@ -840,7 +855,7 @@
   [v ^java.io.Writer w]
   (.write w "item-DOM"))
 
-(defn horizontal-label-hierarchy-node-DOM
+(defn hierarchy-node-labels-DOM
   "Generate the DOM for a node in a hierarchy that groups items by their
   labels, has at most one leaf per node and doesn't have both leaves and
   children.
@@ -849,7 +864,6 @@
   nodes won't be nested inside the DOM of their parents."
   [node {:keys [top-level] :as specification}]
   (let [specification (dissoc specification :top-level)
-        example-elements (hierarchy-node-example-elements node)
         leaf-info (first (hierarchy-node-leaves node))
         leaf (:item leaf-info)
         labels (when leaf (semantic-label-elements leaf))
@@ -891,13 +905,23 @@
       leaf-component
       
       true
-      (do
+      (let [display-labels (displayable-example-labels node)]
         ;; Since the node has children, our input condition implies
         ;; that it must not have a leaf.
         (assert (not leaf) node)
-        (label-stack-DOM
-         example-elements
-         (-> (add-parallel-item-ids-for-label specification descendant-ids)
-             (assoc :template 'anything
-                    :width (* 0.75 (count (hierarchy-node-descendants
-                                           node))))))))))
+        (if (seq display-labels)
+          (label-stack-DOM
+           display-labels
+           (-> (add-parallel-item-ids-for-label specification descendant-ids)
+               (assoc :template 'anything
+                      :width (* 0.75 (count (hierarchy-node-descendants
+                                             node))))))
+          ;; All the node's labels are universal objects, which are used
+          ;; only to build the hierarchy and are not shown; put a virtual
+          ;; label where they would go.
+          (virtual-label-DOM-component
+           (-> (add-parallel-item-ids specification descendant-ids)
+               (assoc :template `(~(ensure-label-object 'anything :link-type))
+                      :relative-id [(first descendant-ids) :nested]
+                      :width (* 0.75 (count (hierarchy-node-descendants
+                                             node)))))))))))

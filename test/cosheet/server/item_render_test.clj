@@ -205,7 +205,7 @@
                           :render-dom (virt-DOM)
                           :get-action-data (virt-AD)}])))
 
-(deftest horizontal-label-hierarchy-node-DOM-test
+(deftest hierarchy-node-labels-DOM-test
   (let [[store ids] (make-joe-and-jane-store)
         ordered-entities [(id->element (:joe-id ids) store)
                           (id->element (:jane-id ids) store)]
@@ -215,7 +215,7 @@
         node (first hierarchy)]
     ;; A node with no leaves.
     (is (check
-         (horizontal-label-hierarchy-node-DOM node {:width 0.75})
+         (hierarchy-node-labels-DOM node {:width 0.75})
          [:component
           {:template label-template
            :width 1.5
@@ -226,7 +226,7 @@
            :class "link-type"}]))
     ;; A node with a leaf,  properties, and no children
     (is (check
-         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node))
+         (hierarchy-node-labels-DOM (first (:child-nodes node))
                                               {:width 0.75})
          [:component {:relative-id (:joe-id ids)
                       :width 0.75
@@ -235,7 +235,7 @@
                       :get-action-data (default-AD)}]))
     ;; A node with leaves, no properties, and no children
     (is (check
-         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node))
+         (hierarchy-node-labels-DOM (second (:child-nodes node))
                                               {:width 0.75})
          [:div {:class
                 "link-type label-wrapping-elements virtual-wrapper merge-with-parent"}

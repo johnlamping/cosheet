@@ -91,6 +91,7 @@
     --virtual-object-type-color: hsl(from var(--object-type-color) h 50% l);
     --bw: 2px;                                 /* standard border width */
     --nbw: -2px;                               /* border-width margin compensation */
+    --obj-bw: 3px;                             /* object border width */
     --radius: 7px;                             /* standard corner radius */
     /* White shimmer fading inward from each edge over var(--radius) distance */
     --shimmer-right: linear-gradient(to right,  hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, 0) var(--radius), hsla(0, 0%, 100%, 0));
@@ -148,14 +149,7 @@ body {
 
 /* In general, if there is a border, there is a matching negative margin
    on the right and bottom. That allows boxes to stack. Containment may
-   require additional negative margins on the top and left.
-
-   Usually, the border is set by the containing DOM element, but sometimes
-   it is set explicitly. */
-.bordered {
-    border-width: var(--bw);
-    margin: 0px var(--nbw) var(--nbw) 0px;
-}
+   require additional negative margins on the top and left. */
 
 /* --- Generic indentation --- */
 
@@ -451,14 +445,10 @@ body {
 
 /* --- object references --- */
 
-.object-reference:not(.link-type):not(.object-type) {
+/* We don't do anything special for labels that have just a name. */
+.object, .object-reference:not(.editable.link-type):not(.editable.object-type) {
     border-radius: var(--radius);
-    border-width: var(--bw);
-}
-
-.object {
-    border-radius: var(--radius);
-    border-width: var(--bw);
+    border-width: var(--obj-bw);
 }
 
 /* --- names --- */
@@ -514,13 +504,18 @@ body {
     border-top-left-radius: var(--radius);
     border-top-right-radius: var(--radius);
     border-bottom-left-radius: var(--radius);
-    border-width: var(--bw);
     margin-right: var(--nbw);
     background-image: var(--shimmer-left), var(--shimmer-right), var(--shimmer-down), var(--shimmer-up);
     
     &:last-child,
     &:has(+ .label-wrapping-elements, + .stack-filler) {
 	margin-bottom: var(--nbw);
+    }
+
+    /* Don't override an object's border width */
+    &:not(.object,
+	  .object-reference:not(.editable.link-type):not(.editable.object-type)) {
+        border-width: var(--bw);
     }
 }
 
@@ -541,9 +536,14 @@ body {
 }
 
 .label-wrapping-elements.link-type > .wrapped-elements > * {
-    border-width: var(--bw);
     margin-bottom: var(--nbw);
     margin-right: var(--nbw);
+
+    /* Don't override an object's border width */
+    &:not(.object,
+	  .object-reference:not(.editable.link-type):not(.editable.object-type)) {
+        border-width: var(--bw);
+    }
 }
 
 .vertical-stack > .label-wrapping-elements:last-child {

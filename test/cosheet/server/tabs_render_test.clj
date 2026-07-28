@@ -119,13 +119,7 @@
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
-             :template `("" :tab ""
-                         ("" :tab-topic :table
-                                 (~(make-tree-object [`(~(object-type-object '???)) :selector])
-                                  :row-condition)
-                                 (~'anything
-                                  :column-headers :selector
-                                  (~'anything (~(link-type-object '???))))))
+             :template `("" :tab)
              :render-dom (tab-DOM)
              :get-action-data (item-AD)
              :example-element-ids (as-set [(:item-id t3-baz)
@@ -136,13 +130,7 @@
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
-              :template `("" :tab ""
-                          ("" :tab-topic :table
-                                  (~(make-tree-object [`(~(object-type-object '???)) :selector])
-                                   :row-condition)
-                                  (~'anything
-                                   :column-headers :selector
-                                   (~'anything (~(link-type-object '???))))))
+              :template `("" :tab)
               :render-dom (tab-DOM)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
@@ -154,13 +142,7 @@
              [:component
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
-               :template `("" :tab ""
-                           ("" :tab-topic :table
-                                   (~(make-tree-object [`(~(object-type-object '???)) :selector])
-                                    :row-condition)
-                                   (~'anything
-                                    :column-headers :selector
-                                    (~'anything (~(link-type-object '???)))))
+               :template `("" :tab
                            "foo")
                :render-dom (tab-DOM)
                :example-element-ids [(:item-id t2-bar)]

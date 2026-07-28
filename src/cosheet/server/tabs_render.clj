@@ -133,7 +133,7 @@
   (let-R [tabs-entity (id->updating-entity-R
                       relative-id store)]
     (let [;; The template starts out with an empty name
-          tabs-spec {:template `("" :tab "" ~new-tab-table-element)
+          tabs-spec {:template `("" :tab)
                      :nesting-depth 0
                      :chosen-tab-id chosen-tab-id}
           tabs (ordered-entities (label->elements tabs-entity :tab))

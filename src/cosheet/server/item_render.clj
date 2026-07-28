@@ -65,6 +65,8 @@
 
 (def render-item-DOM-R)
 
+(def css-class-for-name)
+
 (defn item-component
   "Make a component dom to display the given item. The item's id becomes
   the relative-id, and the render-dom and get-action-data are filled in."
@@ -111,8 +113,11 @@
   (.write w "virt-RD"))
 
 (defn render-virtual-DOM [spec ms]
-  [:div (into-attributes (select-keys spec [:class])
-                         {:class "editable virtual"})])
+  (let [template (final-template (:template spec))]
+    [:div (cond-> (into-attributes (select-keys spec [:class])
+                                   {:class "editable virtual"})
+            (object? template)
+            (into-attributes {:class (css-class-for-name template)}))]))
 
 (defmethod print-method
   cosheet.server.item_render$render_virtual_DOM
@@ -618,6 +623,9 @@
             (label-element? item)
             (into-attributes (:class "link-type"))
             (name-element? item)
+            ;; Note: we won't be re-run when the elements target
+            ;; entity change. But that's OK because we only depend on
+            ;; its types links, and those aren't allowed to change.
             (into-attributes {:class (css-class-for-name
                                       (target-entity item))})
             anything

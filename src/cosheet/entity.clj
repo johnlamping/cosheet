@@ -257,7 +257,12 @@
     "If the entity represents a link, return the entity corresponding to
     its target. This is independent of the orientation of the
     entity. If the target is a link, the resulting entity will be given
-    orientation :source.")
+    orientation :source.
+    Note: Registering for notification of changes to this element in a
+    mutable store doesn't generate notifications of changes to the
+    elements of the target entity. So this method should only be used
+    by code that doesn't depend on changes to the target or that also
+    registers for changes to it.")
 
   (originating-entity [this]
     "If the entity represents a link, return the entity corresponding

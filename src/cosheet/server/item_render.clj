@@ -1,7 +1,7 @@
 (ns cosheet.server.item-render
   (:require
    (cosheet
-    [canonical :refer [canonical-set-to-list]]
+    [canonical :refer [canonical-set-to-list canonicalize]]
     [store :refer [make-item-id]]
     [entity :refer [id->entity id->updating-entity-R
                     content label-element? primitive? object? element?
@@ -24,7 +24,8 @@
    (cosheet.server
     [model-utils :refer [semantic-elements
                          semantic-non-label-elements semantic-label-elements
-                         semantic-to-tree entity->canonical-semantic]]
+                         semantic-to-tree semantic-to-tree-excluding-elements
+                         entity->canonical-semantic]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves
@@ -613,7 +614,7 @@
 
 (defn element-primitive-content-DOM
   "Make dom for a primitive that is the content part of an item."
-  [item primitive {:keys [class] :as specification}]
+  [item primitive {:keys [class]}]
   (assert (primitive? primitive) primitive)
   (let [anything (= 'anything primitive)]
     [:div (cond-> (into-attributes
@@ -676,15 +677,19 @@
   matches the template, with nothing extra. These objects can result
   from add-twin on an interned object, and we want to show them
   in the same format as their twin."
-  [template object]
-  (and (seq (label->elements object name-label))
-       ;; The template and object might mention identified objects
-       ;; with the same id, but from different stores. That shouldn't
-       ;; count as a difference.
-       (= (entity->canonical-semantic
-           (all-presumed-interned-in-different-store object nil))
-          (entity->canonical-semantic
-           (all-presumed-interned-in-different-store template nil)))))
+  [template-element element]
+  (let [template (content template-element)
+        object (content element)]
+    (and (seq (label->elements object name-label))
+         ;; The template and object might mention identified objects
+         ;; with the same id, but from different stores. That shouldn't
+         ;; count as a difference. We also exclude the element itself,
+         ;; which appears among the object's elements as a reversed link.
+         (= (canonicalize
+             (semantic-to-tree-excluding-elements
+              object #{(:item-id element)}))
+            (entity->canonical-semantic
+             (all-presumed-interned-in-different-store template nil))))))
 
 (defn element-content-DOM
   "Make dom for the content of an element."
@@ -693,14 +698,15 @@
         reference-contents (and (object? contents)
                                 (or (interned-object? contents)
                                     (display-content-object-as-if-interned?
-                                     (content template) contents)))
+                                     template element)))
         ;; Only directly-editable (primitive) content is editable here.
         ;; Entire object contents are not. (Their parts can be.)
         editable (and (not immutable)
                       (not (object? contents)))
         kept-spec (select-keys specification
-                               (concat [:class] inherited-specification-keys))
-        specification (cond-> (assoc kept-spec :template (content template))
+                               (concat [:class :template]
+                                       inherited-specification-keys))
+        specification (cond-> kept-spec
                         editable (into-attributes {:class "editable"}))]
     (cond (primitive? contents)
           (element-primitive-content-DOM element contents specification)
@@ -714,7 +720,7 @@
                    (assoc :element-ids-to-exclude #{(:item-id element)})
                    (into-attributes {:class "object"})))))))
 
-(defn render-content-only-DOM
+(defn render-content-only-DOM-R
   "Given an item that represents an element, render a dom spec for only
   its content."
   [{:keys [relative-id auxiliary-item-id] :as specification} store]
@@ -724,7 +730,7 @@
      element (select-keys specification [:class :width :immutable :template]))))
 
 (defmethod print-method
-  cosheet.server.item_render$render_content_only_DOM
+  cosheet.server.item_render$render_content_only_DOM_R
   [v ^java.io.Writer w]
   (.write w "content-DOM"))
 
@@ -738,7 +744,7 @@
                                           inherited-specification-keys))
                      (assoc :relative-id :content
                             :auxiliary-item-id (:item-id element)
-                            :render-dom render-content-only-DOM
+                            :render-dom render-content-only-DOM-R
                             :get-action-data get-pass-through-action-data))
            (label-element? element)
            (into-attributes {:class "link-type"})))]

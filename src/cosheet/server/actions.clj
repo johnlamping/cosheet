@@ -289,7 +289,7 @@
         ;; element, we're in that case, and we need to
         ;; use its content as our template.template   
         template (if (element? template) (content template) template)
-        template (if (or (not template) (#{'anything ""} template))
+        template (if (or (not template) (#{'anything "" :singular} template))
                    (make-tree-object [:selector])
                    ;; TODO: !!! What should happen when our subject is
                    ;; the id of an object? Should we require our

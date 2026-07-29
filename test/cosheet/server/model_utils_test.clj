@@ -328,6 +328,26 @@
                         `("z" (~(make-conflux-tree-object
                                  (make-tree-id 1) [])))])))]))))))
 
+(deftest semantic-to-tree-excluding-elements-test
+  (let [[s obj-id] (add-element (new-element-store) nil
+                                `("top"
+                                  ("a" (~o1 :order))
+                                  ("b" (~o2 :order))))
+        obj (id->entity obj-id s)
+        a-element (first (matching-elements "a" obj))
+        b-element (first (matching-elements "b" obj))]
+    ;; Excluding no ids gives the same as semantic-to-tree.
+    (is (check (semantic-to-tree-excluding-elements obj #{})
+               (as-set (semantic-to-tree obj))))
+    ;; Excluding an element's id omits that element.
+    (is (check (semantic-to-tree-excluding-elements
+                obj #{(:item-id a-element)})
+               (as-set '("top" "b"))))
+    ;; Excluding all elements leaves just the content.
+    (is (check (semantic-to-tree-excluding-elements
+                obj #{(:item-id a-element) (:item-id b-element)})
+               "top"))))
+
 (deftest labels-test
   (let [a `("a" (~o1 :order))
         b `("b " "x" (~o2 :order))

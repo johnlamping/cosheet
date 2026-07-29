@@ -553,14 +553,14 @@
                             :class "element"
                             :auxiliary-item-id fred-oid,
                             :relative-id :content
-                            :template (make-tree-object
-                                       [`("" (~name-label))])
+                            :template `(~(make-tree-object
+                                          [`("" (~name-label))]))
                             :render-dom render-object-reference-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "element object-reference"
-                            :template (make-tree-object [`("" (~name-label))])
+                            :template `(~(make-tree-object [`("" (~name-label))]))
                             :is-object-name true
                             :relative-id fred-name-id
                             :render-dom render-item-DOM-R
@@ -590,14 +590,14 @@
                             :class "element"
                             :auxiliary-item-id anonymous-oid,
                             :relative-id :content
-                            :template (make-tree-object
-                                       [`("" (~name-label))])
+                            :template `(~(make-tree-object
+                                          [`("" (~name-label))]))
                             :render-dom render-object-reference-DOM-R
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "element object-reference"
-                            :template (make-tree-object [`("" (~name-label))])
+                            :template `(~(make-tree-object [`("" (~name-label))]))
                             :is-object-name true
                             :relative-id anonymous-name-id
                             :render-dom render-item-DOM-R
@@ -626,7 +626,7 @@
                                                   (~two-object)))
                               :relative-id :content
                               :auxiliary-item-id (:fred-id ids)
-                              :render-dom render-content-only-DOM
+                              :render-dom render-content-only-DOM-R
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
   
@@ -654,7 +654,7 @@
           [:component {:template ""
                        :relative-id :content
                        :auxiliary-item-id fred-id
-                       :render-dom render-content-only-DOM
+                       :render-dom render-content-only-DOM-R
                        :get-action-data (pass-AD)
                        :width 1.5}]]))))
 
@@ -950,7 +950,7 @@
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id fred-id
-                             :render-dom render-content-only-DOM
+                             :render-dom render-content-only-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class
@@ -1005,7 +1005,7 @@
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id (:fred-id ids)
-                             :render-dom render-content-only-DOM
+                             :render-dom render-content-only-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "label-wrapping-elements link-type"}
@@ -1054,7 +1054,7 @@
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id (:fred-id ids)
-                             :render-dom render-content-only-DOM
+                             :render-dom render-content-only-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "label-wrapping-elements link-type"}
@@ -1175,7 +1175,7 @@
                         :width 1.5
                         :relative-id :content
                         :auxiliary-item-id fred-id
-                        :render-dom render-content-only-DOM
+                        :render-dom render-content-only-DOM-R
                         :get-action-data (pass-AD)}]
            [:div {:class "vertical-stack"}
             [:div {:class "horizontal-labels-element link-type wide"}
@@ -1229,7 +1229,7 @@
                        :width 1.5
                        :relative-id :content
                        :auxiliary-item-id (:fred-id ids)
-                       :render-dom render-content-only-DOM
+                       :render-dom render-content-only-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element link-type wide"}
@@ -1279,7 +1279,7 @@
                        :width 1.5
                        :relative-id :content
                        :auxiliary-item-id (:fred-id ids)
-                       :render-dom render-content-only-DOM
+                       :render-dom render-content-only-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element link-type wide"}

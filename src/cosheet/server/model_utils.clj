@@ -153,6 +153,16 @@
   [immutable-entity]
   (internal-semantic-to-tree immutable-entity semantic-elements))
 
+(defn semantic-to-tree-excluding-elements
+  "Like semantic-to-tree, but omits any semantic elements whose ids are
+  in element-ids-to-exclude."
+  [immutable-entity element-ids-to-exclude]
+  (internal-semantic-to-tree
+   immutable-entity
+   (fn [entity]
+     (remove #(element-ids-to-exclude (:item-id %))
+             (semantic-elements entity)))))
+
 (defn ordered-semantic-to-tree
   "Given an immutable entity, make a list representation of the
   semantic information of the entity, putting elements in the order that the

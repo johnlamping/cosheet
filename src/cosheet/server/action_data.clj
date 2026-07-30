@@ -395,7 +395,7 @@
   "Create the specified virtual item(s) and make them the target(s).
    The new items are instances of the template.
    The containing data's subject-ids are the target of the new items,
-   unless sibling is true in which case they are the siblings.
+   unless sibling is true, in which case they are the siblings.
    If sibling is true, the new items will be adjacent to the
    siblings. If not, they will be adjacent to elements of the target
    that match adjacent-query, if there are any, otherwise, they will

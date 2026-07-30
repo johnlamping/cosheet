@@ -457,7 +457,7 @@
                                                    `("Friedrich" (~name-label)))
         [label-store _] (add-element store oid `(link-type))
         [class-store _] (add-element store oid `(object-type))
-        template (make-tree-object [`(~name-label)])
+        template `(~(make-tree-object [`(~name-label)]))
         spec (assoc basic-dom-specification
                     :relative-id :content
                     :auxiliary-item-id oid
@@ -626,7 +626,7 @@
                                                   (~two-object)))
                               :relative-id :content
                               :auxiliary-item-id (:fred-id ids)
-                              :render-dom render-content-only-DOM-R
+                              :render-dom render-element-content-DOM-R
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
   
@@ -651,10 +651,10 @@
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)
                        :width 1.5}]
-          [:component {:template ""
+          [:component {:template '("")
                        :relative-id :content
                        :auxiliary-item-id fred-id
-                       :render-dom render-content-only-DOM-R
+                       :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)
                        :width 1.5}]]))))
 
@@ -946,11 +946,11 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements element"}
-                [:component {:template ""
+                [:component {:template '("")
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id fred-id
-                             :render-dom render-content-only-DOM-R
+                             :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class
@@ -1001,11 +1001,11 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements element"}
-                [:component {:template ""
+                [:component {:template '("")
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id (:fred-id ids)
-                             :render-dom render-content-only-DOM-R
+                             :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "label-wrapping-elements link-type"}
@@ -1050,11 +1050,11 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements element"}
-                [:component {:template ""
+                [:component {:template '("")
                              :width 0.9
                              :relative-id :content
                              :auxiliary-item-id (:fred-id ids)
-                             :render-dom render-content-only-DOM-R
+                             :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "label-wrapping-elements link-type"}
@@ -1171,11 +1171,11 @@
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]
           [:div {:class "with-elements"}
-           [:component {:template ""
+           [:component {:template '("")
                         :width 1.5
                         :relative-id :content
                         :auxiliary-item-id fred-id
-                        :render-dom render-content-only-DOM-R
+                        :render-dom render-element-content-DOM-R
                         :get-action-data (pass-AD)}]
            [:div {:class "vertical-stack"}
             [:div {:class "horizontal-labels-element link-type wide"}
@@ -1225,11 +1225,11 @@
     (is (check
          dom
          [:div {:class "with-elements element"}
-          [:component {:template ""
+          [:component {:template '("")
                        :width 1.5
                        :relative-id :content
                        :auxiliary-item-id (:fred-id ids)
-                       :render-dom render-content-only-DOM-R
+                       :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element link-type wide"}
@@ -1275,11 +1275,11 @@
     (is (check
          dom
          [:div {:class "with-elements element"}
-          [:component {:template ""
+          [:component {:template '("")
                        :width 1.5
                        :relative-id :content
                        :auxiliary-item-id (:fred-id ids)
-                       :render-dom render-content-only-DOM-R
+                       :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element link-type wide"}

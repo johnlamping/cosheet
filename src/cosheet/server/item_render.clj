@@ -638,7 +638,7 @@
   name, and editing the displayed name doesn't change the object, but
   selects (or creates) an object with the provided name. The
   specification should have a :relative-id of :content, and an
-  auxiliary-item-id that gives the id of the object."
+  auxiliary-item-id that gives the id of an example object."
   [{:keys [auxiliary-item-id relative-id] :as specification} store]
   (assert (= relative-id :content))
   (let-R [object (id->updating-entity-R auxiliary-item-id store)]
@@ -661,9 +661,9 @@
 (defn object-reference-component
   "Return a component to display an object in object-reference form."
   [object specification]
-  (assert (let [spec (:template specification)]
-            (or (= spec 'anything) (object? spec))
-               specification))
+  ;; Our specification should be the element that holds the object.
+  (assert (let [template (:template specification)]
+            (or (= template 'anything) (element? template))))
   (make-component (assoc specification
                          :relative-id :content
                          :auxiliary-item-id (:item-id object)
@@ -720,8 +720,8 @@
                    (assoc :element-ids-to-exclude #{(:item-id element)})
                    (into-attributes {:class "object"})))))))
 
-(defn render-content-only-DOM-R
-  "Given an item that represents an element, render a dom spec for only
+(defn render-element-content-DOM-R
+  "Given an item that represents an element, render a dom for
   its content."
   [{:keys [relative-id auxiliary-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
@@ -730,7 +730,7 @@
      element (select-keys specification [:class :width :immutable :template]))))
 
 (defmethod print-method
-  cosheet.server.item_render$render_content_only_DOM_R
+  cosheet.server.item_render$render_element_content_DOM_R
   [v ^java.io.Writer w]
   (.write w "content-DOM"))
 
@@ -744,7 +744,7 @@
                                           inherited-specification-keys))
                      (assoc :relative-id :content
                             :auxiliary-item-id (:item-id element)
-                            :render-dom render-content-only-DOM-R
+                            :render-dom render-element-content-DOM-R
                             :get-action-data get-pass-through-action-data))
            (label-element? element)
            (into-attributes {:class "link-type"})))]
@@ -768,10 +768,13 @@
         (element-content-DOM element specification)
         (let [inner-spec (-> specification
                              (dissoc :class)
+                             ;; The template for making a copy inside our
+                             ;; labels is the content of the original
+                             ;; template, plus all our labels.
                              (update :template
                                      #(add-elements-to-entity
                                        ;; This might come from a column header.
-                                       (content %)
+                                       `(~(content %))
                                        ;; We have exactly the required labels.
                                        (map semantic-to-tree
                                             (semantic-label-elements

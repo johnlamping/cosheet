@@ -412,6 +412,9 @@
 (defn table-virtual-row-DOM-component-R
   "Generate the component for a table's virtual row."
   [row-template-R column-descriptions-R adjacent-id]
+  ;; We need the value of the row-template, even though our renderer
+  ;; doesn't use it, because the action data needs it to be in the
+  ;; spec.
   (let-R [row-template row-template-R]
     (make-component
      {:relative-id :virtual-row
@@ -419,9 +422,6 @@
       :column-descriptions-R column-descriptions-R
       :render-dom render-table-virtual-row-DOM-R
       :sibling true
-      ;; We need the value of the row-template, even though
-      ;; render-table-virtual-row-DOM-R doesn't use it, because the
-      ;; action data needs it to be in the spec.
       :template row-template
       :get-action-data [composed-get-action-data
                         [get-id-action-data adjacent-id] ; our sibling

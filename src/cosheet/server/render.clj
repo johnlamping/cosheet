@@ -208,140 +208,240 @@
 ;;; sequence, where the first element is the function, and the rest of
 ;;; the list is additional arguments. (This approach is easier to to
 ;;; display and to debug than closures.)
-;;;           :relative-id  The id relative to the containing component for
-;;;                         identifying this component in the dom.
-;;;                         This is normally the id the dom is about, or an
-;;;                         exemplar element of one of the ids the containing
-;;;                         component is about.
-;;;                         However, in some cases, this will be a
-;;;                         keyword, like :content or :virtual, which
-;;;                         will be enough to uniquely indicate how
-;;;                         this component relates to its parent. If a
-;;;                         keyword wouldn't be unique, this can be a
-;;;                         pair of a keyword and an id. In these
-;;;                         cases, if an id is still needed,
-;;;                         :auxiliary-item-id will hold id.
-;;;                 :class  Optional. A subset of the CSS classes the DOM
-;;;                         will have. The dom may have additional classes.
-;;; :element-ids-to-exclude   If present, this is a set of ids of
-;;;                         elements of the entity being shown that should
-;;;                         not be displayed.
-;;; :object-ids-to-contract   If present, a set of ids of objects, most of
-;;;                         whose elements should not be shown when
-;;;                         the object is rendered. This is inherited
-;;;                         to child elements. When an object renders
-;;;                         its elements, it adds its own id to this
-;;;                         set for its elements' specifications, so
-;;;                         that cycles of links won't lead to
-;;;                         infinite expansion of objects.
-;;;     :auxiliary-item-id  If this is present, :relative-id will be a
-;;;                         keyword, and this field will give an id
-;;;                         needed by the component. Its meaning
-;;;                         depends on :relative-id's keyword:
-;;;                         :content - This is the id of the element whose
-;;;                         content should be shown.
-;;;                         :virtual - This is the id of the item that
-;;;                         the new item should be adjacent to in the store.
-;;;          :parallel-ids  Sometimes a dom pertains to more ids than its
-;;;                         parent does, like a label dom that wraps
-;;;                         several items. In that case, :parallel-ids
-;;;                         gives a sequence of ids that are
-;;;                         intermediary between this dom's parent's
-;;;                         items, and this dom's items. The context
-;;;                         for this dom has an item for each id of
-;;;                         the parent context, for each id in
-;;;                         :parallel-ids.
-;;;                         TODO: Get rid of this, and just make :item-id
-;;;                               accept a sequence (for sequential
-;;;                               sub-elements) with sub-sequenques
-;;;                               (for parallelism).
-;;;            :render-dom  Function that takes this specification and
-;;;                         the mutable store and returns a reporter
-;;;                         whose value is the dom.
-;;;         :handle-action  Optional function that takes data about how to
-;;;                         interpret actions, a user action, and the current
-;;;                         store, and returns a store with the appropriate
-;;;                         changes.
-;;;                         TODO: not currently implemented
-;;;             :immutable  If true, the user cannot change anything about
-;;;                         this item, and can't even select it. This
-;;;                         property is inherited to child elements.
-;;;       :get-action-data  Optional pseudo function that takes a dom
-;;;                         specification, the action data for the
-;;;                         containing dom, a user action, and the
-;;;                         current store, and returns a map
-;;;                         consisting of the action data for the
-;;;                         given dom.
-;;;                         defaults to action-data/default-get-action-data
-;;;       :must-show-label  If true, a virtual label should be shown
-;;;                         if there are no labels. If, additionally, it is
-;;;                         :wide, show it with substantial space, if there
-;;;                         is significant space available.
-;;;                 :width  A float, giving the width of this dom element
-;;;                         compared to the minimum width for two column
-;;;                         format.
-;;;              :template  The template that elements in this position
-;;;                         must start out satisfying. For a regular DOM,
-;;;                         this means any twins it gets, while for a virtual
-;;;                         DOM, it means its new item.
-;;;                         The value of :template may instead be
-;;;                         :singular.  That means twins may not be
-;;;                         created, and the item may not be deleted
-;;;                         with a simple delete action.
-;;;                         Or the value of the template may be a
-;;;                         SequentialTemplate.  That means an item
-;;;                         matching the first element of its template
-;;;                         sequence must be created, using that as
-;;;                         the target of the next, etc. Except if a
-;;;                         template is an object, it becomes the
-;;;                         content of the target, rather than a
-;;;                         sub-element.
-;;;        :is-object-name  This cell holds the name of a named object,
-;;;                         and while the cell's relative id is for
-;;;                         the name of the object, the cell logically
-;;;                         refers to the whole object. Specifically,
-;;;                         editing the name in cell should not change
-;;;                         the name of the object, but should make
-;;;                         the enclosing element refer to the object
-;;;                         with the name the user entered. The
-;;;                         template is what the object referred to
-;;;                         must satisfy.
-;;; :virtual-object-reference-template
-;;;                         For a virtual object reference, the label
-;;;                         object that the created placeholder will
-;;;                         come to hold. Its object is kept out of the
-;;;                         :template's SequentialTemplate, so that the
-;;;                         placeholder, but not the object, is created
-;;;                         when the virtual item is made. do-set-content
-;;;                         uses this, rather than :template, to find or
-;;;                         make the actual named object once the user
-;;;                         types the name.
-;;;           :adjacent-id  For a virtual item, the id of the item to be
-;;;                         adjacent to.
-;;;        :adjacent-order  Whether a new virtual item should come :before
-;;;                         or :after the adjacent item. Defaults to :after
-;;;        :adjacent-query  For a virtual item. If present, the new item is
-;;;                         created adjacent to furthest of the target's
-;;;                         elements that match the query (furthest in the
-;;;                         direction of the :adjacent-order).
-;;;               :table id The id of the table, if any, that the dom is in.
-;;;                 :row-id The id of the row, if any, that the dom is in.
-;;;             :column-ids The ids of the columns, if any, that the dom is
-;;;                         in. For most cells, this will hold just a single
-;;;                         column. But header doms can span multiple
-;;;                         columns that share one of their labels
-;;;                    ...  <other attributes that help define the component>
-;;;    }]
+
+;;;    :relative-id
+;;;        The id relative to the containing component for identifying
+;;;        this component in the dom. This is normally the id the dom
+;;;        is about, or an exemplar element of one of the ids the
+;;;        containing component is about. However, in some cases, this
+;;;        will be a keyword, like :content or :virtual, which will be
+;;;        enough to uniquely indicate how this component relates to
+;;;        its parent. If a keyword wouldn't be unique, this can be a
+;;;        pair of a keyword and an id. In these cases, if an id is
+;;;        still needed, :auxiliary-item-id will hold id.
+
+;;;    :auxiliary-item-id
+;;;        If this is present, :relative-id will be a keyword, and
+;;;        this field will give an id needed by the component. Its
+;;;        meaning depends on :relative-id's keyword:
+;;;            :content - This is the id of the element whose content
+;;;            should be shown. :virtual - This is the id of the item
+;;;            that the new item should be adjacent to in the store.
+
+;;;    :element-ids-to-exclude
+;;;        If present, this is a set of ids of elements of the entity
+;;;        being shown that should not be displayed.
+
+;;;    :object-ids-to-contract
+;;;        If present, a set of ids of objects, most of whose elements
+;;;        should not be shown when the object is rendered. This is
+;;;        inherited to child elements. When an object renders its
+;;;        elements, it adds its own id to this set for its elements'
+;;;        specifications, so that cycles of links won't lead to
+;;;        infinite expansion of objects.
+
+;;;    :parallel-ids
+;;;        Sometimes a dom pertains to more ids than its parent does,
+;;;        like a label dom that wraps several items. In that case,
+;;;        :parallel-ids gives a sequence of ids that are intermediary
+;;;        between this dom's parent's items, and this dom's items.
+;;;        The context for this dom has an item for each id of the
+;;;        parent context, for each id in :parallel-ids.
+
+;;;    :class
+;;;        A subset of the CSS classes the DOM will have.  The dom may
+;;;        have additional classes.
+
+;;;    :width
+;;;        A float, giving the width of this dom element compared to
+;;;        the minimum width for two column format.
+
+;;;    :render-dom
+;;;        Function that takes this specification and the mutable
+;;;        store and returns a reporter whose value is the dom.
+
+;;;    :must-show-label
+;;;        If true, a virtual label should be shown if there are no
+;;;        labels. If, additionally, it is :wide, show it with
+;;;        substantial space, if there is significant space available.
+
+;;;    :immutable
+;;;        If true, the user cannot change anything about this item,
+;;;        and can't even select it. This property is inherited to
+;;;        child elements.
+
+;;;    :get-action-data
+;;;        Optional pseudo function that takes a dom specification,
+;;;        the action data for the containing dom, a user action, and
+;;;        the current store, and returns a map consisting of the
+;;;        action data for the given dom.
+
+;;;    :template
+;;;        The template that items in this position must satisfy. The
+;;;        template for a table row is an object. All other templates
+;;;        are elements. Even the template for a content is an
+;;;        element, because for content to show in a position
+;;;        typically requires it being in a element with specific
+;;;        labels. So the template has to be able to include labels,
+;;;        which means being an element. The content of a template may
+;;;        be :singular, which imposes no constraint on the content,
+;;;        but means that twins may not be created, and that the
+;;;        element may not be deleted with a simple delete action. The
+;;;        value of the template may be a SequentialTemplate. This is
+;;;        used only for virtual components, and means an item
+;;;        matching the first element of its template sequence must be
+;;;        created, using that as the target of the next, etc. The
+;;;        template is used by add-twin make-object, and set-content.
+;;;        It is also used by do-delete to check for :singluar. And it
+;;;        is used by action-data to when making new items for virtual
+;;;        components.
+
+;;;    :is-object-name
+;;;        This cell holds the name of a named object, and while the
+;;;        cell's relative id is for the name of the object, the cell
+;;;        logically refers to the whole object. Specifically, editing
+;;;        the name in cell should not change the name of the object,
+;;;        but should make the enclosing element refer to the object
+;;;        with the name the user entered. The template is what the
+;;;        object referred to must satisfy.
+
+;;;    :virtual-object-reference-template
+;;;        For a virtual named object, this is the template for the
+;;;        object that the created placeholder will come to hold. Its
+;;;        object is kept out of the :template's SequentialTemplate,
+;;;        so that the placeholder, but not the object, is created
+;;;        when the virtual item is made. do-set-content uses this,
+;;;        rather than :template, to find or make the actual named
+;;;        object once the user types the name.
+
+;;;    :sibling
+;;;        For a virtual item, if true the new item is created as a
+;;;        sibling of the subject(s), adjacent to them, rather than as
+;;;        an element of them.
+
+;;;    :position
+;;;        For a virtual item, whether the new item should come
+;;;        :before or :after the item it is adjacent to. Defaults to
+;;;        :after.
+
+;;;    :use-bigger
+;;;        For a virtual item, if true the new item uses the larger
+;;;        part of the order split, rather than the smaller.
+
+;;;    :adjacent-query
+;;;        For a virtual item. If present, the new item is created
+;;;        adjacent to the furthest of the target's elements that
+;;;        match the query (furthest in the direction of :position).
+
+;;; The following fields are used only by particular renderers, and
+;;; are documented more fully where they are used.
+
+;;; General layout:
+
+;;;    :orientation
+;;;        The orientation, :horizontal or :vertical, in which to lay
+;;;        out a stack of items.
+
+;;;    :top-level
+;;;        True when the dom is at the top level of a hierarchy, which
+;;;        affects how its borders and labels are drawn.
+
+;;; Additional action-data and rendering hooks (see :get-action-data
+;;; and :render-dom):
+
+;;;    :get-do-batch-edit-action-data
+;;;        Like :get-action-data, but run when the action is a batch
+;;;        edit.
+
+;;;    :get-rendering-data
+;;;        Optional function returning the reporters whose values the
+;;;        renderer needs, for doms whose dom depends on more than the
+;;;        item being shown.
+
+;;;    :reporter, :id-R
+;;;        Used by the root dom (see render.clj): :reporter is a
+;;;        reporter whose value is the whole dom, and :id-R is a
+;;;        reporter giving the root item id.
+
+;;; Tables (see table_render.clj, especially
+;;; table-hierarchy-node-column-descriptions):
+
+;;;    :table-id
+;;;        The id of the table, if any, that the dom is in.
+
+;;;    :row-id
+;;;        The id of the row, if any, that the dom is in.
+
+;;;    :column-ids
+;;;        The ids of the columns, if any, that the dom is in. For
+;;;        most cells, this will hold just a single column. But header
+;;;        doms can span multiple columns that share one of their
+;;;        labels
+
+;;;    :query
+;;;        The query that each element shown in a table cell must
+;;;        satisfy. Not present for a virtual column.
+
+;;;    :disqualifications
+;;;        Seq of conditions that a cell's elements must not satisfy,
+;;;        even if they satisfy :query.
+
+;;;    :competing-ids
+;;;        Seq of ids whose matches must not appear in the cell; this
+;;;        determines the :disqualifications.
+
+;;;    :parent-cover-ids
+;;;        The ids of the header nodes that cover a node's children,
+;;;        passed down while building a column-header hierarchy.
+
+;;;    :alternate-row-sibling
+;;;        The id to use as the sibling of a virtual row when the
+;;;        table has no rows yet.
+
+;;;    :hierarchy-R, :column-descriptions-R, :row-ids-R,
+;;;    :row-template-R
+;;;        Reporters holding, respectively, the column-header
+;;;        hierarchy, the column descriptions, the ordered ids of the
+;;;        matching rows, and the template that rows must match.
+
+;;; Tabs (see tabs_render.clj):
+
+;;;    :tab-id
+;;;        The id of the tab a component is part of. :virtual for a
+;;;        virtual tab.
+
+;;;    :chosen-tab-id
+;;;        The id of the currently selected tab.
+
+;;;    :example-element-ids
+;;;        The element ids to show as the example elements of a tab.
+
+;;;    :nesting-depth
+;;;        The depth of a tab within nested tabs, used to make nested
+;;;        tabs' relative ids unique.
+
+;;; Batch edit (see batch_edit_render.clj):
+
+;;;    :query-id
+;;;        The id of the item whose list form is the batch-edit query.
+
+;;;    :stack-id
+;;;        The id of the item giving the stack section of things being
+;;;        changed in batch.
+
+;;;    :excluding-ids
+;;;        The ids of competing siblings whose matches should be
+;;;        excluded from batch matching.
+
+;;;    :do-not-match-query
+;;;        True for a virtual stack element that should not use the
+;;;        main query in matching.
 
 (defn dom-renderer
   [dom-specification]
-  (if-let [renderer (:render-dom dom-specification)]
-    renderer
-    (assert false dom-specification)))
-
-;;; NOTE: action-data-getter is defined in action_data.clj, because it
-;;; both needs a function defined there and is used there. So putting
-;;; it here would make a circular dependency.
+  (let [renderer (:render-dom dom-specification)]
+    (assert renderer dom-specification)
+    renderer))
 
 ;;; Here is a minimal dom specification, but lacking its :relative-id:
 (def basic-dom-specification

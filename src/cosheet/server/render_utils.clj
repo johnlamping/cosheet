@@ -238,7 +238,7 @@
   (when (not= (:relative-id specification) :virtual-row)
     (when-let [template (:template specification)]
       (assert (if (sequential-template? template)
-                (not-any? object? (butlast (:template-sequence template))) 
+                (not-any? object? (:template-sequence template)) 
                 (not (object? template)))
               specification)))
   [:component specification])

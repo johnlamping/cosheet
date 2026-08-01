@@ -218,7 +218,8 @@
 
 (defn do-add-twin
   [store {:keys [subject-ids template is-object-name session-state client-id]}]
-  (when (not= template :singular)
+  (when (not= (content template) :singular)
+    (assert (not (object? (final-template template))))
     (let [template (cond (not template) 'anything
                          (object? template) (do (assert is-object-name)
                                                 `(~template))
@@ -371,7 +372,7 @@
   [store {:keys [subject-ids template]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
           subject-ids)
-  (when (not= template :singular)
+  (when (not= (content template) :singular)
     (reduce (fn [store id]
               (let [target-id (id->target store id) 
                     modified (remove-entity-by-id store id)]

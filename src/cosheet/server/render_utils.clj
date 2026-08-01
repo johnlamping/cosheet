@@ -66,6 +66,21 @@
   [template]
   (or (= template 'anything) (= template nil)))
 
+(defn replace-final-label-content
+  "Given a template for an element, replace the content of the final
+  template with the specified content."
+  [template new-content]
+  (let [[prefix-templates last-template]
+        (if (sequential-template? template)
+          (let [template-sequence (:template-sequence template)]
+            [(butlast template-sequence) (last template-sequence)])
+          [[] template])
+        new-element (cons new-content (elements last-template))]
+    (if (empty? prefix-templates)
+      new-element
+      (apply make-sequential-template
+             (concat prefix-templates [new-element])))))
+
 (defn display-type
   "Return :link-type, :object-type, or :name depending on whether the
   entity satisfies link-type-object?, object-type-object?, or
@@ -108,28 +123,6 @@
   (make-tree-element (orientation template)
                      (ensure-label-object (content template) label-type)
                      (elements template)))
-
-(defn make-virtual-label-template
-  "Given a template for an element, make a template for a virtual label
-  consisting of that element. In other words, pull out the last
-  template if there's a sequence. That template should be a template
-  for an element. Replace it with two templates, one for an identical
-  element, except with content of the empty string. and one for a
-  label object that expands the incoming template's content as much as
-  necessary to make it a named label."
-  [template label-type]
-  (let [[prefix-templates last-template]
-        (if (sequential-template? template)
-          (let [template-sequence (:template-sequence template)]
-            [(butlast template-sequence) (last template-sequence)])
-          [[] template])]
-    (apply make-sequential-template
-     (concat
-      prefix-templates
-       ;; The label.
-      [(cons "" (elements last-template))
-       ;; It's content.
-       (ensure-label-object (content last-template) label-type)]))))
 
 (defn specification-item-id
   [specification]

@@ -37,7 +37,7 @@
              [server-test-setup :refer [add-order-elements
                                         add-order-elements-inside-object]]
              [render-utils :refer [ensure-label-object
-                                   make-virtual-label-template
+                                   replace-final-label-content
                                    make-sequential-template]]
              [batch-edit-render :refer :all])
              ; :reload
@@ -59,7 +59,7 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (make-virtual-label-template 'anything :link-type))
+(def virtual-label-template (replace-final-label-content 'anything ""))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -292,9 +292,10 @@
                                           (virt-AD)]
                         :template (make-sequential-template
                                    'anything
-                                   '("")
-                                   (make-tree-object [`(~link-type)
-                                                      `("" (~name-label))]))
+                                   '(""))
+                        :virtual-object-reference-template
+                        (make-tree-object [`(~link-type)
+                                           `("" (~name-label))])
                         :is-object-name true
                         :position :after
                         :do-not-match-query true}]

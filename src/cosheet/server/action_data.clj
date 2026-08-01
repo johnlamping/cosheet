@@ -404,8 +404,7 @@
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger past-subject-ids
-           is-object-name]
+  [{:keys [template sibling position use-bigger past-subject-ids]
            ; adjacent-query also used.
     :as specification}
    inherited-action-data action immutable-store]
@@ -418,17 +417,9 @@
                     subject-ids
                     (find-virtual-adjacents
                      targets specification immutable-store))
-        template-sequence (if (sequential-template? template)
-                            (:template-sequence template)
-                            [template])
-        ;; We don't create the object for a virtual named object. It
-        ;; will be created or found when its name is processed. (The
-        ;; object still appears in the template sequence, so it is
-        ;; available to the name processor.)
-        templates (cond-> template-sequence
-                    (and is-object-name
-                         (object? (last template-sequence)))
-                    butlast)
+        templates (if (sequential-template? template)
+                    (:template-sequence template)
+                    [template])
         [targets _ past-ids new-store]
         (reduce
          (fn [[targets adjacents past-ids store] template]

@@ -252,8 +252,8 @@
         sally-name-id (:item-id sally-name)
         ;; We include an empty name in the templates, to make sure
         ;; that is handled correctly.
-        bare-template (make-tree-object [`("" (~name-label))])
-        foo-template (make-tree-object [`("" (~name-label)) "foo"])
+        bare-template (make-tree-object `[("" (~name-label))])
+        foo-template (make-tree-object `[("" (~name-label)) "foo"])
         ;; Now, render the nesting doms: the holding element, the
         ;; object inside, and its name.
         holder-dom-spec {:relative-id fred-holder-id
@@ -290,7 +290,8 @@
                              (normalize-handler-response store))))]
     
     ;; Test changing Fred to Sally.
-    (let [[new-store for-client] (run-set-name "Fred" "Sally" bare-template)]
+    (let [[new-store for-client] (run-set-name
+                                  "Fred" "Sally" `(~bare-template))]
       (is (= (id->source new-store fred-holder-id) sally-oid))
       (is (= (dissoc-in new-store
                         [:ephemeral-data :following-selection-by-ids])
@@ -309,19 +310,19 @@
                     {:following-selection-by-ids [nil [sally-name-id]]})))
 
     ;; Test changing Fred to Fred.
-    (let [[new-store for-client] (run-set-name "Fred" "Fred" foo-template)]
+    (let [[new-store for-client] (run-set-name "Fred" "Fred" `(~foo-template))]
       (is (= new-store store)))
 
     ;; Test changing Fred to fred.
-    (let [[new-store for-client] (run-set-name "Fred" "fred" foo-template)]
+    (let [[new-store for-client] (run-set-name "Fred" "fred" `(~foo-template))]
       (is (= new-store store)))
 
     ;; Test no change if the from field is wrong;
-    (let [[new-store for-client] (run-set-name "Joe" "Sally" foo-template)]
+    (let [[new-store for-client] (run-set-name "Joe" "Sally" `(~foo-template))]
       (is (= new-store store)))
     
     ;; Test changing to an object that had to be created.
-    (let [[new-store for-client] (run-set-name "Fred" "Bob" foo-template)
+    (let [[new-store for-client] (run-set-name "Fred" "Bob" `(~foo-template))
           [_ [new-name-id]] (:following-selection-by-ids
                              (:ephemeral-data new-store))
           new-object-id (id->target new-store new-name-id)

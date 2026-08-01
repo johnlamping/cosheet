@@ -37,7 +37,7 @@
     [render-utils :refer [make-sequential-template
                           display-type
                           ensure-label-object ensure-label-object-content
-                          make-virtual-label-template
+                          replace-final-label-content
                           make-component
                           nest-if-multiple-DOM
                           condition-satisfiers
@@ -163,10 +163,22 @@
 
 (defn virtual-label-DOM-component
   "Return a dom for a virtual label. The dom must appear inside an
-  overall dom for the item it modifies. The specification's template must
-  describe a label element. We don't require relative-id, but our
-  callers must use it if there are multiple virtual labels under the
-  same component, to distinguish their ids."
+  overall dom for the item it modifies. The specification's template
+  must describe a label element, although it need not specify a name.
+
+  We don't use relative-id, but our callers must provide it if there
+  are multiple virtual labels under the same component, so they will
+  have different client ids.
+  
+  A key thing we do is replace the content of the element in the
+  template with the empty string, and record the actual template for
+  the label object in :virtual-object-reference-template. This is
+  necessary because the code for virtual action data doesn't get the
+  name information, so it can't look-up or create the right object;
+  any object it made would be thrown away, anyway. So we have it make
+  an empty string as a placeholder. Then do-set-object, which does get
+  the object's name, will then be able to find or make the right kind
+  of object."
   [{:keys [relative-id template] :as specification}]
   (assert template specification)
   (let [final (final-template template)]
@@ -176,7 +188,10 @@
        (-> specification
            (assoc :relative-id (or relative-id :virtual-label)
                   :position :after
-                  :template (make-virtual-label-template template label-type)
+                  :template (replace-final-label-content template "")
+                  :virtual-object-reference-template
+                  (ensure-label-object
+                   (content (final-template template)) label-type)
                   :is-object-name true)
            (into-attributes {:class (name label-type)}))))))
 

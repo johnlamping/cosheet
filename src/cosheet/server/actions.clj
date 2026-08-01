@@ -139,86 +139,82 @@
           store))))
 
 (defn do-set-content
-  [store {:keys [subject-ids template is-object-name client-id from to]}]
+  [store {:keys [subject-ids template virtual-object-reference-template
+                 is-object-name client-id from to]}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
-    (let [;; We need to get to the last template, which should
-          ;; describe our content.
-          last-template (final-template template)
-          ;; When our subject is the element holding the content, the
-          ;; template we get is often the template for the element as
-          ;; a whole. If the template we are given is an element,
-          ;; we're in that case, and we need to use its content as our
-          ;; template.
-          template (if (element? last-template)
-                     (content last-template)
-                     last-template)]
-      (if is-object-name
-        ;; We are setting a new name in a place that holds a named object.
-        ;; First, get an object corresponding to the name. Then check
-        ;; that the position still holds an object, and swap in the
-        ;; new one.
-        ;; TODO: !!!  We need to handle reversed links, which we can
-        ;; do by checking which end matches the old object.
-        (let [name (clojure.string/trim to)
-              order-element (order-element-for-item
-                             (id->element (first subject-ids) store) store)
-              order (content order-element)
-              ;; The template might have a generic name. Remove it, or
-              ;; we'll make an object with both that and the name the
-              ;; user set.
-              template (make-tree-object
-                        (remove #(and (seq (content->elements % name-label))
-                                      (= (content %) ""))
-                                (elements template)))
-              [store object-id remainder] (get-or-make-ordered-object-by-name
-                                           store name template order :after
-                                           false)
-              store (update-source store (:item-id order-element) remainder)
-              ;; TODO: !!! This needs to handle orientation.
-              logical-from (id->source store (first subject-ids))]
-          ;; We are going to claim that the user saw logical-from when
-          ;; they asked for the change. Make sure that what the user
-          ;; actually saw is consistent with that.
-          (when (or
-                 ;; We were already empty.
-                 (and (or (= logical-from "")
-                          (= logical-from 'anything))
-                      (= from ""))
-                 ;; There was an object with the name the user saw.
-                 (and (object-id? logical-from)
-                      (let [name (-> (id->entity logical-from store)
-                                     (label->elements name-label)
-                                     first
-                                     content)]
-                        (equivalent-primitives? name from))))
-            (let [store (reduce
-                         (fn [store element-id]
-                           ;; TODO: !!! This needs to handle orientation.
-                           (update-set-source
-                            store element-id logical-from object-id))
-                         store subject-ids)]
-              ;; TODO: !!! This needs to handle orientation.
-              (if-let [name-element-id
-                       (first (target-label->ids
-                               store object-id name-label-id))]
-                (add-following-selection-by-ids store
-                                                client-id [name-element-id])
-                store))))
-        (let [to (parse-string-as-number (clojure.string/trim to))]
-          (println "Setting" (count subject-ids) "items from" from "to"
-                   (if (object-id? to)
-                     (object-semantic-to-tree (id->entity to store))
-                     to))
-          (->
-           (reduce
-            (fn [store id]
-              (update-set-source store id from to))
-            store subject-ids)
-           ;; We might have set the source on a virtual item.
-           ;; This will make sure any newly created item is selected.
-           (add-following-selection-by-ids client-id subject-ids)))))))
+    (if is-object-name
+      ;; We are setting a new name in a place that holds a named object.
+      ;; First, get an object corresponding to the name. Then check
+      ;; that the position still holds an object, and swap in the
+      ;; new one.
+      ;; TODO: !!!  We need to handle reversed links, which we can
+      ;; do by checking which end matches the old object.
+      (let [object-template (or
+                             ;; A virtual object reference.
+                             virtual-object-reference-template
+                             ;; An existing object reference.
+                             (content (final-template template)))
+            _ (assert (object? object-template))
+            name (clojure.string/trim to)
+            order-element (order-element-for-item
+                           (id->element (first subject-ids) store) store)
+            order (content order-element)
+            ;; The template might have a generic name. Remove it, or
+            ;; we'll make an object with both that and the name the
+            ;; user set.
+            template (make-tree-object
+                      (remove #(and (seq (content->elements % name-label))
+                                    (= (content %) ""))
+                              (elements object-template)))
+            [store object-id remainder] (get-or-make-ordered-object-by-name
+                                         store name template order :after
+                                         false)
+            store (update-source store (:item-id order-element) remainder)
+            ;; TODO: !!! This needs to handle orientation.
+            logical-from (id->source store (first subject-ids))]
+        ;; We are going to claim that the user saw logical-from when
+        ;; they asked for the change. Make sure that what the user
+        ;; actually saw is consistent with that.
+        (when (or
+               ;; We were already empty.
+               (and (or (= logical-from "")
+                        (= logical-from 'anything))
+                    (= from ""))
+               ;; There was an object with the name the user saw.
+               (and (object-id? logical-from)
+                    (let [name (-> (id->entity logical-from store)
+                                   (label->elements name-label)
+                                   first
+                                   content)]
+                      (equivalent-primitives? name from))))
+          (let [store (reduce
+                       (fn [store element-id]
+                         ;; TODO: !!! This needs to handle orientation.
+                         (update-set-source
+                          store element-id logical-from object-id))
+                       store subject-ids)]
+            ;; TODO: !!! This needs to handle orientation.
+            (if-let [name-element-id
+                     (first (target-label->ids
+                             store object-id name-label-id))]
+              (add-following-selection-by-ids store
+                                              client-id [name-element-id])
+              store))))
+      (let [to (parse-string-as-number (clojure.string/trim to))]
+        (println "Setting" (count subject-ids) "items from" from "to"
+                 (if (object-id? to)
+                   (object-semantic-to-tree (id->entity to store))
+                   to))
+        (->
+         (reduce
+          (fn [store id]
+            (update-set-source store id from to))
+          store subject-ids)
+         ;; We might have set the source on a virtual item.
+         ;; This will make sure any newly created item is selected.
+         (add-following-selection-by-ids client-id subject-ids))))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template is-object-name session-state client-id]}]
@@ -567,7 +563,9 @@
                          action-data (client-id->action-data
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
-                         spec-info (select-keys spec [:template])
+                         spec-info (select-keys
+                                    spec [:template
+                                          :virtual-object-reference-template])
                          arguments (-> action-data
                                        (into spec-info)
                                        (into client-args)

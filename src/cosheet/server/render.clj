@@ -306,6 +306,16 @@
 ;;;                         with the name the user entered. The
 ;;;                         template is what the object referred to
 ;;;                         must satisfy.
+;;; :virtual-object-reference-template
+;;;                         For a virtual object reference, the label
+;;;                         object that the created placeholder will
+;;;                         come to hold. Its object is kept out of the
+;;;                         :template's SequentialTemplate, so that the
+;;;                         placeholder, but not the object, is created
+;;;                         when the virtual item is made. do-set-content
+;;;                         uses this, rather than :template, to find or
+;;;                         make the actual named object once the user
+;;;                         types the name.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before

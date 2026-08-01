@@ -35,7 +35,7 @@
              [hierarchy :refer [hierarchy-by-labels
                                 replace-hierarchy-leaves-by-nodes]
                         :as hierarchy]
-             [render-utils :refer [make-virtual-label-template
+             [render-utils :refer [replace-final-label-content
                                    make-sequential-template
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities]]
@@ -62,7 +62,7 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (make-virtual-label-template 'anything :link-type))
+(def virtual-label-template (replace-final-label-content 'anything ""))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -300,6 +300,7 @@
          [:div {:class "horizontal-labels-element query-condition"}
           ;; A virtual link-type for the condition.
           [:component {:template virtual-label-template
+                       :virtual-object-reference-template label-object-template
                        :is-object-name true
                        :position :after
                        :relative-id :virtual-label
@@ -332,9 +333,10 @@
                           :sibling true
                           :template (make-sequential-template
                                      'anything
-                                     '("")
-                                     (make-tree-object [`(~link-type)
-                                                        `("" (~name-label))]))
+                                     '(""))
+                          :virtual-object-reference-template
+                          (make-tree-object [`(~link-type)
+                                             `("" (~name-label))])
                           :is-object-name true
                           :position :after
                           :get-action-data [composed-get-action-data
@@ -392,6 +394,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template virtual-label-template
+               :virtual-object-reference-template label-object-template
                :is-object-name true
                :position :after
                :parallel-ids [c2-id]
@@ -431,6 +434,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template virtual-label-template
+               :virtual-object-reference-template label-object-template
                :is-object-name true
                :position :after
                :parallel-ids [c4-id]
@@ -466,6 +470,7 @@
            [:component {:column-ids [c6-id]
                         :width 0.75
                         :template virtual-label-template
+                        :virtual-object-reference-template label-object-template
                         :is-object-name true
                         :position :after
                         :parallel-ids [c6-id]
@@ -489,6 +494,7 @@
            [:component {:column-ids [c7-id]
                         :width 0.75
                         :template virtual-label-template
+                        :virtual-object-reference-template label-object-template
                         :is-object-name true
                         :position :after
                         :parallel-ids [c7-id]
@@ -512,9 +518,10 @@
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
                                    'anything
-                                   '("")
-                                   (make-tree-object [`(~link-type)
-                                                      `("" (~name-label))]))
+                                   '(""))
+                        :virtual-object-reference-template
+                        (make-tree-object [`(~link-type)
+                                           `("" (~name-label))])
                         :is-object-name true
                         :position :after
                         :sibling true
@@ -659,6 +666,7 @@
            [:component
             {:width 0.75
              :template virtual-label-template
+             :virtual-object-reference-template label-object-template
              :is-object-name true
              :relative-id [(any) :virtual-label]
              :parallel-ids [joe-joe-id]

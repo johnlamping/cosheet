@@ -155,8 +155,9 @@
   [specification]
   (assert (:template specification) specification)
   (make-component
-   (-> specification 
-       (assoc :render-dom render-virtual-DOM)
+   (-> specification
+       (assoc :render-dom render-virtual-DOM
+              :virtual true)
        (dissoc :get-do-batch-edit-action-data)
        (update :get-action-data
                #(compose-action-data-getter % get-virtual-action-data)))))

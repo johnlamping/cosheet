@@ -280,6 +280,7 @@
    (make-component
     (assoc specification
            :relative-id :virtual
+           :virtual true
            :template ""
            :render-dom render-virtual-DOM
            :get-action-data get-virtual-column-cell-action-data))
@@ -390,6 +391,7 @@
    {:relative-id column-id
     :column-ids [column-id]
     :class "table-cell"
+    :virtual true
     :render-dom render-virtual-DOM
     :template (fixed-term-to-template query)
     :get-action-data get-virtual-action-data

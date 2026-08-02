@@ -114,6 +114,7 @@
                         'anything)
              :sibling true
              :use-bigger true
+             :virtual true
              :render-dom (virt-DOM)
              :get-action-data [(comp-AD) (item-AD) (virt-AD)]}]
            [:component
@@ -184,6 +185,7 @@
          (render-tab-elements-DOM (second tab1-dom) store)
          [:component {:relative-id :virtual
                       :class "empty-child"
+                      :virtual true
                       :render-dom (virt-DOM)
                       :template 'anything
                       :get-action-data (virt-AD)}]))))

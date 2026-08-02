@@ -221,11 +221,13 @@
 ;;;        still needed, :auxiliary-item-id will hold id.
 
 ;;;    :auxiliary-item-id
-;;;        If this is present, :relative-id will be a keyword, and
-;;;        this field will give an id needed by the component. Its
-;;;        meaning depends on :relative-id's keyword:
+;;;        If this is present, :relative-id will be a keyword, or a
+;;;        vector ending in a keyword and this field will give an id
+;;;        needed by the component. Its meaning depends on the
+;;;        keyword:
 ;;;            :content - This is the id of the element whose content
-;;;            should be shown. :virtual - This is the id of the item
+;;;            should be shown.
+;;;            :virtual or :virtual-label - This is the id of the item
 ;;;            that the new item should be adjacent to in the store.
 
 ;;;    :element-ids-to-exclude
@@ -305,6 +307,11 @@
 ;;;        with the name the user entered. The template is what the
 ;;;        object referred to must satisfy.
 
+;;;    :virtual
+;;;        Present, with the value true, if and only if the component
+;;;        is virtual. (Currently, the component's :render-dom will be
+;;;        render-virtual-DOM, but that might change.)
+
 ;;;    :virtual-object-reference-template
 ;;;        For a virtual named object, this is the template for the
 ;;;        object that the created placeholder will come to hold. Its
@@ -312,7 +319,8 @@
 ;;;        so that the placeholder, but not the object, is created
 ;;;        when the virtual item is made. do-set-content uses this,
 ;;;        rather than :template, to find or make the actual named
-;;;        object once the user types the name.
+;;;        object once the user types the name. Other actions behave
+;;;        similarly.
 
 ;;;    :sibling
 ;;;        For a virtual item, if true the new item is created as a

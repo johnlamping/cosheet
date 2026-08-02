@@ -286,6 +286,7 @@
            [:component {:relative-id :stack-virtual-label
                         :query-id q1
                         :stack-id stk1 :class "link-type"
+                        :virtual true
                         :render-dom (virt-DOM)
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 
@@ -302,6 +303,7 @@
            [:component {:relative-id :stack-virtual
                         :query-id q1
                         :stack-id stk1
+                        :virtual true
                         :render-dom (virt-DOM)
                         :get-action-data [(comp-AD)
                                           (batch-virtual-element-AD) 

@@ -161,9 +161,9 @@
             order-element (order-element-for-item
                            (id->element (first subject-ids) store) store)
             order (content order-element)
-            ;; The template might have a generic name. Remove it, or
-            ;; we'll make an object with both that and the name the
-            ;; user set.
+            ;; The template will have a name. If it's generic, remove
+            ;; it, or we'll make an object with both that and the name
+            ;; the user set.
             template (make-tree-object
                       (remove #(and (seq (content->elements % name-label))
                                     (= (content %) ""))
@@ -217,19 +217,34 @@
          (add-following-selection-by-ids client-id subject-ids))))))
 
 (defn do-add-twin
-  [store {:keys [subject-ids template is-object-name session-state client-id]}]
-  (when (not= (content template) :singular)
-    (assert (not (object? (final-template template))))
-    (let [template (cond (not template) 'anything
-                         (object? template) (do (assert is-object-name)
-                                                `(~template))
-                         true template)
-          [ids store] (create-possible-selector-entities
-                       template
-                       (map #(id->target store %) subject-ids)
-                       subject-ids
-                       :after true store)]
-      (add-following-selection-by-ids store client-id ids))))
+  [store {:keys [subject-ids template virtual-object-reference-template
+                 virtual is-object-name session-state client-id]}]
+  (if virtual
+    ;; Our subject is a virtual item, so the action data should have
+    ;; already built an element for it. All we need to do is build an
+    ;; object reference, if needed, and tell the client to select
+    ;; what was built.
+    (if virtual-object-reference-template
+      (let [[store object-id]
+            (create-possible-selector-entity
+             virtual-object-reference-template
+             nil (first subject-ids) :after true store)
+            store (reduce (fn [store subject-id]
+                            (update-source store subject-id object-id))
+                          store subject-ids)]
+        (add-following-selection-by-ids store client-id [object-id]))
+      (add-following-selection-by-ids store client-id subject-ids))
+    (when (not= (content template) :singular)
+      (let [template (cond (not template) 'anything
+                           (object? template) (do (assert is-object-name)
+                                                  `(~template))
+                           true template)
+            [ids store] (create-possible-selector-entities
+                         template
+                         (map #(id->target store %) subject-ids)
+                         subject-ids
+                         :after true store)]
+        (add-following-selection-by-ids store client-id ids)))))
 
 (defn do-add-element
   [store {:keys [subject-ids session-state client-id]}]
@@ -565,7 +580,7 @@
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys
-                                    spec [:template
+                                    spec [:template :virtual
                                           :virtual-object-reference-template])
                          arguments (-> action-data
                                        (into spec-info)

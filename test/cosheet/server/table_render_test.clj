@@ -306,6 +306,7 @@
                        :relative-id :virtual-label
                        :width 0.75
                        :class "link-type"
+                       :virtual true
                        :render-dom render-virtual-DOM
                        :get-action-data (virt-AD)}]
            ;; The condition element.
@@ -343,6 +344,7 @@
                                             (item-AD)
                                             (virt-AD)]
                           :class "link-type"
+                          :virtual true
                           :render-dom render-virtual-DOM}]
              [:div  {:class "wrapped-elements"}
               [:component {:template 'anything
@@ -350,6 +352,7 @@
                            :width 0.75
                            :relative-id :virtual
                            :auxiliary-item-id rc1-id
+                           :virtual true
                            :render-dom render-virtual-DOM
                            :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -403,6 +406,7 @@
                                  (virt-AD)]
                :relative-id [c2-id :nested]
                :class "link-type merge-with-parent"
+               :virtual true
                :render-dom (virt-DOM)}]
              [:div {:class "wrapped-elements link-type"}
               [:component
@@ -443,6 +447,7 @@
                                  (virt-AD)]
                :relative-id [c4-id :nested]
                :class "link-type merge-with-parent"
+               :virtual true
                :render-dom (virt-DOM)}]
              [:div {:class "wrapped-elements link-type"}
               [:component
@@ -479,6 +484,7 @@
                                           (virt-AD)]
                         :class "link-type"
                         :relative-id [c6-id :nested]
+                        :virtual true
                         :render-dom (virt-DOM)}]
            [:div {:class "wrapped-elements link-type"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -503,6 +509,7 @@
                                           (virt-AD)]
                         :class "link-type"
                         :relative-id [c7-id :nested]
+                        :virtual true
                         :render-dom (virt-DOM)}]
            [:div {:class "wrapped-elements link-type"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
@@ -529,6 +536,7 @@
                         :auxiliary-item-id c7-id
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "link-type"
+                        :virtual true
                         :render-dom (virt-DOM)}]
            [:div {:class "wrapped-elements"}
             [:component {:relative-id :virtual-column
@@ -537,6 +545,7 @@
                          :sibling true
                          :auxiliary-item-id c7-id
                          :get-action-data [(comp-AD) (item-AD) (virt-AD)]
+                         :virtual true
                          :render-dom (virt-DOM)}]]]]))
 
     ;; Check the column descriptions
@@ -642,6 +651,7 @@
                        :relative-id :virtual
                        :row-id joe-id
                        :template ""
+                       :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data
                        get-virtual-column-cell-action-data
@@ -655,6 +665,7 @@
           {:width 0.75
            :relative-id :virtual
            :template `("" (~single-label-object))
+           :virtual true
            :render-dom (virt-DOM)
            :get-action-data (virt-AD)}]))
     (is (check
@@ -673,6 +684,7 @@
              :get-action-data [(comp-AD)
                                [(parallel-AD) (item-AD)]
                                (virt-AD)]
+             :virtual true
              :render-dom (virt-DOM)
              :class "link-type"
              :position :after}]
@@ -723,6 +735,7 @@
             :class "stack-filler"
             :adjacent-query (as-set `(nil (~name-label-object)
                                           (nil :order)))
+            :virtual true
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]]))
 
@@ -736,6 +749,7 @@
           [:component {:relative-id c1-id
                        :column-ids [c1-id]
                        :class "table-cell"
+                       :virtual true
                        :render-dom (virt-DOM)
                        :template `("" (~single-label-object))
                        :get-action-data (virt-AD)
@@ -817,6 +831,7 @@
                        :relative-id :virtual
                        :class "stack-filler"
                        :adjacent-query `(nil "required" (nil :order))
+                       :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)}]]))
     ;; The value has nothing beyond the query, so no filler is added.

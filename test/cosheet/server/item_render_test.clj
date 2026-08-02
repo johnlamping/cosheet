@@ -202,6 +202,7 @@
              [:component {:template "foo"
                           :position :before
                           :relative-id :bar
+                          :virtual true
                           :render-dom (virt-DOM)
                           :get-action-data (virt-AD)}])))
 
@@ -250,6 +251,7 @@
                        :position :after
                        :relative-id [(:jane-id ids) :nested]
                        :class "link-type merge-with-parent"
+                       :virtual true
                        :render-dom (virt-DOM)}]
           [:div {:class "wrapped-elements link-type"}
            [:component {:relative-id (:jane-id ids)
@@ -393,6 +395,7 @@
                        :width 0.8
                        :relative-id :virtual-label
                        :class "object-type"
+                       :virtual true
                        :render-dom (virt-DOM)
                        :position :after
                        :get-action-data (virt-AD)}]
@@ -408,6 +411,7 @@
                          :get-action-data [(comp-AD)
                                            [(parallel-AD) (item-AD)]
                                            (virt-AD)]
+                         :virtual true
                          :render-dom (virt-DOM)
                          :position :after
                          :class "link-type"}]
@@ -446,10 +450,12 @@
                 :position :after
                 :get-action-data (virt-AD)
                 :class "link-type"
+                :virtual true
                 :render-dom (virt-DOM)}]
               [:component {:template '(anything "foo")
                            :relative-id :bar
                            :position :before
+                           :virtual true
                            :render-dom (virt-DOM)
                            :get-action-data (virt-AD)}]])))
 
@@ -652,6 +658,7 @@
                        :position :after
                        :relative-id :virtual-label
                        :class "link-type"
+                       :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)
                        :width 1.5}]
@@ -713,6 +720,7 @@
                   :width 1.5
                   :relative-id :virtual-label
                   :class "object-type"
+                  :virtual true
                   :render-dom (virt-DOM)
                   :position :after
                   :get-action-data (virt-AD)}]
@@ -729,6 +737,7 @@
                        :width 0.375
                        :template virtual-label-template
                        :virtual-object-reference-template label-object-template
+                       :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data [(comp-AD)
                                          [(parallel-AD) (item-AD)]
@@ -753,6 +762,7 @@
                        :width 0.375
                        :template virtual-label-template
                        :virtual-object-reference-template label-object-template
+                       :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data [(comp-AD)
                                          [(parallel-AD) (item-AD)]
@@ -787,6 +797,7 @@
                                  :relative-id :virtual
                                  :sibling true
                                  :position :after
+                                 :virtual true
                                  :render-dom (virt-DOM)
                                  :get-action-data (virt-AD)}]]
                    ;; e1, under the shared label, shows its own "a" label.
@@ -862,6 +873,7 @@
                   :width 1.5
                   :relative-id :virtual-label
                   :class "object-type"
+                  :virtual true
                   :render-dom (virt-DOM)
                   :position :after
                   :get-action-data (virt-AD)}]
@@ -884,6 +896,7 @@
                     :template 'anything
                     :object-ids-to-contract #{obj-id}
                     :relative-id :virtual
+                    :virtual true
                     :render-dom (virt-DOM)
                     :get-action-data (virt-AD)}]]]]))))
 
@@ -969,6 +982,7 @@
                     :virtual-object-reference-template label-object-template
                     :is-object-name true
                     :relative-id [id1 :virtual-label]
+                    :virtual true
                     :render-dom (virt-DOM)
                     :parallel-ids [id1]
                     :get-action-data [(comp-AD)
@@ -989,6 +1003,7 @@
                     :virtual-object-reference-template label-object-template
                     :is-object-name true
                     :relative-id [id2 :virtual-label]
+                    :virtual true
                     :render-dom (virt-DOM)
                     :parallel-ids [id2]
                     :get-action-data [(comp-AD)
@@ -1142,6 +1157,7 @@
                                                 [(parallel-AD) (item-AD)]
                                                 (virt-AD)]
                               :relative-id [(:element-3-id ids) :virtual-label]
+                              :virtual true
                               :render-dom (virt-DOM)
                               :class "link-type"
                               :position :after}]
@@ -1180,6 +1196,7 @@
             :relative-id :virtual-label
             :position :after
             :class "link-type"
+            :virtual true
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]
           [:div {:class "with-elements"}
@@ -1201,6 +1218,7 @@
                            :get-action-data [(comp-AD)
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
+                           :virtual true
                            :render-dom (virt-DOM)
                            :class "link-type"
                            :position :after}]]
@@ -1220,6 +1238,7 @@
                            :get-action-data [(comp-AD)
                                              [(parallel-AD) (item-AD)]
                                              (virt-AD)]
+                           :virtual true
                            :render-dom (virt-DOM)
                            :class "link-type"
                            :position :after}]]
@@ -1326,6 +1345,7 @@
                          :relative-id :virtual
                          :position :after
                          :sibling true
+                         :virtual true
                          :render-dom (virt-DOM)
                          :get-action-data (virt-AD)}]]
            [:div {:class "horizontal-labels-element link-type wide"}
@@ -1375,6 +1395,7 @@
                           :is-object-name true
                           :relative-id [(:element-3-id ids) :virtual-label]
                           :parallel-ids [(:element-3-id ids)]
+                          :virtual true
                           :render-dom (virt-DOM)
                           :get-action-data [(comp-AD)
                                             [(parallel-AD) (item-AD)]

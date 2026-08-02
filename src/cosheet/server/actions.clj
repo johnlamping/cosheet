@@ -293,24 +293,25 @@
   "Make a new object, and set the content(s) of the subject element(s)
   to it. Does nothing to subjects that are not elements or that are an
   element that gives a name."
-  [store {:keys [subject-ids template client-id]}]
-  (let [;; Since our subject is an element holding the
-        ;; current content, the template we get is
-        ;; typically the template for the element as a
-        ;; whole. If the template we are given is an
-        ;; element, we're in that case, and we need to
-        ;; use its content as our template.template   
-        template (if (element? template) (content template) template)
+  [store {:keys [subject-ids template virtual-object-reference-template
+                 virtual client-id]}]
+  (let [;; Since our subject is an element holding the current
+        ;; content, the template we get is typically the template for
+        ;; the element as a whole. If the template we are given is an
+        ;; element, we're in that case, and we need to use its content
+        ;; as our template.template.
+        template (or virtual-object-reference-template
+                     (cond-> (final-template template)
+                       element? content))
         template (if (or (not template) (#{'anything "" :singular} template))
                    (make-tree-object [:selector])
-                   ;; TODO: !!! What should happen when our subject is
-                   ;; the id of an object? Should we require our
-                   ;; subject to be an element?
                    template)
-        ;; If the template is an object with no name, and the first
-        ;; subject's content is a string, add that string as a name.
+        ;; If the template is an object with no name, and this is not
+        ;; a virtual component, and the first subject's content is a
+        ;; string, add that string as a name.
         first-content (id->source store (first subject-ids))
         template (if (and (object? template)
+                          (not virtual)
                           (empty? (label->elements template name-label))
                           (string? first-content))
                    (add-elements-to-entity
@@ -319,14 +320,20 @@
         [store oids]
         (if (object? template)
           (reduce (fn [[store oids] subject-id]
-                    (if ; Don't set the content if our subject isn't an
-                        ; element, if it is a name, or if its content is
-                        ; already an object.
-                        (or (not (link-id? subject-id))
-                            (seq (target-source->ids
-                                  store subject-id name-label-id))
-                            (object-id? (id->source store subject-id)))
+                    (cond
+                      ;; Don't set the content if our subject isn't an
+                      ;; element, or if it is a name.
+                      (or (not (link-id? subject-id))
+                          (seq (target-source->ids
+                                store subject-id name-label-id)))
                       [store oids]
+                      ;; Our content is already an object. But if this
+                      ;; is a virtual component, it may have been
+                      ;; added by the action-data. Don't change it,
+                      ;; but ask for it to be selected.
+                      (object-id? (id->source store subject-id))
+                      [store (conj oids (id->source store subject-id))]
+                      :else
                       (let [[s1 object-id]
                             (create-possible-selector-entity
                              template subject-id subject-id :after false store)]

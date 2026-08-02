@@ -6,7 +6,7 @@
                       [entity :refer [content elements label->elements
                                       id->entity
                                       id->updating-entity-R
-                                      label-element? label->element]]
+                                      object? label-element? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -314,9 +314,11 @@
         ;; cell.
         (let [filler (when (or (> (count entities) 1)
                                (when-let [entity (first entities)]
-                                 (seq (remove (set (condition-satisfiers
-                                                    entity (:template spec)))
-                                              (semantic-elements entity)))))
+                                 (or (object? (content entity))
+                                     (seq (remove
+                                           (set (condition-satisfiers
+                                                 entity (:template spec)))
+                                           (semantic-elements entity))))))
                        (virtual-DOM-component
                         (assoc spec :relative-id :virtual
                                :class "stack-filler"

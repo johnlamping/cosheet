@@ -199,7 +199,7 @@ body {
     background-color: var(--bg-subtle);
 }
 
-.vertical-stack > .element {
+.wrapped-elements > .vertical-stack > .element {
     margin: 0px 3px 0px 3px;
 }
 

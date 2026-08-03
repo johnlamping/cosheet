@@ -66,7 +66,7 @@
                            ; under the id of the containing dom. (That
                            ; dom's container refers to it by that id,
                            ; so that's the id that has to be sent.)
-                           ; If elided-from present, our component is
+                           ; If elided-from is present, our component is
                            ; elided, and elided-from is the nearest
                            ; non-elided containing component. Our dom
                            ; will be sent to the client as the dom of
@@ -86,17 +86,17 @@
                            ; cleared when it is deactivated. Those are
                            ; the only two times it changes.
      id->subcomponent      ; A map from :relative-id to the component data
-                           ; of each sub-component. This is filled in once
+                           ; of each sub-component. This is filled in when
                            ; the dom is computed, and can change if the dom
                            ; changes.
      obsolete-components   ; A seq of subcomponent component atoms that
                            ; need to be deactivated before any new
                            ; subcomponents can be activated. The issue
                            ; is that they might have the same client
-                           ; id as a new subcomponent, and they
-                           ; might send their dom to the client with a
-                           ; higher version number than the current
-                           ; subcomponent.
+                           ; id as a new subcomponent, and if they
+                           ; were active they might send their dom to
+                           ; the client with a higher version number
+                           ; than the current subcomponent.
      dom-version           ; If this component's dom has ever been sent to
                            ; the client, then this is equal to the
                            ; last version sent to the client, if the
@@ -340,8 +340,9 @@
   (handle-dom-change key))
 
 (defn deactivate-dom-R
-  "Remove our callback to the atom's dom-R. That should be its only
-  attendee, so it should stop updating at that point."
+  "Given the atom's dom-R, Remove our callback to it. That callback
+  should be the reporter's only attendee, so it should stop updating
+  when we remove the callback."
   [component-atom dom-R]
   (when (reporter? dom-R)
     (remove-attendee! dom-R component-atom)))
@@ -438,11 +439,11 @@
   an :obsolete-components field. Deactivate all the components listed
   there, then remove the deactivated components from
   the :obsolete-components field, and finally activate the
-  components-to-activate.
-  See the explanation in update-dom for why we need to deactivate
-  obsolete components first, if they might be identified with the same
-  client id as the a one. (It's OK if still newer components become
-  obsolete later, because they will deactivate our new ones.)"
+  components-to-activate.  See the explanation in update-dom for why
+  we need to deactivate obsolete components first, if they might be
+  identified with the same client id as a new one. (It's OK if still
+  newer components become obsolete later, because they will deactivate
+  our new ones.)"
   [dom-manager atom-with-obsolete components-to-activate]
   (when-let [obsolete (:obsolete-components @atom-with-obsolete)]
     ;; First, deactivate the subcomponents so they won't send any more
@@ -852,6 +853,8 @@
   dom version that the client acknowledges getting."
   [component-atom ack-version]
   (let [{:keys [elided-from dom-version]} @component-atom]
+    (when (not (and ack-version dom-version))
+      (println "BAD VERSION" ack-version dom-version))
     (and (not elided-from) (< ack-version dom-version))))
 
 (defn process-acknowledgements

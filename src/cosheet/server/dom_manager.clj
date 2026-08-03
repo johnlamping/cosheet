@@ -404,7 +404,6 @@
   containing component, inside a swap-control-return!. The
   swap-control-return!'s function might run several times, creating a
   new component-atom each time, and we only want to activate the one
-  that actually ended up getting used by the containing component."
   that actually ended up getting used by the containing component.
 
   reusable-subcomponents is a collection of possible sub-components,

@@ -406,11 +406,13 @@
 ;;;        The id to use as the sibling of a virtual row when the
 ;;;        table has no rows yet.
 
-;;;    :hierarchy-R, :column-descriptions-R, :row-ids-R,
-;;;    :row-template-R
-;;;        Reporters holding, respectively, the column-header
-;;;        hierarchy, the column descriptions, the ordered ids of the
-;;;        matching rows, and the template that rows must match.
+;;;    :hierarchy-R
+;;;        A reporter holding the column-header hierarchy.
+
+;;;    :row-ids, :row-template, :column-descriptions
+;;;        Immutable values holding, respectively, the ordered ids of
+;;;        the rows matching the table, the template that rows must
+;;;        match, and the column descriptions.
 
 ;;; Tabs (see tabs_render.clj):
 

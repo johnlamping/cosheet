@@ -357,34 +357,33 @@
                              :disqualifications
                              :width]))))))
 
-(defn render-table-row-DOM-R
+(defn render-table-row-DOM
   "Generate dom for a table row.
-  The specification must have column-descriptions-R"
-  [{:keys [row-id column-descriptions-R] :as specification} store]
-  (let-R [column-descriptions column-descriptions-R]
-    (let [spec (-> specification
-                   (dissoc :column-descriptions-R)
-                   (assoc :class "table-cell has-border"))]
-      (let [cells (map #(table-cell-DOM-component % spec)
-                       column-descriptions)]
-        (into [:div {}] cells)))))
+  The specification must have column-descriptions"
+  [{:keys [row-id column-descriptions] :as specification} store]
+  (let [spec (-> specification
+                 (dissoc :column-descriptions)
+                 (assoc :class "table-cell has-border"))
+        cells (map #(table-cell-DOM-component % spec)
+                   column-descriptions)]
+    (into [:div {}] cells)))
 
 (defmethod print-method
-  cosheet.server.table_render$render_table_row_DOM_R
+  cosheet.server.table_render$render_table_row_DOM
   [v ^java.io.Writer w]
   (.write w "row-DOM"))
 
 (defn table-row-component
-  ;; The specification must include column-descriptions-R
+  ;; The specification must include column-descriptions
   [row-id specification]
   (make-component
-   ;; The incoming specification must have :column-descriptions-R.
+   ;; The incoming specification must have :column-descriptions.
    (assoc specification
           :relative-id row-id
           :row-id row-id ; Action data passes this down to everything
                          ; in the row.
           :class "table-row"
-          :render-dom render-table-row-DOM-R
+          :render-dom render-table-row-DOM
           :get-action-data [get-id-action-data row-id])))
 
 (defn table-virtual-row-cell-DOM-component
@@ -399,57 +398,51 @@
     :get-action-data get-virtual-action-data
     :width width}))
 
-(defn render-table-virtual-row-DOM-R
+(defn render-table-virtual-row-DOM
   "Generate dom for a table's virtual row."
-  [{:keys [column-descriptions-R]} store]
-  (let-R [column-descriptions column-descriptions-R]
-    (let [cells (map table-virtual-row-cell-DOM-component
-                     ;; Don't make a cell for the virtual column.
-                     (butlast column-descriptions))]
-      (into [:div {:class "table-row"}] cells))))
+  [{:keys [column-descriptions]} store]
+  (let [cells (map table-virtual-row-cell-DOM-component
+                   ;; Don't make a cell for the virtual column.
+                   (butlast column-descriptions))]
+    (into [:div {:class "table-row"}] cells)))
 
 (defmethod print-method
-  cosheet.server.table_render$render_table_virtual_row_DOM_R
+  cosheet.server.table_render$render_table_virtual_row_DOM
   [v ^java.io.Writer w]
   (.write w "virt-row-DOM"))
 
-(defn table-virtual-row-DOM-component-R
+(defn table-virtual-row-DOM-component
   "Generate the component for a table's virtual row."
-  [row-template-R column-descriptions-R adjacent-id]
-  ;; We need the value of the row-template, even though our renderer
-  ;; doesn't use it, because the action data needs it to be in the
-  ;; spec.
-  (let-R [row-template row-template-R]
-    (make-component
-     {:relative-id :virtual-row
-      :class "table-row"
-      :column-descriptions-R column-descriptions-R
-      :render-dom render-table-virtual-row-DOM-R
-      :sibling true
-      :template row-template
-      :get-action-data [composed-get-action-data
-                        [get-id-action-data adjacent-id] ; our sibling
-                        get-virtual-action-data]})))
+  [row-template column-descriptions adjacent-id]
+  ;; We put the row-template in the spec, even though our renderer
+  ;; doesn't use it, because the action data needs it there.
+  (make-component
+   {:relative-id :virtual-row
+    :class "table-row"
+    :column-descriptions column-descriptions
+    :render-dom render-table-virtual-row-DOM
+    :sibling true
+    :template row-template
+    :get-action-data [composed-get-action-data
+                      [get-id-action-data adjacent-id] ; our sibling
+                      get-virtual-action-data]}))
 
-(defn render-table-rows-DOM-R
-  [{:keys [row-ids-R row-template-R column-descriptions-R] :as specification}
+(defn render-table-rows-DOM
+  [{:keys [row-ids row-template column-descriptions] :as specification}
    store]
-  ;; We get the current values of the information that is needed for
-  ;; all rows.
-  (let-R [row-ids row-ids-R]
-    (let [row-spec (dissoc specification
-                           :row-ids-R :row-template-R
-                           :get-action-data :alternate-row-sibling)
-          non-virtual-rows (map #(table-row-component % row-spec)
-                                row-ids)]
-      (let-R [virtual-row (table-virtual-row-DOM-component-R
-                          row-template-R
-                          column-descriptions-R
-                          (or (last row-ids)
-                              (:alternate-row-sibling specification)))]
-        (into [:div {:class "table-rows"}]
-            (concat non-virtual-rows
-                    [virtual-row]))))))
+  (let [row-spec (dissoc specification
+                         :row-ids :row-template
+                         :get-action-data :alternate-row-sibling)
+        non-virtual-rows (map #(table-row-component % row-spec)
+                              row-ids)
+        virtual-row (table-virtual-row-DOM-component
+                     row-template
+                     column-descriptions
+                     (or (last row-ids)
+                         (:alternate-row-sibling specification)))]
+    (into [:div {:class "table-rows"}]
+          (concat non-virtual-rows
+                  [virtual-row]))))
 
 (defn table-hierarchy-R
   "Return a reporter whose value is the hierarchy of the table header."
@@ -460,12 +453,11 @@
 
 (defn table-row-ids-R
   "Return a reporter whose value is the row ids for the table, in order."
-  [row-template-R mutable-store]
-  (let-R [current-template row-template-R]
-    (let [row-query (-> (pattern-to-fixed-term current-template)
-                        add-non-selector-to-fixed-term)
-          matching-ids-R (matching-item-ids-R row-query mutable-store)]
-      (ordered-ids-R matching-ids-R mutable-store))))
+  [row-template mutable-store]
+  (let [row-query (-> (pattern-to-fixed-term row-template)
+                      add-non-selector-to-fixed-term)
+        matching-ids-R (matching-item-ids-R row-query mutable-store)]
+    (ordered-ids-R matching-ids-R mutable-store)))
 
 (defn table-hierarchy-leaf-column-description
   [parent-node node]
@@ -571,7 +563,6 @@
             column-headers-R (id->updating-entity-R
                               column-headers-id store)
             hierarchy-R (table-hierarchy-R column-headers-R)
-            row-ids-R (table-row-ids-R row-template-R store)
             virtual-column-description {:column-id :virtualColumn}
             ;; TODO: Add an "other" column if a table requests it.
             column-descriptions-R
@@ -590,19 +581,26 @@
                         {:relative-id column-headers-id
                          :hierarchy-R hierarchy-R
                          :render-dom render-table-header-DOM-R
-                         :get-action-data default-get-action-data})
-            body-dom (make-component
-                      {:relative-id :body
-                       ;; If there are no rows, this is used as the
-                       ;; sibling of our first row.
-                       :alternate-row-sibling column-headers-id
-                       :column-descriptions-R column-descriptions-R
-                       :row-template-R row-template-R
-                       :row-ids-R row-ids-R
-                       :render-dom render-table-rows-DOM-R
-                       :get-action-data get-pass-through-action-data})]
-        [:div {:class "table"}
-         condition-dom
-         [:div {:class "table-main"}
-          header-dom
-          body-dom]]))))
+                         :get-action-data default-get-action-data})]
+        ;; The body component takes immutable :row-ids, :row-template,
+        ;; and :column-descriptions, so its spec changes whenever any of
+        ;; those change. That is fine, because the dom manager reuses the
+        ;; row subcomponents that don't change.
+        (let-R [row-template row-template-R
+                column-descriptions column-descriptions-R
+                row-ids (table-row-ids-R row-template store)]
+          (let [body-dom (make-component
+                          {:relative-id :body
+                           ;; If there are no rows, this is used as the
+                           ;; sibling of our first row.
+                           :alternate-row-sibling column-headers-id
+                           :column-descriptions column-descriptions
+                           :row-template row-template
+                           :row-ids row-ids
+                           :render-dom render-table-rows-DOM
+                           :get-action-data get-pass-through-action-data})]
+            [:div {:class "table"}
+             condition-dom
+             [:div {:class "table-main"}
+              header-dom
+              body-dom]]))))))

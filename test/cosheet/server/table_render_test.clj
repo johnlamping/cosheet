@@ -243,9 +243,9 @@
                                :row-condition-id row-condition-id}])
         joe-row-component (table-row-component
                            joe-id
-                           {:column-descriptions-R column-descriptions})
+                           {:column-descriptions column-descriptions})
         joe-row (run-renderer
-                 render-table-row-DOM-R (second joe-row-component) store)]
+                 render-table-row-DOM (second joe-row-component) store)]
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
@@ -577,29 +577,29 @@
          [:component {:relative-id joe-id
                       :row-id joe-id
                       :class "table-row"
-                      :column-descriptions-R column-descriptions
-                      :render-dom render-table-row-DOM-R
+                      :column-descriptions column-descriptions
+                      :render-dom render-table-row-DOM
                       :get-action-data [(id-AD) joe-id]}]))
 
     ;; Check rendering the list of rows.
     (is (check
-         (run-renderer render-table-rows-DOM-R
+         (run-renderer render-table-rows-DOM
                        {:relative-id :body
-                        :column-descriptions-R column-descriptions
-                        :row-template-R 'foo
-                        :row-ids-R [joe-id]}
+                        :column-descriptions column-descriptions
+                        :row-template 'foo
+                        :row-ids [joe-id]}
                        store)
          [:div {:class "table-rows"}
           [:component {:relative-id joe-id
                        :class "table-row"
                        :row-id joe-id
-                       :column-descriptions-R column-descriptions
-                       :render-dom render-table-row-DOM-R
+                       :column-descriptions column-descriptions
+                       :render-dom render-table-row-DOM
                        :get-action-data [(id-AD) joe-id]}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
-                       :column-descriptions-R (any)
-                       :render-dom render-table-virtual-row-DOM-R
+                       :column-descriptions (any)
+                       :render-dom render-table-virtual-row-DOM
                        :template 'foo
                        :sibling true
                        :get-action-data [(comp-AD)
@@ -742,8 +742,8 @@
     ;; Check rendering the virtual row
     (is (check
          (run-renderer
-          render-table-virtual-row-DOM-R
-          {:column-descriptions-R column-descriptions}
+          render-table-virtual-row-DOM
+          {:column-descriptions column-descriptions}
           store)
          [:div {:class "table-row"}
           [:component {:relative-id c1-id
@@ -783,11 +783,11 @@
             [:component
              {:relative-id :body
               :alternate-row-sibling column-headers-id
-              :column-descriptions-R (any)
-              :row-template-R (make-tree-object
+              :column-descriptions (any)
+              :row-template (make-tree-object
                                [`(~'anything (~age-label-object))])
-              :row-ids-R [(any) (any)]
-              :render-dom render-table-rows-DOM-R
+              :row-ids [(any) (any)]
+              :render-dom render-table-rows-DOM
               :get-action-data (pass-AD)}]]]))
 
     ;; Check getting the subsidiary ids.

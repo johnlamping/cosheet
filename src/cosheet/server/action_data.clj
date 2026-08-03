@@ -83,8 +83,8 @@
   (println "  from spec" (dissoc specification
                                  :reporter :id-R :client-state
                                  :hierarchy-R
-                                 :column-descriptions-R :row-template-R
-                                 :row-ids-R))
+                                 :column-descriptions :row-template
+                                 :row-ids))
   (let [store (or (:store inherited-action-data) immutable-store)
         result (call-pseudo-closure
                 getter specification inherited-action-data action store)]

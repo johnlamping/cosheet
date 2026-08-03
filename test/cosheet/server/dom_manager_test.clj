@@ -100,7 +100,7 @@
         (is (component-data? updated))
         (is (check updated
                    {:further-actions [[process-dom-ready-for-client manager c1]
-                                      [activate-component (any)]]
+                                      [activate-component (any) nil]]
                     :id->subcomponent {id2 (any)}
                     :client-id "c1"
                     :obsolete-components nil
@@ -133,7 +133,7 @@
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
         c2 (reuse-or-make-component-atom s2 manager "c2" 1 nil nil)]
-    (activate-component c2)
+    (activate-component c2 nil)
     (is (check @manager
                {:highest-version 0
                 :obsolete-components nil
@@ -172,7 +172,7 @@
                   :mutable-store ms
                   :further-actions nil
                   :client-lock (any)}))
-      (deactivate-component c2)
+      (deactivate-component c2 false)
       (is (check @c2
                  {:client-id "c2"
                   :id->subcomponent nil
@@ -204,6 +204,42 @@
            (:attendees (reporter-data ms))
            nil)))))
 
+(deftest reuse-subcomponents-test
+  ;; When a component is replaced by a new component for the same client
+  ;; id (here, by replacing the root dom), the new component should reuse
+  ;; the still-active sub-components of the old one, rather than
+  ;; recreating them.
+  (let [ms (new-mutable-store (new-element-store))
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
+        root-a {:relative-id :root
+                :render-dom (make-fixed-dom-renderer [:div 2 [:component s2]])}
+        root-b {:relative-id :root
+                :render-dom (make-fixed-dom-renderer [:div 3 [:component s2]])}]
+    ;; Set up the first root, and let it create its subcomponent for id2.
+    (add-root-dom manager root-a)
+    (compute cd)
+    (let [component-a (client-id->component @manager "root")
+          sub-a ((:id->subcomponent @component-a) id2)
+          sub-a-dom-R (:dom-R @sub-a)]
+      (is (component-atom? sub-a))
+      (is (= (component-data-state @sub-a) :active))
+      ;; Replace the root with a new one whose dom still contains the
+      ;; same subcomponent spec for id2.
+      (add-root-dom manager root-b)
+      (compute cd)
+      (let [component-b (client-id->component @manager "root")
+            sub-b ((:id->subcomponent @component-b) id2)]
+        ;; The root component itself is a new, distinct atom, and the old
+        ;; one has been deactivated.
+        (is (not= component-b component-a))
+        (is (= (component-data-state @component-a) :inactive))
+        ;; But its subcomponent for id2 is the very same atom, reused,
+        ;; still active and with its original (un-recreated) reporter.
+        (is (= sub-b sub-a))
+        (is (= (component-data-state @sub-b) :active))
+        (is (= (:dom-R @sub-b) sub-a-dom-R))))))
+
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
@@ -213,7 +249,7 @@
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
                {}))
-    (activate-component c1)
+    (activate-component c1 nil)
     (is (check (:tasks @(:queue cd))
                {[application-calculator/do-application-calculate
                  (:dom-R @c1) cd]
@@ -232,7 +268,7 @@
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
-    (activate-component c1)
+    (activate-component c1 nil)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
           ready (mark-component-tree-as-needed c1)]
@@ -318,7 +354,7 @@
         manager (make-dom-manager ms cd)]
     (add-root-dom manager s1-)
     (let [c1- (client-id->component @manager "root")]
-      (activate-component c1-)
+      (activate-component c1- nil)
       (compute cd)
       (let [c1 (first (vals (:id->subcomponent @c1-)))
             c2 (first (vals (:id->subcomponent @c1)))]

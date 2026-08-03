@@ -11,6 +11,7 @@
                                      mutable-store?]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
+                                     swap-and-act-control-return!
                                      with-latest-value
                                      update-in-clean-up
                                      update-new-further-action
@@ -86,17 +87,33 @@
                            ; cleared when it is deactivated. Those are
                            ; the only two times it changes.
      id->subcomponent      ; A map from :relative-id to the component data
-                           ; of each sub-component. This is filled in when
-                           ; the dom is computed, and can change if the dom
-                           ; changes.
+                           ; for subcomponents.
+                           ; Before the component is activated, it may
+                           ; hold sub-components that were carried
+                           ; over from a previous component for this
+                           ; component's client id, so that a newly
+                           ; activated component can reuse them rather
+                           ; than recompute them and resend them to
+                           ; the client.
+                           ; Each time a new dom is computed, this is
+                           ; recalculated, to hold an entry for each
+                           ; sub-component. It reues the previous
+                           ; components whose specifications match the
+                           ; specifications provided by the current
+                           ; dom.
+                           ; The component is responsible for
+                           ; deactivating all components in
+                           ; id->subcomponent once it knows they are
+                           ; no longer useful.
      obsolete-components   ; A seq of subcomponent component atoms that
                            ; need to be deactivated before any new
-                           ; subcomponents can be activated. The issue
-                           ; is that they might have the same client
+                           ; subcomponents can be activated. This is
+                           ; because they might have the same client
                            ; id as a new subcomponent, and if they
                            ; were active they might send their dom to
                            ; the client with a higher version number
-                           ; than the current subcomponent.
+                           ; than the current subcomponents,
+                           ; overriding the correct dom.
      dom-version           ; If this component's dom has ever been sent to
                            ; the client, then this is equal to the
                            ; last version sent to the client, if the
@@ -378,6 +395,8 @@
         ;; Our dom-R is a constant. We need to handle its value just this once.
         (handle-dom-change component-atom)))))
 
+(def deactivate-component)
+
 (defn activate-component
   "Make a reporter to calculate the component's DOM, and activate it.
   This can't be done at the time the component-atom is created, as
@@ -386,34 +405,88 @@
   swap-control-return!'s function might run several times, creating a
   new component-atom each time, and we only want to activate the one
   that actually ended up getting used by the containing component."
-  [component-atom]
+  that actually ended up getting used by the containing component.
+
+  reusable-subcomponents is a collection of possible sub-components,
+  left over from a previous component for our client id, that we might
+  be able to reuse once we get out dom. We put the ones that are still
+  active into our id->subcomponent, so that when our dom is computed,
+  matching ones can be reused rather than recomputed. If several of
+  them have the same :relative-id, we keep the one with the highest
+  dom-version (a nil dom-version counting as 0), since that is the one
+  whose dom the client currently has. Any active reusable
+  sub-component we don't keep, we deactivate, since no one else will."
+  [component-atom reusable-subcomponents]
   (swap-and-act!
    component-atom
    (fn [component-data]
-     (let [{:keys [dom-specification dom-manager]} component-data]
-       (if (= (component-data-state component-data) :created)
-         (let [{:keys [mutable-store]} @dom-manager
-               dom-R ((dom-renderer dom-specification)
-                      dom-specification mutable-store)]
-           (-> component-data
-               (assoc :dom-R dom-R)
-               (update-new-further-action activate-dom-R component-atom)))
-         ;; The atom has already been activated. Don't do anything.
-         component-data)))))
+     (let [{:keys [dom-specification dom-manager]} component-data
+           ;; It is possible that a race condition will inactivate a
+           ;; reusable while we're running. That's OK. It can only
+           ;; happen if our component goes inactive, so we won't be
+           ;; using them.
+           active-reusable (filter #(= (component-data-state @%) :active)
+                                   reusable-subcomponents)]
+       (if 
+         (= (component-data-state component-data) :created)
+         (do
+           (assert (empty? (:id->subcomponent component-data)) component-data)
+           (let [{:keys [mutable-store]} @dom-manager
+                 dom-R ((dom-renderer dom-specification)
+                        dom-specification mutable-store)
+                 id->reused (reduce
+                             (fn [id->reused reusable]
+                               (let [{:keys [dom-specification dom-version]}
+                                     @reusable
+                                     id (:relative-id dom-specification)
+                                     kept (id->reused id)]
+                                 (if (and kept
+                                          (>= (or (:dom-version @kept) 0)
+                                              (or dom-version 0)))
+                                   id->reused
+                                   (assoc id->reused id reusable))))
+                             {} active-reusable)
+                 to-deactivate (remove (set (vals id->reused)) active-reusable)]
+             (-> component-data
+                 (assoc :dom-R dom-R
+                        :id->subcomponent id->reused)
+                 (update-new-further-action activate-dom-R component-atom)
+                 (update-new-further-actions
+                  (map (fn [c] [deactivate-component c false])
+                       to-deactivate)))))
+         ;; The component was already activated, so it has no use for
+         ;; the reusable subcomponents. Deactivate the ones that are
+         ;; still active.
+         (update-new-further-actions
+          component-data
+          (map (fn [c] [deactivate-component c false])
+               active-reusable)))))))
 
 (def remove-from-components-to-send)
 
 (defn deactivate-component
   "Deactivate the component and all its descendant components, and
-  remove all its links to descendant components, so they can be GCed."
-  [component-atom]
-  (swap-and-act!
+  remove all its links to descendant components, so they can be GCed.
+
+  If save-subcomponents is true, then the subcomponents in
+  id->subcomponent are not deactivated, but are returned instead. In
+  that case, the caller is responsible for either reusing or
+  deactivating them. (Obsolete subcomponents are always deactivated,
+  as they can never be reused.)"
+  [component-atom save-subcomponents]
+  (swap-and-act-control-return!
    component-atom
    (fn [component-data]
      (if (= (component-data-state component-data) :inactive)
-       component-data ; This component has already been deactivated.
+       ;; This component has already been deactivated. There are no
+       ;; subcomponents to save.
+       [component-data nil]
        (let [{:keys [id->subcomponent obsolete-components dom-R dom-manager]}
              component-data
+             saved (when save-subcomponents (vals id->subcomponent))
+             to-deactivate (concat (when (not save-subcomponents)
+                                     (vals id->subcomponent))
+                                   obsolete-components)
              result (-> component-data
                         ;; Rather than dissoc, we assoc with nil, so we
                         ;; don't turn the record into a map.
@@ -422,9 +495,8 @@
                                :obsolete-components nil
                                :dom-R nil)
                         (update-new-further-actions
-                         (map (fn [ca] [deactivate-component ca])
-                              (concat (vals id->subcomponent)
-                                      obsolete-components)))
+                         (map (fn [ca] [deactivate-component ca false])
+                              to-deactivate))
                         (update-new-further-action
                          deactivate-dom-R component-atom dom-R)
                         (update-new-further-action
@@ -432,39 +504,65 @@
                          dom-manager component-atom))]
          ;; Check for errors where we made it not be a ComponentData.
          (assert (instance? ComponentData result))
-         result)))))
+         [result saved])))))
 
 (defn deactivate-then-activate
   "The atom-with-obsolete must hold something with
-  an :obsolete-components field. Deactivate all the components listed
-  there, then remove the deactivated components from
-  the :obsolete-components field, and finally activate the
-  components-to-activate.  See the explanation in update-dom for why
-  we need to deactivate obsolete components first, if they might be
-  identified with the same client id as a new one. (It's OK if still
-  newer components become obsolete later, because they will deactivate
-  our new ones.)"
+  an :obsolete-components field. and components-to-activate must be
+  subcomponents of atom-with-obsolete. Deactivate all the components
+  listed in the :obsolete-components, then remove the deactivated
+  components from it, and finally activate the components-to-activate.
+  
+  Whenever an obsolete component has the same :relative-id as one of the
+  components-to-activate, the two share a client id, so the new one can
+  reuse the obsolete one's sub-components. In that case we deactivate the
+  obsolete component with save-subcomponents, and pass the sub-components
+  it hands back to activate-component as reusable sub-components for the
+  matching new component. (If several obsolete components match the same
+  new one, all of their saved sub-components are passed along together.)
+
+  See the explanation in update-dom for why we need to deactivate
+  obsolete components first, if they might be identified with the same
+  client id as a new one. (It's OK if still newer components become
+  obsolete later, because they will deactivate our new ones.)"
   [dom-manager atom-with-obsolete components-to-activate]
-  (when-let [obsolete (:obsolete-components @atom-with-obsolete)]
-    ;; First, deactivate the subcomponents so they won't send any more
-    ;; messages to the client.
-    (doseq [subcomponent obsolete]
-      (deactivate-component subcomponent))
-    ;; Next, remove these subcomponents from the list of obsolete
-    ;; ones. (The set of obsolete ones might have changed from when we
-    ;; started running.)
-    (swap! atom-with-obsolete
-           (fn [atom-data]
-             (update atom-data :obsolete-components
-                     #(seq (apply disj (set %) obsolete))))))
-  ;; Now, we can safely active the waiting components, and we
-  ;; are guaranteed that they will have higher numbers than what
-  ;; they replaced. (It is possible that they have gone obsolete by
-  ;; the time we get to here, but either they will have already been
-  ;; deactivated, and activation will do nothing, or there is a
-  ;; waiting task that will deactivate them.)
-  (doseq [subcomponent components-to-activate]
-    (activate-component subcomponent)))
+  (let [id->to-activate (zipmap (map #(:relative-id (:dom-specification @%))
+                                     components-to-activate)
+                                components-to-activate)
+        id->reusable
+        (when-let [obsolete (:obsolete-components @atom-with-obsolete)]
+          ;; First, deactivate the subcomponents so they won't send any
+          ;; more messages to the client. For each one whose :relative-id
+          ;; matches a component we are about to activate, save its
+          ;; subcomponents, so the new component can reuse them.
+          (let [id->reusable
+                (reduce
+                 (fn [id->reusable subcomponent]
+                   (let [id (:relative-id (:dom-specification @subcomponent))
+                         reuse? (contains? id->to-activate id)
+                         saved (deactivate-component subcomponent reuse?)]
+                     (cond-> id->reusable
+                       reuse? (update id concat saved))))
+                 {} obsolete)]
+            ;; Next, remove these subcomponents from the list of obsolete
+            ;; ones. (The set of obsolete ones might have changed from when
+            ;; we started running.)
+            (swap! atom-with-obsolete
+                   (fn [atom-data]
+                     (update atom-data :obsolete-components
+                             #(seq (apply disj (set %) obsolete)))))
+            id->reusable))]
+    ;; Now, we can safely active the waiting components, and we
+    ;; are guaranteed that they will have higher numbers than what
+    ;; they replaced. (It is possible that they have gone obsolete by
+    ;; the time we get to here, but either they will have already been
+    ;; deactivated, and activation will do nothing, or there is a
+    ;; waiting task that will deactivate them.)
+    (doseq [subcomponent components-to-activate]
+      (activate-component
+       subcomponent
+       (get id->reusable
+            (:relative-id (:dom-specification @subcomponent)))))))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their
@@ -578,7 +676,7 @@
                        [[deactivate-then-activate
                          dom-manager component-atom new-subcomponents]]
                        (map (fn [component]
-                              [activate-component component])
+                              [activate-component component nil])
                             new-subcomponents))]
       ;; Check that each subcomponent has a different id. Otherwise, two
       ;; components will share an id, which will mess up communications
@@ -919,7 +1017,7 @@
              follow-on (if obsolete
                          [deactivate-then-activate
                           dom-manager dom-manager [component]]
-                         [activate-component component])]
+                         [activate-component component nil])]
          (-> manager-data
              (assoc-in [:root-components top-id] component)
              (assoc :obsolete-components obsolete)
@@ -935,7 +1033,7 @@
     (fn [manager-data]
       (reduce (fn [manager-data component]
                 (update-new-further-action manager-data
-                                           deactivate-component component))
+                                           deactivate-component component false))
               (assoc manager-data
                      :root-components {}
                      :components-to-send (priority-map))

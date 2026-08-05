@@ -263,16 +263,15 @@
           :vertical)
          {:class  "column-header virtual-column"})))))
 
-(defn render-table-header-DOM-R
+(defn render-table-header-DOM
   "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-  [{:keys [hierarchy-R] :as spec} _]
-  (let-R [hierarchy hierarchy-R]
-    (let [doms (map table-header-top-level-subtree-DOM hierarchy)
-          virtual-header (table-virtual-column-header-DOM hierarchy)]
-      (into [:div {:class "column-header-sequence table-header"}]
-            (concat doms [virtual-header])))))
+  [{:keys [hierarchy] :as spec} _]
+  (let [doms (map table-header-top-level-subtree-DOM hierarchy)
+        virtual-header (table-virtual-column-header-DOM hierarchy)]
+    (into [:div {:class "column-header-sequence table-header"}]
+          (concat doms [virtual-header]))))
 
 (defn table-virtual-column-cell-DOM-component
   [specification]
@@ -444,12 +443,11 @@
           (concat non-virtual-rows
                   [virtual-row]))))
 
-(defn table-hierarchy-R
-  "Return a reporter whose value is the hierarchy of the table header."
-  [column-headers-R]
-  (let-R [current-headers column-headers-R]
-    (let [columns (ordered-entities (semantic-elements current-headers))]
-      (replace-hierarchy-leaves-by-nodes (hierarchy-by-labels columns)))))
+(defn table-hierarchy
+  "Return the hierarchy of the table header."
+  [column-headers]
+  (let [columns (ordered-entities (semantic-elements column-headers))]
+    (replace-hierarchy-leaves-by-nodes (hierarchy-by-labels columns))))
 
 (defn table-row-ids-R
   "Return a reporter whose value is the row ids for the table, in order."
@@ -522,85 +520,65 @@
           ;; change once they are created. So that won't trigger
           ;; recomputation of the main body of the function.
           (let-R [table-item (id->updating-entity-R
-                             table-id store)]
+                              table-id store)]
             [(:item-id (table-row-condition-object table-item))
              (:item-id (table-column-headers-element table-item))])]
     ;; First check to see if we have the table information filled in yet.
     ;; Render the table only if the table information has been filled in.
     (if (not (and row-condition-id column-headers-id))
       [:div {}]
-      ;; Suppose the table's row condition changes. We want to reuse
-      ;; all the rows that still pass the new condition; we don't
-      ;; want to send them to the client all over again. Similarly,
-      ;; suppose the table adds a new column. All the rows have to
-      ;; change, but we want to reuse all their existing cells, only
-      ;; sending the client the cells for the new column.
-      ;;
-      ;; To support this reuse, we first make reporters for all the
-      ;; information that controls the table layout. That way, all
-      ;; uses of them can be shared. But then we don't access their
-      ;; values until inside the rendering of components that
-      ;; directly need them to produce their DOM. In particular,
-      ;; higher level components that don't need the values to
-      ;; produce their DOM just pass the reporters on in the
-      ;; specifications of their subcomponents, without accessing
-      ;; their values.
-      ;;
-      ;; This way, changes to the values don't invalidate the high
-      ;; level components. And even for components whose DOM does
-      ;; depend on the values, the dom manager will reuse the
-      ;; component atoms of any subcomponents that don't change.
-      (let [;; Making these two reporters this way takes advantage of
-            ;; the row-condition and column headers never changing
-            ;; their identity, even though they can change their
-            ;; contents. Tbis way, these reporters don't have to be
-            ;; reconstructed whenever part of the table description
-            ;; changes. That makes computations that depend on them
-            ;; not depend on changes elsewhere in the table entity.
-            row-template-R (app-R object-semantic-to-tree
-                                 (id->updating-entity-R
-                                  row-condition-id store))
-            column-headers-R (id->updating-entity-R
+      (let-R [ ;; We make reporters that will update when the
+              ;; values of the items defined by row-condition-id and
+              ;; column-headers-id change. But the reporters treat the
+              ;; ids as constants, so the reporters will only
+              ;; recompute when their subpart of the table description
+              ;; changes.
+              row-template (app-R object-semantic-to-tree
+                                  (id->updating-entity-R
+                                   row-condition-id store))
+              column-headers (id->updating-entity-R
                               column-headers-id store)
-            hierarchy-R (table-hierarchy-R column-headers-R)
-            virtual-column-description {:column-id :virtualColumn}
-            ;; TODO: Add an "other" column if a table requests it.
-            column-descriptions-R
-            (let-R [hierarchy hierarchy-R]
-              (concat
-               (mapcat #(table-hierarchy-node-column-descriptions nil %)
-                       hierarchy)
-               [virtual-column-description]))
-            condition-dom (make-component
-                           {:relative-id row-condition-id
-                            :render-dom render-table-condition-DOM-R
-                            :get-action-data default-get-action-data
-                            :get-do-batch-edit-action-data
-                            get-table-condition-do-batch-edit-action-data })
-            header-dom (make-component
-                        {:relative-id column-headers-id
-                         :hierarchy-R hierarchy-R
-                         :render-dom render-table-header-DOM-R
-                         :get-action-data default-get-action-data})]
-        ;; The body component takes immutable :row-ids, :row-template,
-        ;; and :column-descriptions, so its spec changes whenever any of
-        ;; those change. That is fine, because the dom manager reuses the
-        ;; row subcomponents that don't change.
-        (let-R [row-template row-template-R
-                column-descriptions column-descriptions-R
-                row-ids (table-row-ids-R row-template store)]
-          (let [body-dom (make-component
-                          {:relative-id :body
-                           ;; If there are no rows, this is used as the
-                           ;; sibling of our first row.
-                           :alternate-row-sibling column-headers-id
-                           :column-descriptions column-descriptions
-                           :row-template row-template
-                           :row-ids row-ids
-                           :render-dom render-table-rows-DOM
-                           :get-action-data get-pass-through-action-data})]
-            [:div {:class "table"}
-             condition-dom
-             [:div {:class "table-main"}
-              header-dom
-              body-dom]]))))))
+              row-ids (table-row-ids-R row-template store)]
+        ;; Now we make components whose specifications have the
+        ;; current values of these reporters. That means their specs
+        ;; will change whenever those values change, so the overall
+        ;; table dom will change to have new components in place of
+        ;; former ones. But that isn't inefficient, because the dom
+        ;; manager will reuse the subcomponents of the original
+        ;; components, wherever possible. So the system won't
+        ;; recalculate all he subcompnents of the revised components,
+        ;; but only only the ones affected by a change.
+        (let [condition-dom (make-component
+                             {:relative-id row-condition-id
+                              :render-dom render-table-condition-DOM-R
+                              :get-action-data default-get-action-data
+                              :get-do-batch-edit-action-data
+                              get-table-condition-do-batch-edit-action-data})
+              hierarchy (table-hierarchy column-headers)
+              ;; TODO: Add an "other" column if a table requests it.
+              header-dom (make-component
+                          {:relative-id column-headers-id
+                           :hierarchy hierarchy
+                           :render-dom render-table-header-DOM
+                           :get-action-data default-get-action-data})
+              column-descriptions
+              (let [virtual-column-description {:column-id :virtualColumn}]
+                (concat
+                 (mapcat #(table-hierarchy-node-column-descriptions nil %)
+                         hierarchy)
+                 [virtual-column-description]))
+              body-dom (make-component
+                        {:relative-id :body
+                         ;; If there are no rows, this is used as the
+                         ;; sibling of our first row.
+                         :alternate-row-sibling column-headers-id
+                         :column-descriptions column-descriptions
+                         :row-template row-template
+                         :row-ids row-ids
+                         :render-dom render-table-rows-DOM
+                         :get-action-data get-pass-through-action-data})]
+          [:div {:class "table"}
+           condition-dom
+           [:div {:class "table-main"}
+            header-dom
+            body-dom]])))))

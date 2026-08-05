@@ -361,7 +361,7 @@
     ;; Check the header
     (is (check
          (run-renderer
-          render-table-header-DOM-R {:hierarchy-R hierarchy} store)
+          render-table-header-DOM {:hierarchy hierarchy} store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)  
@@ -771,14 +771,14 @@
            [:div {:class "table-main"}
             [:component
              {:relative-id column-headers-id
-              :hierarchy-R
+              :hierarchy
               [{:cosheet.server.hierarchy/hierarchy-node true
                 :leaves (any)
                 :properties {[:source (id->object single-oid nil) {}] 1}
                 :cumulative-properties {[:source (id->object single-oid nil)
                                                 {}] 1}}
                (any) (any) (any) (any)]
-              :render-dom render-table-header-DOM-R
+              :render-dom render-table-header-DOM
               :get-action-data (default-AD)}]
             [:component
              {:relative-id :body

@@ -413,8 +413,10 @@
   matching ones can be reused rather than recomputed. If several of
   them have the same :relative-id, we keep the one with the highest
   dom-version (a nil dom-version counting as 0), since that is the one
-  whose dom the client currently has. Any active reusable
-  sub-component we don't keep, we deactivate, since no one else will."
+  whose dom the client currently has. Any reusable-subcomponent we
+  don't keep, we deactivate, since no one else will. That includes
+  ones still in the :created state, because they might have a pending
+  activation that hasn't run yet."
   [component-atom reusable-subcomponents]
   (swap-and-act!
    component-atom
@@ -423,9 +425,10 @@
            ;; It is possible that a race condition will inactivate a
            ;; reusable while we're running. That's OK. It can only
            ;; happen if our component goes inactive, so we won't be
-           ;; using them.
-           active-reusable (filter #(= (component-data-state @%) :active)
-                                   reusable-subcomponents)]
+           ;; using them. It's ok to reuse a component that isn't
+           ;; active yet; we'll activate it.
+           live-reusable (remove #(= (component-data-state @%) :inactive)
+                                 reusable-subcomponents)]
        (if 
          (= (component-data-state component-data) :created)
          (do
@@ -444,22 +447,26 @@
                                               (or dom-version 0)))
                                    id->reused
                                    (assoc id->reused id reusable))))
-                             {} active-reusable)
-                 to-deactivate (remove (set (vals id->reused)) active-reusable)]
+                             {} live-reusable)
+                 to-deactivate (remove (set (vals id->reused)) live-reusable)]
              (-> component-data
                  (assoc :dom-R dom-R
                         :id->subcomponent id->reused)
                  (update-new-further-action activate-dom-R component-atom)
                  (update-new-further-actions
+                  (mapcat (fn [c] (when (= (component-data-state @c) :created)
+                                    [[activate-component c {}]]))
+                          (vals id->reused)))
+                 (update-new-further-actions
                   (map (fn [c] [deactivate-component c false])
                        to-deactivate)))))
-         ;; The component was already activated, so it has no use for
-         ;; the reusable subcomponents. Deactivate the ones that are
-         ;; still active.
+         ;; The component was already activated (and may even have
+         ;; been deactivated), so it has no use for the reusable
+         ;; subcomponents. Deactivate them.
          (update-new-further-actions
           component-data
           (map (fn [c] [deactivate-component c false])
-               active-reusable)))))))
+               live-reusable)))))))
 
 (def remove-from-components-to-send)
 
@@ -489,10 +496,15 @@
              result (-> component-data
                         ;; Rather than dissoc, we assoc with nil, so we
                         ;; don't turn the record into a map.
-                        (assoc :dom-specification nil
-                               :id->subcomponent nil
-                               :obsolete-components nil
-                               :dom-R nil)
+                        (assoc
+                         ;; Mark as disabled.                      
+                         :dom-specification nil
+                         ;; Remove our references to anything that
+                         ;; might be garbage collected.
+                         :id->subcomponent nil
+                         :obsolete-components nil
+                         :elided-from nil
+                         :dom-R nil)
                         (update-new-further-actions
                          (map (fn [ca] [deactivate-component ca false])
                               to-deactivate))
@@ -928,7 +940,10 @@
                 (let [dom (prepare-dom-for-client component)
                       monitored (component-is-monitored? component monitored-ids)]
                   (recur
-                   ;; The dom might be temporarily invalid.
+                   ;; The dom might be temporarily invalid.  TODO: !!!
+                   ;; Check for the component being disabled. In that
+                   ;; case, remove it from the list, because it will
+                   ;; never have a valid dom.
                    (cond-> response
                      dom (conj dom))
                    (preferred-selection current-selection
@@ -950,9 +965,17 @@
   dom version that the client acknowledges getting."
   [component-atom ack-version]
   (let [{:keys [elided-from dom-version]} @component-atom]
-    (when (not (and ack-version dom-version))
-      (println "BAD VERSION" ack-version dom-version))
-    (and (not elided-from) (< ack-version dom-version))))
+    (and
+     ;; We never send elided-from components; the client must be
+     ;; acknowledging from when it wasn't elided.
+     (not elided-from)
+     (or
+      ;; If there is no dom-version, the component must have been
+      ;; reconstructed, and never sent anything to the client.
+      (not dom-version)
+      ;; If the component's dom version is later, the client hasn't
+      ;; seen that version yet.
+      (< ack-version dom-version)))))
 
 (defn process-acknowledgements
   "Modify the the dom-manager to reflect the acknowledgements."

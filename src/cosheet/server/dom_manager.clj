@@ -210,6 +210,8 @@
                         ; use its queue.)
      client-lock        ; An atom used for locking access while doing a
                         ; client interatcion.
+                        ; TODO: !!! Is this even necessary? Everything
+                        ; done under the lock seems monotonic.
      mutable-store      ; The mutable store that holds the data the doms
                         ; rely on.
      further-actions    ; A list of [function arg arg ...] calls that
@@ -505,14 +507,14 @@
                          :obsolete-components nil
                          :elided-from nil
                          :dom-R nil)
-                        (update-new-further-actions
-                         (map (fn [ca] [deactivate-component ca false])
-                              to-deactivate))
                         (update-new-further-action
                          deactivate-dom-R component-atom dom-R)
                         (update-new-further-action
                          remove-from-components-to-send
-                         dom-manager component-atom))]
+                         dom-manager component-atom)
+                        (update-new-further-actions
+                         (map (fn [ca] [deactivate-component ca false])
+                              to-deactivate)))]
          ;; Check for errors where we made it not be a ComponentData.
          (assert (instance? ComponentData result))
          [result saved])))))
@@ -940,10 +942,11 @@
                 (let [dom (prepare-dom-for-client component)
                       monitored (component-is-monitored? component monitored-ids)]
                   (recur
-                   ;; The dom might be temporarily invalid.  TODO: !!!
-                   ;; Check for the component being disabled. In that
-                   ;; case, remove it from the list, because it will
-                   ;; never have a valid dom.
+                   ;; The dom might be temporarily invalid. (It can't
+                   ;; be permanently disabled, as disabling removes it
+                   ;; from the list, and adding to the list checks for
+                   ;; a disablement while the addition was taking
+                   ;; place.)
                    (cond-> response
                      dom (conj dom))
                    (preferred-selection current-selection
@@ -994,31 +997,25 @@
                              component-atom version))
                    [[component-atom version]])))
              acknowledgements))]
-      (swap! dom-manager
-             (fn [manager-data]
-               (-> manager-data
-                   (update :components-to-send
-                           #(apply dissoc % (map first components-to-remove))))))
-      ;; It's possible that a component got updated between the time we
-      ;; decided that it needed to be removed and the swap! In that
-      ;; case, we may have removed it incorrectly. So we go back through
-      ;; the component data of the components we removed, and see if
-      ;; they need to go back in the components-to-send. It is OK to use
-      ;; out of date information here, because it is OK to unnecessarily
-      ;; add a component to send.
+      (swap!
+       dom-manager
+       (fn [manager-data]
+         (-> manager-data
+             (update :components-to-send
+                     #(apply dissoc % (map first components-to-remove))))))
+      ;; It's possible that a component got updated between the time
+      ;; we decided that it needed to be removed and the swap! In that
+      ;; case, we may have removed it incorrectly. So we go back
+      ;; through the component data of the components we removed, and
+      ;; see if they need to go back in the components-to-send.  We
+      ;; use add-to-components-to-send, since it makes sure not to add
+      ;; a component that has been deactivated, which would otherwise
+      ;; stay in components-to-send forever.
       (let [components-to-add-back
             (filter #(apply need-to-send-to-client-given-acknowledgement? %)
                     components-to-remove)]
-        (when (seq components-to-add-back)
-          (swap! dom-manager
-                 (fn [manager-data]
-                   (update manager-data :components-to-send
-                           (fn [components-to-send]
-                             (reduce (fn [components-to-send component]
-                                       (assoc components-to-send component
-                                              (:depth @component)))
-                                     components-to-send
-                                     (map first components-to-add-back)))))))))))
+        (doseq [[component _] components-to-add-back]
+          (add-to-components-to-send dom-manager component))))))
 
 (defn add-root-dom
   "Add dom with the given specification to the dom-manager.
@@ -1082,7 +1079,9 @@
 
 (defn add-components-to-send
   "Given a dom manager and a seq of pairs of [component, priority], add
-  all the components to its components-to-send"
+  all the components to its components-to-send. Then remove any of
+  them that are inactive. This handles the case where they were
+  inactivated while we were adding them."
   [dom-manager components-and-depths]
   (swap! dom-manager
          (fn [data] (update data :components-to-send
@@ -1092,7 +1091,14 @@
                                   priority-map
                                   (assoc priority-map component depth)))
                               %
-                              components-and-depths)))))
+                              components-and-depths))))
+  (let [inactive (filter #(= (component-data-state @%) :inactive)
+                         (keys (:components-to-send @dom-manager)))]
+    (when (seq inactive)
+      (swap! dom-manager
+             (fn [data]
+               (update data :components-to-send
+                       #(apply dissoc % inactive)))))))
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."

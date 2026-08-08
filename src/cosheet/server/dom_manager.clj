@@ -399,6 +399,8 @@
 
 (def deactivate-component)
 
+(def deactivate-then-activate)
+
 (defn activate-component
   "Make a reporter to calculate the component's DOM, and activate it.
   This can't be done at the time the component-atom is created, as
@@ -431,7 +433,7 @@
            ;; active yet; we'll activate it.
            live-reusable (remove #(= (component-data-state @%) :inactive)
                                  reusable-subcomponents)]
-       (if 
+       (if
          (= (component-data-state component-data) :created)
          (do
            (assert (empty? (:id->subcomponent component-data)) component-data)
@@ -450,18 +452,25 @@
                                    id->reused
                                    (assoc id->reused id reusable))))
                              {} live-reusable)
-                 to-deactivate (remove (set (vals id->reused)) live-reusable)]
+                 to-deactivate (remove (set (vals id->reused)) live-reusable)
+                 to-activate (filter #(= (component-data-state @%) :created)
+                                     (vals id->reused))]
+             ;; A reusable we deactivate can share a client id with a
+             ;; reusable we activate (they can have the same
+             ;; relative-id). So we deactivate the ones we aren't
+             ;; keeping before activating the ones we are, using a
+             ;; single deactivate-then-activate on our
+             ;; obsolete-components. Otherwise an old sub-component
+             ;; could still be running and send the client an update
+             ;; that conflicts with the new one's.
              (-> component-data
                  (assoc :dom-R dom-R
-                        :id->subcomponent id->reused)
+                        :id->subcomponent id->reused
+                        :obsolete-components to-deactivate)
                  (update-new-further-action activate-dom-R component-atom)
-                 (update-new-further-actions
-                  (mapcat (fn [c] (when (= (component-data-state @c) :created)
-                                    [[activate-component c {}]]))
-                          (vals id->reused)))
-                 (update-new-further-actions
-                  (map (fn [c] [deactivate-component c false])
-                       to-deactivate)))))
+                 (update-new-further-action
+                  deactivate-then-activate
+                  dom-manager component-atom to-activate))))
          ;; The component was already activated (and may even have
          ;; been deactivated), so it has no use for the reusable
          ;; subcomponents. Deactivate them.
@@ -569,7 +578,7 @@
     ;; are guaranteed that they will have higher numbers than what
     ;; they replaced. (It is possible that they have gone obsolete by
     ;; the time we get to here, but either they will have already been
-    ;; deactivated, and activation will do nothing, or there is a
+    ;; deactivated, and activation will do nothing, or there will be a
     ;; waiting task that will deactivate them.)
     (doseq [subcomponent components-to-activate]
       (activate-component
@@ -1081,7 +1090,7 @@
   "Given a dom manager and a seq of pairs of [component, priority], add
   all the components to its components-to-send. Then remove any of
   them that are inactive. This handles the case where they were
-  inactivated while we were adding them."
+  deactivated while we were adding them."
   [dom-manager components-and-depths]
   (swap! dom-manager
          (fn [data] (update data :components-to-send

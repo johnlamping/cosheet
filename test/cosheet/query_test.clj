@@ -153,7 +153,18 @@
                        :source object-foo `((~object-bare-foo) 5))))
     (is (not (extended-by? (make-tree-element
                             :source object-foo `((~object-bare-foo)))
-                           (make-tree-element :source object-foo nil))))))
+                           (make-tree-element :source object-foo nil))))
+    ;; An anonymous store-less object (identified only by a numeric id,
+    ;; so not uniquely identified) is now treated as presumed-interned,
+    ;; so it matches only an entity with the same id, not any object.
+    (let [[store-a anon-id-a] (get-new-object-id (new-element-store))
+          [_ anon-id-b] (get-new-object-id store-a)
+          anon-a (id->object anon-id-a nil)
+          anon-b (id->object anon-id-b nil)]
+      (is (extended-by? anon-a anon-a))
+      (is (not (extended-by? anon-a anon-b)))
+      ;; It can still be matched, in the other direction, by a pattern.
+      (is (extended-by? (make-tree-object nil) anon-a)))))
 
 (defn variable
   ([name] (variable-query name))
@@ -246,17 +257,17 @@
                                (:foo ~(variable "baz" (variable "bar")))
                                ~(not-query 8))
                              {"bar" 7})
-           [`(5 ([:object]) (:foo 7)) false]))
+           [`(5 (~anonymous-object) (:foo 7)) false]))
     (is (= (closest-template `(~(variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "baz")))
                              {"bar" 7})
-           [`(5 ([:object]) (:foo nil)) #{"foo" "baz"}]))
+           [`(5 (~anonymous-object) (:foo nil)) #{"foo" "baz"}]))
     (is (= (closest-template `(~(variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "foo")))
                              {"bar" 7})
-           [`(5 ([:object]) (:foo nil)) false]))
+           [`(5 (~anonymous-object) (:foo nil)) false]))
     (is (= (closest-template `(~(variable "foo" 5)
                                (~named-object)
                                (:foo ~(variable "baz" (variable "bar")))

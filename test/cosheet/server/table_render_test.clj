@@ -12,6 +12,7 @@
                                   link-type-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->element id->object
+                                         all-presumed-interned-in-different-store
                                          label->elements elements to-tree
                                          make-tree-object
                                          link-type name-label]]
@@ -553,8 +554,10 @@
          column-descriptions
          [{:column-id c1-id
            :width 0.75
-           :query `(nil (~single-label-object)
-                        (nil :order))}
+           :query (all-presumed-interned-in-different-store
+                   `(nil (~single-label-object)
+                         (nil :order))
+                   nil)}
           {:column-id c2-id
            :competing-ids [c3-id]
            :disqualifications `(~(as-set
@@ -562,13 +565,17 @@
                                         (~other-label-object)
                                         (nil :order))))
            :width 0.75
-           :query (as-set `(nil (~name-label-object)
-                                (nil :order)))}
+           :query (as-set (all-presumed-interned-in-different-store
+                           `(nil (~name-label-object)
+                                 (nil :order))
+                           nil))}
           {:column-id c3-id
            :width 0.75
-           :query (as-set `(nil (~name-label-object)
-                                (~other-label-object)
-                                (nil :order)))}
+           :query (as-set (all-presumed-interned-in-different-store
+                           `(nil (~name-label-object)
+                                 (~other-label-object)
+                                 (nil :order))
+                           nil))}
           (any) (any) (any) (any) (any)]))
 
    ;; Check making one row component
@@ -615,8 +622,10 @@
                        :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
-                       :query `(nil (~single-label-object)
-                                    (nil :order))
+                       :query (all-presumed-interned-in-different-store
+                               `(nil (~single-label-object)
+                                     (nil :order))
+                               nil)
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
@@ -625,8 +634,10 @@
                        :class "table-cell"
                        :relative-id c2-id
                        :row-id joe-id
-                       :query (as-set `(nil (~name-label-object)
-                                            (nil :order)))
+                       :query (as-set (all-presumed-interned-in-different-store
+                                       `(nil (~name-label-object)
+                                             (nil :order))
+                                       nil))
                        :competing-ids [c3-id]
                        :disqualifications `(~(as-set
                                               `(nil (~name-label-object)
@@ -640,9 +651,11 @@
                        :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
-                       :query (as-set `(nil (~name-label-object)
-                                            (~other-label-object)
-                                            (nil :order)))
+                       :query (as-set (all-presumed-interned-in-different-store
+                                       `(nil (~name-label-object)
+                                             (~other-label-object)
+                                             (nil :order))
+                                       nil))
                        :render-dom (cell-DOM)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
@@ -664,7 +677,8 @@
          [:component
           {:width 0.75
            :relative-id :virtual
-           :template `("" (~single-label-object))
+           :template (all-presumed-interned-in-different-store
+                      `("" (~single-label-object)) nil)
            :virtual true
            :render-dom (virt-DOM)
            :get-action-data (virt-AD)}]))
@@ -692,7 +706,8 @@
             {:relative-id joe-joe-id
              :render-dom render-item-DOM-R
              :get-action-data (default-AD)
-             :template `("" (~name-label-object))
+             :template (all-presumed-interned-in-different-store
+                        `("" (~name-label-object)) nil)
              :width 0.75
              :element-ids-to-exclude
              #{(:item-id (first (matching-elements
@@ -717,8 +732,10 @@
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM-R
                :get-action-data (default-AD)
-               :template `("" (~name-label-object)
-                              (~(id->object id-oid nil)))
+               :template (all-presumed-interned-in-different-store
+                          `("" (~name-label-object)
+                               (~(id->object id-oid nil)))
+                          nil)
                :width 0.75
                :element-ids-to-exclude
                #{(:item-id (first (matching-elements
@@ -730,11 +747,14 @@
           ;; A filler that grows into the cell's free space, for adding.
           [:component
            {:width 0.75
-            :template `("" (~name-label-object))
+            :template (all-presumed-interned-in-different-store
+                       `("" (~name-label-object)) nil)
             :relative-id :virtual
             :class "stack-filler"
-            :adjacent-query (as-set `(nil (~name-label-object)
-                                          (nil :order)))
+            :adjacent-query (as-set (all-presumed-interned-in-different-store
+                                     `(nil (~name-label-object)
+                                           (nil :order))
+                                     nil))
             :virtual true
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]]))
@@ -751,7 +771,8 @@
                        :class "table-cell"
                        :virtual true
                        :render-dom (virt-DOM)
-                       :template `("" (~single-label-object))
+                       :template (all-presumed-interned-in-different-store
+                                  `("" (~single-label-object)) nil)
                        :get-action-data (virt-AD)
                        :width 0.75}]
           (any) (any) (any) (any) (any) (any)]))

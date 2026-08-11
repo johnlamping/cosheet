@@ -1,7 +1,7 @@
 (ns cosheet.query-impl
   (:require (cosheet [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [mutable-entity? primitive? object?
-                                      interned-object?
+                                      presumed-interned-object?
                                       stored-entity?
                                       id->entity entity-key
                                       orientation content elements
@@ -131,7 +131,7 @@
         ;; if the that tree form is an interned object, we are exact,
         ;; as the only way to match it is with the same entity.
          (or (not (variable-reference term))
-             (interned-object? value))]
+             (presumed-interned-object? value))]
         (let [[contextualized contextualized-exact]
               (contextualize-variable (variable-qualifier term) env)]
           [contextualized (combine-template-exactness contextualized-exact
@@ -236,7 +236,7 @@
         ;; itself. (But the list form of what would be an interned
         ;; identified object has to be able match a stored form,
         ;; because we might be searching for the stored form.)
-        (interned-object? fixed-term)
+        (presumed-interned-object? fixed-term)
         (= (entity-key fixed-term) (entity-key entity))
         ;; In the general case, the parts have to match.
         true
@@ -284,7 +284,7 @@
       (if (is-fixed-term-special-form? as-list)
         [nil false]
         (do (assert (not (special-form? as-list)))
-            (if (or (primitive? as-list) (interned-object? as-list))
+            (if (or (primitive? as-list) (presumed-interned-object? as-list))
               [as-list contextualized-exact]
               (let [{dropped-elements true
                      kept-elements false}
@@ -458,7 +458,7 @@
       [env]
       ;; And interned object, can only match itself. But can be
       ;; matched, in the other direction, by a pattern.
-      (when (not (interned-object? item))
+      (when (not (presumed-interned-object? item))
         (sub-elements-match-extensions item [env]
                                        entity entity-element-filter)))))
 

@@ -40,7 +40,7 @@
                           replace-final-label-content
                           make-component
                           nest-if-multiple-DOM
-                          condition-satisfiers
+                          store-invariant-condition-satisfiers
                           hierarchy-node-DOM
                           final-template
                           inherited-specification-keys
@@ -519,7 +519,8 @@
         all-labels (map semantic-label-elements ordered-elements)
         excludeds (map (fn [element]
                          (when implied-template
-                           (condition-satisfiers element implied-template)))
+                           (store-invariant-condition-satisfiers
+                            element implied-template)))
                        ordered-elements)
         labels (map (fn [all exclusions]
                       (clojure.set/difference (set all) (set exclusions)))

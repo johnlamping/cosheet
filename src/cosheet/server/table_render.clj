@@ -6,6 +6,7 @@
                       [entity :refer [content elements label->elements
                                       id->entity
                                       id->updating-entity-R
+                                      all-presumed-interned-in-different-store
                                       object? label-element? label->element]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
@@ -38,7 +39,7 @@
                                   exemplar-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
-                                   condition-satisfiers
+                                   store-invariant-condition-satisfiers
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
@@ -315,7 +316,7 @@
                                (when-let [entity (first entities)]
                                  (or (object? (content entity))
                                      (seq (remove
-                                           (set (condition-satisfiers
+                                           (set (store-invariant-condition-satisfiers
                                                  entity (:template spec)))
                                            (semantic-elements entity))))))
                        (virtual-DOM-component
@@ -465,7 +466,7 @@
                       (hierarchy-node-non-immediate-descendant-cover
                        parent-node))]
     (cond-> {:column-id (:item-id (:item leaf))
-             :query query
+             :query (all-presumed-interned-in-different-store query nil)
              :width 0.75}
       (seq competitors) 
       (assoc :competing-ids (map #(:item-id (:item %)) competitors) 

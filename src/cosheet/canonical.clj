@@ -4,7 +4,7 @@
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
                     content elements orientation in-different-store
-                    make-tree-element interned-object?
+                    make-tree-element presumed-interned-object?
                     conflux-tree-object? conflux-tree-object-id
                     make-conflux-tree-object
                     to-tree]])))
@@ -103,7 +103,7 @@
         (primitive? entity)
         (canonical-primitive-form entity)
         (object? entity)
-        (if (interned-object? entity)
+        (if (presumed-interned-object? entity)
           (in-different-store entity nil)
           ;; Since the object is not interned, we have to expand it
           ;; out, so it can match other non-interned objects.

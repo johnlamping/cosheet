@@ -39,7 +39,7 @@
                                   exemplar-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
-                                   store-invariant-condition-satisfiers
+                                   condition-satisfiers
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
@@ -316,7 +316,7 @@
                                (when-let [entity (first entities)]
                                  (or (object? (content entity))
                                      (seq (remove
-                                           (set (store-invariant-condition-satisfiers
+                                           (set (condition-satisfiers
                                                  entity (:template spec)))
                                            (semantic-elements entity))))))
                        (virtual-DOM-component

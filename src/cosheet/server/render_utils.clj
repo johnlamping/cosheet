@@ -141,22 +141,6 @@
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of
   condition, except that the empty string in an element is considered
-  to match a nil in a condition. The condition must be in list form.
-  If part of a condition is not satisfied by any element, ignore that
-  part."
-  [entity condition]
-  (when-let [condition-elements (seq (elements condition))]
-    (let [elements (elements entity)
-          canonical-elements (map entity->canonical-semantic elements)]
-      (multiset-to-generating-values
-       (multiset (map #(entity->canonical-semantic
-                        (replace-in-seqs % nil ""))
-                      condition-elements))
-       canonical-elements elements))))
-
-(defn store-invariant-condition-satisfiers
-  "Return a sequence of elements of an entity that match the elements of
-  condition, except that the empty string in an element is considered
   to match a nil in a condition, and presumed-interned objects match
   only their ids, ignoring their stores. The condition must be in list
   form.  If part of a condition is not satisfied by any element,

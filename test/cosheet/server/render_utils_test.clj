@@ -3,7 +3,8 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [store :refer [new-element-store]]
-             [entity :as entity  :refer [to-tree id->entity name-label]]
+             [entity :as entity  :refer [to-tree id->entity id->object
+                                         name-label]]
              [canonical :refer [canonicalize]]
              [store-utils :refer [add-element add-universal-objects
                                   add-link-type-object
@@ -16,30 +17,48 @@
             ))
 
 (deftest condition-satisfiers-test
+  ;; Elements without presumed-interned objects match on their content.
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" ("B" 1) "C")
-                                        '(nil "A")))
+                  (condition-satisfiers
+                   '("age" "A" ("B" 1) "C")
+                   '(nil "A")))
              ["a"]))
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" ("B" 1) "C")
-                                        '(nil "A" "C")))
+                  (condition-satisfiers
+                   '("age" "A" ("B" 1) "C")
+                   '(nil "A" "C")))
              (as-set ["a" "c"])))
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" ("B" 1) "C")
-                                        '(nil "A" "B")))
+                  (condition-satisfiers
+                   '("age" "A" ("B" 1) "C")
+                   '(nil "A" "B")))
              ["a"]))
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" "A" ("B" 1) "C")
-                                        '(nil "A" "B")))
+                  (condition-satisfiers
+                   '("age" "A" "A" ("B" 1) "C")
+                   '(nil "A" "B")))
              ["a"]))
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" "A" ("B" 1) "C")
-                                        '(nil "A" "A" "B")))
+                  (condition-satisfiers
+                   '("age" "A" "A" ("B" 1) "C")
+                   '(nil "A" "A" "B")))
              ["a" "a"]))
   (is (check (map canonicalize
-                  (condition-satisfiers '("age" "A" ("B" 1) "C")
-                                        '(nil "A" "A" "B")))
-             ["a"])))
+                  (condition-satisfiers
+                   '("age" "A" ("B" 1) "C")
+                   '(nil "A" "A" "B")))
+             ["a"]))
+  ;; A label object in the entity matches the same label object (by id)
+  ;; in the condition even though they have different stores.
+  (let [s0 (add-universal-objects (new-element-store))
+        [store label-oid] (add-link-type-object s0 "L")
+        label-object (id->object label-oid store)
+        bare-label-object (id->object label-oid nil)]
+    (is (check (map canonicalize
+                    (condition-satisfiers
+                     `("x" (~label-object))
+                     `(nil (~bare-label-object))))
+               [(canonicalize `(~label-object))]))))
 
 (deftest competing-siblings-test
   (let [[s1 joe-id] (add-element

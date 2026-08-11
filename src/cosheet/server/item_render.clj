@@ -868,7 +868,7 @@
   "Render a dom spec for a store item (which may be an exemplar of a
   group of items). This is the default renderer."
   [{:keys [relative-id] :as specification}  store]
-  (println "Generating DOM for" (simplify-for-print relative-id))
+  (println "Generating item DOM for" (simplify-for-print relative-id))
   (let [updating-entity (id->updating-entity-R
                          (specification-item-id specification) store)]
      (assert (:width specification)

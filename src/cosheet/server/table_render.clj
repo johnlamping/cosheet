@@ -361,6 +361,7 @@
   "Generate dom for a table row.
   The specification must have column-descriptions"
   [{:keys [row-id column-descriptions] :as specification} store]
+  (println "Generating row DOM for" (simplify-for-print row-id))
   (let [spec (-> specification
                  (dissoc :column-descriptions)
                  (assoc :class "table-cell has-border"))

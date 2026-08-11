@@ -523,7 +523,9 @@
         [store elem-id] (add-element s2 nil
                                      `(~(id->object obj-content-id s2)))
         element (id->element elem-id store)]
-    (is (check (element-content-DOM element {:width 1.5 :template 'anything})
+    (is (check (element-content-DOM element
+                                    {:width 1.5
+                                     :template `(~'anything (~name-label))})
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id

@@ -734,7 +734,8 @@
               (item-component
                contents
                (-> specification
-                   (assoc :element-ids-to-exclude #{(:item-id element)})
+                   (assoc :template (content template)
+                          :element-ids-to-exclude #{(:item-id element)})
                    (into-attributes {:class "object"})))))))
 
 (defn render-element-content-DOM-R

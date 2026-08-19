@@ -74,9 +74,9 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager "c1" 2 nil nil)
-        c1-reused (reuse-or-make-component-atom s1 manager "c1" 2 nil c1)
-        c2 (reuse-or-make-component-atom s2 manager "c2" 2 c1 c1)]
+        c1 (reuse-or-make-component-atom s1 manager manager "c1" 2 nil nil)
+        c1-reused (reuse-or-make-component-atom s1 manager manager "c1" 2 nil c1)
+        c2 (reuse-or-make-component-atom s2 manager manager "c2" 2 c1 c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 2))
     (is (= (:dom-version @c1) nil)) ; Not activated yet.
@@ -93,7 +93,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)]
-    (let [c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
+    (let [c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
       ;; Make c1 look like it has been activated.
       (swap! c1 #(assoc % :dom-R true :dom-version 1))
       (let [updated (update-dom @c1 c1 [:div 2 [:component s2]])]
@@ -103,14 +103,16 @@
                                       [activate-component (any) nil]]
                     :id->subcomponent {id2 (any)}
                     :client-id "c1"
-                    :obsolete-components nil
+                    :quiescing nil
                     :elided-from nil
                     :dom-manager manager
+                    :parent manager
+                    :quiescing-state nil
                     :dom-specification s1
                     :dom-version 2
                     :depth 1
                     :dom-R (any)})))
-      (let [c2- (reuse-or-make-component-atom s2- manager "c2" 3 nil nil)]
+      (let [c2- (reuse-or-make-component-atom s2- manager manager "c2" 3 nil nil)]
         ;; Make c2- look like it has been activated.
         (swap! c2- #(assoc % :dom-R true :dom-version 1))
         (let [updated- (update-dom @c2- c2- [:component s2])
@@ -120,9 +122,11 @@
                      {:further-actions nil
                       :id->subcomponent nil
                       :client-id "c2_Ibar"
-                      :obsolete-components nil
+                      :quiescing nil
                       :elided-from c2-
                       :dom-manager manager
+                      :parent c2-
+                      :quiescing-state nil
                       :dom-specification s2
                       :dom-version nil
                       :depth 4
@@ -132,11 +136,11 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c2 (reuse-or-make-component-atom s2 manager "c2" 1 nil nil)]
+        c2 (reuse-or-make-component-atom s2 manager manager "c2" 1 nil nil)]
     (activate-component c2 nil)
     (is (check @manager
                {:highest-version 0
-                :obsolete-components nil
+                :quiescing nil
                 :components-to-send {}
                 :calculator-data cd
                 :mutable-store ms
@@ -150,12 +154,14 @@
                {:client-id "c2"
                 :id->subcomponent {}
                 :dom-manager manager
+                :parent manager
+                :quiescing-state nil
                 :dom-specification s2
                 :dom-R (any)
                 :dom-version nil
                 :elided-from nil
                 :depth 1
-                :obsolete-components nil
+                :quiescing nil
                 :further-actions nil}))
     (let [dom-R (:dom-R @c2)]
       (is (check
@@ -166,7 +172,7 @@
       (is (check @manager
                  {:root-components {}
                   :highest-version 0
-                  :obsolete-components nil
+                  :quiescing nil
                   :components-to-send {c2 1}
                   :calculator-data cd
                   :mutable-store ms
@@ -177,12 +183,14 @@
                  {:client-id "c2"
                   :id->subcomponent nil
                   :dom-manager manager
-                  :dom-specification nil
+                  :parent manager
+                  :quiescing-state :defunct
+                  :dom-specification {:relative-id id2}
                   :dom-R nil
                   :dom-version nil
                   :elided-from nil
                   :depth 1
-                  :obsolete-components nil
+                  :quiescing nil
                   :further-actions nil}))
       (is (component-atom? c2))
       (is (check
@@ -193,7 +201,7 @@
       (is (check @manager
                  {:root-components {}
                   :highest-version 0
-                  :obsolete-components nil
+                  :quiescing nil
                   :components-to-send {}
                   :calculator-data cd
                   :mutable-store ms
@@ -233,7 +241,7 @@
         ;; The root component itself is a new, distinct atom, and the old
         ;; one has been deactivated.
         (is (not= component-b component-a))
-        (is (= (component-data-state @component-a) :inactive))
+        (is (= (component-data-state @component-a) :defunct))
         ;; But its subcomponent for id2 is the very same atom, reused,
         ;; still active and with its original (un-recreated) reporter.
         (is (= sub-b sub-a))
@@ -244,7 +252,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
     (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
@@ -267,7 +275,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager "c1" 1 nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
     (activate-component c1 nil)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
@@ -410,8 +418,8 @@
         (remove-all-doms manager)
         (compute cd)
         (is (empty? (:attendees @(:data ms))))
-        (is (nil? (:dom-specification @c1-)))
-        (is (nil? (:dom-specification @c1)))))))
+        (is (= (component-data-state @c1-) :defunct))
+        (is (= (component-data-state @c1) :defunct))))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups

@@ -28,13 +28,6 @@
 
 (def verbose false)
 
-;;; TODO: Mark some components as not being worth their descendants
-;;; being saved. Once those are computed and sent to the client, they
-;;; are thrown out. Whatever component is saved has to be marked as
-;;; dependent on anything the subcomponents were dependent
-;;; on. Whenever it needs to be recomputed, all their descendents have
-;;; to be recomputed too.
-
 ;;; We record what needs to be rendered, and what it depends on.
 ;;; Whenever a piece of dom changes, we check all the sub-components
 ;;; it specifies, and update our information.
@@ -46,19 +39,55 @@
 ;;;     doesn't depend on them,
 ;;;   * It notifies the client of changes, not other code.
 
+;;; Over its life cycle, a component goes through these stages, in order
+;;; (it may skip some):
+;;;   * Unstarted.  Its unchanging data has been filled in. It is waiting
+;;;     for any conflicting component to be shut down, and while it is
+;;;     waiting it may gets subcomponents from those conflicting
+;;;     components.
+;;;   * Active.  It has a reporter calculating its dom, and can send
+;;;     updates to the client.
+;;;   * Salvaging.  It has been obsoleted by a replacement component. It
+;;;     will ignore any dom updates it gets, will never send updates
+;;;     to the client, and its reporter calculating its dom is shut
+;;;     down, or in the process of being shut down. But although it is
+;;;     not active, it may have active subcomponents, which should be
+;;;     transferred to the component that replaced it, if possible.
+;;;     And its non-active subcomponents also need to be salvaged.
+;;;   * Finalizing.  It has all the same restrictions as salvaging, but
+;;;     there is nothing to salvage; all of its subcomponents need to
+;;;     be finalized, at which point they should be removed as
+;;;     subcomponents.
+;;;   * Defunct.  It has no subcomponents, and should be removed from
+;;;     the subcomponents of its parent, so it can be garbage
+;;;     collected.
+
 ;;; A component is represented with an atom that holds a
 ;;; ComponentData, which contains information about one component we
 ;;; are tracking. We use ComponentData, rather than a map, so we can
 ;;; simplify print-out.
 (defrecord ComponentData
-    [;; These fields will never change once the component data is created
+    [;; These fields will never change once the component data is created.
      dom-manager           ; Our dom manager.
+     parent                ; The atom for the component that we are a
+                           ; subcomponent of. This is filled in when
+                           ; the component is created. For a root
+                           ; component, this is the dom-manager.
+                           ; When a component is moving from one
+                           ; parent to another, this field is changed
+                           ; first, then the destination parent is
+                           ; updated, and finally the former
+                           ; parent. So while this move in in
+                           ; progress, there is a disagreement between
+                           ; parent and child. In that case, only the
+                           ; action that is doing the moving is
+                           ; allowed to alter any of that information.
      client-id             ; The id this component will have in the client.
-                           ; It is the concatenation of the relative ids
-                           ; of all the components on the path from the root
-                           ; to here (with a little processing to avoid
-                           ; ambiguity and HTML issues).
-                           ; then client-id must be present.
+                           ; It is the concatenation of the relative
+                           ; ids of the doms of all the components on
+                           ; the path from the root to here (with a
+                           ; little processing to avoid ambiguity and
+                           ; HTML issues).
      elided-from           ; If the dom of one component consists of
                            ; nothing but another component, then the
                            ; inner component is elided away, as far as
@@ -76,11 +105,16 @@
                            ; hierarchy, used to make parents get sent
                            ; to the client before their children.
 
-     ;; This field normally doesn't change, but if the component has
-     ;; been permanently disabled, this field is cleared
+     ;; This field normally holds the full dom spec. Once the component
+     ;; starts quiescing, it holds only the relative-id.
      dom-specification     ; The dom spec for this component.
 
      ;; These fields can change
+     quiescing-state       ; Nil while the component is the :unstarted or
+                           ; :active stage of its life
+                           ; cycle. Otherwise (meaning the component
+                           ; is quiescing) it holds the keyword for
+                           ; its current life-cycle stage.
      dom-R                 ; A reporter that calculates this component's dom.
                            ; This field is filled in when the
                            ; component is first activated, and is
@@ -105,7 +139,7 @@
                            ; deactivating all components in
                            ; id->subcomponent once it knows they are
                            ; no longer useful.
-     obsolete-components   ; A seq of subcomponent component atoms that
+     quiescing             ; A seq of subcomponent component atoms that
                            ; need to be deactivated before any new
                            ; subcomponents can be activated. This is
                            ; because they might have the same client
@@ -143,26 +177,12 @@
 
 (defn component-data-state
   "This function takes a component's component-data and returns which
-  one of these three stages of its life cycle it is in.
-     :created  The unchanging part of the component's data has been
-               filled in, but the reporter that calculates its dom
-               hasn't been made yet.
-      :active  A reporter is running to update the component's dom
-               whenever something it depends on changes.
-    :inactive  This component's dom is no longer needed by the client.
-               Either the client no longer needs a dom with this
-               reporter's client id, or a different component
-               atom is now in charge of calculating that dom. This
-               component's reporter is no longer running, or is
-               about to be shut down. It will never be active again.
-  Each component goes through these three states, in this order; it
-  never moves back to a previous stage."
+  state of its life cycle that it is in."
   [component-data]
-  (if (nil? (:dom-specification component-data))
-    :inactive
-    (if (nil? (:dom-R component-data))
-      :created
-      :active)))
+  (or (:quiescing-state component-data)
+      (if (nil? (:dom-R component-data))
+        :unstarted
+        :active)))
 
 ;;; The information for interfacing between the client and the
 ;;; components is stored in an atom, containing a record with these
@@ -172,7 +192,7 @@
     [root-components    ; A map from the client id of each root component
                         ; to its component atom. Not all components with
                         ; fixed client ids need to be here, just the roots.
- obsolete-components    ; A seq of root component atoms that
+           quiescing    ; A seq of root component atoms that
                         ; need to be deactivated before any new
                         ; root components can be activated. The issue
                         ; is that they might have the same client
@@ -312,15 +332,16 @@
 
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
-  component must not be transitioned from the :created to the :active
+  component must not be transitioned from the :unstarted to the :active
   state until it is recorded in the id->subcomponent of its containing
   component. That is handled by activate-component."
-  [specification dom-manager client-id depth elided-from]
+  [specification dom-manager parent client-id depth elided-from]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
   (atom
    (map->ComponentData
     {:dom-manager dom-manager
+     :parent parent
      :dom-specification specification
      :client-id client-id
      :elided-from elided-from
@@ -331,21 +352,24 @@
   "Given the particulars for a component, plus an existing component atom,
   return the existing atom if it matches the particulars, otherwise
   make a new one and return it."
-  [specification dom-manager new-client-id new-depth new-elided-from
+  [specification dom-manager new-parent new-client-id new-depth new-elided-from
    old-component-atom]
   (if (when old-component-atom
-        (let [{:keys [dom-specification elided-from depth client-id]}
+        (let [{:keys [dom-specification elided-from depth client-id parent]}
               @old-component-atom]
           (and (= dom-specification specification)
                (= depth new-depth)
                (= client-id new-client-id)
+               ;; TODO: !!! Add this once parent gets updated.
+               ; (= parent new-parent)
                ;; We don't currently update the elision in the
                ;; component atom, so if the elision has changed, we
                ;; need a new one.
                (= elided-from new-elided-from))))
     old-component-atom
     (make-component-atom
-     specification dom-manager new-client-id new-depth new-elided-from)))
+     specification dom-manager new-parent new-client-id new-depth
+     new-elided-from)))
 
 (defn increment-if-non-nil
   [n]
@@ -419,7 +443,7 @@
   dom-version (a nil dom-version counting as 0), since that is the one
   whose dom the client currently has. Any reusable-subcomponent we
   don't keep, we deactivate, since no one else will. That includes
-  ones still in the :created state, because they might have a pending
+  ones still in the :unstarted state, because they might have a pending
   activation that hasn't run yet."
   [component-atom reusable-subcomponents]
   (swap-and-act!
@@ -431,10 +455,10 @@
            ;; happen if our component goes inactive, so we won't be
            ;; using them. It's ok to reuse a component that isn't
            ;; active yet; we'll activate it.
-           live-reusable (remove #(= (component-data-state @%) :inactive)
+           live-reusable (remove #(= (component-data-state @%) :defunct)
                                  reusable-subcomponents)]
        (if
-         (= (component-data-state component-data) :created)
+         (= (component-data-state component-data) :unstarted)
          (do
            (assert (empty? (:id->subcomponent component-data)) component-data)
            (let [{:keys [mutable-store]} @dom-manager
@@ -453,20 +477,20 @@
                                    (assoc id->reused id reusable))))
                              {} live-reusable)
                  to-deactivate (remove (set (vals id->reused)) live-reusable)
-                 to-activate (filter #(= (component-data-state @%) :created)
+                 to-activate (filter #(= (component-data-state @%) :unstarted)
                                      (vals id->reused))]
              ;; A reusable we deactivate can share a client id with a
              ;; reusable we activate (they can have the same
              ;; relative-id). So we deactivate the ones we aren't
              ;; keeping before activating the ones we are, using a
-             ;; single deactivate-then-activate on our
-             ;; obsolete-components. Otherwise an old sub-component
+             ;; single deactivate-then-activate on our quiescing
+             ;; components. Otherwise an old sub-component
              ;; could still be running and send the client an update
              ;; that conflicts with the new one's.
              (-> component-data
                  (assoc :dom-R dom-R
                         :id->subcomponent id->reused
-                        :obsolete-components to-deactivate)
+                        :quiescing to-deactivate)
                  (update-new-further-action activate-dom-R component-atom)
                  (update-new-further-action
                   deactivate-then-activate
@@ -494,26 +518,29 @@
   (swap-and-act-control-return!
    component-atom
    (fn [component-data]
-     (if (= (component-data-state component-data) :inactive)
+     (if (= (component-data-state component-data) :defunct)
        ;; This component has already been deactivated. There are no
        ;; subcomponents to save.
        [component-data nil]
-       (let [{:keys [id->subcomponent obsolete-components dom-R dom-manager]}
+       (let [{:keys [id->subcomponent quiescing dom-R dom-manager
+                     dom-specification]}
              component-data
              saved (when save-subcomponents (vals id->subcomponent))
              to-deactivate (concat (when (not save-subcomponents)
                                      (vals id->subcomponent))
-                                   obsolete-components)
+                                   quiescing)
              result (-> component-data
                         ;; Rather than dissoc, we assoc with nil, so we
                         ;; don't turn the record into a map.
                         (assoc
-                         ;; Mark as disabled.                      
-                         :dom-specification nil
+                         ;; Mark as defunct, keeping the relative-id.
+                         :quiescing-state :defunct
+                         :dom-specification (select-keys dom-specification
+                                                         [:relative-id])
                          ;; Remove our references to anything that
                          ;; might be garbage collected.
                          :id->subcomponent nil
-                         :obsolete-components nil
+                         :quiescing nil
                          :elided-from nil
                          :dom-R nil)
                         (update-new-further-action
@@ -529,30 +556,30 @@
          [result saved])))))
 
 (defn deactivate-then-activate
-  "The atom-with-obsolete must hold something with
-  an :obsolete-components field. and components-to-activate must be
-  subcomponents of atom-with-obsolete. Deactivate all the components
-  listed in the :obsolete-components, then remove the deactivated
+  "The atom-with-quiescing must hold something with
+  a :quiescing field, and components-to-activate must be
+  subcomponents of atom-with-quiescing. Deactivate all the components
+  listed in the :quiescing field, then remove the deactivated
   components from it, and finally activate the components-to-activate.
-  
-  Whenever an obsolete component has the same :relative-id as one of the
+
+  Whenever a quiescing component has the same :relative-id as one of the
   components-to-activate, the two share a client id, so the new one can
-  reuse the obsolete one's sub-components. In that case we deactivate the
-  obsolete component with save-subcomponents, and pass the sub-components
+  reuse the quiescing one's sub-components. In that case we deactivate the
+  quiescing component with save-subcomponents, and pass the sub-components
   it hands back to activate-component as reusable sub-components for the
-  matching new component. (If several obsolete components match the same
+  matching new component. (If several quiescing components match the same
   new one, all of their saved sub-components are passed along together.)
 
   See the explanation in update-dom for why we need to deactivate
-  obsolete components first, if they might be identified with the same
-  client id as a new one. (It's OK if still newer components become
-  obsolete later, because they will deactivate our new ones.)"
-  [dom-manager atom-with-obsolete components-to-activate]
+  quiescing components first, if they might be identified with the same
+  client id as a new one. (It's OK if still newer components start
+  quiescing later, because they will deactivate our new ones.)"
+  [dom-manager atom-with-quiescing components-to-activate]
   (let [id->to-activate (zipmap (map #(:relative-id (:dom-specification @%))
                                      components-to-activate)
                                 components-to-activate)
         id->reusable
-        (when-let [obsolete (:obsolete-components @atom-with-obsolete)]
+        (when-let [quiescing (:quiescing @atom-with-quiescing)]
           ;; First, deactivate the subcomponents so they won't send any
           ;; more messages to the client. For each one whose :relative-id
           ;; matches a component we are about to activate, save its
@@ -565,18 +592,18 @@
                          saved (deactivate-component subcomponent reuse?)]
                      (cond-> id->reusable
                        reuse? (update id concat saved))))
-                 {} obsolete)]
-            ;; Next, remove these subcomponents from the list of obsolete
-            ;; ones. (The set of obsolete ones might have changed from when
+                 {} quiescing)]
+            ;; Next, remove these subcomponents from the list of quiescing
+            ;; ones. (The set of quiescing ones might have changed from when
             ;; we started running.)
-            (swap! atom-with-obsolete
+            (swap! atom-with-quiescing
                    (fn [atom-data]
-                     (update atom-data :obsolete-components
-                             #(seq (apply disj (set %) obsolete)))))
+                     (update atom-data :quiescing
+                             #(seq (apply disj (set %) quiescing)))))
             id->reusable))]
     ;; Now, we can safely active the waiting components, and we
     ;; are guaranteed that they will have higher numbers than what
-    ;; they replaced. (It is possible that they have gone obsolete by
+    ;; they replaced. (It is possible that they have started quiescing by
     ;; the time we get to here, but either they will have already been
     ;; deactivated, and activation will do nothing, or there will be a
     ;; waiting task that will deactivate them.)
@@ -656,7 +683,7 @@
   [component-data component-atom dom]
   (if (not= (component-data-state component-data) :active)
     component-data
-    (let [{:keys [obsolete-components dom-manager client-id depth]}
+    (let [{:keys [dom-manager client-id depth]}
           component-data
           subcomponent-elided-from (when (= (first dom) :component)
                                      (or (:elided-from component-data)
@@ -670,6 +697,7 @@
                                  (reuse-or-make-component-atom
                                   spec
                                   dom-manager
+                                  component-atom
                                   (subcomponent-client-id client-id relative-id)
                                   (inc depth)
                                   subcomponent-elided-from
@@ -684,17 +712,18 @@
                                      (filter #(not= (id->subcomponent %)
                                                     (old-id->subcomponent %))
                                              (keys old-id->subcomponent)))
-          obsolete (seq (into (set obsolete-components) dropped-subcomponents))
+          quiescing (seq (into (set (:quiescing component-data))
+                                dropped-subcomponents))
           ;; When a component gets a new dom, we can't activate its
           ;; new sub-components until we have deactivated all its no
           ;; longer needed sub-components. Otherwise, we could have
           ;; more than one sub-component active with the same client
-          ;; id, and the obsolete one may end up getting sent to the
+          ;; id, and the quiescing one may end up getting sent to the
           ;; client with a later dom-version than the current one has,
           ;; precluding the client from accepting the current one's
           ;; dom.  So in that case, we set up a task to first
           ;; deactivate the old ones, then activate the new ones.
-          follow-ons (if obsolete
+          follow-ons (if quiescing
                        [[deactivate-then-activate
                          dom-manager component-atom new-subcomponents]]
                        (map (fn [component]
@@ -707,7 +736,7 @@
               subcomponent-ids)
       (-> component-data
           (assoc :id->subcomponent id->subcomponent
-                 :obsolete-components obsolete)
+                 :quiescing quiescing)
           (update :dom-version increment-if-non-nil)
           (update-new-further-action
            process-dom-ready-for-client dom-manager component-atom)
@@ -1032,23 +1061,22 @@
   [dom-manager specification]
   (let [top-id (:relative-id specification)
         component (make-component-atom
-                   specification dom-manager
+                   specification dom-manager dom-manager
                    (id-subpart->client-id-subpart top-id) 1 false)]
     (assert (keyword? top-id) (str top-id))
     (swap-and-act!
      dom-manager
      (fn [manager-data]
-       (let [{:keys [obsolete-components]}  manager-data
-             old-component (get-in manager-data [:root-components top-id])
-             obsolete (seq (into (set obsolete-components)
-                                 (when old-component [old-component])))
-             follow-on (if obsolete
+       (let [old-component (get-in manager-data [:root-components top-id])
+             quiescing (seq (into (set (:quiescing manager-data))
+                                  (when old-component [old-component])))
+             follow-on (if quiescing
                          [deactivate-then-activate
                           dom-manager dom-manager [component]]
                          [activate-component component nil])]
          (-> manager-data
              (assoc-in [:root-components top-id] component)
-             (assoc :obsolete-components obsolete)
+             (assoc :quiescing quiescing)
              (update :highest-version inc)
              (update-new-further-actions [follow-on])))))))
 
@@ -1101,13 +1129,13 @@
                                   (assoc priority-map component depth)))
                               %
                               components-and-depths))))
-  (let [inactive (filter #(= (component-data-state @%) :inactive)
-                         (keys (:components-to-send @dom-manager)))]
-    (when (seq inactive)
+  (let [defunct (filter #(= (component-data-state @%) :defunct)
+                        (keys (:components-to-send @dom-manager)))]
+    (when (seq defunct)
       (swap! dom-manager
              (fn [data]
                (update data :components-to-send
-                       #(apply dissoc % inactive)))))))
+                       #(apply dissoc % defunct)))))))
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."

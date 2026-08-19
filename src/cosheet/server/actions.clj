@@ -409,7 +409,7 @@
 
 (defn do-delete-column
   [store {:keys [column-ids table-id]}]
-  (println "deleting row")
+  (println "deleting column")
   (when (and column-ids table-id)
     (let [column-headers-id (table-column-headers-id table-id store)
           column-headers-entity (id->entity column-headers-id store)

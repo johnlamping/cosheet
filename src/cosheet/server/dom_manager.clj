@@ -106,14 +106,14 @@
                            ; to the client before their children.
 
      ;; This field normally holds the full dom spec. Once the component
-     ;; starts quiescing, it holds only the relative-id.
+     ;; starts dismantling, it holds only the relative-id.
      dom-specification     ; The dom spec for this component.
 
      ;; These fields can change
-     quiescing-state       ; Nil while the component is the :unstarted or
+     dismantling-state       ; Nil while the component is the :unstarted or
                            ; :active stage of its life
                            ; cycle. Otherwise (meaning the component
-                           ; is quiescing) it holds the keyword for
+                           ; is dismantling) it holds the keyword for
                            ; its current life-cycle stage.
      dom-R                 ; A reporter that calculates this component's dom.
                            ; This field is filled in when the
@@ -121,25 +121,25 @@
                            ; cleared when it is deactivated. Those are
                            ; the only two times it changes.
      id->subcomponent      ; A map from :relative-id to the component data
-                           ; for subcomponents.
-                           ; Before the component is activated, it may
-                           ; hold sub-components that were carried
-                           ; over from a previous component for this
-                           ; component's client id, so that a newly
-                           ; activated component can reuse them rather
-                           ; than recompute them and resend them to
-                           ; the client.
+                           ; for subcomponents that are or might become
+                           ; active.
+                           ; Only subcomponents in this map can start
+                           ; being activated, or start being
+                           ; transferred to another component.
                            ; Each time a new dom is computed, this is
                            ; recalculated, to hold an entry for each
-                           ; sub-component. It reues the previous
+                           ; sub-component, reusing the previous
                            ; components whose specifications match the
                            ; specifications provided by the current
                            ; dom.
-                           ; The component is responsible for
-                           ; deactivating all components in
-                           ; id->subcomponent once it knows they are
-                           ; no longer useful.
-     quiescing             ; A seq of subcomponent component atoms that
+                           ; Before a component is activated, it may
+                           ; get sub-components in this field that
+                           ; were carried over from the component this
+                           ; component replaced.  That lets a newly
+                           ; activated component reuse them rather
+                           ; than recompute them and resend them to
+                           ; the client.
+     dismantling           ; A set of subcomponent component atoms that
                            ; need to be deactivated before any new
                            ; subcomponents can be activated. This is
                            ; because they might have the same client
@@ -148,6 +148,14 @@
                            ; the client with a higher version number
                            ; than the current subcomponents,
                            ; overriding the correct dom.
+                           ; Only components in this set can be be
+                           ; moved to other components or be a donor
+                           ; of their subcomponents to other
+                           ; components.
+     salvage-recipient     ; Filled in by salvage when the component starts
+                           ; being salvaged. It holds the component that
+                           ; will be the recipient of this component's
+                           ; subcomponents when they are transferred.
      dom-version           ; If this component's dom has ever been sent to
                            ; the client, then this is equal to the
                            ; last version sent to the client, if the
@@ -179,7 +187,7 @@
   "This function takes a component's component-data and returns which
   state of its life cycle that it is in."
   [component-data]
-  (or (:quiescing-state component-data)
+  (or (:dismantling-state component-data)
       (if (nil? (:dom-R component-data))
         :unstarted
         :active)))
@@ -192,13 +200,6 @@
     [root-components    ; A map from the client id of each root component
                         ; to its component atom. Not all components with
                         ; fixed client ids need to be here, just the roots.
-           quiescing    ; A seq of root component atoms that
-                        ; need to be deactivated before any new
-                        ; root components can be activated. The issue
-                        ; is that they might have the same client
-                        ; id as a new root atom, and they
-                        ; might send their dom to the client with a
-                        ; higher version number than the new one.
      highest-version    ; The highest version number of any dom we have sent
                         ; to the client. Any new component starts out with a
                         ; version number one higher, because we might have
@@ -394,11 +395,10 @@
   "Give the atom's dom-R its calculator-data, and set up a callback for
   when its value changes.
   This can't be done at the time the reporter is created, as that
-  happens during the component atom's activation, inside a
-  swap-control-return!. The swap-control-return!'s function might run
-  several times, creating a new reporter each time, and we only want
-  to activate the one that actually ended up getting stored in the
-  atom."
+  happens during the component atom's activation, inside a swap!. The
+  swap!'s function might run several times, creating a new reporter
+  each time, and we only want to activate the one that actually ended
+  up getting stored in the atom."
   [component-atom]
   (let [{:keys [dom-R dom-manager]} @component-atom
         calculator-data (:calculator-data @dom-manager)]
@@ -483,14 +483,14 @@
              ;; reusable we activate (they can have the same
              ;; relative-id). So we deactivate the ones we aren't
              ;; keeping before activating the ones we are, using a
-             ;; single deactivate-then-activate on our quiescing
+             ;; single deactivate-then-activate on our dismantling
              ;; components. Otherwise an old sub-component
              ;; could still be running and send the client an update
              ;; that conflicts with the new one's.
              (-> component-data
                  (assoc :dom-R dom-R
                         :id->subcomponent id->reused
-                        :quiescing to-deactivate)
+                        :dismantling (not-empty (set to-deactivate)))
                  (update-new-further-action activate-dom-R component-atom)
                  (update-new-further-action
                   deactivate-then-activate
@@ -522,25 +522,25 @@
        ;; This component has already been deactivated. There are no
        ;; subcomponents to save.
        [component-data nil]
-       (let [{:keys [id->subcomponent quiescing dom-R dom-manager
+       (let [{:keys [id->subcomponent dismantling dom-R dom-manager
                      dom-specification]}
              component-data
              saved (when save-subcomponents (vals id->subcomponent))
              to-deactivate (concat (when (not save-subcomponents)
                                      (vals id->subcomponent))
-                                   quiescing)
+                                   dismantling)
              result (-> component-data
                         ;; Rather than dissoc, we assoc with nil, so we
                         ;; don't turn the record into a map.
                         (assoc
                          ;; Mark as defunct, keeping the relative-id.
-                         :quiescing-state :defunct
+                         :dismantling-state :defunct
                          :dom-specification (select-keys dom-specification
                                                          [:relative-id])
                          ;; Remove our references to anything that
                          ;; might be garbage collected.
                          :id->subcomponent nil
-                         :quiescing nil
+                         :dismantling nil
                          :elided-from nil
                          :dom-R nil)
                         (update-new-further-action
@@ -556,30 +556,30 @@
          [result saved])))))
 
 (defn deactivate-then-activate
-  "The atom-with-quiescing must hold something with
-  a :quiescing field, and components-to-activate must be
-  subcomponents of atom-with-quiescing. Deactivate all the components
-  listed in the :quiescing field, then remove the deactivated
+  "The atom-with-dismantling must hold something with
+  a :dismantling field, and components-to-activate must be
+  subcomponents of atom-with-dismantling. Deactivate all the components
+  listed in the :dismantling field, then remove the deactivated
   components from it, and finally activate the components-to-activate.
 
-  Whenever a quiescing component has the same :relative-id as one of the
+  Whenever a dismantling component has the same :relative-id as one of the
   components-to-activate, the two share a client id, so the new one can
-  reuse the quiescing one's sub-components. In that case we deactivate the
-  quiescing component with save-subcomponents, and pass the sub-components
+  reuse the dismantling one's sub-components. In that case we deactivate the
+  dismantling component with save-subcomponents, and pass the sub-components
   it hands back to activate-component as reusable sub-components for the
-  matching new component. (If several quiescing components match the same
+  matching new component. (If several dismantling components match the same
   new one, all of their saved sub-components are passed along together.)
 
   See the explanation in update-dom for why we need to deactivate
-  quiescing components first, if they might be identified with the same
+  dismantling components first, if they might be identified with the same
   client id as a new one. (It's OK if still newer components start
-  quiescing later, because they will deactivate our new ones.)"
-  [dom-manager atom-with-quiescing components-to-activate]
+  dismantling later, because they will deactivate our new ones.)"
+  [dom-manager atom-with-dismantling components-to-activate]
   (let [id->to-activate (zipmap (map #(:relative-id (:dom-specification @%))
                                      components-to-activate)
                                 components-to-activate)
         id->reusable
-        (when-let [quiescing (:quiescing @atom-with-quiescing)]
+        (when-let [dismantling (:dismantling @atom-with-dismantling)]
           ;; First, deactivate the subcomponents so they won't send any
           ;; more messages to the client. For each one whose :relative-id
           ;; matches a component we are about to activate, save its
@@ -592,18 +592,18 @@
                          saved (deactivate-component subcomponent reuse?)]
                      (cond-> id->reusable
                        reuse? (update id concat saved))))
-                 {} quiescing)]
-            ;; Next, remove these subcomponents from the list of quiescing
-            ;; ones. (The set of quiescing ones might have changed from when
+                 {} dismantling)]
+            ;; Next, remove these subcomponents from the list of dismantling
+            ;; ones. (The set of dismantling ones might have changed from when
             ;; we started running.)
-            (swap! atom-with-quiescing
+            (swap! atom-with-dismantling
                    (fn [atom-data]
-                     (update atom-data :quiescing
-                             #(seq (apply disj (set %) quiescing)))))
+                     (update atom-data :dismantling
+                             #(not-empty (apply disj (set %) dismantling)))))
             id->reusable))]
     ;; Now, we can safely active the waiting components, and we
     ;; are guaranteed that they will have higher numbers than what
-    ;; they replaced. (It is possible that they have started quiescing by
+    ;; they replaced. (It is possible that they have started dismantling by
     ;; the time we get to here, but either they will have already been
     ;; deactivated, and activation will do nothing, or there will be a
     ;; waiting task that will deactivate them.)
@@ -612,6 +612,250 @@
        subcomponent
        (get id->reusable
             (:relative-id (:dom-specification @subcomponent)))))))
+
+(def update-next-step-when-dismantling-empty)
+
+(defn remove-from-parent
+  "Given a component that is in state :defunct, remove it from its
+  parent id->subcomponent and dismantling fields. If that leaves
+  dismantling empty, and changes the emptyness of either field, do the
+  next step."
+  [component]
+  (let [component-data @component
+        parent (:parent component-data)
+        id (:relative-id (:dom-specification component-data))]
+    (assert (= (component-data-state component-data) :defunct))
+    (swap-and-act!
+     parent
+     (fn [parent-data]
+       (let [dismantling (:dismantling parent-data)
+             id->subcomponent (:id->subcomponent parent-data)
+             remove-id? (= (get id->subcomponent id) component)
+             new-dismantling (disj dismantling component)
+             new-id->subcomponent (cond-> id->subcomponent
+                                    remove-id? (dissoc id))]
+         (cond-> (assoc parent-data
+                        :dismantling new-dismantling
+                        :id->subcomponent new-id->subcomponent)
+           (and (empty? new-dismantling)
+                (or (seq dismantling)
+                    (and (seq id->subcomponent)
+                         (empty? new-id->subcomponent))))
+           (update-next-step-when-dismantling-empty parent)))))))
+
+(defn remove-from-dismantling
+  "Given a component and a parent, remove the component from the
+  parent's dismantling field. If that leaves the parent with no
+  subcomponents or dismantling components and it is :salvaging or
+  :finalizing, switch it to :defunct and remove it from its parent too."
+  [component parent]
+  (swap-and-act!
+   parent
+   (fn [parent-data]
+     (let [dismantling (:dismantling parent-data)
+           new-dismantling (disj dismantling component)]
+       (cond-> (assoc parent-data :dismantling new-dismantling)
+         (and (empty? new-dismantling) (seq dismantling))
+         (update-next-step-when-dismantling-empty parent))))))
+
+(def finalize)
+
+(defn revert-parent-and-finalize
+  "If the component's parent is presumed-parent, point it back at parent
+  and set a further action to finalize the component. Used when a parent
+  change could not complete."
+  [component presumed-parent parent]
+  (swap-and-act!
+   component
+   (fn [component-data]
+     (if (= (:parent component-data) presumed-parent)
+       (-> component-data
+           (assoc :parent parent)
+           (update-new-further-action finalize component))
+       component-data))))
+
+(defn attach-to-new-parent
+  "Further action for change-parent, run after the component's parent
+  has been pointed at future-parent. If all the conditions for
+  belonging to the future parent are met, we add the component to
+  future-parent's id->subcomponent, and set a future action to remove
+  the component from its current parent. Otherwise, we revert the
+  component's parent to current-parent and finalize it."
+  [component current-parent future-parent common-grandparent]
+  (let [id (:relative-id (:dom-specification @component))]
+    (swap-and-act!
+     future-parent
+     (fn [future-parent-data]
+       (if (and (= (:parent future-parent-data) common-grandparent)
+                (not (get (:id->subcomponent future-parent-data) id)))
+         (-> future-parent-data
+             (assoc-in [:id->subcomponent id] component)
+             (update-new-further-action
+              remove-from-dismantling component current-parent))
+         (update-new-further-action
+          future-parent-data
+          revert-parent-and-finalize component future-parent current-parent)))
+     )))
+
+(defn change-parent
+  "Move a component from current-parent to future-parent, which are both
+  expected to be subcomponents of common-grandparent. Further, the
+  component must be in dismantling of its current-parent, not in
+  id->subcomponents, because we may need to finalize it, which is only
+  allowed for components in dismantling.
+  In a swap-and-act! on the component, check that its parent is still
+  current-parent and that it is :unstarted or :active. If so, point
+  its parent field at future-parent, and set a further action to try
+  to attach it there and remove it from its old parent. Any
+  modification of one of the component's parents is done only while
+  that parent's own parent is still common-grandparent; otherwise it
+  is treated as a failure."
+  [component current-parent future-parent common-grandparent]
+  (swap-and-act!
+   component
+   (fn [component-data]
+     (if (and (= (:parent component-data) current-parent)
+              (#{:unstarted :active} (component-data-state component-data)))
+       (-> component-data
+           (assoc :parent future-parent)
+           (update-new-further-action
+            attach-to-new-parent
+            component current-parent future-parent common-grandparent))
+       component-data))))
+
+(defn deactivate-component-data
+  "Given a component-data and its atom, clear everything related to its
+  being active."
+  [component-data component]
+  (let [{:keys [dom-R dom-specification]} component-data]
+    (-> component-data
+        (assoc :dom-R nil
+               :elided-from nil
+               :dom-specification (select-keys dom-specification
+                                               [:relative-id]))
+        (cond-> dom-R
+          (update-new-further-action deactivate-dom-R component dom-R)))))
+
+(defn finalize
+  "Switch the component to :finalizing, and start finalizing all its
+  subcomponents."
+  [component]
+  (swap-and-act!
+   component
+   (fn [component-data]
+     (let [{:keys [dom-manager id->subcomponent dismantling]} component-data
+           ;; All the subcomponents need to be in dismantling, since we
+           ;; will get rid of all of them.
+           new-dismantling (not-empty (into (set dismantling)
+                                            (vals id->subcomponent)))]
+       (-> component-data
+           (assoc :dismantling-state :finalizing
+                  :id->subcomponent nil
+                  :dismantling new-dismantling)
+           (deactivate-component-data component)
+           (update-new-further-action
+            remove-from-components-to-send dom-manager component)
+           (update-new-further-actions
+            (map (fn [subcomponent] [finalize subcomponent])
+                 new-dismantling))
+           (update-next-step-when-dismantling-empty component))))))
+
+(defn transfer-subcomponents
+  "Given a donor component which is in state salvaging, whose
+  salvage-recipient is a recipient component in state unstarted that
+  has the same parent as the donor, move the donor's id->subcomponent
+  entries into its dismantling field. Then, for each of those
+  subcomponents, if the recipient doesn't already have a subcomponent
+  with the same relative-id, try to transfer the component to the
+  recipient. Finally, finalize any of them that are still in the
+  donor's dismantling field (which must be because they couldn't be
+  transferred)."
+  [donor]
+  (let [[transferable-id->component donor-parent recipient]
+        (swap-control-return!
+         donor
+         (fn [{:keys [parent salvage-recipient id->subcomponent dismantling]
+               :as donor-data}]
+           (if (and (= (component-data-state donor-data) :salvaging)
+                    (empty? dismantling))
+             [(-> donor-data
+                  (assoc :id->subcomponent nil
+                         :dismantling (vals id->subcomponent)))
+              [id->subcomponent parent salvage-recipient]]
+             [donor-data [nil parent salvage-recipient]])))
+        {recipient-id->subcomponent :id->subcomponent} @recipient]
+    (doseq [[id component] transferable-id->component]
+      (when-not (contains? recipient-id->subcomponent id)
+        (change-parent component donor recipient donor-parent)))
+    ;; Remove any components that couldn't be transferred.
+    (let [donor-dismantling (:dismantling @donor)]
+      (doseq [component (vals transferable-id->component)]
+        (when (contains? donor-dismantling component)
+          (finalize component))))
+    ;; The donor shold be defunct now.
+    (swap-and-act!
+     donor
+     (fn [donor-data]
+       (update-next-step-when-dismantling-empty donor-data donor)))))
+
+(defn update-next-step-when-dismantling-empty
+  "Given a component's data and its atom, update the data to take the
+  next step for the component, which must not be :unstarted. If it
+  still has dismantling subcomponents, do nothing. Otherwise, if it is
+  :active, set a further action to activate each of its current
+  subcomponents.  If it has no subcomponents, switch it to :defunct
+  and set a further action to remove it from its parent. If it does
+  still have subcomponents, it must be :salvaging, so set a further
+  action to transfer them."
+  [component-data component]
+  (let [state (component-data-state component-data)]
+    (assert (not= state :unstarted))
+    (if (seq (:dismantling component-data))
+      component-data
+      (cond
+        (= state :active)
+        (update-new-further-actions
+         component-data
+         (map (fn [subcomponent] [activate-component subcomponent nil])
+              (vals (:id->subcomponent component-data))))
+        (empty? (:id->subcomponent component-data))
+        (-> component-data
+            (assoc :dismantling-state :defunct)
+            (update-new-further-action remove-from-parent component))
+        :else
+        (do (assert (= state :salvaging))
+            (update-new-further-action
+             component-data transfer-subcomponents component))))))
+
+(defn salvage
+  "If the component is :active or :unstarted, switch it to :salvaging,
+  deactivate it, and set it up to do its next step (transferring its
+  components) if it is ready to."
+  [component recipient]
+  (swap-and-act!
+   component
+   (fn [component-data]
+     (if (#{:active :unstarted} (component-data-state component-data))
+       (-> component-data
+           (assoc :dismantling-state :salvaging
+                  :salvage-recipient recipient)
+           (deactivate-component-data component)
+           (update-next-step-when-dismantling-empty))
+       component-data))))
+
+(defn pair-and-salvage-or-finalize
+  "Given a set of dismantling components and an id->subcomponent map of
+  active components, for each dismantling component look for an active
+  component with the same relative-id. If there is one and it is
+  :unstarted, salvage the dismantling component into it; otherwise
+  finalize the dismantling component."
+  [dismantling-components id->active-subcomponent]
+  (doseq [dismantling dismantling-components]
+    (let [id (:relative-id (:dom-specification @dismantling))
+          active (get id->active-subcomponent id)]
+      (if (and active (= (component-data-state @active) :unstarted))
+        (salvage dismantling active)
+        (finalize dismantling)))))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their
@@ -712,18 +956,18 @@
                                      (filter #(not= (id->subcomponent %)
                                                     (old-id->subcomponent %))
                                              (keys old-id->subcomponent)))
-          quiescing (seq (into (set (:quiescing component-data))
-                                dropped-subcomponents))
+          dismantling (not-empty (into (set (:dismantling component-data))
+                                     dropped-subcomponents))
           ;; When a component gets a new dom, we can't activate its
           ;; new sub-components until we have deactivated all its no
           ;; longer needed sub-components. Otherwise, we could have
           ;; more than one sub-component active with the same client
-          ;; id, and the quiescing one may end up getting sent to the
+          ;; id, and the dismantling one may end up getting sent to the
           ;; client with a later dom-version than the current one has,
           ;; precluding the client from accepting the current one's
           ;; dom.  So in that case, we set up a task to first
           ;; deactivate the old ones, then activate the new ones.
-          follow-ons (if quiescing
+          follow-ons (if dismantling
                        [[deactivate-then-activate
                          dom-manager component-atom new-subcomponents]]
                        (map (fn [component]
@@ -736,7 +980,7 @@
               subcomponent-ids)
       (-> component-data
           (assoc :id->subcomponent id->subcomponent
-                 :quiescing quiescing)
+                 :dismantling dismantling)
           (update :dom-version increment-if-non-nil)
           (update-new-further-action
            process-dom-ready-for-client dom-manager component-atom)
@@ -1061,24 +1305,20 @@
   [dom-manager specification]
   (let [top-id (:relative-id specification)
         component (make-component-atom
-                   specification dom-manager dom-manager
+                   specification dom-manager nil
                    (id-subpart->client-id-subpart top-id) 1 false)]
     (assert (keyword? top-id) (str top-id))
     (swap-and-act!
      dom-manager
      (fn [manager-data]
-       (let [old-component (get-in manager-data [:root-components top-id])
-             quiescing (seq (into (set (:quiescing manager-data))
-                                  (when old-component [old-component])))
-             follow-on (if quiescing
-                         [deactivate-then-activate
-                          dom-manager dom-manager [component]]
-                         [activate-component component nil])]
+       (let [old-component (get-in manager-data [:root-components top-id])]
+         (assert (nil? old-component)
+                 ["Root component already exists" top-id])
          (-> manager-data
              (assoc-in [:root-components top-id] component)
-             (assoc :quiescing quiescing)
              (update :highest-version inc)
-             (update-new-further-actions [follow-on])))))))
+             (update-new-further-action
+              activate-component component nil)))))))
 
 (defn remove-all-doms
    "Remove all the doms from the dom-manager. This will cause it to release

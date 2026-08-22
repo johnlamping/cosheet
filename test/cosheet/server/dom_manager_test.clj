@@ -103,11 +103,12 @@
                                       [activate-component (any) nil]]
                     :id->subcomponent {id2 (any)}
                     :client-id "c1"
-                    :quiescing nil
+                    :dismantling nil
+                    :salvage-recipient nil
                     :elided-from nil
                     :dom-manager manager
                     :parent manager
-                    :quiescing-state nil
+                    :dismantling-state nil
                     :dom-specification s1
                     :dom-version 2
                     :depth 1
@@ -122,11 +123,12 @@
                      {:further-actions nil
                       :id->subcomponent nil
                       :client-id "c2_Ibar"
-                      :quiescing nil
+                      :dismantling nil
+                      :salvage-recipient nil
                       :elided-from c2-
                       :dom-manager manager
                       :parent c2-
-                      :quiescing-state nil
+                      :dismantling-state nil
                       :dom-specification s2
                       :dom-version nil
                       :depth 4
@@ -140,7 +142,6 @@
     (activate-component c2 nil)
     (is (check @manager
                {:highest-version 0
-                :quiescing nil
                 :components-to-send {}
                 :calculator-data cd
                 :mutable-store ms
@@ -155,13 +156,14 @@
                 :id->subcomponent {}
                 :dom-manager manager
                 :parent manager
-                :quiescing-state nil
+                :dismantling-state nil
                 :dom-specification s2
                 :dom-R (any)
                 :dom-version nil
                 :elided-from nil
                 :depth 1
-                :quiescing nil
+                :dismantling nil
+                :salvage-recipient nil
                 :further-actions nil}))
     (let [dom-R (:dom-R @c2)]
       (is (check
@@ -172,7 +174,6 @@
       (is (check @manager
                  {:root-components {}
                   :highest-version 0
-                  :quiescing nil
                   :components-to-send {c2 1}
                   :calculator-data cd
                   :mutable-store ms
@@ -184,13 +185,14 @@
                   :id->subcomponent nil
                   :dom-manager manager
                   :parent manager
-                  :quiescing-state :defunct
+                  :dismantling-state :defunct
                   :dom-specification {:relative-id id2}
                   :dom-R nil
                   :dom-version nil
                   :elided-from nil
                   :depth 1
-                  :quiescing nil
+                  :dismantling nil
+                  :salvage-recipient nil
                   :further-actions nil}))
       (is (component-atom? c2))
       (is (check
@@ -201,7 +203,6 @@
       (is (check @manager
                  {:root-components {}
                   :highest-version 0
-                  :quiescing nil
                   :components-to-send {}
                   :calculator-data cd
                   :mutable-store ms
@@ -213,37 +214,33 @@
            nil)))))
 
 (deftest reuse-subcomponents-test
-  ;; When a component is replaced by a new component for the same client
-  ;; id (here, by replacing the root dom), the new component should reuse
-  ;; the still-active sub-components of the old one, rather than
-  ;; recreating them.
+  ;; When a component gets a new dom that still contains a subcomponent
+  ;; for the same client id, the new dom should reuse the still-active
+  ;; sub-component, rather than recreating it.
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        root-a {:relative-id :root
-                :render-dom (make-fixed-dom-renderer [:div 2 [:component s2]])}
-        root-b {:relative-id :root
-                :render-dom (make-fixed-dom-renderer [:div 3 [:component s2]])}]
-    ;; Set up the first root, and let it create its subcomponent for id2.
-    (add-root-dom manager root-a)
+        dom-reporter (make-reporter :value [:div 2 [:component s2]])
+        spec {:relative-id id1
+              :render-dom (fn [spec store] dom-reporter)}
+        c (reuse-or-make-component-atom spec manager manager "c1" 1 nil nil)]
+    ;; Activate the component, and let it create its subcomponent for id2.
+    (activate-component c nil)
     (compute cd)
-    (let [component-a (client-id->component @manager "root")
-          sub-a ((:id->subcomponent @component-a) id2)
+    (let [sub-a ((:id->subcomponent @c) id2)
           sub-a-dom-R (:dom-R @sub-a)]
       (is (component-atom? sub-a))
       (is (= (component-data-state @sub-a) :active))
-      ;; Replace the root with a new one whose dom still contains the
-      ;; same subcomponent spec for id2.
-      (add-root-dom manager root-b)
+      ;; Change the dom to a new value that still contains the same
+      ;; subcomponent spec for id2.
+      (set-value! dom-reporter [:div 3 [:component s2]])
       (compute cd)
-      (let [component-b (client-id->component @manager "root")
-            sub-b ((:id->subcomponent @component-b) id2)]
-        ;; The root component itself is a new, distinct atom, and the old
-        ;; one has been deactivated.
-        (is (not= component-b component-a))
-        (is (= (component-data-state @component-a) :defunct))
-        ;; But its subcomponent for id2 is the very same atom, reused,
-        ;; still active and with its original (un-recreated) reporter.
+      (let [sub-b ((:id->subcomponent @c) id2)]
+        ;; The change took effect: the component's dom is the new value.
+        (is (= (reporter-value-when-valid (:dom-R @c))
+               [:div 3 [:component s2]]))
+        ;; The subcomponent for id2 is the very same atom, reused, still
+        ;; active and with its original (un-recreated) reporter.
         (is (= sub-b sub-a))
         (is (= (component-data-state @sub-b) :active))
         (is (= (:dom-R @sub-b) sub-a-dom-R))))))

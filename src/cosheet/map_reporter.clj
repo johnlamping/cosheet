@@ -20,22 +20,30 @@
   (make-reporter :value initial))
 
 (defn map-reporter-get-current [map-state key]
-  (reporter-value-or-invalid (key (reporter-value-or-invalid map-state))))
+  (reporter-value-or-invalid (get (reporter-value-or-invalid map-state) key)))
 
 (defn map-reporter-get [map-state key]
-  (app-R key (category-change-R [key] map-state)))
+  (app-R #(get % key) (category-change-R [key] map-state)))
+
+(defn map-reporter-set-value!
+  [map-state key value]
+  (change-data! map-state
+                (fn [data]
+                  [(assoc-in data [:value key] value)
+                   [key]
+                   [key]])))
 
 (defn map-reporter-change-value! [map-state key fun]
   (change-data! map-state
                 (fn [data]
-                  [(assoc-in data [:value key] (fun (key (:value data))))
+                  [(assoc-in data [:value key] (fun (get (:value data) key)))
                    [key]
                    [key]])))
 
 (defn map-reporter-change-value-control-return! [map-state key fun]
   (change-data-control-return!
    map-state
-   (fn [data] (let [[new-val result] (fun (key (:value data)))]
+   (fn [data] (let [[new-val result] (fun (get (:value data) key))]
                 [(assoc-in data [:value key] new-val)
                  [key]
                  [key]

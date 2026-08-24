@@ -1,6 +1,7 @@
 (ns cosheet.server.dom-manager-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
+            [clojure.set :as set]
             [clojure.pprint :refer [pprint]]
             [clojure.data.priority-map :as priority-map]
             (cosheet
@@ -16,6 +17,8 @@
                                                 current-value]]
              [application-calculator :as application-calculator]
              [reporter-macros :refer [app-R let-R]]
+             [map-reporter :refer [make-map-reporter map-reporter-get
+                                   map-reporter-set-value!]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]
@@ -74,9 +77,9 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager manager "c1" 2 nil nil)
-        c1-reused (reuse-or-make-component-atom s1 manager manager "c1" 2 nil c1)
-        c2 (reuse-or-make-component-atom s2 manager manager "c2" 2 c1 c1)]
+        c1 (reuse-or-make-component-atom s1 manager nil "c1" 2 nil nil)
+        c1-reused (reuse-or-make-component-atom s1 manager nil "c1" 2 nil c1)
+        c2 (reuse-or-make-component-atom s2 manager nil "c2" 2 c1 c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 2))
     (is (= (:dom-version @c1) nil)) ; Not activated yet.
@@ -93,27 +96,27 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)]
-    (let [c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
+    (let [c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
       ;; Make c1 look like it has been activated.
       (swap! c1 #(assoc % :dom-R true :dom-version 1))
       (let [updated (update-dom @c1 c1 [:div 2 [:component s2]])]
         (is (component-data? updated))
         (is (check updated
                    {:further-actions [[process-dom-ready-for-client manager c1]
-                                      [activate-component (any) nil]]
+                                      [activate-component (any)]]
                     :id->subcomponent {id2 (any)}
                     :client-id "c1"
                     :dismantling nil
                     :salvage-recipient nil
                     :elided-from nil
                     :dom-manager manager
-                    :parent manager
+                    :parent nil
                     :dismantling-state nil
                     :dom-specification s1
                     :dom-version 2
                     :depth 1
                     :dom-R (any)})))
-      (let [c2- (reuse-or-make-component-atom s2- manager manager "c2" 3 nil nil)]
+      (let [c2- (reuse-or-make-component-atom s2- manager nil "c2" 3 nil nil)]
         ;; Make c2- look like it has been activated.
         (swap! c2- #(assoc % :dom-R true :dom-version 1))
         (let [updated- (update-dom @c2- c2- [:component s2])
@@ -134,12 +137,12 @@
                       :depth 4
                       :dom-R nil})))))))
 
-(deftest activate-deactivate-component-test
+(deftest activate-component-test
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c2 (reuse-or-make-component-atom s2 manager manager "c2" 1 nil nil)]
-    (activate-component c2 nil)
+        c2 (reuse-or-make-component-atom s2 manager nil "c2" 1 nil nil)]
+    (activate-component c2)
     (is (check @manager
                {:highest-version 0
                 :components-to-send {}
@@ -155,7 +158,7 @@
                {:client-id "c2"
                 :id->subcomponent {}
                 :dom-manager manager
-                :parent manager
+                :parent nil
                 :dismantling-state nil
                 :dom-specification s2
                 :dom-R (any)
@@ -178,83 +181,18 @@
                   :calculator-data cd
                   :mutable-store ms
                   :further-actions nil
-                  :client-lock (any)}))
-      (deactivate-component c2 false)
-      (is (check @c2
-                 {:client-id "c2"
-                  :id->subcomponent nil
-                  :dom-manager manager
-                  :parent manager
-                  :dismantling-state :defunct
-                  :dom-specification {:relative-id id2}
-                  :dom-R nil
-                  :dom-version nil
-                  :elided-from nil
-                  :depth 1
-                  :dismantling nil
-                  :salvage-recipient nil
-                  :further-actions nil}))
-      (is (component-atom? c2))
-      (is (check
-           (:attendees (reporter-data ms))
-           {dom-R [11
-                   [reporter/universal-category]
-                   application-calculator/copy-subordinate-callback]}))
-      (is (check @manager
-                 {:root-components {}
-                  :highest-version 0
-                  :components-to-send {}
-                  :calculator-data cd
-                  :mutable-store ms
-                  :further-actions nil
-                  :client-lock (any)}))
-      (compute cd)
-      (is (check
-           (:attendees (reporter-data ms))
-           nil)))))
-
-(deftest reuse-subcomponents-test
-  ;; When a component gets a new dom that still contains a subcomponent
-  ;; for the same client id, the new dom should reuse the still-active
-  ;; sub-component, rather than recreating it.
-  (let [ms (new-mutable-store (new-element-store))
-        cd (make-calculator-data (make-priority-task-queue 0))
-        manager (make-dom-manager ms cd)
-        dom-reporter (make-reporter :value [:div 2 [:component s2]])
-        spec {:relative-id id1
-              :render-dom (fn [spec store] dom-reporter)}
-        c (reuse-or-make-component-atom spec manager manager "c1" 1 nil nil)]
-    ;; Activate the component, and let it create its subcomponent for id2.
-    (activate-component c nil)
-    (compute cd)
-    (let [sub-a ((:id->subcomponent @c) id2)
-          sub-a-dom-R (:dom-R @sub-a)]
-      (is (component-atom? sub-a))
-      (is (= (component-data-state @sub-a) :active))
-      ;; Change the dom to a new value that still contains the same
-      ;; subcomponent spec for id2.
-      (set-value! dom-reporter [:div 3 [:component s2]])
-      (compute cd)
-      (let [sub-b ((:id->subcomponent @c) id2)]
-        ;; The change took effect: the component's dom is the new value.
-        (is (= (reporter-value-when-valid (:dom-R @c))
-               [:div 3 [:component s2]]))
-        ;; The subcomponent for id2 is the very same atom, reused, still
-        ;; active and with its original (un-recreated) reporter.
-        (is (= sub-b sub-a))
-        (is (= (component-data-state @sub-b) :active))
-        (is (= (:dom-R @sub-b) sub-a-dom-R))))))
+                  :client-lock (any)})))))
 
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
     (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
                {}))
-    (activate-component c1 nil)
+    (activate-component c1)
     (is (check (:tasks @(:queue cd))
                {[application-calculator/do-application-calculate
                  (:dom-R @c1) cd]
@@ -272,8 +210,8 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager manager "c1" 1 nil nil)]
-    (activate-component c1 nil)
+        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
+    (activate-component c1)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
           ready (mark-component-tree-as-needed c1)]
@@ -353,13 +291,13 @@
 
 (deftest get-response-doms-and-process-acknowledgements-test
   ;; Also tests add-root-dom, request-client-refresh,
-  ;; remove-all-doms, prepare-dom-for-client and adjust-subdom-for-client
+  ;; prepare-dom-for-client and adjust-subdom-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)]
     (add-root-dom manager s1-)
     (let [c1- (client-id->component @manager "root")]
-      (activate-component c1- nil)
+      (activate-component c1-)
       (compute cd)
       (let [c1 (first (vals (:id->subcomponent @c1-)))
             c2 (first (vals (:id->subcomponent @c1)))]
@@ -411,12 +349,350 @@
         (is (= (:components-to-send @manager)
                {c1- 1  c2 3}))
         (is (check (keys (:attendees @(:data ms)))
-                   (as-set [(:dom-R @c1-) (:dom-R @c1) (:dom-R @c2)])))
-        (remove-all-doms manager)
-        (compute cd)
-        (is (empty? (:attendees @(:data ms))))
-        (is (= (component-data-state @c1-) :defunct))
-        (is (= (component-data-state @c1) :defunct))))))
+                   (as-set [(:dom-R @c1-) (:dom-R @c1) (:dom-R @c2)])))))))
+
+;;; A controllable test harness for the dom-manager. Every component's
+;;; dom is looked up, by its relative-id, from a single map-reporter
+;;; that holds a map from relative-id to dom. Getting a component's dom
+;;; with map-reporter-get yields a reporter that only fires when that
+;;; component's own entry changes, so changing one entry drives a dom
+;;; update for exactly that component (and nothing else recomputes),
+;;; and lets us drive precise structural changes (adding, dropping,
+;;; replacing, and moving subcomponents). Each dom reporter's
+;;; calculator is wrapped so
+;;; that the set of dom reporters that currently have demand (are
+;;; active) can be enumerated, which is what lets us check the global
+;;; invariant that the active components are exactly those in the DOM
+;;; tree.
+
+(defn track-demand
+  "Wrap the reporter's calculator so that active-dom-Rs holds it iff
+  it has demand."
+  [dom-R active-dom-Rs]
+  (swap! (reporter-atom dom-R)
+         (fn [rd]
+           (update rd :calculator
+                   (fn [calc]
+                     (fn [reporter cd]
+                       (with-latest-value
+                         [attended (data-attended? (reporter-data reporter))]
+                         (swap! active-dom-Rs (if attended conj disj) reporter))
+                       (calc reporter cd))))))
+  dom-R)
+
+(defn make-harness []
+  (let [ms (new-mutable-store (new-element-store))
+        cd (make-calculator-data (make-priority-task-queue 0))]
+    {:ms ms
+     :cd cd
+     :manager (make-dom-manager ms cd)
+     :control-R (make-map-reporter {})
+     :active-dom-Rs (atom #{})}))
+
+(defn spec
+  "A component spec whose dom is looked up, by relative-id, from the
+  harness's map-reporter. The resulting dom reporter only fires when
+  this relative-id's entry changes."
+  [harness relative-id]
+  {:relative-id relative-id
+   :get-action-data default-get-action-data
+   :render-dom (fn [_spec _store]
+                 (track-demand
+                  (map-reporter-get (:control-R harness) relative-id)
+                  (:active-dom-Rs harness)))})
+
+(defn set-dom!
+  "Set the dom that the harness provides for relative-id."
+  [harness relative-id dom]
+  (map-reporter-set-value! (:control-R harness) relative-id dom))
+
+(defn quiesce [harness] (compute (:cd harness)))
+
+(defn start-root!
+  "Populate the control reporter from id->dom, add a root component for
+  root-id, and run to quiescence."
+  [harness root-id id->dom]
+  (doseq [[id dom] id->dom] (set-dom! harness id dom))
+  (add-root-dom (:manager harness) (spec harness root-id))
+  (quiesce harness))
+
+(defn active-components
+  "The component atoms whose dom reporter currently has demand."
+  [harness]
+  (set (mapcat (fn [dom-R] (keys (:attendees (reporter-data dom-R))))
+               @(:active-dom-Rs harness))))
+
+(defn reachable-components
+  "All component atoms reachable from the manager's root-components by
+  following id->subcomponent."
+  [harness]
+  (loop [to-visit (vals (:root-components @(:manager harness)))
+         seen #{}]
+    (if (empty? to-visit)
+      seen
+      (let [[c & rest-to-visit] to-visit]
+        (if (seen c)
+          (recur rest-to-visit seen)
+          (recur (concat rest-to-visit (vals (:id->subcomponent @c)))
+                 (conj seen c)))))))
+
+(defn client-ids [components]
+  (set (map #(:client-id @%) components)))
+
+(defn component-at
+  "Walk from the manager's root-components to the component reached by
+  following root-id then the given subcomponent relative-ids. Returns
+  nil if any step is missing, or if a component along the way has no
+  subcomponents."
+  [harness root-id & ids]
+  (reduce (fn [c id]
+            (when-let [id->subcomponent (and c (:id->subcomponent @c))]
+              (id->subcomponent id)))
+          (get (:root-components @(:manager harness)) root-id)
+          ids))
+
+(defn check-invariants
+  "Assert the dom-manager's structural invariants. Should hold after
+  the harness has run to quiescence."
+  [harness]
+  (let [manager (:manager harness)
+        reachable (reachable-components harness)
+        active (active-components harness)]
+    ;; The active components are exactly those in the DOM tree: no
+    ;; orphaned active component, and nothing in the tree left inactive.
+    (is (= active reachable)
+        {:excess-active (client-ids (set/difference active reachable))
+         :excess-reachable (client-ids (set/difference reachable active))})
+    ;; No two active components share a client id.
+    (let [cids (map #(:client-id @%) active)]
+      (is (= (count cids) (count (set cids))) [:duplicate-client-ids cids]))
+    (doseq [c reachable]
+      (let [{:keys [dismantling parent]} @c]
+        (is (= (component-data-state @c) :active)
+            [:reachable-not-active (:client-id @c) (component-data-state @c)])
+        (is (or (nil? dismantling) (set? dismantling))
+            [:dismantling-not-a-set (:client-id @c) (type dismantling)])
+        (is (or (nil? parent) (component-atom? parent))
+            [:parent-not-a-component (:client-id @c)])))
+    ;; Only active components are queued to send to the client.
+    (doseq [[c _] (:components-to-send @manager)]
+      (is (= (component-data-state @c) :active)
+          [:stale-in-components-to-send (:client-id @c)]))))
+
+(deftest harness-smoke-test
+  (let [h (make-harness)
+        child (make-item-id "child")]
+    (start-root! h :root
+                 {:root [:div [:component (spec h child)]]
+                  child [:div "child"]})
+    (check-invariants h)
+    (is (= (count (active-components h)) 2))))
+
+;;; Scenario tests: drive structural dom changes and verify the tree,
+;;; reuse, and the global invariants after each change.
+
+(deftest drop-subcomponent-test
+  (let [h (make-harness)
+        a (make-item-id "a")
+        a-spec (spec h a)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec]]
+                  a [:div "a"]})
+    (check-invariants h)
+    (let [a-comp (component-at h :root a)
+          a-dom-R (:dom-R @a-comp)]
+      (is (= :active (component-data-state @a-comp)))
+      ;; Drop the subcomponent.
+      (set-dom! h :root [:div "no children"])
+      (quiesce h)
+      (check-invariants h)
+      (is (nil? (component-at h :root a)))
+      (is (= :defunct (component-data-state @a-comp)))
+      (is (not (contains? @(:active-dom-Rs h) a-dom-R))))))
+
+(deftest add-subcomponent-test
+  (let [h (make-harness)
+        a (make-item-id "a")
+        b (make-item-id "b")
+        a-spec (spec h a)
+        b-spec (spec h b)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec]]
+                  a [:div "a"]
+                  b [:div "b"]})
+    (check-invariants h)
+    (is (= 2 (count (reachable-components h))))
+    ;; Add b alongside a.
+    (set-dom! h :root [:div [:component a-spec] [:component b-spec]])
+    (quiesce h)
+    (check-invariants h)
+    (is (= 3 (count (reachable-components h))))
+    (is (= :active (component-data-state @(component-at h :root b))))))
+
+(deftest reuse-subcomponent-on-sibling-change-test
+  (let [h (make-harness)
+        a (make-item-id "a")
+        a-spec (spec h a)]
+    (start-root! h :root
+                 {:root [:div 1 [:component a-spec]]
+                  a [:div "a"]})
+    (check-invariants h)
+    (let [a-comp (component-at h :root a)
+          a-dom-R (:dom-R @a-comp)]
+      ;; Change only the root's own content, keeping the same child spec.
+      (set-dom! h :root [:div 2 [:component a-spec]])
+      (quiesce h)
+      (check-invariants h)
+      ;; a is the very same atom, still active, with its original reporter.
+      (is (= a-comp (component-at h :root a)))
+      (is (= :active (component-data-state @a-comp)))
+      (is (= a-dom-R (:dom-R @a-comp))))))
+
+(deftest replace-subcomponent-spec-test
+  ;; Same relative-id, different spec, no grandchild: the old leaf is
+  ;; finalized and a new one activated.
+  (let [h (make-harness)
+        a (make-item-id "a")
+        ;; These two specs are different because Clojure thinks their
+        ;; :render-dom are different functions - even though they give
+        ;; the same result.
+        a-spec1 (spec h a)
+        a-spec2 (spec h a)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec1]]
+                  a [:div "a"]})
+    (check-invariants h)
+    (let [old-a (component-at h :root a)]
+      (set-dom! h :root [:div [:component a-spec2]])
+      (quiesce h)
+      (check-invariants h)
+      (let [new-a (component-at h :root a)]
+        (is (not= old-a new-a))
+        (is (= :defunct (component-data-state @old-a)))
+        (is (= :active (component-data-state @new-a)))))))
+
+(deftest salvage-transfers-subcomponent-test
+  ;; The core reuse path: a subcomponent's spec is replaced (same id),
+  ;; so a new component is made for it, and its still-active grandchild
+  ;; is salvaged/transferred to the replacement and reused.
+  (let [h (make-harness)
+        a (make-item-id "a")
+        g (make-item-id "g")
+        a-spec1 (spec h a)
+        a-spec2 (spec h a)
+        g-spec (spec h g)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec1]]
+                  a [:div [:component g-spec]]
+                  g [:div "g"]})
+    (check-invariants h)
+    (let [old-a (component-at h :root a)
+          g-comp (component-at h :root a g)
+          g-dom-R (:dom-R @g-comp)]
+      (is (= :active (component-data-state @g-comp)))
+      ;; Replace a's spec, forcing a new a component.
+      (set-dom! h :root [:div [:component a-spec2]])
+      (quiesce h)
+      (check-invariants h)
+      (let [new-a (component-at h :root a)]
+        (is (not= old-a new-a))
+        (is (= :defunct (component-data-state @old-a)))
+        (is (= :active (component-data-state @new-a)))
+        ;; g was transferred to the new a and reused: same atom, same
+        ;; reporter, still active.
+        (is (= g-comp (component-at h :root a g)))
+        (is (= :active (component-data-state @g-comp)))
+        (is (= g-dom-R (:dom-R @g-comp)))))))
+
+;;; Direct lifecycle-function tests.
+
+(deftest direct-finalize-test
+  ;; finalize on an active subtree tears down the whole subtree and
+  ;; removes it from its parent.
+  (let [h (make-harness)
+        a (make-item-id "a")
+        g (make-item-id "g")
+        a-spec (spec h a)
+        g-spec (spec h g)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec]]
+                  a [:div [:component g-spec]]
+                  g [:div "g"]})
+    (let [a-comp (component-at h :root a)
+          g-comp (component-at h :root a g)]
+      (finalize a-comp)
+      (quiesce h)
+      (check-invariants h)
+      (is (nil? (component-at h :root a)))
+      (is (= :defunct (component-data-state @a-comp)))
+      (is (= :defunct (component-data-state @g-comp))))))
+
+;;; Teardown test.
+
+(deftest remove-all-doms-teardown-test
+  (let [h (make-harness)
+        a (make-item-id "a")
+        b (make-item-id "b")
+        g (make-item-id "g")
+        a-spec (spec h a)
+        b-spec (spec h b)
+        g-spec (spec h g)]
+    (start-root! h :root
+                 {:root [:div [:component a-spec] [:component b-spec]]
+                  a [:div [:component g-spec]]
+                  b [:div "b"]
+                  g [:div "g"]})
+    (check-invariants h)
+    (let [root-comp (get (:root-components @(:manager h)) :root)
+          a-comp (component-at h :root a)
+          b-comp (component-at h :root b)
+          g-comp (component-at h :root a g)]
+      (is (= :active (component-data-state @root-comp)))
+      (is (= 4 (count (reachable-components h))))
+      (remove-all-doms (:manager h))
+      (quiesce h)
+      ;; The tree is empty, so the invariants hold trivially.
+      (check-invariants h)
+      ;; The whole tree, including the root, is finalized.
+      (is (= :defunct (component-data-state @root-comp)))
+      (is (= :defunct (component-data-state @a-comp)))
+      (is (= :defunct (component-data-state @b-comp)))
+      (is (= :defunct (component-data-state @g-comp)))
+      ;; The manager is emptied and every dom reporter released.
+      (is (empty? (:root-components @(:manager h))))
+      (is (empty? (:components-to-send @(:manager h))))
+      (is (empty? (active-components h)))
+      (is (empty? (:attendees (reporter-data (:control-R h))))))))
+
+;;; A deterministic pseudo-random stress test. Each step regenerates a
+;;; random acyclic dom for one node and checks the invariants after
+;;; running to quiescence, so a failure points at the exact step.
+
+(deftest deterministic-stress-test
+  (let [h (make-harness)
+        n 6
+        ids (mapv #(make-item-id (str "n" %)) (range n))
+        specs (mapv #(spec h %) ids)
+        rng (java.util.Random. 12345)
+        ;; A random dom for node i: a div (with a changing marker so a
+        ;; recompute is always seen) containing a random subset of the
+        ;; strictly-higher nodes as children, which keeps the graph
+        ;; acyclic.
+        random-dom (fn [i]
+                     (into [:div {:v (.nextInt rng 1000000)}]
+                           (for [j (range (inc i) n)
+                                 :when (.nextBoolean rng)]
+                             [:component (specs j)])))]
+    (doseq [i (range n)] (set-dom! h (ids i) (random-dom i)))
+    (set-dom! h :root [:div [:component (specs 0)]])
+    (add-root-dom (:manager h) (spec h :root))
+    (quiesce h)
+    (check-invariants h)
+    (dotimes [_ 300]
+      (let [i (.nextInt rng n)]
+        (set-dom! h (ids i) (random-dom i))
+        (quiesce h)
+        (check-invariants h)))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups

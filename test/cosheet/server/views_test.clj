@@ -39,7 +39,7 @@
                                         {:relative-id item-id
                                          :render-dom (fn [spec store]
                                                        [:div "item"])}]])})
-    (activate-component (client-id->component @manager "root") nil)
+    (activate-component (client-id->component @manager "root"))
     (compute cd)
     {:ms ms :manager manager :client-state client-state}))
 

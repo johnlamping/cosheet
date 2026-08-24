@@ -23,7 +23,8 @@
         rc (map-reporter-get ms :c)
         history (atom [])
         callback (fn [& {:keys [key reporter]}]
-                   (swap! history #(conj % [key (reporter-value-or-invalid reporter)])))]
+                   (swap! history #(conj % [key (reporter-value-or-invalid reporter)])))
+        reset-history! (fn [] (swap! history (fn [_] [])))]
     (is (= (map-reporter-get-current ms :a) 1))
     (propagate-calculator-data! ra cd)
     (propagate-calculator-data! rb cd)
@@ -36,38 +37,53 @@
     (is (not (reporter-valid? rb)))
     (is (check @history
                [[:ra 1]]))
+    
+    (reset-history!)
     (set-attendee! rb :rb 10 callback)
     (set-attendee! rc :rc 100 callback)
     (compute cd)
     (is (check @history
-               [[:ra 1]
-                [:rb 2]
+               [[:rb 2]
                 [:rc nil]]))
+    
+    (reset-history!)
     (set-value! r1 2)
     (compute cd)
     (is (= (reporter-value-or-invalid ra) 2))
     (is (check @history
-               [(any) (any) (any)
-                [:ra 2]]))
-    (map-reporter-change-value! ms :b (fn [x] (+ x 9)))
+               [[:ra 2]]))
+
+    (reset-history!)
+    (map-reporter-set-value! ms :b 3)
+    (compute cd)
+    (is (= (reporter-value-or-invalid rb) 3))
+    (is (check @history
+               [[:rb invalid]
+                [:rb 3]]))
+    
+    (reset-history!)
+    (map-reporter-change-value! ms :b (fn [x] (+ x 4)))
     (compute cd)
     (is (check @history
-               [(any) (any) (any)
-                [:ra 2]
-                [:rb invalid]
-                [:rb 11]]))
+               [[:rb invalid]
+                [:rb 7]]))
+
+    (reset-history!)
     (map-reporter-reset! ms {:a 3 :c 5})
     (is (= (map-reporter-get-current ms :c) 5))
     (compute cd)
-    (is (check (nthrest @history 6)
+    (is (check @history
                (as-set [[:ra invalid]
                         [:rc invalid]
                         [:ra 3]
                         [:rc 5]])))
+
+    (reset-history!)
     (is (= (map-reporter-change-value-control-return!
             ms :c (fn [x] [[x "hi"] "there"]))
            "there"))
     (compute cd)
-    (is (check (nthrest @history 10)
+    (is (check @history
                [[:rc invalid]
                 [:rc [5 "hi"]]]))))
+

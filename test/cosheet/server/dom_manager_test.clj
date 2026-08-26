@@ -186,174 +186,6 @@
                   :further-actions nil
                   :client-lock (any)})))))
 
-(deftest mark-component-tree-as-needed-test
-  (let [ms (new-mutable-store (new-element-store))
-        cd (make-calculator-data (make-priority-task-queue 0))
-        manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
-    (let [ready (mark-component-tree-as-needed c1)]
-      (is (= ready [])))
-    (is (check (:tasks @(:queue cd))
-               {}))
-    (activate-component c1)
-    (is (check (:tasks @(:queue cd))
-               {[application-calculator/do-application-calculate
-                 (:dom-R @c1) cd]
-                10}))
-    (compute cd)
-    (let [c2 ((:id->subcomponent @c1) id2)
-          ready (mark-component-tree-as-needed c1)]
-      (is (= ready [[c1 1] [c2 2]]))
-      (is (check (:tasks @(:queue cd))
-                 {}))
-      (is (component-atom? c1))
-      (is (component-atom? c2)))))
-
-(deftest client-id-test
-  (let [ms (new-mutable-store (new-element-store))
-        cd (make-calculator-data (make-priority-task-queue 0))
-        manager (make-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
-    (activate-component c1)
-    (compute cd)
-    (let [c2 ((:id->subcomponent @c1) id2)
-          ready (mark-component-tree-as-needed c1)]
-      (is (component-atom? c1))
-      (is (component-atom? c2))
-      (is (= (:client-id @c1)
-             "c1"))
-      (is (= (:client-id @c2)
-             "c1_Ibar")))))
-
-(deftest client-id->action-data-test
-  ;; Also tests client-id->component and note-dom-ready-for-client
-  (let [[s1 id1] (add-element (new-element-store) nil "foo")
-        [s2 id2] (add-element s1 id1 "bar")
-        [s id3] (add-element s2 id2 "end")
-        client1 "root"
-        client3 (str client1 "_" (:id id2) "_" (:id id3))
-        ms (new-mutable-store s)
-        cd (make-calculator-data (make-priority-task-queue 0))
-        manager (make-dom-manager ms cd)]
-    (add-root-dom
-     manager
-     {:relative-id :root
-      :render-dom (make-fixed-dom-renderer
-                   ;; This component has an elided subcomponent.
-                   [:component
-                    {:relative-id id2
-                     :get-action-data default-get-action-data
-                     :render-dom (make-fixed-dom-renderer
-                                  ;; Here, a non-elided subcomponent.
-                                  [:div [:component
-                                         {:relative-id id3
-                                          :get-action-data default-get-action-data
-                                          :render-dom (make-fixed-dom-renderer
-                                                       [:div 3])}]])}])
-      :get-action-data [(fn [s c a i extra]
-                          (is (= extra "test"))
-                          {:subject-ids [id1 id1]})
-                        "test"]})
-    (let [c1 (client-id->component @manager client1)
-          ad1 (client-id->action-data
-               @manager client1 nil (reporter-value-or-invalid ms))]
-      (is (check ad1 {:component c1
-                     :subject-ids [id1 id1]}))
-      (compute cd)
-      (let [c2 (first (vals (:id->subcomponent @c1)))
-            c3 (client-id->component @manager client3)
-            ad1 (client-id->action-data
-               @manager client1 nil (reporter-value-or-invalid ms))
-            ad3 (client-id->action-data
-                @manager client3 nil (reporter-value-or-invalid ms))]
-        ;; The containing component should refer its actions to its contained.
-        (is (check ad1 {:component c2
-                        :subject-ids [id2 id2]
-                        :past-subject-ids [[id1 id1]]}))
-        (is (= c3 ((:id->subcomponent @c2) id3)))
-        (is (check ad3 {:component c3
-                        :subject-ids [id3 id3]
-                        :past-subject-ids [[id2 id2]
-                                           [id1 id1]]}))
-        ;; The elided dom should not need to go to the manager.
-        (is (check (:components-to-send @manager)
-                   {c1 1 c3 3}))))))
-
-(deftest preferred-selection-test
-  ;; Prefer the candidate with the longer common prefix with current-selection.
-  (is (= (preferred-selection "abcde" "abcx" "abxy") "abcx"))
-  (is (= (preferred-selection "abcde"  "abxy" "abcx") "abcx"))
-  ;; On equal prefix length, prefer the longer string.
-  (is (= (preferred-selection "abc" "abx" "abyz") "abyz"))
-  (is (= (preferred-selection "abc" "abyz" "abx") "abyz"))
-  (is (= (preferred-selection nil "xy" "abc") "abc"))
-  ;; nil arguments are treated as zero-length.
-  (is (= (preferred-selection nil nil "a") "a"))
-  (is (= (preferred-selection nil "a" nil) "a"))
-  (is (nil? (preferred-selection "abc" nil nil))))
-
-(deftest get-response-doms-and-process-acknowledgements-test
-  ;; Also tests add-root-dom, request-client-refresh,
-  ;; prepare-dom-for-client and adjust-subdom-for-client
-  (let [ms (new-mutable-store (new-element-store))
-        cd (make-calculator-data (make-priority-task-queue 0))
-        manager (make-dom-manager ms cd)]
-    (add-root-dom manager s1-)
-    (let [c1- (client-id->component @manager "root")]
-      (activate-component c1-)
-      (compute cd)
-      (let [c1 (first (vals (:id->subcomponent @c1-)))
-            c2 (first (vals (:id->subcomponent @c1)))]
-        (is (:highest-version @manager) 1)
-        (is (check (get-response-doms manager [id2] nil 3)
-                   [(as-set [[:div {:id "root" :version 2}
-                              2
-                              [:component {:id "root_Ifoo_Ibar"}]]
-                             [:div {:id "root_Ifoo_Ibar" :version 2}
-                              3]])
-                    "root_Ifoo_Ibar"]))
-        (is (:highest-version @manager) 3)
-        (is (check (get-response-doms manager [id2] nil 1)
-                   [[[:div {:id "root" :version 2}
-                      2
-                      [:component {:id "root_Ifoo_Ibar"}]]]
-                    nil]))
-        ;; With two monitored ids, preferred-selection uses current-selection
-        ;; to pick between candidates. :root monitors "root" (via its elided
-        ;; subcomponent), id2 monitors "root_Ifoo_Ibar" directly. The deeper
-        ;; component has a longer prefix overlap with a current-selection that
-        ;; matches it.
-        (is (= (second (get-response-doms manager [:root id2]
-                                          "root_Ifoo" 3))
-               "root_Ifoo_Ibar"))
-        ;; With nil current-selection, tie breaks by longer string,
-        ;; which still gives the same answer.
-        (is (= (second (get-response-doms manager [:root id2] nil 3))
-               "root_Ifoo_Ibar"))
-        (is (:highest-version @manager) 3)
-        ;; The client doesn't need to know about the elided dom.
-        (is (check (:components-to-send @manager)
-                   {c1- 1 c2 3}))
-        ;; An out of date acknowledgement should do nothing.
-        (process-acknowledgements manager {"root" 1})
-        (is (check (:components-to-send @manager)
-                   {c1- 1  c2 3}))
-        (process-acknowledgements manager {"root" 4
-                                           "root_Ifoo_Ibar" 1})
-        (is (check (:components-to-send @manager)
-                   {c2 3}))
-        (process-acknowledgements manager {"root" 2
-                                           "root_Ifoo_Ibar" 3})
-        (is (check (:components-to-send @manager)
-                   {}))
-        (is (component-atom? c1))
-        (is (component-atom? c1-))
-        (request-client-refresh manager)
-        (is (= (:components-to-send @manager)
-               {c1- 1  c2 3}))
-        (is (check (keys (:attendees @(:data ms)))
-                   (as-set [(:dom-R @c1-) (:dom-R @c1) (:dom-R @c2)])))))))
-
 ;;; A controllable test harness for the dom-manager. Every component's
 ;;; dom is looked up, by its relative-id, from a single map-reporter
 ;;; that holds a map from relative-id to dom. Getting a component's dom
@@ -697,7 +529,351 @@
         (quiesce h)
         (check-invariants h)))))
 
-(deftest asynchronous-test
+;;; A cooperative scheduler for deterministically interleaving several
+;;; concurrent activities. Each activity runs on its own thread, but a
+;;; turn-lock (a per-task semaphore, handed off under a monitor) means
+;;; exactly one thread runs at a time, and a seeded rng picks which
+;;; ready task gets the turn next. swap-and-act! is redefined to run its
+;;; cascade inline (so a swap-and-act!'s follow-on actions all complete
+;;; before the code after it, matching production) but to yield the turn
+;;; before each follow-on action, so another activity can interleave
+;;; between a strand's actions. Interleaving is thus at swap-and-act!
+;;; (CAS) boundaries between concurrent activities, which is where the
+;;; real system's atoms serialize. Reporter atoms (plain-map data, not a
+;;; record) keep the normal inline, non-yielding behavior.
+
+;; A map {:seq <semaphore>} belonging to the currently running task.
+(def ^:dynamic *coop-task* nil)
+
+(defn make-coop [seed]
+  {:monitor (Object.)
+   :ready (atom []) ; A sequence of ready actions, each represented by
+                    ; a map {:seq <semaphore>} holding the semaphore
+                    ; it is waiting on.
+   :rng (java.util.Random. seed)})
+
+(defn- coop-pass-turn!
+  "Give the turn to a random ready task. Must be called holding the
+  monitor."
+  [{:keys [ready rng]}]
+  (when (seq @ready)
+    (let [i (.nextInt rng (count @ready))
+          token (nth @ready i)]
+      (swap! ready #(into (subvec % 0 i) (subvec % (inc i))))
+      (.release ^java.util.concurrent.Semaphore (:sem token)))))
+
+(defn coop-yield!
+  "The current task yields the turn, then blocks until it is picked
+  again."
+  [{:keys [monitor ready] :as coop}]
+  (let [me *coop-task*]
+    (locking monitor
+      (swap! ready conj me)
+      (coop-pass-turn! coop))
+    (.acquire ^java.util.concurrent.Semaphore (:sem me))))
+
+(defn- coop-swap-and-run!
+  "Core of the coop swap-and-act stand-ins. f returns a
+  [new-data return-value] pair, whose new-data may carry a
+  :further-actions field. Commits the swap, then runs the follow-on
+  actions. For a dom-manager atom inside a cooperative task it yields
+  the turn before the swap, before each action, and after the whole
+  cascade completes (just before returning), so another activity can
+  interleave at every step; the whole cascade still completes before
+  this returns. For a reporter atom (plain-map data), or outside a
+  task, it behaves exactly like the normal swap-and-act variants.
+  Returns return-value."
+  [coop cell f]
+  (let [in-task (and *coop-task*
+                     (or (instance? ComponentData @cell)
+                         (instance? DOMManagerData @cell)))]
+    (when in-task (coop-yield! coop))
+    (let [[actions return-value]
+          (swap-control-return!
+           cell
+           (fn [data]
+             (let [[new-data return-value] (f data)
+                   actions (:further-actions new-data)]
+               [(if actions (assoc new-data :further-actions nil) new-data)
+                [actions return-value]])))]
+      (doseq [action actions]
+        (when in-task (coop-yield! coop))
+        (apply (first action) (rest action)))
+      (when in-task (coop-yield! coop))
+      return-value)))
+
+(defn coop-swap-and-act!
+  "A stand-in for swap-and-act!, whose f returns just the new data."
+  [coop cell f]
+  (coop-swap-and-run! coop cell (fn [data] [(f data) nil])))
+
+(defn coop-swap-and-act-control-return!
+  "A stand-in for swap-and-act-control-return!, whose f returns a
+  [new-data return-value] pair."
+  [coop cell f]
+  (coop-swap-and-run! coop cell f))
+
+(defn coop-run-all-pending-tasks
+  "A cooperative stand-in for run-all-pending-tasks: instead of
+  busy-waiting for a task that is running on another (parked)
+  cooperative thread, it yields the turn so that thread can finish."
+  [coop task-queue]
+  (loop []
+    (if (#'cosheet.task-queue/run-pending-task task-queue false)
+      (recur)
+      (when-not (finished-all-tasks? task-queue)
+        (when *coop-task* (coop-yield! coop))
+        (recur)))))
+
+(defn run-coop-tasks!
+  "Run each thunk as a cooperative task, interleaving them at their
+  yield points, and return when all have finished."
+  [{:keys [monitor ready] :as coop} thunks]
+  (let [latch (java.util.concurrent.CountDownLatch. (count thunks))]
+    (doseq [thunk thunks]
+      (let [token {:sem (java.util.concurrent.Semaphore. 0)}]
+        (locking monitor (swap! ready conj token))
+        (.start (Thread.
+                 (fn []
+                   (.acquire ^java.util.concurrent.Semaphore (:sem token))
+                   (binding [*coop-task* token] (thunk))
+                   (.countDown latch)
+                   (locking monitor (coop-pass-turn! coop)))))))
+    (locking monitor (coop-pass-turn! coop))
+    (.await latch)))
+
+(deftest coop-interleaved-stress-test
+  (let [h (make-harness)
+        cd (:cd h)
+        coop (make-coop 24680)
+        n 10 ; number of doms
+        k 8 ; number of concurrent tasks
+        ids (mapv #(make-item-id (str "n" %)) (range n))
+        ;; Every call to spec generates a distinct spec, because it
+        ;; creates a new function for the spec's render-dom. So we cache
+        ;; one spec to reference each id, letting a node's subcomponents
+        ;; be reused across dom changes rather than salvaged every time.
+        specs (mapv #(spec h %) ids)
+        rng (java.util.Random. 13579)
+        ;; A seeded generator to give every queued task a random
+        ;; tie-breaker, so tasks of equal priority run in a
+        ;; reproducible (but seed-varied) order instead of the
+        ;; identity-hash order the production priority-map would use.
+        ;; The order is still dependent on the order in which the
+        ;; tasks arrive to the queue, which introduces some
+        ;; non-determinancy, but not a lot.
+        tq-rng (java.util.Random. 97531)
+        orig-add-task cosheet.task-queue/add-task-with-priority
+        random-dom (fn [i]
+                     (into [:div {:v (.nextInt rng 1000000)}]
+                           (for [j (range (inc i) n)
+                                 :when (.nextBoolean rng)]
+                             [:component (nth specs j)])))]
+    (with-redefs [swap-and-act! (fn [cell f] (coop-swap-and-act! coop cell f))
+                  swap-and-act-control-return!
+                  (fn [cell f]
+                    (coop-swap-and-act-control-return! coop cell f))
+                  run-all-pending-tasks (fn [tq]
+                                          (coop-run-all-pending-tasks coop tq))
+                  cosheet.task-queue/add-task-with-priority
+                  (fn [task-queue priority & task]
+                    (apply orig-add-task task-queue
+                           [priority (.nextInt tq-rng)] task))]
+      ;; Setup runs inline (no *coop-task*).
+      (doseq [i (range n)] (set-dom! h (ids i) (random-dom i)))
+      (set-dom! h :root [:div [:component (nth specs 0)]])
+      (add-root-dom (:manager h) (spec h :root))
+      (compute cd)
+      (check-invariants h)
+      (dotimes [_ 200]
+        ;; Fire k concurrent activities and interleave their cascades.
+        ;; One of them occasionally replaces node 0's spec (and points
+        ;; the root at the replacement), so node 0's subtree is salvaged
+        ;; and transferred to the new component.
+        (let [thunks (vec (for [t (range k)]
+                            (if (and (zero? t) (zero? (.nextInt rng 3)))
+                              (let [new-spec (spec h (ids 0))]
+                                (fn []
+                                  (set-dom! h :root
+                                            [:div [:component new-spec]])
+                                  (compute cd)))
+                              (let [i (.nextInt rng n)
+                                    dom (random-dom i)]
+                                (fn []
+                                  (set-dom! h (ids i) dom)
+                                  (compute cd))))))]
+          (run-coop-tasks! coop thunks)
+          (check-invariants h))))))
+
+(deftest mark-component-tree-as-needed-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
+        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
+    (let [ready (mark-component-tree-as-needed c1)]
+      (is (= ready [])))
+    (is (check (:tasks @(:queue cd))
+               {}))
+    (activate-component c1)
+    (is (check (:tasks @(:queue cd))
+               {[application-calculator/do-application-calculate
+                 (:dom-R @c1) cd]
+                10}))
+    (compute cd)
+    (let [c2 ((:id->subcomponent @c1) id2)
+          ready (mark-component-tree-as-needed c1)]
+      (is (= ready [[c1 1] [c2 2]]))
+      (is (check (:tasks @(:queue cd))
+                 {}))
+      (is (component-atom? c1))
+      (is (component-atom? c2)))))
+
+(deftest client-id-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)
+        c1 (reuse-or-make-component-atom s1 manager nil "c1" 1 nil nil)]
+    (activate-component c1)
+    (compute cd)
+    (let [c2 ((:id->subcomponent @c1) id2)
+          ready (mark-component-tree-as-needed c1)]
+      (is (component-atom? c1))
+      (is (component-atom? c2))
+      (is (= (:client-id @c1)
+             "c1"))
+      (is (= (:client-id @c2)
+             "c1_Ibar")))))
+
+(deftest client-id->action-data-test
+  ;; Also tests client-id->component and note-dom-ready-for-client
+  (let [[s1 id1] (add-element (new-element-store) nil "foo")
+        [s2 id2] (add-element s1 id1 "bar")
+        [s id3] (add-element s2 id2 "end")
+        client1 "root"
+        client3 (str client1 "_" (:id id2) "_" (:id id3))
+        ms (new-mutable-store s)
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)]
+    (add-root-dom
+     manager
+     {:relative-id :root
+      :render-dom (make-fixed-dom-renderer
+                   ;; This component has an elided subcomponent.
+                   [:component
+                    {:relative-id id2
+                     :get-action-data default-get-action-data
+                     :render-dom (make-fixed-dom-renderer
+                                  ;; Here, a non-elided subcomponent.
+                                  [:div [:component
+                                         {:relative-id id3
+                                          :get-action-data default-get-action-data
+                                          :render-dom (make-fixed-dom-renderer
+                                                       [:div 3])}]])}])
+      :get-action-data [(fn [s c a i extra]
+                          (is (= extra "test"))
+                          {:subject-ids [id1 id1]})
+                        "test"]})
+    (let [c1 (client-id->component @manager client1)
+          ad1 (client-id->action-data
+               @manager client1 nil (reporter-value-or-invalid ms))]
+      (is (check ad1 {:component c1
+                     :subject-ids [id1 id1]}))
+      (compute cd)
+      (let [c2 (first (vals (:id->subcomponent @c1)))
+            c3 (client-id->component @manager client3)
+            ad1 (client-id->action-data
+               @manager client1 nil (reporter-value-or-invalid ms))
+            ad3 (client-id->action-data
+                @manager client3 nil (reporter-value-or-invalid ms))]
+        ;; The containing component should refer its actions to its contained.
+        (is (check ad1 {:component c2
+                        :subject-ids [id2 id2]
+                        :past-subject-ids [[id1 id1]]}))
+        (is (= c3 ((:id->subcomponent @c2) id3)))
+        (is (check ad3 {:component c3
+                        :subject-ids [id3 id3]
+                        :past-subject-ids [[id2 id2]
+                                           [id1 id1]]}))
+        ;; The elided dom should not need to go to the manager.
+        (is (check (:components-to-send @manager)
+                   {c1 1 c3 3}))))))
+
+(deftest preferred-selection-test
+  ;; Prefer the candidate with the longer common prefix with current-selection.
+  (is (= (preferred-selection "abcde" "abcx" "abxy") "abcx"))
+  (is (= (preferred-selection "abcde"  "abxy" "abcx") "abcx"))
+  ;; On equal prefix length, prefer the longer string.
+  (is (= (preferred-selection "abc" "abx" "abyz") "abyz"))
+  (is (= (preferred-selection "abc" "abyz" "abx") "abyz"))
+  (is (= (preferred-selection nil "xy" "abc") "abc"))
+  ;; nil arguments are treated as zero-length.
+  (is (= (preferred-selection nil nil "a") "a"))
+  (is (= (preferred-selection nil "a" nil) "a"))
+  (is (nil? (preferred-selection "abc" nil nil))))
+
+(deftest get-response-doms-and-process-acknowledgements-test
+  ;; Also tests add-root-dom, request-client-refresh,
+  ;; prepare-dom-for-client and adjust-subdom-for-client
+  (let [ms (new-mutable-store (new-element-store))
+        cd (make-calculator-data (make-priority-task-queue 0))
+        manager (make-dom-manager ms cd)]
+    (add-root-dom manager s1-)
+    (let [c1- (client-id->component @manager "root")]
+      (activate-component c1-)
+      (compute cd)
+      (let [c1 (first (vals (:id->subcomponent @c1-)))
+            c2 (first (vals (:id->subcomponent @c1)))]
+        (is (:highest-version @manager) 1)
+        (is (check (get-response-doms manager [id2] nil 3)
+                   [(as-set [[:div {:id "root" :version 2}
+                              2
+                              [:component {:id "root_Ifoo_Ibar"}]]
+                             [:div {:id "root_Ifoo_Ibar" :version 2}
+                              3]])
+                    "root_Ifoo_Ibar"]))
+        (is (:highest-version @manager) 3)
+        (is (check (get-response-doms manager [id2] nil 1)
+                   [[[:div {:id "root" :version 2}
+                      2
+                      [:component {:id "root_Ifoo_Ibar"}]]]
+                    nil]))
+        ;; With two monitored ids, preferred-selection uses current-selection
+        ;; to pick between candidates. :root monitors "root" (via its elided
+        ;; subcomponent), id2 monitors "root_Ifoo_Ibar" directly. The deeper
+        ;; component has a longer prefix overlap with a current-selection that
+        ;; matches it.
+        (is (= (second (get-response-doms manager [:root id2]
+                                          "root_Ifoo" 3))
+               "root_Ifoo_Ibar"))
+        ;; With nil current-selection, tie breaks by longer string,
+        ;; which still gives the same answer.
+        (is (= (second (get-response-doms manager [:root id2] nil 3))
+               "root_Ifoo_Ibar"))
+        (is (:highest-version @manager) 3)
+        ;; The client doesn't need to know about the elided dom.
+        (is (check (:components-to-send @manager)
+                   {c1- 1 c2 3}))
+        ;; An out of date acknowledgement should do nothing.
+        (process-acknowledgements manager {"root" 1})
+        (is (check (:components-to-send @manager)
+                   {c1- 1  c2 3}))
+        (process-acknowledgements manager {"root" 4
+                                           "root_Ifoo_Ibar" 1})
+        (is (check (:components-to-send @manager)
+                   {c2 3}))
+        (process-acknowledgements manager {"root" 2
+                                           "root_Ifoo_Ibar" 3})
+        (is (check (:components-to-send @manager)
+                   {}))
+        (is (component-atom? c1))
+        (is (component-atom? c1-))
+        (request-client-refresh manager)
+        (is (= (:components-to-send @manager)
+               {c1- 1  c2 3}))
+        (is (check (keys (:attendees @(:data ms)))
+                   (as-set [(:dom-R @c1-) (:dom-R @c1) (:dom-R @c2)])))))))
+
+(deftest asynchronous-client-interaction-test
   ;; Creates width base reporters, then a series layers of lookups
   ;; that use the value at the previous layer as an index into another
   ;; value at that layer. Then makes a bunch of components whose
@@ -1007,179 +1183,3 @@
                                           (* 1.001 @doms-not-acknowledged))))
       (println "doms test did not acknowledge" @doms-not-acknowledged
                "repeat doms received" @repeat-doms-received))))
-
-;;; A cooperative scheduler for deterministically interleaving several
-;;; concurrent activities. Each activity runs on its own thread, but a
-;;; turn-lock (a per-task semaphore, handed off under a monitor) means
-;;; exactly one thread runs at a time, and a seeded rng picks which
-;;; ready task gets the turn next. swap-and-act! is redefined to run its
-;;; cascade inline (so a swap-and-act!'s follow-on actions all complete
-;;; before the code after it, matching production) but to yield the turn
-;;; before each follow-on action, so another activity can interleave
-;;; between a strand's actions. Interleaving is thus at swap-and-act!
-;;; (CAS) boundaries between concurrent activities, which is where the
-;;; real system's atoms serialize. Reporter atoms (plain-map data, not a
-;;; record) keep the normal inline, non-yielding behavior.
-
-;; A map {:seq <semaphore>} belonging to the currently running task.
-(def ^:dynamic *coop-task* nil)
-
-(defn make-coop [seed]
-  {:monitor (Object.)
-   :ready (atom []) ; A sequence of ready actions, each represented by
-                    ; a map {:seq <semaphore>} holding the semaphore
-                    ; it is waiting on.
-   :rng (java.util.Random. seed)})
-
-(defn- coop-pass-turn!
-  "Give the turn to a random ready task. Must be called holding the
-  monitor."
-  [{:keys [ready rng]}]
-  (when (seq @ready)
-    (let [i (.nextInt rng (count @ready))
-          token (nth @ready i)]
-      (swap! ready #(into (subvec % 0 i) (subvec % (inc i))))
-      (.release ^java.util.concurrent.Semaphore (:sem token)))))
-
-(defn coop-yield!
-  "The current task yields the turn, then blocks until it is picked
-  again."
-  [{:keys [monitor ready] :as coop}]
-  (let [me *coop-task*]
-    (locking monitor
-      (swap! ready conj me)
-      (coop-pass-turn! coop))
-    (.acquire ^java.util.concurrent.Semaphore (:sem me))))
-
-(defn- coop-swap-and-run!
-  "Core of the coop swap-and-act stand-ins. f returns a
-  [new-data return-value] pair, whose new-data may carry a
-  :further-actions field. Commits the swap, then runs the follow-on
-  actions. For a dom-manager atom inside a cooperative task it yields
-  the turn before the swap, before each action, and after the whole
-  cascade completes (just before returning), so another activity can
-  interleave at every step; the whole cascade still completes before
-  this returns. For a reporter atom (plain-map data), or outside a
-  task, it behaves exactly like the normal swap-and-act variants.
-  Returns return-value."
-  [coop cell f]
-  (let [in-task (and *coop-task*
-                     (or (instance? ComponentData @cell)
-                         (instance? DOMManagerData @cell)))]
-    (when in-task (coop-yield! coop))
-    (let [[actions return-value]
-          (swap-control-return!
-           cell
-           (fn [data]
-             (let [[new-data return-value] (f data)
-                   actions (:further-actions new-data)]
-               [(if actions (assoc new-data :further-actions nil) new-data)
-                [actions return-value]])))]
-      (doseq [action actions]
-        (when in-task (coop-yield! coop))
-        (apply (first action) (rest action)))
-      (when in-task (coop-yield! coop))
-      return-value)))
-
-(defn coop-swap-and-act!
-  "A stand-in for swap-and-act!, whose f returns just the new data."
-  [coop cell f]
-  (coop-swap-and-run! coop cell (fn [data] [(f data) nil])))
-
-(defn coop-swap-and-act-control-return!
-  "A stand-in for swap-and-act-control-return!, whose f returns a
-  [new-data return-value] pair."
-  [coop cell f]
-  (coop-swap-and-run! coop cell f))
-
-(defn coop-run-all-pending-tasks
-  "A cooperative stand-in for run-all-pending-tasks: instead of
-  busy-waiting for a task that is running on another (parked)
-  cooperative thread, it yields the turn so that thread can finish."
-  [coop task-queue]
-  (loop []
-    (if (#'cosheet.task-queue/run-pending-task task-queue false)
-      (recur)
-      (when-not (finished-all-tasks? task-queue)
-        (when *coop-task* (coop-yield! coop))
-        (recur)))))
-
-(defn run-coop-tasks!
-  "Run each thunk as a cooperative task, interleaving them at their
-  yield points, and return when all have finished."
-  [{:keys [monitor ready] :as coop} thunks]
-  (let [latch (java.util.concurrent.CountDownLatch. (count thunks))]
-    (doseq [thunk thunks]
-      (let [token {:sem (java.util.concurrent.Semaphore. 0)}]
-        (locking monitor (swap! ready conj token))
-        (.start (Thread.
-                 (fn []
-                   (.acquire ^java.util.concurrent.Semaphore (:sem token))
-                   (binding [*coop-task* token] (thunk))
-                   (.countDown latch)
-                   (locking monitor (coop-pass-turn! coop)))))))
-    (locking monitor (coop-pass-turn! coop))
-    (.await latch)))
-
-(deftest coop-interleaved-stress-test
-  (let [h (make-harness)
-        cd (:cd h)
-        coop (make-coop 24680)
-        n 10 ; number of doms
-        k 8 ; number of concurrent tasks
-        ids (mapv #(make-item-id (str "n" %)) (range n))
-        ;; Every call to spec generates a distinct spec, because it
-        ;; creates a new function for the spec's render-dom. So we cache
-        ;; one spec to reference each id, letting a node's subcomponents
-        ;; be reused across dom changes rather than salvaged every time.
-        specs (mapv #(spec h %) ids)
-        rng (java.util.Random. 13579)
-        ;; A seeded generator to give every queued task a random
-        ;; tie-breaker, so tasks of equal priority run in a
-        ;; reproducible (but seed-varied) order instead of the
-        ;; identity-hash order the production priority-map would use.
-        ;; The order is still dependent on the order in which the
-        ;; tasks arrive to the queue, which introduces some
-        ;; non-determinancy, but not a lot.
-        tq-rng (java.util.Random. 97531)
-        orig-add-task cosheet.task-queue/add-task-with-priority
-        random-dom (fn [i]
-                     (into [:div {:v (.nextInt rng 1000000)}]
-                           (for [j (range (inc i) n)
-                                 :when (.nextBoolean rng)]
-                             [:component (nth specs j)])))]
-    (with-redefs [swap-and-act! (fn [cell f] (coop-swap-and-act! coop cell f))
-                  swap-and-act-control-return!
-                  (fn [cell f]
-                    (coop-swap-and-act-control-return! coop cell f))
-                  run-all-pending-tasks (fn [tq]
-                                          (coop-run-all-pending-tasks coop tq))
-                  cosheet.task-queue/add-task-with-priority
-                  (fn [task-queue priority & task]
-                    (apply orig-add-task task-queue
-                           [priority (.nextInt tq-rng)] task))]
-      ;; Setup runs inline (no *coop-task*).
-      (doseq [i (range n)] (set-dom! h (ids i) (random-dom i)))
-      (set-dom! h :root [:div [:component (nth specs 0)]])
-      (add-root-dom (:manager h) (spec h :root))
-      (compute cd)
-      (check-invariants h)
-      (dotimes [_ 200]
-        ;; Fire k concurrent activities and interleave their cascades.
-        ;; One of them occasionally replaces node 0's spec (and points
-        ;; the root at the replacement), so node 0's subtree is salvaged
-        ;; and transferred to the new component.
-        (let [thunks (vec (for [t (range k)]
-                            (if (and (zero? t) (zero? (.nextInt rng 3)))
-                              (let [new-spec (spec h (ids 0))]
-                                (fn []
-                                  (set-dom! h :root
-                                            [:div [:component new-spec]])
-                                  (compute cd)))
-                              (let [i (.nextInt rng n)
-                                    dom (random-dom i)]
-                                (fn []
-                                  (set-dom! h (ids i) dom)
-                                  (compute cd))))))]
-          (run-coop-tasks! coop thunks)
-          (check-invariants h))))))

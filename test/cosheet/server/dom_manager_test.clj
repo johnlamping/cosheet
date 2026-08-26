@@ -7,7 +7,8 @@
             (cosheet
              [debug :refer [simplify-for-print]]
              orderable
-             [utils :refer [dissoc-in with-latest-value swap-control-return!]]
+             [utils :refer [dissoc-in with-latest-value swap-control-return!
+                            swap-and-act! swap-and-act-control-return!]]
              [test-utils :refer [check any as-set]]
              [reporter :as reporter :refer [make-reporter set-value!
                                             reporter-data reporter-value-or-invalid
@@ -26,12 +27,14 @@
              [store-utils :refer [add-element]]
              [hiccup-utils :refer [dom-attributes add-attributes]]
              [task-queue :refer [make-priority-task-queue
-                                 run-all-pending-tasks]])
+                                 run-all-pending-tasks
+                                 finished-all-tasks?]])
             (cosheet.server
              [dom-manager :refer :all]
              [action-data :refer [default-get-action-data]])
             ; :reload
-            ))
+            )
+  (:import (cosheet.server.dom_manager ComponentData DOMManagerData)))
 
 (defn make-fixed-dom-renderer
   "Make a dom renderer that when called returns a reporter that appears
@@ -620,7 +623,7 @@
                   g [:div "g"]})
     (let [a-comp (component-at h :root a)
           g-comp (component-at h :root a g)]
-      (finalize a-comp)
+      (finalize a-comp (component-at h :root))
       (quiesce h)
       (check-invariants h)
       (is (nil? (component-at h :root a)))
@@ -1004,3 +1007,179 @@
                                           (* 1.001 @doms-not-acknowledged))))
       (println "doms test did not acknowledge" @doms-not-acknowledged
                "repeat doms received" @repeat-doms-received))))
+
+;;; A cooperative scheduler for deterministically interleaving several
+;;; concurrent activities. Each activity runs on its own thread, but a
+;;; turn-lock (a per-task semaphore, handed off under a monitor) means
+;;; exactly one thread runs at a time, and a seeded rng picks which
+;;; ready task gets the turn next. swap-and-act! is redefined to run its
+;;; cascade inline (so a swap-and-act!'s follow-on actions all complete
+;;; before the code after it, matching production) but to yield the turn
+;;; before each follow-on action, so another activity can interleave
+;;; between a strand's actions. Interleaving is thus at swap-and-act!
+;;; (CAS) boundaries between concurrent activities, which is where the
+;;; real system's atoms serialize. Reporter atoms (plain-map data, not a
+;;; record) keep the normal inline, non-yielding behavior.
+
+;; A map {:seq <semaphore>} belonging to the currently running task.
+(def ^:dynamic *coop-task* nil)
+
+(defn make-coop [seed]
+  {:monitor (Object.)
+   :ready (atom []) ; A sequence of ready actions, each represented by
+                    ; a map {:seq <semaphore>} holding the semaphore
+                    ; it is waiting on.
+   :rng (java.util.Random. seed)})
+
+(defn- coop-pass-turn!
+  "Give the turn to a random ready task. Must be called holding the
+  monitor."
+  [{:keys [ready rng]}]
+  (when (seq @ready)
+    (let [i (.nextInt rng (count @ready))
+          token (nth @ready i)]
+      (swap! ready #(into (subvec % 0 i) (subvec % (inc i))))
+      (.release ^java.util.concurrent.Semaphore (:sem token)))))
+
+(defn coop-yield!
+  "The current task yields the turn, then blocks until it is picked
+  again."
+  [{:keys [monitor ready] :as coop}]
+  (let [me *coop-task*]
+    (locking monitor
+      (swap! ready conj me)
+      (coop-pass-turn! coop))
+    (.acquire ^java.util.concurrent.Semaphore (:sem me))))
+
+(defn- coop-swap-and-run!
+  "Core of the coop swap-and-act stand-ins. f returns a
+  [new-data return-value] pair, whose new-data may carry a
+  :further-actions field. Commits the swap, then runs the follow-on
+  actions. For a dom-manager atom inside a cooperative task it yields
+  the turn before the swap, before each action, and after the whole
+  cascade completes (just before returning), so another activity can
+  interleave at every step; the whole cascade still completes before
+  this returns. For a reporter atom (plain-map data), or outside a
+  task, it behaves exactly like the normal swap-and-act variants.
+  Returns return-value."
+  [coop cell f]
+  (let [in-task (and *coop-task*
+                     (or (instance? ComponentData @cell)
+                         (instance? DOMManagerData @cell)))]
+    (when in-task (coop-yield! coop))
+    (let [[actions return-value]
+          (swap-control-return!
+           cell
+           (fn [data]
+             (let [[new-data return-value] (f data)
+                   actions (:further-actions new-data)]
+               [(if actions (assoc new-data :further-actions nil) new-data)
+                [actions return-value]])))]
+      (doseq [action actions]
+        (when in-task (coop-yield! coop))
+        (apply (first action) (rest action)))
+      (when in-task (coop-yield! coop))
+      return-value)))
+
+(defn coop-swap-and-act!
+  "A stand-in for swap-and-act!, whose f returns just the new data."
+  [coop cell f]
+  (coop-swap-and-run! coop cell (fn [data] [(f data) nil])))
+
+(defn coop-swap-and-act-control-return!
+  "A stand-in for swap-and-act-control-return!, whose f returns a
+  [new-data return-value] pair."
+  [coop cell f]
+  (coop-swap-and-run! coop cell f))
+
+(defn coop-run-all-pending-tasks
+  "A cooperative stand-in for run-all-pending-tasks: instead of
+  busy-waiting for a task that is running on another (parked)
+  cooperative thread, it yields the turn so that thread can finish."
+  [coop task-queue]
+  (loop []
+    (if (#'cosheet.task-queue/run-pending-task task-queue false)
+      (recur)
+      (when-not (finished-all-tasks? task-queue)
+        (when *coop-task* (coop-yield! coop))
+        (recur)))))
+
+(defn run-coop-tasks!
+  "Run each thunk as a cooperative task, interleaving them at their
+  yield points, and return when all have finished."
+  [{:keys [monitor ready] :as coop} thunks]
+  (let [latch (java.util.concurrent.CountDownLatch. (count thunks))]
+    (doseq [thunk thunks]
+      (let [token {:sem (java.util.concurrent.Semaphore. 0)}]
+        (locking monitor (swap! ready conj token))
+        (.start (Thread.
+                 (fn []
+                   (.acquire ^java.util.concurrent.Semaphore (:sem token))
+                   (binding [*coop-task* token] (thunk))
+                   (.countDown latch)
+                   (locking monitor (coop-pass-turn! coop)))))))
+    (locking monitor (coop-pass-turn! coop))
+    (.await latch)))
+
+(deftest coop-interleaved-stress-test
+  (let [h (make-harness)
+        cd (:cd h)
+        coop (make-coop 24680)
+        n 10 ; number of doms
+        k 8 ; number of concurrent tasks
+        ids (mapv #(make-item-id (str "n" %)) (range n))
+        ;; Every call to spec generates a distinct spec, because it
+        ;; creates a new function for the spec's render-dom. So we cache
+        ;; one spec to reference each id, letting a node's subcomponents
+        ;; be reused across dom changes rather than salvaged every time.
+        specs (mapv #(spec h %) ids)
+        rng (java.util.Random. 13579)
+        ;; A seeded generator to give every queued task a random
+        ;; tie-breaker, so tasks of equal priority run in a
+        ;; reproducible (but seed-varied) order instead of the
+        ;; identity-hash order the production priority-map would use.
+        ;; The order is still dependent on the order in which the
+        ;; tasks arrive to the queue, which introduces some
+        ;; non-determinancy, but not a lot.
+        tq-rng (java.util.Random. 97531)
+        orig-add-task cosheet.task-queue/add-task-with-priority
+        random-dom (fn [i]
+                     (into [:div {:v (.nextInt rng 1000000)}]
+                           (for [j (range (inc i) n)
+                                 :when (.nextBoolean rng)]
+                             [:component (nth specs j)])))]
+    (with-redefs [swap-and-act! (fn [cell f] (coop-swap-and-act! coop cell f))
+                  swap-and-act-control-return!
+                  (fn [cell f]
+                    (coop-swap-and-act-control-return! coop cell f))
+                  run-all-pending-tasks (fn [tq]
+                                          (coop-run-all-pending-tasks coop tq))
+                  cosheet.task-queue/add-task-with-priority
+                  (fn [task-queue priority & task]
+                    (apply orig-add-task task-queue
+                           [priority (.nextInt tq-rng)] task))]
+      ;; Setup runs inline (no *coop-task*).
+      (doseq [i (range n)] (set-dom! h (ids i) (random-dom i)))
+      (set-dom! h :root [:div [:component (nth specs 0)]])
+      (add-root-dom (:manager h) (spec h :root))
+      (compute cd)
+      (check-invariants h)
+      (dotimes [_ 200]
+        ;; Fire k concurrent activities and interleave their cascades.
+        ;; One of them occasionally replaces node 0's spec (and points
+        ;; the root at the replacement), so node 0's subtree is salvaged
+        ;; and transferred to the new component.
+        (let [thunks (vec (for [t (range k)]
+                            (if (and (zero? t) (zero? (.nextInt rng 3)))
+                              (let [new-spec (spec h (ids 0))]
+                                (fn []
+                                  (set-dom! h :root
+                                            [:div [:component new-spec]])
+                                  (compute cd)))
+                              (let [i (.nextInt rng n)
+                                    dom (random-dom i)]
+                                (fn []
+                                  (set-dom! h (ids i) dom)
+                                  (compute cd))))))]
+          (run-coop-tasks! coop thunks)
+          (check-invariants h))))))

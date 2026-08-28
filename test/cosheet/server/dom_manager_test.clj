@@ -307,8 +307,21 @@
             [:reachable-not-active (:client-id @c) (component-data-state @c)])
         (is (or (nil? dismantling) (set? dismantling))
             [:dismantling-not-a-set (:client-id @c) (type dismantling)])
+        ;; At quiescence all salvaging/finalizing is done, so an active
+        ;; component's dismantling must be empty.
+        (is (empty? dismantling)
+            [:dismantling-not-empty (:client-id @c) (count dismantling)])
         (is (or (nil? parent) (component-atom? parent))
-            [:parent-not-a-component (:client-id @c)])))
+            [:parent-not-a-component (:client-id @c)])
+        ;; The parent link agrees with where the component actually
+        ;; lives: a root (nil parent) is in the manager's
+        ;; root-components, and any other component is its parent's
+        ;; subcomponent at its relative-id.
+        (is (if parent
+              (= (get (:id->subcomponent @parent)
+                      (:relative-id (:dom-specification @c))) c)
+              (contains? (set (vals (:root-components @manager))) c))
+            [:parent-back-pointer (:client-id @c)])))
     ;; Only active components are queued to send to the client.
     (doseq [[c _] (:components-to-send @manager)]
       (is (= (component-data-state @c) :active)

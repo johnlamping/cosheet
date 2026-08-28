@@ -35,32 +35,75 @@
 ;;; As renderings are done, we update the client.
 
 ;;; The basic data structure is a component. It's like a reporter, except:
-;;;   * It makes sub-components depend on its value, but its value
-;;;     doesn't depend on them,
+;;;   * It makes sub-components that depend on its value (a dom), but
+;;;     its value doesn't depend on them.
 ;;;   * It notifies the client of changes, not other code.
+
+;;; The dom manager tries to reuse sub-components as much as
+;;; possible. First, when a new dom arrives for a component, if any of
+;;; the specs of its subcomponents match the specs for subcomponents
+;;; of its old dom, it reuses those subcomponents. But it also goes a
+;;; step deeper. To see why, suppose a table gets a new column. Each
+;;; of its rows will need to be recalculated, since they need to show
+;;; the new column. But most of their cells don't need recalculating,
+;;; since they are still under the old columns. This is an instance of
+;;; the overall idea that when a component's dom changes, it may no
+;;; longer need some of its subcomponents (the old rows), but some of
+;;; its new subcomponents (the new rows) may have use for some of the
+;;; subcomponents of the subcomponents it no longer needs (table
+;;; cells). So we transfer those sub-subcomponents to become
+;;; subcomponents of the relevant new subcomponents (the new rows),
+;;; while garbage collecting the rest. In other words, although the
+;;; old subcomponents can't be reused directly, they can be salvaged,
+;;; so that some of their subcomponents can be reused.
 
 ;;; Over its life cycle, a component goes through these stages, in order
 ;;; (it may skip some):
-;;;   * Unstarted.  Its unchanging data has been filled in. It is waiting
-;;;     for any conflicting component to be shut down, and while it is
-;;;     waiting it may gets subcomponents from those conflicting
-;;;     components.
-;;;   * Active.  It has a reporter calculating its dom, and can send
-;;;     updates to the client.
-;;;   * Salvaging.  It has been obsoleted by a replacement component. It
-;;;     will ignore any dom updates it gets, will never send updates
-;;;     to the client, and its reporter calculating its dom is shut
-;;;     down, or in the process of being shut down. But although it is
-;;;     not active, it may have active subcomponents, which should be
-;;;     transferred to the component that replaced it, if possible.
-;;;     And its non-active subcomponents also need to be salvaged.
-;;;   * Finalizing.  It has all the same restrictions as salvaging, but
-;;;     there is nothing to salvage; all of its subcomponents need to
-;;;     be finalized, at which point they should be removed as
-;;;     subcomponents.
-;;;   * Defunct.  It has no subcomponents, and should be removed from
-;;;     the subcomponents of its parent, so it can be garbage
-;;;     collected.
+;;;   * Unstarted.  A new unstarted component is created, with its
+;;;     unchanging data filled in, and is added to its parent's active
+;;;     subcomponents, all inside a single swap! on its parent.
+;;;     The only change that can happen in this state is to receive
+;;;     subcomponents from components that it made obsolete.
+;;;   * Active.  A component's transition to active is only scheduled
+;;;     when it is a current subcomponent of its parent, and its
+;;;     parent is active and has no obsolete subcomponents.
+;;;     An active component has a reporter calculating its dom, and
+;;;     can send updates to the client. This is the only stage where
+;;;     new subcomponents are created, which happens then the
+;;;     component's dom changes to require different subcomponents.
+;;;   * Salvaging.  A salvaging component is obsolete, because it's
+;;;     parent has a made a new subcomponent with the same relative
+;;;     id. A component will only start to transition to salvaging if
+;;;     its parent is active.
+;;;     It will ignore any dom updates it gets, it will never send
+;;;     updates to the client, and the reporter that calculates its
+;;;     dom is shut down, or in the process of being shut down.
+;;;     Although the component is not active, it may have current
+;;;     subcomponents, which should be transferred to the component
+;;;     that replaced it, if possible. Until they can be transferred,
+;;;     the active ones are kept active, so they are still up to date
+;;;     when they get to their new destination. Even if they are
+;;;     unstarted, they should be transferred, since they might have
+;;;     gotten some active subcomponents.
+;;;     But before any current subcomponents are transferred, all of a
+;;;     salvaging component's obsolete subcomponents are themselves
+;;;     salvaged, so that their reusable parts can been transfered to
+;;;     this component's current subcomponents. Once there are no
+;;;     obsolete subcomponents left, its current subcomponents are
+;;;     transferred, if possible, to become subcomponents of the
+;;;     component that replaced it in its parent's affections. If they
+;;;     can't be transferred, they are finalized.
+;;;   * Finalizing.  A finalizing component is also obsolete, and has
+;;;     all the same restrictions as salvaging, but there is nothing
+;;;     to salvage. It has no current subcomponents. All of its
+;;;     subcomponents are obsolete, and there is a process running to
+;;;     finalize them.
+;;;   * Defunct.  A component will start to transition to state
+;;;     defunct if it is in state salvaging or finalizing and it has
+;;;     no subcomponents.
+;;;     After it becomes defunct, a process is started to remove it as
+;;;     a subcomponent of its parent. That will remove the last link
+;;;     to the defunct component, letting it be garbage collected.
 
 ;;; A component is represented with an atom that holds a
 ;;; ComponentData, which contains information about one component we
@@ -71,8 +114,8 @@
      dom-manager           ; Our dom manager.
      parent                ; The atom for the component that we are a
                            ; subcomponent of. This is filled in when
-                           ; the component is created. For a root
-                           ; component, this is the dom-manager.
+                           ; the component is created. A root component
+                           ; has no parent, so this is nil for them.
                            ; When a component is moving from one
                            ; parent to another, this field is changed
                            ; first, then the destination parent is
@@ -109,37 +152,45 @@
      ;; starts dismantling, it holds only the relative-id.
      dom-specification     ; The dom spec for this component.
 
-     ;; These fields can change
-     dismantling-state       ; Nil while the component is the :unstarted or
-                           ; :active stage of its life
-                           ; cycle. Otherwise (meaning the component
-                           ; is dismantling) it holds the keyword for
-                           ; its current life-cycle stage.
+     ;; These fields can change.
+     dismantling-state     ; Nil while the component is the :unstarted or
+                           ; :active stage of its life cycle.
+                           ; Otherwise (meaning the component is
+                           ; dismantling) it holds the keyword for its
+                           ; current life-cycle stage.
      dom-R                 ; A reporter that calculates this component's dom.
                            ; This field is filled in when the
                            ; component is first activated, and is
                            ; cleared when it is deactivated. Those are
                            ; the only two times it changes.
-     id->subcomponent      ; A map from :relative-id to the component data
-                           ; for subcomponents that are or might become
-                           ; active.
+     id->subcomponent      ; A map from :relative-id to the current
+                           ; subcomponents of the component. These are
+                           ; the subcomponents called for by its
+                           ; current dom. They are active or
+                           ; unstarted, and waiting to become active.
                            ; Only subcomponents in this map can start
                            ; being activated, or start being
                            ; transferred to another component.
-                           ; Each time a new dom is computed, this is
-                           ; recalculated, to hold an entry for each
-                           ; sub-component, reusing the previous
+                           ; Each time a new dom is computed for the
+                           ; component, this field is recalculated, to
+                           ; hold an entry for each sub-component of
+                           ; the new dom, reusing the previous
                            ; components whose specifications match the
                            ; specifications provided by the current
                            ; dom.
-                           ; Before a component is activated, it may
-                           ; get sub-components in this field that
+                           ; Even before a component is activated,
+                           ; this field may hold sub-components that
                            ; were carried over from the component this
                            ; component replaced.  That lets a newly
                            ; activated component reuse them rather
-                           ; than recompute them and resend them to
-                           ; the client.
-     dismantling           ; A set of subcomponent component atoms that
+                           ; than have to recompute them and resend
+                           ; them to the client.
+     dismantling           ; A set of subcomponents that are obsolete,
+                           ; because the not needed by the component's
+                           ; current dom. They can be in any state,
+                           ; but there is a process to eventually
+                           ; salvage or finalize them.
+                           ; They were current at some point, but now
                            ; need to be deactivated before any new
                            ; subcomponents can be activated. This is
                            ; because they might have the same client
@@ -148,13 +199,19 @@
                            ; the client with a higher version number
                            ; than the current subcomponents,
                            ; overriding the correct dom.
-                           ; Only components in this set can be be
-                           ; moved to other components or be a donor
-                           ; of their subcomponents to other
-                           ; components.
-     salvage-recipient     ; Filled in by salvage when the component starts
-                           ; being salvaged. It holds the component that
-                           ; will be the recipient of this component's
+                           ; Components here will never be
+                           ; re-activated or transferred. And only the
+                           ; salvaging subcomponents in this set will
+                           ; transfer any of their subcomponents to
+                           ; become components of other components.
+                           ; Whenever this set is emptied, the emptier
+                           ; must check to see if additional actions
+                           ; have become possible, now that there are
+                           ; no dismantling subcomponents, and must
+                           ; start them.
+     salvage-recipient     ; Filled in when the component starts being
+                           ; salvaged. It holds the component that will
+                           ; be the recipient of this component's
                            ; subcomponents when they are transferred.
      dom-version           ; If this component's dom has ever been sent to
                            ; the client, then this is equal to the
@@ -171,6 +228,99 @@
                            ; stored in the atom, but are added to the
                            ; data before it is stored, to request actions.)
      ])
+
+;;; Components obey the following invariants:
+;;; A. An unstarted component has an empty dismantling field.
+;;;    Justification: Unstarted components start out with no
+;;;    subcomponents, and as long as they are unstarted, they can only
+;;;    gain current subcomponents.
+;;; B. Every component in an id->subcomponent field will be unstarted
+;;;    or active.
+;;;    Justification: Components in id->subcomponent start out as
+;;;    unstated, and only transition beyond active after they are moved
+;;;    out.
+;;; C. A component will never have subcomponents moved out of its
+;;;    id->subcomponent field as long as the component's dom references
+;;;    them.
+;;;    Justification: A subcomponent is only moved when the
+;;;    component's dom changes to no longer reference the
+;;;    subcomponent.
+;;; D. A defunct component has no subcomponents.
+;;;    Justification. A component only starts to transition to defunct
+;;;    when it is salvaging or finalizing has no subcomponents. And
+;;;    salvaging and finalizing components can never add
+;;;    subcomponents, so there will still be no subcomponents when the
+;;;    transition to defunct finishes.
+
+;;; E. Every component that isn't defunct or transitioning to defunct
+;;;    will be a subcomponent of some other component that isn't defunct
+;;;    (or be a root of the dom manager).
+;;;     Justification: There are only two cases where a component is
+;;;     disconnected:
+;;;     *  It is defunct, so by D, it has no subcomponents, so
+;;;        removing it can't eliminate paths to other components.
+;;;     *  Its parent field was changed to become a sibling of its old
+;;;        parent, then it was added to the id->subcomponents of its new
+;;;        parent, and then removed from its old parent's finalizing
+;;;        components. At each point, there is a path to the
+;;;        component. (If the addition to its parent fails, it reverts
+;;;        its parent back to its old parent and then starts finalizing.)
+;;; F. For any sequence of relative-ids, and any starting component,
+;;;    all paths starting from there and going through successive
+;;;    subcomponents that follow that sequence of relative-ids will
+;;;    traverse the same active components, in the same order.
+;;;    (The paths might diverge when they go to non-active components,
+;;;    but will reconverge when they reach an active component again.)
+;;;    Justification: This condition starts out true for new
+;;;    components, and there are only five points in the code that
+;;;    add, remove, or move components, or activate or deactivate
+;;;    them.
+;;;    *  A dom update arrives:
+;;;       This may make some current subcomponents transition to
+;;;       quiescing, but that doesn't affect who their parent is, so
+;;;       it preserves the invariant. And the new subcomponents are
+;;;       not active and have no subcomponents, so they can't violate
+;;;       it since no paths extend past them. And this all happens
+;;;       atomically.
+;;;    *  One of a component's current subcomponents is scheduled to
+;;;       become active:
+;;;       The scheduling only happens in code that atomically checks
+;;;       that the component is active and has no quiescing
+;;;       subcomponents. The activation itself is deferred; when it
+;;;       runs it re-checks only that the subcomponent is still
+;;;       unstarted, so a subcomponent is activated at most once. The
+;;;       subcomponent occupies a fixed position in its parent's
+;;;       id->subcomponent, and quiescing components are never active,
+;;;       so activating it only extends paths through it and beyond,
+;;;       preserving the invariant.
+;;;    *  A component is transferred from another component:
+;;;       This is only done when both components have the same
+;;;       grandparent, and neither's parent is active, so the
+;;;       condition is maintained, since the path changes only go
+;;;       through non-active components.
+;;;       This is the case even though the transfer happens by first
+;;;       adding to the recipient component and then removing from the
+;;;       donor component. At one point there are multiple paths, but
+;;;       neither parent can become activated during the
+;;;       transition. The donor can't because there is no transition
+;;;       from salvaging to active. And the recipient can't because
+;;;       the donor is in the quiescing set of the grandparent, and
+;;;       that set being non-empty prevents starting activation of the
+;;;       grandparent's current components.
+;;;    *  A quiescing component transitions to not be active:
+;;;       Making a component not be active can't invalidate the
+;;;       invariant, since the paths don't change, and whenever an
+;;;       active component would satisfy it, so would an inactive one.
+;;;    *  A component is disconnected from its parent.
+;;;       Since this only removes paths, it can't invalidate the
+;;;       invariant, which universally quantifies over paths.
+;;; G. There is at most one active component for any client id, and it
+;;;    will stay active as long as it is relevant.
+;;;    (You don't want multiple active components with the same
+;;;    client-id, because their version can keep increasing, so there
+;;;    is no way to ensure that the client will end up with the
+;;;    current version.)
+;;;    Justification: Follows immediately from C, E and F.
 
 (defmethod print-method ComponentData [s ^java.io.Writer w]
   ;; Avoid huge print-outs.
@@ -536,16 +686,20 @@
 (defn change-parent
   "Move a component from current-parent to future-parent, which are both
   expected to be subcomponents of common-grandparent. Further, the
-  component must be in dismantling of its current-parent, not in
+  component must be in dismantling of its current-parent, not in its
   id->subcomponents, because we may need to finalize it, which is only
   allowed for components in dismantling.
-  In a swap-and-act! on the component, check that its parent is still
-  current-parent and that it is :unstarted or :active. If so, point
-  its parent field at future-parent, and set a further action to try
-  to attach it there and remove it from its old parent. Any
-  modification of one of the component's parents is done only while
-  that parent's own parent is still common-grandparent; otherwise it
-  is treated as a failure."
+  This is done in three steps, each on a different component:
+    * The parent field of the component is changed.
+    * The component is added to the id->subcomponent of the new parent.
+    * The component is removed from the id->subcomponent of the old parent.
+  Each of these steps requires a separate swap-and-act!, to modify its
+  component. And since other threads can be acting on the components,
+  each step must check that nothing has invalidated the requirements
+  of its change. If a step succeeds, it sets up a further action to
+  take the next step, while if it fails, it sets up a further action
+  to undo any previous steps, if necessary.
+  This function does the first step."
   [component current-parent future-parent common-grandparent]
   (swap-and-act!
    component
@@ -579,12 +733,15 @@
   "Switch the component to :finalizing, and start finalizing all its
   subcomponents. If the component's parent is no longer
   presumed-parent, the component has been transferred elsewhere, so
-  make no changes, some other process is now in charge."
+  make no changes, some other process is now in charge. Likewise, if
+  the component is already finalizing or defunct, make no changes; it
+  is already being torn down."
   [component presumed-parent]
   (swap-and-act!
    component
    (fn [component-data]
-     (if (not= (:parent component-data) presumed-parent)
+     (if (or (not= (:parent component-data) presumed-parent)
+             (#{:finalizing :defunct} (component-data-state component-data)))
        component-data
        (let [{:keys [dom-manager id->subcomponent dismantling]} component-data
              ;; All the subcomponents need to be in dismantling, since we

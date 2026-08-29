@@ -210,25 +210,23 @@
 ;;; display and to debug than closures.)
 
 ;;;    :relative-id
-;;;        The id relative to the containing component for identifying
-;;;        this component in the dom. This is normally the id the dom
-;;;        is about, or an exemplar element of one of the ids the
-;;;        containing component is about. However, in some cases, this
-;;;        will be a keyword, like :content or :virtual, which will be
-;;;        enough to uniquely indicate how this component relates to
-;;;        its parent. If a keyword wouldn't be unique, this can be a
-;;;        pair of a keyword and an id. In these cases, if an id is
-;;;        still needed, :auxiliary-item-id will hold id.
+;;;        An id that uniquely indicate how this component relates to
+;;;        its parent component. This is typically the item-id of the
+;;;        item the dom is about, or of an exemplar of one of those
+;;;        items. In some cases, however this will be a keyword. For
+;;;        example :content is used when the parent component's
+;;;        relative id is the id of the component that holds the
+;;;        content. And when :virtual is used, there isn't an id the
+;;;        component is about. If a keyword wouldn't be unique, but an
+;;;        item-id wouldn't be appropriate here, this can be a vector
+;;;        that ends in a keyword, with the rest of the vector
+;;;        ensuring uniqueness. When this is not an id, but a target
+;;;        id is still needed, :target-item-id will hold id.
 
-;;;    :auxiliary-item-id
-;;;        If this is present, :relative-id will be a keyword, or a
-;;;        vector ending in a keyword and this field will give an id
-;;;        needed by the component. Its meaning depends on the
-;;;        keyword:
-;;;            :content - This is the id of the element whose content
-;;;            should be shown.
-;;;            :virtual or :virtual-label - This is the id of the item
-;;;            that the new item should be adjacent to in the store.
+;;;    :target-item-id If this is present, it gives the id of the item
+;;;        the dom is about, and :relative-id must not hold an id. (In
+;;;        the case of a virtual dom, this can be the id of the item
+;;;        that the new object should be adjacent to.)
 
 ;;;    :element-ids-to-exclude
 ;;;        If present, this is a set of ids of elements of the entity

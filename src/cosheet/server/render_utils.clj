@@ -12,7 +12,6 @@
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs assoc-if-non-empty
                                      separate-by]]
-                      [category-change-calculator :refer [category-change-R]]
                       [debug :refer [simplify-for-print]]
                       [query :refer [matching-elements]]
                       [orderable :as orderable]
@@ -124,19 +123,6 @@
   (make-tree-element (orientation template)
                      (ensure-label-object (content template) label-type)
                      (elements template)))
-
-(defn specification-item-id
-  [specification]
-  (or (:auxiliary-item-id specification) (:relative-id specification)))
-
-(defn restrict-store-to-specification-id
-  "Given a dom specification and a mutable store, return a category
-  change reporter over the mutable store, that restricts its interest
-  to the category of the specification-item-id"
-  [specification mutable-store]
-   (let [id (specification-item-id specification)]
-     (assert (item-id? id) id)
-     (category-change-R [id] mutable-store)))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of

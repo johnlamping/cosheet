@@ -469,7 +469,7 @@
         template `(~(make-tree-object [`(~name-label)]))
         spec (assoc basic-dom-specification
                     :relative-id :content
-                    :auxiliary-item-id oid
+                    :target-item-id oid
                     :template template)]
     (is (check (render-object-reference-DOM-R spec store)
                [:component {:width 1.5
@@ -562,7 +562,7 @@
     (is (check dom
                [:component {:width 1.5
                             :class "element"
-                            :auxiliary-item-id fred-oid,
+                            :target-item-id fred-oid,
                             :relative-id :content
                             :template `(~(make-tree-object
                                           [`("" (~name-label))]))
@@ -599,7 +599,7 @@
     (is (check dom
                [:component {:width 1.5
                             :class "element"
-                            :auxiliary-item-id anonymous-oid,
+                            :target-item-id anonymous-oid,
                             :relative-id :content
                             :template `(~(make-tree-object
                                           [`("" (~name-label))]))
@@ -636,7 +636,7 @@
                                                   (~one-object)
                                                   (~two-object)))
                               :relative-id :content
-                              :auxiliary-item-id (:fred-id ids)
+                              :target-item-id (:fred-id ids)
                               :render-dom render-element-content-DOM-R
                               :get-action-data (pass-AD)
                               :width 1.5}]]])))
@@ -666,7 +666,7 @@
                        :width 1.5}]
           [:component {:template '("")
                        :relative-id :content
-                       :auxiliary-item-id fred-id
+                       :target-item-id fred-id
                        :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)
                        :width 1.5}]]))))
@@ -972,7 +972,7 @@
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
-                             :auxiliary-item-id fred-id
+                             :target-item-id fred-id
                              :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -1031,7 +1031,7 @@
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
-                             :auxiliary-item-id (:fred-id ids)
+                             :target-item-id (:fred-id ids)
                              :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -1080,7 +1080,7 @@
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
-                             :auxiliary-item-id (:fred-id ids)
+                             :target-item-id (:fred-id ids)
                              :render-dom render-element-content-DOM-R
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
@@ -1205,7 +1205,7 @@
            [:component {:template '("")
                         :width 1.5
                         :relative-id :content
-                        :auxiliary-item-id fred-id
+                        :target-item-id fred-id
                         :render-dom render-element-content-DOM-R
                         :get-action-data (pass-AD)}]
            [:div {:class "vertical-stack"}
@@ -1263,7 +1263,7 @@
           [:component {:template '("")
                        :width 1.5
                        :relative-id :content
-                       :auxiliary-item-id (:fred-id ids)
+                       :target-item-id (:fred-id ids)
                        :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
@@ -1313,7 +1313,7 @@
           [:component {:template '("")
                        :width 1.5
                        :relative-id :content
-                       :auxiliary-item-id (:fred-id ids)
+                       :target-item-id (:fred-id ids)
                        :render-dom render-element-content-DOM-R
                        :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}

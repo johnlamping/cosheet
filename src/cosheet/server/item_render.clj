@@ -46,8 +46,7 @@
                           inherited-specification-keys
                           transform-specification-for-elements
                           transform-specification-for-labels
-                          transform-specification-for-non-contained-labels
-                          specification-item-id]]
+                          transform-specification-for-non-contained-labels]]
     [action-data :refer [default-get-action-data
                          default-get-do-batch-edit-action-data
                          get-item-or-exemplar-action-data
@@ -655,16 +654,16 @@
   name, and editing the displayed name doesn't change the object, but
   selects (or creates) an object with the provided name. The
   specification should have a :relative-id of :content, and an
-  auxiliary-item-id that gives the id of an example object."
-  [{:keys [auxiliary-item-id relative-id] :as specification} store]
+  target-item-id that gives the id of an example object."
+  [{:keys [target-item-id relative-id] :as specification} store]
   (assert (= relative-id :content))
-  (let-R [object (id->updating-entity-R auxiliary-item-id store)]
+  (let-R [object (id->updating-entity-R target-item-id store)]
     (let [names (-> (label->elements object name-label)
                     ordered-entities)
           num-names (count names)
           specification (->
                          specification
-                         (dissoc :auxiliary-item-id :relative-id :render-dom)
+                         (dissoc :target-item-id :relative-id :render-dom)
                          (assoc :is-object-name true
                                 :get-action-data get-pass-through-action-data))]
       (assert (> num-names 0))
@@ -683,7 +682,7 @@
             (or (= template 'anything) (element? template))))
   (make-component (assoc specification
                          :relative-id :content
-                         :auxiliary-item-id (:item-id object)
+                         :target-item-id (:item-id object)
                          :render-dom render-object-reference-DOM-R
                          :get-action-data get-pass-through-action-data)))
 
@@ -741,9 +740,9 @@
 (defn render-element-content-DOM-R
   "Given an item that represents an element, render a dom for
   its content."
-  [{:keys [relative-id auxiliary-item-id] :as specification} store]
+  [{:keys [relative-id target-item-id] :as specification} store]
   (assert (= relative-id :content) relative-id)
-  (let-R [element (id->updating-entity-R auxiliary-item-id store)]
+  (let-R [element (id->updating-entity-R target-item-id store)]
     (element-content-DOM
      element (select-keys specification [:class :width :immutable :template]))))
 
@@ -761,7 +760,7 @@
                                   (concat [:template :class]
                                           inherited-specification-keys))
                      (assoc :relative-id :content
-                            :auxiliary-item-id (:item-id element)
+                            :target-item-id (:item-id element)
                             :render-dom render-element-content-DOM-R
                             :get-action-data get-pass-through-action-data))
            (label-element? element)
@@ -867,14 +866,10 @@
 (defn render-item-DOM-R
   "Render a dom spec for a store item (which may be an exemplar of a
   group of items). This is the default renderer."
-  [{:keys [relative-id] :as specification}  store]
+  [{:keys [relative-id target-item-id width] :as specification} store]
   (println "Generating item DOM for" (simplify-for-print relative-id))
-  (let [updating-entity (id->updating-entity-R
-                         (specification-item-id specification) store)]
-     (assert (:width specification)
-             [specification
-              (semantic-to-tree (current-value updating-entity))])
-     (assert (not (:auxiliary-item-id specification))
+  (let [updating-entity (id->updating-entity-R relative-id store)]
+     (assert (and width (not target-item-id))
              [specification
               (semantic-to-tree (current-value updating-entity))])
      (let-R [entity updating-entity]

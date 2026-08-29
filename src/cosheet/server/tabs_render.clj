@@ -118,7 +118,7 @@
   [{:keys [last-tab-id]}]
   (virtual-DOM-component
    {:relative-id :virtual-tab
-    :auxiliary-item-id last-tab-id
+    :target-item-id last-tab-id
     :class "tab virtualTab"
     :template (make-sequential-template `("" :tab ~new-tab-table-element)
                                         'anything)

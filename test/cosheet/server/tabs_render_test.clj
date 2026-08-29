@@ -99,7 +99,7 @@
            [:div]
            [:component
             {:relative-id :virtual-tab
-             :auxiliary-item-id (:item-id t3)
+             :target-item-id (:item-id t3)
              :class "tab virtualTab"
              :template (make-sequential-template
                         `(""

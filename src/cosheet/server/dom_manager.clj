@@ -1166,11 +1166,11 @@
   targets one of the monitored ids or shows the content of one of them."
   [component-atom monitored-ids]
   (some (fn [c]
-          (let [{:keys [auxiliary-item-id relative-id]}
+          (let [{:keys [target-item-id relative-id]}
                 (:dom-specification @c)]
-            ;; We check for auxiliary-item-id first, because relative-id can
+            ;; We check for target-item-id first, because relative-id can
             ;; be :content, or other markers that don't indicate an item.
-            (when-let [target (or auxiliary-item-id relative-id)]
+            (when-let [target (or target-item-id relative-id)]
               (assert (not= :content target)
                       (:dom-specification @c))
               (some #{target} monitored-ids))))
@@ -1217,7 +1217,7 @@
         ;; We get whatever the latest reporter value is. It is possible
         ;; that our reporter is temporarily invalid, in which case
         ;; we will have no dom for now.
-        ;; The dom-R reporter may have gotten ahead of the current
+        ;; Or the dom-R reporter may have gotten ahead of the current
         ;; dom-version number, but that is OK. Worst case, we will
         ;; send the same dom more than once, until the version number
         ;; catches up with it.
@@ -1289,9 +1289,9 @@
                   (recur
                    ;; The dom might be temporarily invalid. (It can't
                    ;; be permanently disabled, as disabling removes it
-                   ;; from the list, and adding to the list checks for
-                   ;; a disablement while the addition was taking
-                   ;; place.)
+                   ;; from components-to-send, and adding to
+                   ;; components-to-send checks for a disablement
+                   ;; while the addition is taking place.)
                    (cond-> response
                      dom (conj dom))
                    (preferred-selection current-selection

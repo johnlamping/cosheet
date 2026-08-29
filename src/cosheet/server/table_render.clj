@@ -100,9 +100,9 @@
   (.write w "table-cond-do-batch-AD"))
 
 (defn get-table-header-do-batch-edit-action-data
-  [{:keys [auxiliary-item-id relative-id column-ids competing-ids]}
+  [{:keys [target-item-id relative-id column-ids competing-ids]}
    containing-action-data action immutable-store]
-  (let [id (or auxiliary-item-id relative-id)
+  (let [id (or target-item-id relative-id)
         row-condition-id (table-row-condition-id
                           (:table-id containing-action-data) immutable-store)
         row-condition (id->entity row-condition-id immutable-store)
@@ -180,7 +180,7 @@
               ;; If we have any headers already, put the new one after
               ;; the last of them.
               last-item
-              (assoc :auxiliary-item-id (:item-id last-item)
+              (assoc :target-item-id (:item-id last-item)
                      :get-action-data get-item-or-exemplar-action-data
                      :sibling true))
             :vertical)
@@ -259,7 +259,7 @@
          (virtual-element-and-label-DOM
           (assoc spec
                  :get-action-data get-item-or-exemplar-action-data
-                 :auxiliary-item-id last-column-id
+                 :target-item-id last-column-id
                  :sibling true)
           :vertical)
          {:class  "column-header virtual-column"})))))

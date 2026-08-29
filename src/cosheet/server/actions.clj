@@ -577,14 +577,17 @@
                 (store-update-control-return!
                  mutable-store
                  (fn [store]
-                   (let [store (update
-                                store :ephemeral-data
-                                #(-> %
-                                     (assoc :preceding-selection client-id)
-                                     (dissoc :following-selection
-                                             :following-selection-by-ids)))
+                   (let [history-store (update
+                                        store :ephemeral-data
+                                        #(-> %
+                                             (assoc
+                                              :preceding-selection client-id)
+                                             (dissoc
+                                              :following-selection
+                                              :following-selection-by-ids)))
                          action-data (client-id->action-data
-                                      @manager client-id action-type store)
+                                      @manager client-id action-type
+                                      history-store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys
                                     spec [:template :virtual
@@ -597,11 +600,13 @@
                          _ (println "HANDLER ARGUMENTS: "
                                     (simplify-for-print
                                      (dissoc arguments :session-state)))
-                         store-with-virtuals (or (:store action-data) store) 
-                         response (handler
-                                   (update-equivalent-undo-point
-                                    store-with-virtuals false)
-                                   arguments)
+                         store-with-virtuals (or (:store action-data)
+                                                 history-store)
+                         response (when action-data
+                                    (handler
+                                     (update-equivalent-undo-point
+                                      store-with-virtuals false)
+                                     arguments))
                          [updated-store client-info]
                          (normalize-handler-response response store)
                          {:keys [following-selection

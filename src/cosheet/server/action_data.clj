@@ -179,22 +179,18 @@
   "Given the subject(s), find items or exemplars for the id."
   [subject-ids immutable-store id]
   (assert (item-id? id) id)
-  ;; If there are any subjects, and exemplar id has a target,
-  ;; it must be an element of one of the subjects.
-  (assert (or (empty? subject-ids)
+  ;; If there are any subjects, and exemplar id has a target, it must
+  ;; be an element of one of the subjects. Otherwise, we return a nil
+  ;; to say we failed.
+  (when (or (empty? subject-ids)
               (let [target-id (id->target immutable-store id)]
                 (or (nil? target-id)
                     (some #{target-id} subject-ids))))
-          [id
-           (id->target immutable-store id)
-           (id->source immutable-store id)
-           subject-ids
-           (map #(id->source immutable-store %) subject-ids)])
-  (if (<= (count subject-ids) 1)
-    [id]
-    (->> subject-ids
-         (map #(best-matching-element-id id % immutable-store))
-         (remove nil?))))
+    (if (<= (count subject-ids) 1)
+      [id]
+      (->> subject-ids
+           (map #(best-matching-element-id id % immutable-store))
+           (remove nil?)))))
 
 (defn get-item-or-exemplar-action-data
   "This is the vanilla action getter, for doms that might be in a
@@ -205,12 +201,13 @@
         {:keys [:subject-ids :past-subject-ids]} inherited-action-data
         new-subject-ids (get-item-or-exemplars-for-id
                          subject-ids immutable-store id)]
-    (-> inherited-action-data
-        (assoc :subject-ids new-subject-ids)
-        (assoc-if-non-empty 
-         :past-subject-ids (when (= (count subject-ids)
-                                    (count new-subject-ids))
-                             (cons subject-ids past-subject-ids))))))
+    (when new-subject-ids
+      (-> inherited-action-data
+          (assoc :subject-ids new-subject-ids)
+          (assoc-if-non-empty 
+           :past-subject-ids (when (= (count subject-ids)
+                                      (count new-subject-ids))
+                               (cons subject-ids past-subject-ids)))))))
 
 (defmethod print-method
   cosheet.server.action_data$get_item_or_exemplar_action_data
@@ -224,18 +221,18 @@
   [{:keys [parallel-ids] :as specification}
    inherited-action-data action immutable-store getter]
   (letfn [(get-action-data-for-id [id]
-            (:subject-ids
-             (run-action-data-getter
-              getter
-              (-> specification
-                  (assoc :auxiliary-item-id id
-                         :relative-id :overridden)
-                  (dissoc :parallel-ids))
-              inherited-action-data action immutable-store)))]
-    (let [new-subject-ids (mapcat get-action-data-for-id parallel-ids)]
-      (-> inherited-action-data
-          (assoc :subject-ids (distinct new-subject-ids))
-          (dissoc :past-subject-ids)))))
+            (run-action-data-getter
+             getter
+             (-> specification
+                 (assoc :auxiliary-item-id id
+                        :relative-id :overridden)
+                 (dissoc :parallel-ids))
+             inherited-action-data action immutable-store))]
+    (let [results (map get-action-data-for-id parallel-ids)]
+      (when (every? some? results)
+        (-> inherited-action-data
+            (assoc :subject-ids (distinct (mapcat :subject-ids results)))
+            (dissoc :past-subject-ids))))))
 
 (defmethod print-method
   cosheet.server.action_data$parallel_items_get_action_data
@@ -249,15 +246,14 @@
   followed by get-item-or-exemplar-action-data."
   [{:keys [parallel-ids] :as specification}
    inherited-action-data action immutable-store]
-  (into inherited-action-data
-        (get-item-or-exemplar-action-data
-         specification
-         (if (seq parallel-ids)
-           (parallel-items-get-action-data
-            specification inherited-action-data action immutable-store
-            get-item-or-exemplar-action-data)
-           inherited-action-data)
-         action immutable-store)))
+  (if (seq parallel-ids)
+    (when-let [action-data (parallel-items-get-action-data
+                            specification inherited-action-data action
+                            immutable-store get-item-or-exemplar-action-data)]
+      (get-item-or-exemplar-action-data
+       specification action-data action immutable-store))
+    (get-item-or-exemplar-action-data
+     specification inherited-action-data action immutable-store)))
 
 (defn action-data-getter
   [dom-specification]

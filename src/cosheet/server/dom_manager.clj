@@ -1049,21 +1049,66 @@
       result)))
 
 (defn components-up-to-client-id
-  "Return the sequence of components from the root to the component with
-  the specified client-id, or nil if the path cannot be followed."
+  "Return a chain of components from the root to the active component
+  with the specified client-id, or nil if there is no such active
+  component."
   [manager-data client-id]
   (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
+  ;; Intermediate components on the chain need not be active (an
+  ;; active component can sit beneath dismantling or unstarted ones),
+  ;; so we track candidate chains, extending each by every component
+  ;; with the next relative-id, from the last component's
+  ;; id->subcomponent or dismantling. As soon as an extension reaches
+  ;; an active component we keep only that chain, since by the
+  ;; invariants the active path is unique; so branching only persists
+  ;; across non-active stretches. Further, the common all-active path
+  ;; never branches so we typically run in linear time in the length
+  ;; of the chain.
     (when root
-      (reduce (fn [components id]
-                (when components
-                  (let [{:keys [dom-R id->subcomponent]} @(last components)
-                        dom (reporter-value-when-valid dom-R)]
-                    (when dom
-                      (when-let [subcomponent (id->subcomponent id)]
-                        (conj components subcomponent))))))
-              [root]
-              (rest id-sequence)))))
+      (let [chains
+            ;; Run over each id, given the chains up to but not
+            ;; including the id, return the chains up to and including
+            ;; the id.
+            (reduce
+             (fn [chains id]
+               ;; Run over each chain and return all its extensions
+               ;; that include the id.
+               (reduce
+                (fn [acc chain]
+                  (let [{:keys [id->subcomponent dismantling]} @(peek chain)
+                        c (id->subcomponent id)]
+                    (if (and c (= (component-data-state @c) :active))
+                      ;; Common case: id->subcomponent has an active
+                      ;; component. It is the whole result for this step,
+                      ;; so skip the slower dismantling scan and stop
+                      ;; extending the other chains.
+                      (reduced [(conj chain c)])
+                      ;; c, if any, is not active. Scan dismantling,
+                      ;; dereferencing each component just once to check
+                      ;; both its relative-id and its state. On an active
+                      ;; match, shortcut both this scan and the outer
+                      ;; reduce over chains (hence the doubled reduced).
+                      (reduce
+                       (fn [acc d]
+                         (let [dd @d]
+                           (if (= (:relative-id (:dom-specification dd)) id)
+                             (if (= (component-data-state dd) :active)
+                               (reduced (reduced [(conj chain d)]))
+                               (conj acc (conj chain d)))
+                             acc)))
+                       (if c (conj acc (conj chain c)) acc)
+                       dismantling))))
+                []
+                chains))
+             [[root]]
+             (rest id-sequence))]
+        ;; We only have a result if we ended on an active
+        ;; component. In that case, there will be exactly one chain,
+        ;; as well.
+        (when (and (= (count chains) 1)
+                   (= (component-data-state @(peek (first chains))) :active))
+          (first chains))))))
 
 (defn elided-subcomponent-chain
   "Return the sequence of sub-components starting from component-atom,
@@ -1083,14 +1128,16 @@
   "Reduce over a sequence of components to accumulate action-data."
   [chain action-data action immutable-store]
   (reduce (fn [ad component]
-            (update-action-data-for-component
-             component ad action immutable-store))
+            (or (update-action-data-for-component
+                 component ad action immutable-store)
+                (reduced nil)))
           action-data
           chain))
 
 (defn client-id->action-data
   "Returns the action data map for the component that generated the
-  final dom for the given client id."
+  final dom for the given client id. Return nil if that fails, which
+  only happens if the store is not consistent with the chain."
   [manager-data client-id action immutable-store]
   (when-let [components (components-up-to-client-id manager-data client-id)]
     (action-data-for-component-chain

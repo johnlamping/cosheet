@@ -251,7 +251,7 @@
   (add-root-dom (:manager harness) (spec harness root-id))
   (quiesce harness))
 
-(defn active-components
+(defn components-attending-to-dom-Rs
   "The component atoms whose dom reporter currently has demand."
   [harness]
   (set (mapcat (fn [dom-R] (keys (:attendees (reporter-data dom-R))))
@@ -292,12 +292,18 @@
   [harness]
   (let [manager (:manager harness)
         reachable (reachable-components harness)
-        active (active-components harness)]
+        active (components-attending-to-dom-Rs harness)]
     ;; The active components are exactly those in the DOM tree: no
     ;; orphaned active component, and nothing in the tree left inactive.
     (is (= active reachable)
         {:excess-active (client-ids (set/difference active reachable))
          :excess-reachable (client-ids (set/difference reachable active))})
+    ;; Every component attending to a dom reporter really is :active. At
+    ;; quiescence a deactivated component's lingering attendee has been
+    ;; removed, so anything still attending must be active.
+    (doseq [c active]
+      (is (= :active (component-data-state @c))
+          [:attending-not-active (:client-id @c) (component-data-state @c)]))
     ;; No two active components share a client id.
     (let [cids (map #(:client-id @%) active)]
       (is (= (count cids) (count (set cids))) [:duplicate-client-ids cids]))
@@ -327,6 +333,22 @@
       (is (= (component-data-state @c) :active)
           [:stale-in-components-to-send (:client-id @c)]))))
 
+(defn record-double-active-client-ids!
+  "A non-quiescent invariant: no two components that are actually
+  :active share a client id. This must hold at every instant, since
+  the client can't cope with two doms for one id. We use the component
+  state, not the active-dom-Rs attendee set, because a just-deactivated
+  component's dom-R attendee lingers until its deferred removal runs.
+  Any violation is recorded in the violations atom rather than
+  asserted, because this runs on the cooperative worker threads, where
+  clojure.test's reporting is not bound."
+  [harness violations]
+  (let [actives (filter #(= :active (component-data-state @%))
+                        (components-attending-to-dom-Rs harness))
+        cids (map #(:client-id @%) actives)]
+    (when (not= (count cids) (count (set cids)))
+      (swap! violations conj (vec cids)))))
+
 (deftest harness-smoke-test
   (let [h (make-harness)
         child (make-item-id "child")]
@@ -334,7 +356,7 @@
                  {:root [:div [:component (spec h child)]]
                   child [:div "child"]})
     (check-invariants h)
-    (is (= (count (active-components h)) 2))))
+    (is (= (count (components-attending-to-dom-Rs h)) 2))))
 
 ;;; Scenario tests: drive structural dom changes and verify the tree,
 ;;; reuse, and the global invariants after each change.
@@ -509,7 +531,7 @@
       ;; The manager is emptied and every dom reporter released.
       (is (empty? (:root-components @(:manager h))))
       (is (empty? (:components-to-send @(:manager h))))
-      (is (empty? (active-components h)))
+      (is (empty? (components-attending-to-dom-Rs h)))
       (is (empty? (:attendees (reporter-data (:control-R h))))))))
 
 ;;; A deterministic pseudo-random stress test. Each step regenerates a
@@ -558,12 +580,24 @@
 ;; A map {:seq <semaphore>} belonging to the currently running task.
 (def ^:dynamic *coop-task* nil)
 
-(defn make-coop [seed]
-  {:monitor (Object.)
-   :ready (atom []) ; A sequence of ready actions, each represented by
-                    ; a map {:seq <semaphore>} holding the semaphore
-                    ; it is waiting on.
-   :rng (java.util.Random. seed)})
+(defn make-coop
+  "Make a cooperative scheduler driven by rng. The options, if given:
+    :mid-check  a thunk run on about one swap in ten to check
+                invariants while the system is not quiescent.
+    :injector   a thunk run on about one swap in ten to interject an
+                additional activity into the running cascade.
+  rng picks the next ready task and gates the mid-check and injector. A
+  single stream is as deterministic as several would be, since every
+  draw happens on the one thread that holds the turn."
+  ([rng] (make-coop rng {}))
+  ([rng {:keys [mid-check injector]}]
+   {:monitor (Object.)
+    :ready (atom []) ; A sequence of ready actions, each represented by
+                     ; a map {:seq <semaphore>} holding the semaphore
+                     ; it is waiting on.
+    :rng rng
+    :mid-check mid-check
+    :injector injector}))
 
 (defn- coop-pass-turn!
   "Give the turn to a random ready task. Must be called holding the
@@ -597,6 +631,13 @@
   task, it behaves exactly like the normal swap-and-act variants.
   Returns return-value."
   [coop cell f]
+  (let [{:keys [rng mid-check injector]} coop]
+    (when (and mid-check
+               (zero? (.nextInt ^java.util.Random rng 10)))
+      (mid-check))
+    (when (and injector
+               (zero? (.nextInt ^java.util.Random rng 10)))
+      (injector)))
   (let [in-task (and *coop-task*
                      (or (instance? ComponentData @cell)
                          (instance? DOMManagerData @cell)))]
@@ -658,7 +699,26 @@
 (deftest coop-interleaved-stress-test
   (let [h (make-harness)
         cd (:cd h)
-        coop (make-coop 24680)
+        ;; Records any errors spotted by the mid-check running
+        ;; mid-cascade. The debug facilities might not be available to
+        ;; the thread running mid-check, so it puts the violations
+        ;; here, and we check that there are none.
+        violations (atom [])
+        ;; Additional dom-changing thunks, interjected one at a time
+        ;; into the running cascade by the injector.
+        pending-dom-changes (atom [])
+        ;; This rng drives all of the test's scheduling: which ready coop
+        ;; task runs next, whether the mid-check or injector fires, and
+        ;; (below) the tie-breaker among equal-priority queued tasks.
+        coop-rng (java.util.Random. 24680)
+        coop (make-coop
+              coop-rng
+              {:mid-check (fn []
+                            (record-double-active-client-ids! h violations))
+               :injector (fn []
+                           (when-let [t (first @pending-dom-changes)]
+                             (swap! pending-dom-changes (comp vec rest))
+                             (t)))})
         n 10 ; number of doms
         k 8 ; number of concurrent tasks
         ids (mapv #(make-item-id (str "n" %)) (range n))
@@ -667,56 +727,77 @@
         ;; one spec to reference each id, letting a node's subcomponents
         ;; be reused across dom changes rather than salvaged every time.
         specs (mapv #(spec h %) ids)
-        rng (java.util.Random. 13579)
-        ;; A seeded generator to give every queued task a random
-        ;; tie-breaker, so tasks of equal priority run in a
-        ;; reproducible (but seed-varied) order instead of the
-        ;; identity-hash order the production priority-map would use.
-        ;; The order is still dependent on the order in which the
-        ;; tasks arrive to the queue, which introduces some
-        ;; non-determinancy, but not a lot.
-        tq-rng (java.util.Random. 97531)
+        ;; Generates the doms. Unlike coop-rng, dom-rng is drawn only
+        ;; while building the thunks on this thread, never during the
+        ;; scheduled interleaving, so its sequence is deterministic.
+        dom-rng (java.util.Random. 13579)
         orig-add-task cosheet.task-queue/add-task-with-priority
         random-dom (fn [i]
-                     (into [:div {:v (.nextInt rng 1000000)}]
+                     (into [:div {:v (.nextInt dom-rng 1000000)}]
                            (for [j (range (inc i) n)
-                                 :when (.nextBoolean rng)]
-                             [:component (nth specs j)])))]
+                                 :when (.nextBoolean dom-rng)]
+                             [:component (nth specs j)])))
+        ;; A dom-changing thunk: usually sets a random node's dom;
+        ;; occasionally (only for t 0) replaces node 0's spec, salvaging
+        ;; its subtree. With compute? it also runs to quiescence, as a
+        ;; top-level activity does; without it, it just perturbs the
+        ;; dom, as an interjected activity does mid-cascade.
+        change-thunk
+        (fn [t compute?]
+          (if (and (zero? t) (zero? (.nextInt dom-rng 3)))
+            (let [new-spec (spec h (ids 0))]
+              (fn []
+                (set-dom! h :root [:div [:component new-spec]])
+                (when compute? (compute cd))))
+            (let [i (.nextInt dom-rng n)
+                  dom (random-dom i)]
+              (fn []
+                (set-dom! h (ids i) dom)
+                (when compute? (compute cd))))))]
     (with-redefs [swap-and-act! (fn [cell f] (coop-swap-and-act! coop cell f))
                   swap-and-act-control-return!
                   (fn [cell f]
                     (coop-swap-and-act-control-return! coop cell f))
                   run-all-pending-tasks (fn [tq]
                                           (coop-run-all-pending-tasks coop tq))
+                  ;; Give every queued task a random tie-breaker, so
+                  ;; equal-priority tasks run in a reproducible (but
+                  ;; seed-varied) order rather than the production
+                  ;; priority-map's identity-hash order.
                   cosheet.task-queue/add-task-with-priority
                   (fn [task-queue priority & task]
                     (apply orig-add-task task-queue
-                           [priority (.nextInt tq-rng)] task))]
+                           [priority (.nextInt coop-rng)] task))]
       ;; Setup runs inline (no *coop-task*).
       (doseq [i (range n)] (set-dom! h (ids i) (random-dom i)))
       (set-dom! h :root [:div [:component (nth specs 0)]])
       (add-root-dom (:manager h) (spec h :root))
       (compute cd)
       (check-invariants h)
+      (is (empty? @violations)
+          [:transient-duplicate-active-client-ids @violations])
+      (reset! violations [])
       (dotimes [_ 200]
         ;; Fire k concurrent activities and interleave their cascades.
         ;; One of them occasionally replaces node 0's spec (and points
         ;; the root at the replacement), so node 0's subtree is salvaged
-        ;; and transferred to the new component.
-        (let [thunks (vec (for [t (range k)]
-                            (if (and (zero? t) (zero? (.nextInt rng 3)))
-                              (let [new-spec (spec h (ids 0))]
-                                (fn []
-                                  (set-dom! h :root
-                                            [:div [:component new-spec]])
-                                  (compute cd)))
-                              (let [i (.nextInt rng n)
-                                    dom (random-dom i)]
-                                (fn []
-                                  (set-dom! h (ids i) dom)
-                                  (compute cd))))))]
+        ;; and transferred to the new component. Also queue up k more
+        ;; dom changes for the injector to interject into the cascade as
+        ;; it runs, so new changes arrive while old ones are in flight.
+        (let [thunks (vec (for [t (range k)] (change-thunk t true)))]
+          (reset! pending-dom-changes
+                  (vec (for [t (range k)] (change-thunk t false))))
           (run-coop-tasks! coop thunks)
-          (check-invariants h))))))
+          ;; Run any interjections that never got injected, then quiesce.
+          (when-let [pending-changes @pending-dom-changes]
+            (doseq [t pending-changes] (t))
+            (reset! pending-dom-changes [])
+            (compute cd)
+            (run-coop-tasks! coop thunks))
+          (check-invariants h)
+          (is (empty? @violations)
+              [:transient-duplicate-active-client-ids @violations])
+          (reset! violations []))))))
 
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))

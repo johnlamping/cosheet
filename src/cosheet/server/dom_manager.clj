@@ -729,6 +729,16 @@
         (cond-> dom-R
           (update-new-further-action deactivate-dom-R component dom-R)))))
 
+(defn approximately-deterministic-sort
+  "When we are about to take an action over each a set of components, we
+  do the actions in an approximately deterministic order, to reduce
+  the indeterminancy of unit tests. We support that by sorting the
+  components by their relative-id.
+  This is not needed for correctness."
+  [components]
+  (sort-by (fn [c] (:id (:relative-id (:dom-specification @c))))
+           components))
+
 (defn finalize
   "Switch the component to :finalizing, and start finalizing all its
   subcomponents. If the component's parent is no longer
@@ -755,9 +765,7 @@
              (deactivate-component-data component)
              (update-new-further-actions
               (map (fn [subcomponent] [finalize subcomponent component])
-                   (sort-by (fn [c] (pr-str (:relative-id
-                                             (:dom-specification @c))))
-                            new-dismantling)))
+                   (approximately-deterministic-sort new-dismantling)))
              (update-next-step-when-dismantling-empty component)))))))
 
 (defn transfer-subcomponents
@@ -798,6 +806,36 @@
      (fn [donor-data]
        (update-next-step-when-dismantling-empty donor-data donor)))))
 
+(defn salvage
+  "If the component is :active or :unstarted, switch it to :salvaging,
+  deactivate it, and set it up to do its next step (transferring its
+  components) if it is ready to."
+  [component recipient]
+  (swap-and-act!
+   component
+   (fn [component-data]
+     (if (#{:active :unstarted} (component-data-state component-data))
+       (-> component-data
+           (assoc :dismantling-state :salvaging
+                  :salvage-recipient recipient)
+           (deactivate-component-data component)
+           (update-next-step-when-dismantling-empty component))
+       component-data))))
+
+(defn pair-and-salvage-or-finalize
+  "Given a set of dismantling components and an id->subcomponent map of
+  active components, for each dismantling component look for an active
+  component with the same relative-id. If there is one and it is
+  :unstarted, salvage the dismantling component into it; otherwise
+  finalize the dismantling component."
+  [dismantling-components id->active-subcomponent presumed-parent]
+  (doseq [dismantling (approximately-deterministic-sort dismantling-components)]
+    (let [id (:relative-id (:dom-specification @dismantling))
+          active (get id->active-subcomponent id)]
+      (if (and active (= (component-data-state @active) :unstarted))
+        (salvage dismantling active)
+        (finalize dismantling presumed-parent)))))
+
 (defn update-next-step-when-dismantling-empty
   "Given a component's data and its atom, update the data to take the
   next step for the component, which must not be :unstarted. If it
@@ -826,40 +864,6 @@
         (do (assert (= state :salvaging))
             (update-new-further-action
              component-data transfer-subcomponents component))))))
-
-(defn salvage
-  "If the component is :active or :unstarted, switch it to :salvaging,
-  deactivate it, and set it up to do its next step (transferring its
-  components) if it is ready to."
-  [component recipient]
-  (swap-and-act!
-   component
-   (fn [component-data]
-     (if (#{:active :unstarted} (component-data-state component-data))
-       (-> component-data
-           (assoc :dismantling-state :salvaging
-                  :salvage-recipient recipient)
-           (deactivate-component-data component)
-           (update-next-step-when-dismantling-empty component))
-       component-data))))
-
-(defn pair-and-salvage-or-finalize
-  "Given a set of dismantling components and an id->subcomponent map of
-  active components, for each dismantling component look for an active
-  component with the same relative-id. If there is one and it is
-  :unstarted, salvage the dismantling component into it; otherwise
-  finalize the dismantling component."
-  [dismantling-components id->active-subcomponent presumed-parent]
-  ;; We go through the components in a deterministic order to
-  ;; eliminate a source of indeterminacy in the unit tests.
-  (doseq [dismantling (sort-by (fn [c] (pr-str (:relative-id
-                                                (:dom-specification @c))))
-                               dismantling-components)]
-    (let [id (:relative-id (:dom-specification @dismantling))
-          active (get id->active-subcomponent id)]
-      (if (and active (= (component-data-state @active) :unstarted))
-        (salvage dismantling active)
-        (finalize dismantling presumed-parent)))))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their

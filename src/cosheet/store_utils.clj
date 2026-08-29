@@ -6,8 +6,7 @@
                    link-id? object-id? interned-object-id?
                    generic-name?
                    name-label-id link-type-id object-type-id]]
-    [entity :refer [StoredEntity
-                    element? object? stored-entity?
+    [entity :refer [element? object? stored-entity?
                     tree-entity?
                     uniquely-identified-object?
                     id-identified-object?

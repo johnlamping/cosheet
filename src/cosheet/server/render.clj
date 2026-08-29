@@ -1,25 +1,23 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements matching-items]]
-                      [debug :refer [simplify-for-print]]
                       [store :refer [id-known?]]
                       [entity :refer [target-entity content label->elements
                                       label->element id->entity]]
-                      [reporter :refer [reporter-value-or-invalid universal-category]]
+                      [reporter :refer [reporter-value-or-invalid]]
                       [reporter-macros :refer [app-R let-R seq-R]]
                       [category-change-calculator :refer [category-change-R]]
                       [calculator :refer [current-value]]
                       [map-reporter :refer [map-reporter-get]]
-                      [hiccup-utils :refer [add-attributes into-attributes]])
+                      [hiccup-utils :refer [add-attributes]])
             (cosheet.server
              [order-utils :refer [semantic-element?]]
-             [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
+             [model-utils :refer [ordered-tabs-ids-R
                                   semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
-             [table-render :refer [render-table-DOM-R get-table-rendering-data]]
+             [table-render :refer [render-table-DOM-R]]
              [tabs-render :refer [render-tabs-DOM]]
-             [batch-edit-render :refer [render-batch-edit-DOM
-                                        get-batch-edit-rendering-data]]
+             [batch-edit-render :refer [render-batch-edit-DOM]]
              [action-data :refer [default-get-action-data
                                   get-id-action-data
                                   get-empty-action-data]]

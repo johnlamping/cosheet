@@ -1,16 +1,15 @@
 (ns cosheet.server.model-utils
   (:require
    (cosheet
-    [debug :refer [simplify-for-print]]
-    [utils :refer [threaded-map replace-in-seqs
+    [utils :refer [threaded-map
                    extract-first]]
     [orderable :refer [initial split]]
-    [reporter-macros :refer [app-R let-R]]
+    [reporter-macros :refer [let-R]]
     [canonical :refer [canonicalize equivalent-primitives?]]
     [store :refer [new-element-store
                    update-source add-link declare-ephemeral-id
                    target-label->ids get-new-object-id]]
-    [entity :refer [primitive? object?
+    [entity :refer [object?
                     link-type-object? object-type-object?
                     uniquely-identified-object? interned-object?
                     id-identified-object?
@@ -26,22 +25,21 @@
                     make-conflux-tree-object conflux-tree-object-id
                     conflux-tree-object? non-conflux-tree-object?
                     convert-unneeded-conflux-tree-objects
-                    identity-pre-fn identity-post-fn
+                    identity-post-fn
                     threaded-traverse
                     repetition-avoiding-threaded-traverse
                     add-elements-to-entity
                     entity-complexity stored-entity?
                     tree-entity? presumed-interned-object?
                     in-different-store]]
-    [store-utils :refer [add-object add-element remove-entity-by-id
+    [store-utils :refer [add-element remove-entity-by-id
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
-    [query :refer [matching-items matching-elements
+    [query :refer [matching-items
                    not-query special-form? variable-query?
                    variable-name variable-qualifier variable-reference
-                   special-form-type sub-query variable-query
+                   variable-query
                    extended-by?]]
-    [query-impl :refer [separate-negations]]
     [query-calculator :refer [matching-item-ids-R]])
    (cosheet.server
     [order-utils :refer [semantic-element? orderable-entity?

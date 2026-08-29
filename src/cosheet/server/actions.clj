@@ -2,38 +2,32 @@
   (:require
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number threaded-map truncate-at-value
-                   swap-control-return!]]
+    [utils :refer [parse-string-as-number threaded-map truncate-at-value]]
     [canonical :refer [equivalent-primitives?]]
     [map-reporter :refer [map-reporter-get-current map-reporter-reset!
                        map-reporter-change-value!
                        map-reporter-change-value-control-return!]]
     [store :refer [update-source
                    equivalent-undo-point? update-equivalent-undo-point
-                   fetch-and-clear-modified-ids
-                   store-update! store-update-control-return!
+                   store-update-control-return!
                    id->target target-label->ids target-source->ids
                    id-known?
                    object-id? link-id? item-id? interned-object-id?
-                   get-new-object-id
                    undo! redo!
                    name-label-id
                    current-store
-                   id->string string->id id->source
+                   id->string id->source
                    Store]]
-    [store-utils :refer [remove-entity-by-id add-object]]
+    [store-utils :refer [remove-entity-by-id]]
     [entity :refer [id->entity id->element make-tree-object
                     add-elements-to-entity
                     elements content content->elements
-                    label->element label->elements label->content
-                    name-label object? element? interned-object? label-element?
-                    link-type-object? object-type-object? non-type-object?]]
-    [query :refer [matching-items]]
+                    label->element label->elements
+                    name-label object? element? label-element?]]
     mutable-store-impl
-    [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements]]
     query-impl
-    [orderable :refer [initial split]])
+    [orderable :refer [initial]])
    (cosheet.server
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data
@@ -51,7 +45,7 @@
                          create-possible-selector-entity
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
-    [order-utils :refer [furthest-item order-element-for-item]])))
+    [order-utils :refer [order-element-for-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.

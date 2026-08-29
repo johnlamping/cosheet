@@ -1,5 +1,5 @@
 (ns cosheet.ajax
-  (:require [ajax.core :refer [GET POST transit-response-format]]
+  (:require [ajax.core :refer [POST transit-response-format]]
             reagent.core
             [cosheet.client-utils :refer
              [component components

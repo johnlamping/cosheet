@@ -8,15 +8,14 @@
                       reporter-valid? validity-category]]
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
-    [store :refer [update-source add-link
-                   target-label->ids id->source ImmutableStore]]
+    [store :refer [target-label->ids id->source ImmutableStore]]
     [entity :refer [content elements orientation
                     label->elements label->content
                     id->entity object? element? tree-object?
                     make-tree-element make-tree-object-copying-id
                     identity-pre-fn
                     repetition-avoiding-threaded-traverse]]
-    [query :refer [matching-items special-form?]]
+    [query :refer [matching-items]]
     [utils :refer [with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 

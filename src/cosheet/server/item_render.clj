@@ -2,34 +2,29 @@
   (:require
    (cosheet
     [canonical :refer [canonical-set-to-list canonicalize]]
-    [store :refer [make-item-id]]
-    [entity :refer [id->entity id->updating-entity-R
+    [entity :refer [id->updating-entity-R
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object? name-element? target-entity
                     elements label->elements content->elements
                     name-label link-type object-type
                     all-presumed-interned-in-different-store
-                    entity-complexity
                     add-elements-to-entity]]
-    [query :refer [matching-elements]]
-    [utils :refer [multiset-diff assoc-if-non-empty
-                   map-with-first-last
+    [utils :refer [map-with-first-last
                    separate-by]]
     [debug :refer [simplify-for-print]]
     [calculator :refer [current-value]]
-    [hiccup-utils :refer [dom-attributes into-attributes add-attributes
+    [hiccup-utils :refer [into-attributes add-attributes
                           merge-classes]]
-    [reporter-macros :refer [app-R let-R]])
+    [reporter-macros :refer [let-R]])
    (cosheet.server
     [model-utils :refer [semantic-elements
-                         semantic-non-label-elements semantic-label-elements
+                         semantic-label-elements
                          semantic-to-tree semantic-to-tree-excluding-elements
                          entity->canonical-semantic]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves
-                       hierarchy-node-logical-leaves
                        hierarchy-by-canonical-info
                        item-maps-by-elements
                        hierarchy-node-example-elements]]
@@ -48,7 +43,6 @@
                           transform-specification-for-labels
                           transform-specification-for-non-contained-labels]]
     [action-data :refer [default-get-action-data
-                         default-get-do-batch-edit-action-data
                          get-item-or-exemplar-action-data
                          get-item-do-batch-edit-action-data
                          get-pass-through-action-data

@@ -1,11 +1,9 @@
 (ns cosheet.server.hierarchy
   (:require (cosheet
-             [entity :as entity]
              [utils :refer [multiset multiset-diff multiset-sum
                             multiset-to-generating-values update-last]]
              [query :refer [extended-by?]]
              query-impl
-             [debug :refer [simplify-for-print]]
              [reporter-macros :refer [let-R]])
             (cosheet.server
              [model-utils :refer [entity->canonical-semantic

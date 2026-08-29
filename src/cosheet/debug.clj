@@ -1,6 +1,5 @@
 (ns cosheet.debug
-  (:require [clojure.set :as set]
-            [clojure.pprint :refer [pprint]]
+  (:require [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [parse-string-as-number]]
                       [store :refer [Store candidate-matching-ids id->target
                                      item-id-name item-id? mutable-store?
@@ -9,16 +8,12 @@
                       [entity :refer [content element? elements id->entity
                                       orientation primitive? stored-entity?
                                       to-tree uniquely-identified-object?]]
-                      [entity-impl :as entity-impl]
                       [query :refer [matching-items]]
-                      [reporter :refer [reporter? attended?
-                                        reporter-data reporter-value-or-invalid
+                      [reporter :refer [reporter?
+                                        reporter-data
                                         reporter-valid?]]
                       [orderable]
-                      [task-queue :refer [make-priority-task-queue
-                                          current-tasks]]
-                      [calculator :refer [current-value computation-value
-                                          make-calculator-data]]
+                      [task-queue :refer [current-tasks]]
                       [mutable-map :refer [current-contents]])))
 
 (defn simplified-function-name

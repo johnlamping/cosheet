@@ -1,5 +1,5 @@
 (ns cosheet.query-impl
-  (:require (cosheet [store :as store :refer [candidate-matching-ids]]
+  (:require (cosheet [store :refer [candidate-matching-ids]]
                       [entity :refer [mutable-entity? primitive? object?
                                       presumed-interned-object?
                                       stored-entity?
@@ -7,7 +7,6 @@
                                       orientation content elements
                                       make-tree-element make-tree-object
                                       label->elements
-                                      label->content
                                       to-tree
                                       label-element?]]
                       [query :refer [extended-by-m?
@@ -28,8 +27,7 @@
                                          canonicalize]]
                       [utils :refer [unzip
                                      conj-disjoint-combinations
-                                     disjoint-combinations]]
-                      [debug :refer [simplify-for-print]])))
+                                     disjoint-combinations]])))
 
 ;;; TODO: !!! Do checking for non-generic objects, not moving into them.
 

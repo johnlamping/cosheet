@@ -1,6 +1,5 @@
 (ns cosheet.interaction-state
-  (:require [cosheet.dom-utils :refer [find-ancestor-with-class
-                                        scroll-to-be-visible]]))
+  (:require [cosheet.dom-utils :refer [scroll-to-be-visible]]))
 
 ;;; These are the UI operations on the edit field, the context menu,
 ;;; and on selections. We put them in their own file so both

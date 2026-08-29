@@ -8,23 +8,16 @@
                                      all-presumed-interned-in-different-store
                                      make-tree-element make-tree-object
                                      content orientation]]
-                      [store :refer [item-id?]]
                       [utils :refer [multiset multiset-to-generating-values
-                                     replace-in-seqs assoc-if-non-empty
+                                     replace-in-seqs
                                      separate-by]]
-                      [debug :refer [simplify-for-print]]
-                      [query :refer [matching-elements]]
-                      [orderable :as orderable]
                       [canonical :refer [canonicalize
                                          canonical-extended-by?
-                                         canonical-have-common-elaboration?]]
-                      [hiccup-utils
-                       :refer [into-attributes add-attributes]])
+                                         canonical-have-common-elaboration?]])
             (cosheet.server
              [model-utils :refer [semantic-elements semantic-elements
                                   entity->fixed-term
-                                  entity->canonical-semantic]]
-             [hierarchy :refer [hierarchy-node-descendants]])))
+                                  entity->canonical-semantic]])))
 
 ;;; The following records hold definitions for templates for virtual items.
 

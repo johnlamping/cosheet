@@ -1,30 +1,23 @@
 (ns cosheet.server.dom-manager
   (:require [clojure.data.priority-map :refer [priority-map]]
-            (cosheet [task-queue :refer [add-task-with-priority]]
-                      [reporter :refer [remove-attendee! set-attendee!
-                                        set-attendee-and-call-if-valid!
-                                        reporter?
-                                        reporter-value-when-valid
-                                        value-category]]
+            (cosheet [reporter :refer [remove-attendee!
+                                       set-attendee-and-call-if-valid!
+                                       reporter?
+                                       reporter-value-when-valid
+                                       value-category]]
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [item-id? id->string string->id
                                      mutable-store?]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
-                                     swap-and-act-control-return!
                                      with-latest-value
-                                     update-in-clean-up
                                      update-new-further-action
                                      update-new-further-actions
-                                     dissoc-in
-                                     call-pseudo-closure
-                                     pseudo-closure-application]]
-                      [hiccup-utils :refer [dom-attributes add-attributes
-                                            into-attributes]])
+                                     dissoc-in]]
+                      [hiccup-utils :refer [dom-attributes add-attributes]])
             (cosheet.server
              [render :refer [dom-renderer]]
-             [action-data :refer [get-item-or-exemplar-action-data
-                                  update-action-data-for-component]])))
+             [action-data :refer [update-action-data-for-component]])))
 
 (def verbose false)
 

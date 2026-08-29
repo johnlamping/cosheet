@@ -1,5 +1,5 @@
 (ns cosheet.profiling
-  (:require (cosheet [reporter :refer [reporter? attended?
+  (:require (cosheet [reporter :refer [reporter?
                                        reporter-data reporter-value-or-invalid]]
                      [task-queue :refer [make-priority-task-queue]]
                      [calculator :refer [computation-value

@@ -5,16 +5,16 @@
    ;; Note: We seem to have to declare any closure packages used by
    ;; our libraries in order for them to be visible to Chrome.
    [cosheet.client-utils :refer [component components add-pending-clean]]
-   [cosheet.dom-utils :refer [is-editable? is-immutable?
-                               descendant-with-editable find-editable
+   [cosheet.dom-utils :refer [is-immutable?
+                               find-editable
                                dom-text find-ancestor-with-class
                                next-mutable-editable]]
    cosheet.hiccup-utils
    [cosheet.ajax :refer [timed-log request-action request-replay
                           ajax-request ajax-if-pending]]
    [cosheet.interaction-state :refer [edit-field-open-on
-                                       open-edit-field close-edit-field
-                                       open-context-menu close-context-menu
+                                       open-edit-field
+                                       open-context-menu
                                        close-popups
                                        selected deselect
                                        select-and-clear-pending]]

@@ -3,23 +3,19 @@
   (:require
    [clojure-csv.core :refer [parse-csv]]
    (cosheet
-    [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value
+    [utils :refer [swap-control-return! with-latest-value
                    parse-string-as-number]]
-    [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store store-to-data data-to-store
+                   read-store write-store store-to-data
                    store-update-control-return! declare-ephemeral-id
                    store-update! id-valid-link? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
     [store-utils :refer [add-element remove-entity-by-id]]
-    [query :refer [matching-items]]
-    [debug :refer [simplify-for-print]]
     [calculator :refer [compute propagate-calculator-data!]]
     [map-reporter :refer [make-map-reporter map-reporter-get-current
                        map-reporter-reset!]])
    (cosheet.server
-    [order-utils :refer [order-element-for-item]]
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]

@@ -1,8 +1,7 @@
 (ns cosheet.entity
   (:require (cosheet [calculator :refer [current-value]]
                       [reporter-macros :refer [let-R]]
-                      [store :refer [make-item-id item-id?
-                                     link-id? object-id?
+                      [store :refer [link-id? object-id?
                                      generic-name?
                                      ;; These are used by entity_impl.clj
                                      ;; when it is working in our namespace.

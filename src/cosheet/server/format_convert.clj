@@ -1,6 +1,5 @@
 (ns cosheet.server.format-convert
-  (:require (cosheet [debug :refer [simplify-for-print]]             
-                      [entity :refer [to-tree label->elements content]]
+  (:require (cosheet [entity :refer [to-tree label->elements content]]
                       [store :refer [update-source id-valid-link?]]
                       [store-utils :refer [add-element remove-entity-by-id]]
                       [query :refer [matching-items]])))

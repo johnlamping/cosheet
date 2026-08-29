@@ -8,8 +8,6 @@
                                      current-store
                                      Store]]
                       [canonical :refer [equivalent-primitives?]]
-                      [calculator :refer [current-value]]
-                      [orderable :as orderable]
                       [entity :refer :all]
                       [reporter-macros :refer [seq-R let-R]]
                       [category-change-calculator :refer [category-change-R]])))

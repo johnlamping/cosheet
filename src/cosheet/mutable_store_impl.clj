@@ -1,17 +1,15 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
-                      [reporter :refer [set-value! change-data!
+                      [reporter :refer [change-data!
                                         data-latest-value reporter-data
                                         change-data-control-return!
                                         reporter-value-or-invalid
                                         value-valid? data-valid?
-                                        universal-category Reporter
+                                        Reporter
                                         merge-default-reporter-data]]
                       [reporter-macros :refer [cache-R]]
                       [category-change-calculator :refer [category-change-R]]
-                      [utils :refer [call-with-latest-value union-seqs
-                                     update-in-clean-up
-                                     swap-control-return!]])))
+                      [utils :refer [union-seqs]])))
 
 (defn new-mutable-store-data
   "Return the data for a new mutable store with a state that starts out

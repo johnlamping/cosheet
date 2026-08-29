@@ -1,16 +1,12 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :refer [id->updating-entity-R
                                       label->elements content elements]]
-                      [debug :refer [simplify-for-print]]
-                      [hiccup-utils :refer [dom-attributes
-                                            into-attributes add-attributes]]
+                      [hiccup-utils :refer [into-attributes add-attributes]]
                       [reporter-macros :refer [let-R seq-R]]
                       [canonical :refer [canonical-set-to-list]])
             (cosheet.server
              [hierarchy :refer [hierarchy-by-selected-elements
-                                hierarchy-node?
                                 hierarchy-node-descendants
-                                hierarchy-node-next-level
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [ordered-entities]]
@@ -21,10 +17,7 @@
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
                                   add-parallel-item-ids]]
-             [action-data :refer [default-get-action-data
-                                  get-item-or-exemplar-action-data
-                                  get-virtual-action-data
-                                  compose-action-data-getter]])))
+             [action-data :refer [get-item-or-exemplar-action-data]])))
 
 (def base-tab-width 150)
 

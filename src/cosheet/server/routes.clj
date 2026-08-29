@@ -12,13 +12,13 @@
                             list-user-files admin-page
                             create-user delete-user-view]]
              [session-state :refer [isAdmin url-path-to-file-path]]
-             [db :refer [get-user-pwdhash get-all-users]])
+             [db :refer [get-user-pwdhash]])
             [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
             [buddy.hashers :as hashers]
 
-            [ring.util.response :refer [response redirect content-type]]
+            [ring.util.response :refer [response redirect]]
             [ring.middleware.session :refer [wrap-session]]
 
             [compojure.response :refer [render]]

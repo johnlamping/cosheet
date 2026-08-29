@@ -1,29 +1,24 @@
 (ns cosheet.server.batch-edit-render
   (:require (cosheet [reporter :refer [universal-category]]
                       [entity :refer [id->entity updating-immutable
-                                      elements to-tree
                                       make-tree-object
                                       label-element? label->elements
                                       add-elements-to-entity
                                       target-entity]]
-                      [query :refer [matching-elements matching-items
-                                     extended-by?]]
+                      [query :refer [matching-elements matching-items]]
                       [query-calculator :refer [matching-item-ids-R]]
-                      [debug :refer [simplify-for-print]]
-                      [utils :refer [separate-by disjoint-combinations]]
+                      [utils :refer [separate-by]]
                       [hiccup-utils :refer [add-attributes]]
                       [reporter-macros :refer [let-R]])
             (cosheet.server
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
-                                hierarchy-node-descendants
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels]]
              [render-utils :refer [hierarchy-node-DOM make-component
                                    make-sequential-template
                                    ensure-label-object]]
-             [model-utils :refer [semantic-elements semantic-non-label-elements
-                                  semantic-to-tree entity->canonical-semantic
-                                  object-semantic-to-tree
+             [model-utils :refer [semantic-elements
+                                  semantic-to-tree
                                   pattern-to-fixed-term]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
@@ -31,8 +26,7 @@
                                   hierarchy-node-labels-DOM
                                   virtual-DOM-component
                                   virtual-label-DOM-component]]
-             [action-data :refer [best-match
-                                  get-pass-through-action-data]])))
+             [action-data :refer [get-pass-through-action-data]])))
 
 (defn row-match-query
   "Convert a row-condition-like query entity into a fixed-term object pattern

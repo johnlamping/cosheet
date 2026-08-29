@@ -1,24 +1,21 @@
 (ns cosheet.server.action-data
-  (:require (cosheet [utils :refer [multiset replace-in-seqs
+  (:require (cosheet [utils :refer [replace-in-seqs
                                      assoc-if-non-empty
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [item-id? id->target id->source]]
+                      [store :refer [item-id? id->target]]
                       [entity :refer [elements content label->elements
                                       id->entity entity-complexity object?]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
-                      [query :refer [matching-elements matching-items
-                                     extended-by?]
-                      :as query])
+                      [query :refer [matching-elements]])
             (cosheet.server
              [render-utils :refer [sequential-template?]]
-             [model-utils :refer [semantic-elements semantic-to-tree
+             [model-utils :refer [semantic-to-tree
                                   entity->canonical-semantic
                                   pattern-to-fixed-term
-                                  create-possible-selector-entities]]
-             [order-utils :refer [ordered-entities]])))
+                                  create-possible-selector-entities]])))
 
 ;;; This file contains the basic action data getters, plus utilities for them.
 ;;; Files with unique needs for action data getters define their own.

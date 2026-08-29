@@ -7,14 +7,12 @@
      [store :refer [current-store data-to-store store-reset! store-update!]]
      store-impl
      mutable-store-impl
-     [entity :refer [in-different-store content label->elements]]
+     [entity :refer [content]]
      entity-impl
-     [query :refer [matching-elements]]
-     [profiling :refer [profile-and-print-reporters]]
      query-impl
      [calculator :refer [make-calculator-data compute]]
-     [task-queue :refer [make-priority-task-queue finished-all-tasks?]]
-     [hiccup-utils :refer [dom-attributes add-attributes]]
+     [task-queue :refer [make-priority-task-queue]]
+     [hiccup-utils :refer [dom-attributes]]
      [map-reporter :refer [map-reporter-reset! map-reporter-get-current]])
     (cosheet.server
       [dom-manager :refer [request-client-refresh

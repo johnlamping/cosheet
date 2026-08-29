@@ -1,33 +1,24 @@
 (ns cosheet.server.table-render
-  (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by
-                                     remove-first]]
-                      [store :refer [id->target target-label->ids]]
-                      [reporter :refer [universal-category]]
-                      [entity :refer [content elements label->elements
+  (:require (cosheet [entity :refer [content elements
                                       id->entity
                                       id->updating-entity-R
                                       all-presumed-interned-in-different-store
-                                      object? label-element? label->element]]
-                      [query :refer [matching-elements matching-items
+                                      object? label-element?]]
+                      [query :refer [matching-elements
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
+                      [hiccup-utils :refer [add-attributes]]
                       [debug :refer [simplify-for-print]]
-                      [hiccup-utils :refer [dom-attributes
-                                            into-attributes add-attributes]]
                       [reporter-macros :refer [app-R let-R]])
             (cosheet.server
-             [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
+             [hierarchy :refer [hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes
-                                hierarchy-node-leaves
-                                hierarchy-node-next-level
-                                hierarchy-nodes-extent
                                 hierarchy-by-labels
                                 hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [ordered-ids-R ordered-entities]]
              [model-utils :refer [table-column-headers-id
                                   table-row-condition-id
                                   table-column-headers-element
-                                  table-row-condition-element
                                   table-row-condition-object
                                   object-semantic-to-tree
                                   semantic-to-tree
@@ -44,8 +35,6 @@
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
                                   virtual-element-and-label-DOM
-                                  label-stack-DOM
-                                  element-content-DOM
                                   labels-and-elements-DOM
                                   non-label-elements-DOM
                                   hierarchy-node-labels-DOM]]

@@ -3,9 +3,7 @@
                       [entity :refer [stored-entity?
                                       object? elements content
                                       orientation entity-key]]
-                      [utils :refer [pseudo-set-set
-                                     pseudo-set-seq
-                                     pseudo-set-set-membership
+                      [utils :refer [pseudo-set-seq
                                      pseudo-set-conj
                                      pseudo-set-disj
                                      pseudo-set-contains?

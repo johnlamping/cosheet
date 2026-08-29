@@ -4,8 +4,7 @@
                                change-data! change-data-control-return!
                                change-value!]]
              [reporter-macros :refer [app-R]]
-             [category-change-calculator :refer [category-change-calculator
-                                                 category-change-R]])))
+             [category-change-calculator :refer [category-change-R]])))
 
 ;;; Support a reporter that holds a map. The entries in the map may
 ;;; themselves be reporters.

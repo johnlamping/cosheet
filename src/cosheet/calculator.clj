@@ -5,22 +5,19 @@
                                        value-valid? data-valid?
                                        data-latest-value
                                        data-value-or-invalid
-                                       validity-category
                                        reporter-valid? attended?
                                        set-calculator-data-if-needed!
                                        set-attendee! set-attendee-and-call!
                                        add-validity-category-if-appropriate
                                        remove-attendee!
-                                       inform-attendees
-                                       invalid]
+                                       inform-attendees]
                        :as reporter]
                       [mutable-map :as mm]
                       [task-queue :refer [is_task_queue?
                                           run-all-pending-tasks
                                           run-some-pending-tasks
                                           add-task-with-priority]]
-                      [utils :refer [swap-control-return!
-                                     swap-and-act!
+                      [utils :refer [swap-and-act!
                                      update-new-further-action
                                      with-latest-value]])))
 

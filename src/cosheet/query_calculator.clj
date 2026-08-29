@@ -6,8 +6,7 @@
                                         remove-attendee!
                                         inform-attendees
                                         data-attended?
-                                        make-reporter invalid
-                                        validity-category]]
+                                        make-reporter]]
                       [store :refer (mutable-store?)]
                       [entity :refer [id->entity]]
                       entity-impl

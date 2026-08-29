@@ -1,7 +1,7 @@
 (ns cosheet.query
   (:require (cosheet [entity :refer [content elements orientation
                                      label->elements label->content
-                                     to-tree object? primitive?
+                                     object? primitive?
                                      tree-entity? 
                                      make-tree-element
                                      add-elements-to-entity]])))

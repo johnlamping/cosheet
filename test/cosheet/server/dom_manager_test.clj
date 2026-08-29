@@ -706,7 +706,7 @@
         violations (atom [])
         ;; Additional dom-changing thunks, interjected one at a time
         ;; into the running cascade by the injector.
-        pending-dom-changes (atom [])
+        delayed-dom-changes (atom [])
         ;; This rng drives all of the test's scheduling: which ready coop
         ;; task runs next, whether the mid-check or injector fires, and
         ;; (below) the tie-breaker among equal-priority queued tasks.
@@ -716,11 +716,11 @@
               {:mid-check (fn []
                             (record-double-active-client-ids! h violations))
                :injector (fn []
-                           (when-let [t (first @pending-dom-changes)]
-                             (swap! pending-dom-changes (comp vec rest))
+                           (when-let [t (first @delayed-dom-changes)]
+                             (swap! delayed-dom-changes (comp vec rest))
                              (t)))})
-        n 10 ; number of doms
-        k 8 ; number of concurrent tasks
+        n 30 ; number of doms
+        k 16 ; number of concurrent tasks
         ids (mapv #(make-item-id (str "n" %)) (range n))
         ;; Every call to spec generates a distinct spec, because it
         ;; creates a new function for the spec's render-dom. So we cache
@@ -732,28 +732,32 @@
         ;; scheduled interleaving, so its sequence is deterministic.
         dom-rng (java.util.Random. 13579)
         orig-add-task cosheet.task-queue/add-task-with-priority
+        ;; Include each potential child with probability
+        ;; (min 1/2 3/(n-i)), so a node's expected number of children
+        ;; stays bounded (about 3) rather than growing with n. That
+        ;; keeps the tree sparse, so the test's cost scales far better.
         random-dom (fn [i]
-                     (into [:div {:v (.nextInt dom-rng 1000000)}]
-                           (for [j (range (inc i) n)
-                                 :when (.nextBoolean dom-rng)]
-                             [:component (nth specs j)])))
+                     (let [p (min 1/2 (/ 3 (- n i)))]
+                       (into [:div {:v (.nextInt dom-rng 1000000)}]
+                             (for [j (range (inc i) n)
+                                   :when (< (.nextDouble dom-rng) p)]
+                               [:component (nth specs j)]))))
         ;; A dom-changing thunk: usually sets a random node's dom;
         ;; occasionally (only for t 0) replaces node 0's spec, salvaging
-        ;; its subtree. With compute? it also runs to quiescence, as a
-        ;; top-level activity does; without it, it just perturbs the
-        ;; dom, as an interjected activity does mid-cascade.
-        change-thunk
-        (fn [t compute?]
-          (if (and (zero? t) (zero? (.nextInt dom-rng 3)))
-            (let [new-spec (spec h (ids 0))]
-              (fn []
-                (set-dom! h :root [:div [:component new-spec]])
-                (when compute? (compute cd))))
-            (let [i (.nextInt dom-rng n)
-                  dom (random-dom i)]
-              (fn []
-                (set-dom! h (ids i) dom)
-                (when compute? (compute cd))))))]
+        ;; its subtree. It just perturbs the dom, as an interjected
+        ;; activity does mid-cascade.
+        change-thunk (fn [t]
+                       (if (and (zero? t) (zero? (.nextInt dom-rng 3)))
+                         (let [new-spec (spec h (ids 0))]
+                           (fn [] (set-dom! h :root
+                                            [:div [:component new-spec]])))
+                         (let [i (.nextInt dom-rng n)
+                               dom (random-dom i)]
+                           (fn [] (set-dom! h (ids i) dom)))))
+        ;; Make a thunk that calls its argument, then runs to quiescence.
+        act-and-compute-thunk (fn [thunk] (fn []
+                                            (thunk)
+                                            (compute cd)))]
     (with-redefs [swap-and-act! (fn [cell f] (coop-swap-and-act! coop cell f))
                   swap-and-act-control-return!
                   (fn [cell f]
@@ -777,21 +781,23 @@
       (is (empty? @violations)
           [:transient-duplicate-active-client-ids @violations])
       (reset! violations [])
-      (dotimes [_ 200]
-        ;; Fire k concurrent activities and interleave their cascades.
-        ;; One of them occasionally replaces node 0's spec (and points
-        ;; the root at the replacement), so node 0's subtree is salvaged
-        ;; and transferred to the new component. Also queue up k more
-        ;; dom changes for the injector to interject into the cascade as
-        ;; it runs, so new changes arrive while old ones are in flight.
-        (let [thunks (vec (for [t (range k)] (change-thunk t true)))]
-          (reset! pending-dom-changes
-                  (vec (for [t (range k)] (change-thunk t false))))
+      (dotimes [_ 10]
+        ;; Fire k concurrent dom changes. Each has to be followed by
+        ;; (compute cd), because there is no guarantee which will run
+        ;; first, and we need to have a strand running compute once
+        ;; all changes are active.
+        (let [thunks (vec (for [t (range k)]
+                            (act-and-compute-thunk (change-thunk t))))]
+          ;; Queue up k more dom changes for the injector to interject
+          ;; into the cascade as it runs, so new changes arrive while
+          ;; old ones are in flight.
+          (reset! delayed-dom-changes
+                  (vec (for [t (range k)] (change-thunk t))))
           (run-coop-tasks! coop thunks)
           ;; Run any interjections that never got injected, then quiesce.
-          (when-let [pending-changes @pending-dom-changes]
-            (doseq [t pending-changes] (t))
-            (reset! pending-dom-changes [])
+          (when-let [delayed-changes @delayed-dom-changes]
+            (doseq [t delayed-changes] (t))
+            (reset! delayed-dom-changes [])
             (compute cd)
             (run-coop-tasks! coop thunks))
           (check-invariants h)

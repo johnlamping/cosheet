@@ -12,7 +12,7 @@
                                   link-type-object]]
              [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [id->element id->object
-                                         label->elements elements to-tree
+                                         label->elements to-tree
                                          make-tree-object
                                          link-type name-label]]
              [store :refer [->ItemId]]

@@ -5,7 +5,7 @@
                                      item-id-name item-id? mutable-store?
                                      new-element-store read-store]]
                       store-impl
-                      [entity :refer [content element? elements id->entity
+                      [entity :refer [content element? all-elements id->entity
                                       orientation primitive? stored-entity?
                                       to-tree uniquely-identified-object?]]
                       [query :refer [matching-items]]
@@ -217,7 +217,7 @@
   (if (primitive? entity)
     entity
     (let [content (content entity)
-          elements (elements entity)]
+          elements (all-elements entity)]
       (if (empty? elements)
         content
         (if (= depth 0)

@@ -1,6 +1,6 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :refer [id->updating-entity-R
-                                      label->elements content elements]]
+                                      label->elements content all-elements]]
                       [hiccup-utils :refer [into-attributes add-attributes]]
                       [reporter-macros :refer [let-R seq-R]]
                       [canonical :refer [canonical-set-to-list]])
@@ -133,7 +133,7 @@
           hierarchy (hierarchy-by-selected-elements
                      tabs
                      (fn [item] (not (some #(= (content %) :tab-topic)
-                                           (elements item)))))
+                                           (all-elements item)))))
           hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
           tab-doms (map (fn [node]
                           (hierarchy-node-DOM

@@ -6,7 +6,7 @@
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object? name-element? target-entity
-                    elements label->elements content->elements
+                    label->elements content->elements
                     name-label link-type object-type
                     all-presumed-interned-in-different-store
                     add-elements-to-entity]]

@@ -1,5 +1,6 @@
 (ns cosheet.server.render-utils
-  (:require (cosheet [entity :refer [target-entity elements element?
+  (:require (cosheet [entity :refer [target-entity all-elements
+                                     forward-elements element?
                                      label-element? object? label-object?
                                      link-type-object? object-type-object?
                                      name-element?
@@ -68,7 +69,7 @@
           (let [template-sequence (:template-sequence template)]
             [(butlast template-sequence) (last template-sequence)])
           [[] template])
-        new-element (cons new-content (elements last-template))]
+        new-element (cons new-content (all-elements last-template))]
     (if (empty? prefix-templates)
       new-element
       (apply make-sequential-template
@@ -102,7 +103,7 @@
        (cond-> (if (universal-template? template)
                  []
                  (do (assert (object? template))
-                     (elements template)))
+                     (all-elements template)))
          (not is-label)
          (conj `(~typing-object))
          (not has-name)
@@ -115,18 +116,18 @@
   (assert (or (element? template) (universal-template? template)))
   (make-tree-element (orientation template)
                      (ensure-label-object (content template) label-type)
-                     (elements template)))
+                     (forward-elements template)))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of
   condition, except that the empty string in an element is considered
   to match a nil in a condition, and presumed-interned objects match
-  only their ids, ignoring their stores. The condition must be in list
+  only their ids, ignoring their stores. The condition must be in tree
   form.  If part of a condition is not satisfied by any element,
   ignore that part."
   [entity condition]
-  (when-let [condition-elements (seq (elements condition))]
-    (let [elements (elements entity)
+  (when-let [condition-elements (seq (forward-elements condition))]
+    (let [elements (all-elements entity)
           canonical-elements
           (map #(entity->canonical-semantic
                  (all-presumed-interned-in-different-store % nil))

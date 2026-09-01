@@ -9,7 +9,7 @@
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
     [store :refer [target-label->ids id->source ImmutableStore]]
-    [entity :refer [content elements orientation
+    [entity :refer [content all-elements forward-elements orientation
                     label->elements label->content
                     id->entity object? element? tree-object?
                     make-tree-element make-tree-object-copying-id
@@ -80,20 +80,15 @@
   each level sorted by their :order information."
   [entity]
   (let [post-fn (fn [_ assembled _ cd]
-                  [(cond ;; Tree-form object.
-                         (tree-object? assembled)
+                  [(cond (tree-object? assembled)
                          (make-tree-object-copying-id
                           assembled
-                          (ordered-entities (elements assembled)))
-                         ;; Tree-form element (a list whose first item
-                         ;; or content drives orientation).
+                          (ordered-entities (all-elements assembled)))
                          (element? assembled)
                          (make-tree-element
                           (orientation assembled)
                           (content assembled)
-                          (ordered-entities (elements assembled)))
-                         ;; Atomic (primitive or presumed-interned
-                         ;; object): nothing to reorder.
+                          (ordered-entities (forward-elements assembled)))
                          :else assembled)
                    cd])
         [tree _] (repetition-avoiding-threaded-traverse
@@ -229,7 +224,7 @@
   "Return the furthest element of the item, in the direction of the position.
    If the item has no ordered elements, return the item."
   (let [candidates (filter (fn [element] (label->content element :order))
-                           (elements item))]
+                           (all-elements item))]
     (if candidates
       (furthest-item candidates position)
       item)))

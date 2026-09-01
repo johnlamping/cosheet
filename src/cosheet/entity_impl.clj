@@ -57,8 +57,9 @@
   (element? [this] (link-id? item-id))
   (object? [this] (object-id? item-id))
   (content [this] nil)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] orientation)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -113,16 +114,19 @@
         (endpoint->entity (id->target store item-id) store :target)
         (endpoint->entity (id->source store item-id) store))))
 
-  (elements [this]
-    (seq (cond->> (forward-elements this)
-           (object-id? item-id)
-           (concat (->> (source->ids store item-id)
-                        (filter #(object-id? (id->target store %)))
-                        (map #(id->element % :target store)))))))
-
   (forward-elements [this]
     (seq (->> (target->ids store item-id)
               (map #(id->element % store)))))
+
+  (reverse-elements [this]
+    (when (object-id? item-id)
+      (seq (->> (source->ids store item-id)
+                (filter #(object-id? (id->target store %)))
+                (map #(id->element % :target store))))))
+
+  (all-elements [this]
+    (seq (concat (forward-elements this)
+                 (reverse-elements this))))
 
   (orientation [this]
     orientation)
@@ -206,24 +210,27 @@
         (let-R [content (id->source store item-id)]
           (endpoint->entity content store)))))
 
-  (elements [this]
-    (let-R [forward-elements (forward-elements this)]
-      (if (object-id? item-id)
-        (let-R [element-ids (source->ids store item-id)
-                targets (seq-R (map #(id->target store %) element-ids))]
-          (seq (concat
-                forward-elements
-                (->> (map vector element-ids targets)
-                     (keep (fn [[element-id target]]
-                             (when (object-id? target)
-                               element-id)))
-                     (map #(id->element % :target store))))))
-        forward-elements)))
-
   (forward-elements [this]
     (let-R [element-ids (target->ids store item-id)]
       (seq (for [element-id element-ids]
              (id->element element-id store)))))
+
+  (reverse-elements [this]
+    (when (object-id? item-id)
+      (let-R [element-ids (source->ids store item-id)
+              targets (seq-R (map #(id->target store %) element-ids))]
+        (seq (->> (map vector element-ids targets)
+                  (keep (fn [[element-id target]]
+                          (when (object-id? target)
+                            element-id)))
+                  (map #(id->element % :target store)))))))
+
+  (all-elements [this]
+    (let-R [forward-elements (forward-elements this)]
+      (if (object-id? item-id)
+        (let-R [reverse-elements (reverse-elements this)]
+          (seq (concat forward-elements reverse-elements)))
+        forward-elements)))
 
   (orientation [this]
     orientation)
@@ -297,10 +304,12 @@
         (second f)
         f)))
 
-  (elements [this] (seq (rest this)))
-
   (forward-elements [this] (seq (filter #(not= (orientation %) :target)
-                                        (elements this))))
+                                        (all-elements this))))
+
+  (reverse-elements [this] nil)
+
+  (all-elements [this] (seq (rest this)))
 
   (orientation [this]
     (let [f (first this)]
@@ -310,14 +319,14 @@
 
   (content->elements [this content-value]
     (seq (filter #(equivalent-entities? content-value (content %))
-                 (elements this))))
+                 (forward-elements this))))
 
   (label->elements [this label]
     (seq (filter (fn [element]
                    (some #(and (label-element? %)
                                (equivalent-entities? label (content %)))
-                         (elements element)))
-                 (elements this))))
+                         (forward-elements element)))
+                 (forward-elements this))))
 
   (entity-key [this]
     this)
@@ -343,27 +352,31 @@
 
   (content [this] nil)
 
-  (elements [this]
+  (forward-elements [this] (seq (filter #(not= (orientation %) :target)
+                                        (all-elements this))))
+
+  (reverse-elements [this] (when (object? this)
+                             (seq (filter #(= (orientation %) :target)
+                                          (all-elements this)))))
+
+  (all-elements [this]
     (assert (object? this) this)
     (seq (case (first this)
            :object (rest this)
            :conflux-object (nthrest this 2))))
 
-  (forward-elements [this] (seq (filter #(not= (orientation %) :target)
-                                        (elements this))))
-
   (orientation [this] nil)
 
   (content->elements [this content-value]
     (seq (filter #(equivalent-entities? content-value (content %))
-                 (elements this))))
+                 (all-elements this))))
 
   (label->elements [this label]
     (seq (filter (fn [element]
                    (some #(and (label-element? %)
                                (equivalent-entities? label (content %)))
-                         (elements element)))
-                 (elements this))))
+                         (forward-elements element)))
+                 (all-elements this))))
 
 
   (entity-key [this]
@@ -380,8 +393,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -394,8 +408,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -408,8 +423,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -422,8 +438,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -436,8 +453,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -450,8 +468,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -464,8 +483,9 @@
   (element? [this] false)
   (object? [this] false)
   (content [this] this)
-  (elements [this] nil)
   (forward-elements [this] nil)
+  (reverse-elements [this] nil)
+  (all-elements [this] nil)
   (orientation [this] :source)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)

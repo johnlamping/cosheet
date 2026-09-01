@@ -1,9 +1,7 @@
 (ns cosheet.server.table-render
-  (:require (cosheet [entity :refer [content elements
-                                      id->entity
-                                      id->updating-entity-R
-                                      all-presumed-interned-in-different-store
-                                      object? label-element?]]
+  (:require (cosheet [entity :refer [content object? label-element?
+                                     id->entity id->updating-entity-R
+                                     all-presumed-interned-in-different-store]]
                       [query :refer [matching-elements
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]

@@ -7,7 +7,7 @@
              [task-queue :refer [make-priority-task-queue]]
              [store :refer [new-element-store new-mutable-store
                             add-link get-new-object-id]]
-             [entity :refer [content elements orientation
+             [entity :refer [content all-elements orientation
                              element? object? tree-object? interned-object?
                              make-tree-element make-tree-object-copying-id
                              tree-entity?]]
@@ -35,7 +35,7 @@
   [object order]
   (assert (tree-object? object))
   (let [[elements remainder] (threaded-map add-order-elements-to-element
-                                         (elements object) order)]
+                                         (all-elements object) order)]
     [(make-tree-object-copying-id object elements) remainder]))
 
 (defn add-order-elements-to-element
@@ -47,7 +47,7 @@
     (cond
       (element? entity)
       (let [[elements remainder] (threaded-map add-order-elements-to-element
-                                             (elements entity) order)
+                                             (all-elements entity) order)
             contents (content entity)
             [contents remainder] (if (and (object? contents)
                                           (not (interned-object? contents)))

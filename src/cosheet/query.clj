@@ -1,5 +1,6 @@
 (ns cosheet.query
-  (:require (cosheet [entity :refer [content elements orientation
+  (:require (cosheet [entity :refer [content all-elements
+                                     forward-elements orientation
                                      label->elements label->content
                                      object? primitive?
                                      tree-entity? 
@@ -140,7 +141,7 @@
             (if (= (orientation sub-query) :target)
               (make-tree-element :source
                                  (content sub-query)
-                                 (concat (elements sub-query)
+                                 (concat (all-elements sub-query)
                                          '(::reversed)))
               sub-query))
           '(::sub-query)))
@@ -149,12 +150,13 @@
   [encoded]
   "Decode a sub-query that was encoded as an element, as described above."
   (when encoded
-    (if (some #(= ::content %) (elements encoded))
+    (if (some #(= ::content %) (forward-elements encoded))
       (content encoded)
       (let [cleaned (remove #{::sub-query ::first ::second ::reversed}
                             encoded)]
-        (if (some #(= ::reversed %) (elements encoded))
-          (make-tree-element :target (content cleaned) (elements cleaned))
+        (if (some #(= ::reversed %) (forward-elements encoded))
+          (make-tree-element :target (content cleaned)
+                             (forward-elements cleaned))
           cleaned)))))
 
 (defn variable-query

@@ -12,7 +12,7 @@
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
                     conflux-tree-object? conflux-tree-object-id
-                    content orientation elements to-tree
+                    content orientation all-elements to-tree
                     in-different-store
                     label->elements content->elements
                     make-tree-object name-label link-type object-type]]
@@ -73,17 +73,17 @@
   (assert object? template)
   (if-let [object (find-object-by-name store name template)]
     (do (assert (extended-by? template object)
-                [(map to-tree (elements template))
-                 (map to-tree (elements object))])
+                [(map to-tree (all-elements template))
+                 (map to-tree (all-elements object))])
         [store (:item-id object) conflux-map])
     (let [;; Remove any existing name in the template, replacing it
           ;; with the name we are looking for.
           pattern (-> (remove #(seq (content->elements % name-label))
-                              (elements template))
+                              (all-elements template))
                       (conj `(~name (~name-label)))
                       make-tree-object)]
       (internal-add-object-with-given-elements
-       store conflux-map template (elements pattern)))))
+       store conflux-map template (all-elements pattern)))))
 
 (defn internal-add-object
   "Like add-object, but also thread and consult the conflux-map.
@@ -111,7 +111,7 @@
            store conflux-map name template))
         true
         (internal-add-object-with-given-elements
-         store conflux-map template (elements template))))
+         store conflux-map template (all-elements template))))
 
 (defn add-object
   "Add an object to the store, unless it is uniquely identified and is
@@ -162,7 +162,7 @@
         ;; Add the elements.
         [store conflux-map] (internal-add-elements
                              store conflux-map entity-link
-                             (elements template))]
+                             (all-elements template))]
     [store entity-link conflux-map]))
 
 (defn- internal-add-elements

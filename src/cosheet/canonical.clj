@@ -3,7 +3,8 @@
    (cosheet
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
-                    content elements orientation in-different-store
+                    content all-elements forward-elements orientation
+                    in-different-store
                     make-tree-element presumed-interned-object?
                     conflux-tree-object? conflux-tree-object-id
                     make-conflux-tree-object
@@ -108,7 +109,7 @@
           ;; Since the object is not interned, we have to expand it
           ;; out, so it can match other non-interned objects.
           (let [canonicals (multiset (map internal-canonicalize
-                                          (elements entity)))]
+                                          (all-elements entity)))]
             (if (conflux-tree-object? entity)
               [:conflux-object (conflux-tree-object-id entity) canonicals]
               [:object canonicals])))
@@ -118,7 +119,7 @@
           (simplest-canonical
            (orientation entity)
            (internal-canonicalize (content entity))
-           (multiset (map internal-canonicalize (elements entity)))))))
+           (multiset (map internal-canonicalize (forward-elements entity)))))))
 
 (defn canonicalize
   "Given an entity, return a canonical representation of it."

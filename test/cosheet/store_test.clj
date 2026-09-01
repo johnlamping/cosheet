@@ -511,7 +511,8 @@
 
 (deftest candidate-matching-ids-test
   (let [obj-2 (id->object foo-oid nil)
-        bar-object (id->object bar-oid nil)]
+        bar-object (id->object bar-oid nil)
+        foo-object (id->object foo-oid test-store)]
     (is (check (candidate-matching-ids-and-estimate test-store 5)
                [1 [(make-link-id 4)] true]))
     (is (check (candidate-matching-ids-and-estimate test-store '(5))
@@ -541,25 +542,26 @@
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->element (make-link-id 1) test-store) nil))
-               [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+                 :target foo-object nil))
+               [2 (as-set [(make-link-id 7) (make-link-id 71)]) true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->element (make-link-id 1) test-store) `((~obj-2))))
-               [1 (as-set [(make-link-id 2)]) true]))
+                 :target foo-object `((~(id->object name-label-id nil)))))
+               [2 [(make-link-id 71)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->element (make-link-id 1) test-store) '(5)))
+                 :target foo-object '(5)))
                [1 () true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->element (make-link-id 1) test-store) nil))
-               [2 (as-set [(make-link-id 2) (make-link-id 9)]) true]))
+                 :target foo-object nil))
+               [2 (as-set [(make-link-id 7) (make-link-id 71)]) true]))
     (is (check (candidate-matching-ids-and-estimate
-                test-store (make-tree-element :target 5 nil))
+                test-store (make-tree-element
+                            :target (id->object (make-object-id -999) nil) nil))
                [0 () true]))
     (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
     (is (check (candidate-matching-ids test-store nil)

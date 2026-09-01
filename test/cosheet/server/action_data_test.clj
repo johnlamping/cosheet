@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [orderable :refer [split initial]]
-                     [entity :refer [id->entity elements to-tree content
+                     [entity :refer [id->entity to-tree content
                                      make-tree-object in-different-store]]
                       [store :refer [new-element-store ImmutableStore
                                      id->target id->source

@@ -4,7 +4,7 @@
                                       presumed-interned-object?
                                       stored-entity?
                                       id->entity entity-key
-                                      orientation content elements
+                                      orientation content all-elements
                                       make-tree-element make-tree-object
                                       label->elements
                                       to-tree
@@ -141,7 +141,7 @@
   small as it can be while still being a label. The query must be in
   list form."
   [entity]
-  (and (let [elements (elements entity)]
+  (and (let [elements (all-elements entity)]
          (or (empty? elements) (= elements '(:label))))
        (let [content (content entity)]
          (or (primitive? content) (stored-entity? content)))))
@@ -158,7 +158,7 @@
   (let [[contextualized contextualized-exact] (contextualize-variable
                                                element env)
         elems (map #(first (contextualize-variable % env))
-                   (elements contextualized))
+                   (all-elements contextualized))
         [positive negative] (separate-negations elems)
         candidates (filter label-element? positive)]
     ;; Test for the special case of looking for nothing but an element
@@ -188,7 +188,7 @@
           (fn [elements] (filter #(= (orientation %) required-orientation)
                                  elements)))]
     (if (empty? labels)
-      (filter-orientation (elements entity))
+      (filter-orientation (all-elements entity))
       (let [candidateses (->> labels
                               (map #(label->elements entity %))
                               (map filter-orientation))]
@@ -242,12 +242,12 @@
              (or (object? fixed-term)
                  (and (extended-by? (content fixed-term) (content entity))
                       (= (orientation fixed-term) (orientation entity))))
-             (or (empty? (elements fixed-term))
+             (or (empty? (all-elements fixed-term))
                  (let [[positive negative] (separate-negations
-                                            (elements fixed-term))]
+                                            (all-elements fixed-term))]
 		   ;; Our disjoint-combinations doesn't work right
 		   ;; if the entity has repeated elements.
-		   (assert (distinct? (elements entity)))
+		   (assert (distinct? (all-elements entity)))
                    (let [positive-satisfying
                          (seq (map #(elements-satisfying % entity) positive))
                          negative-satisfying
@@ -286,7 +286,7 @@
               [as-list contextualized-exact]
               (let [{dropped-elements true
                      kept-elements false}
-                    (group-by is-fixed-term-special-form? (elements as-list))
+                    (group-by is-fixed-term-special-form? (all-elements as-list))
                     [converted-kept-elements converted-kept-exact]
                     (unzip (map #(closest-template % env)
                                 kept-elements))
@@ -421,7 +421,7 @@
   of the entity match the elements of the item, ignoring filtered out
   elements."
   [item envs entity entity-element-filter]
-  (let [item-elements (elements item)]
+  (let [item-elements (all-elements item)]
     (if (empty? item-elements)
       envs
       (let [[positive negative] (separate-negations item-elements)]
@@ -521,7 +521,7 @@
 
 (defmethod matching-elements-m true [term entity]
   (if (or (nil? term) (= term '()))
-    (elements entity)
+    (all-elements entity)
     (let [match-map (element-match-map term {} entity identity)]
       (distinct-concat (vals match-map)))))
 

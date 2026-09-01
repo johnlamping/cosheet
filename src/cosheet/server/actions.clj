@@ -21,7 +21,7 @@
     [store-utils :refer [remove-entity-by-id]]
     [entity :refer [id->entity id->element make-tree-object
                     add-elements-to-entity
-                    elements content content->elements
+                    all-elements content content->elements
                     label->element label->elements
                     name-label object? element? label-element?]]
     mutable-store-impl
@@ -161,7 +161,7 @@
             template (make-tree-object
                       (remove #(and (seq (content->elements % name-label))
                                     (= (content %) ""))
-                              (elements object-template)))
+                              (all-elements object-template)))
             [store object-id remainder] (get-or-make-ordered-object-by-name
                                          store name template order :after
                                          false)

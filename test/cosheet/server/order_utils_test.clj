@@ -1,7 +1,7 @@
 (ns cosheet.server.order-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet
-             [entity :as entity :refer [id->entity elements content
+             [entity :as entity :refer [id->entity all-elements content
                                         make-tree-element make-tree-object
                                         make-conflux-tree-object make-tree-id
                                         conflux-tree-object? tree-object?]]
@@ -79,7 +79,7 @@
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
-  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (all-elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
     (is (= (ordered-ids (map :item-id joe-semantic-elements) store)
            (map :item-id joe-ordered-semantic-elements)))
@@ -91,7 +91,7 @@
            (map :item-id joe-ordered-semantic-elements)))))
 
 (deftest ordered-entities-test
-  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (all-elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
     (is (= (ordered-entities joe-semantic-elements)
            joe-ordered-semantic-elements))
@@ -128,7 +128,7 @@
                     (~o2 :order))])))))
 
 (deftest ordered-ids-R-test
-  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+  (let [joe-semantic-elements (filter semantic-element? (all-elements joe))
         joe-semantic-element-ids (map :item-id joe-semantic-elements)
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]
         joe-ordered-semantic-element-ids (map :item-id

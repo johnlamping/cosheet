@@ -10,7 +10,7 @@
                                       id->object id->entity
                                       label->elements label->content
                                       content->elements
-                                      content elements
+                                      content all-elements
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
@@ -77,7 +77,7 @@
 (deftest transform-pattern-toward-fixed-term-test
   (let [pattern (make-tree-element
                  :target
-                 'anything
+                 [:object]
                  ['anything
                   `(~(make-tree-object `((~link-type))))
                   `(~(make-tree-object `("a")))])]
@@ -85,7 +85,7 @@
                 pattern {})
                (make-tree-element
                  :target
-                 nil
+                 [:object]
                  [nil
                   `(~(make-tree-object `((~link-type))))
                   `(~(make-tree-object `("a")))])))
@@ -93,7 +93,8 @@
                 pattern {:require-not-type true})
                (make-tree-element
                  :target
-                 nil
+                 (make-tree-object `(~(not-query `(~link-type))
+                                     ~(not-query `(~object-type))))
                  [nil
                   `(~(make-tree-object `((~link-type))))
                   `(~(make-tree-object `("a"
@@ -104,14 +105,15 @@
                          :require-orders true})
                (make-tree-element
                  :target
-                 nil
+                 (make-tree-object `(~(not-query `(~link-type))
+                                     ~(not-query `(~object-type))
+                                     (nil :order)))
                  ['(nil (nil :order))
                   `(~(make-tree-object `((~link-type) (nil :order))))
                   `(~(make-tree-object `("a"
                                          ~(not-query `(~link-type))
                                          ~(not-query `(~object-type))
-                                         (nil :order))))
-                  '(nil :order)])))
+                                         (nil :order))))])))
   ;; In cyclic-shared-store, a is reachable via two paths (the back-
   ;; link from b and z-link's sub-element), so to-tree preserves a as
   ;; a conflux-tree-object. transform-pattern-toward-fixed-term
@@ -162,7 +164,7 @@
                   ~(make-conflux-tree-object (make-tree-id 1) ["x"])
                   ~(make-conflux-tree-object (make-tree-id 1) []))
         fixed-term (transform-pattern-toward-fixed-term pattern {})
-        variable (content (first (elements fixed-term)))]
+        variable (content (first (all-elements fixed-term)))]
     (is (check variable
                (variable-query
                 (variable-name variable)
@@ -277,8 +279,8 @@
                `("Joe" (~(any) :order)))))
   (is (= (semantic-to-tree '(1 (2 (:foo))))
          '(1 2)))
-  (is (= (semantic-to-tree (make-tree-element :target 1 '(2 (:foo))))
-         (make-tree-element :target 1 '(2))))
+  (is (= (semantic-to-tree (make-tree-element :target [:object 1] '(2 (:foo))))
+         (make-tree-element :target [:object 1] '(2))))
   (is (= (semantic-to-tree `(~(make-tree-object [3 :name :bar]) (2 (:foo))))
          `(~(make-tree-object [3 :name]) 2)))
   (let [named (id->object (make-item-id "A") (new-element-store))]
@@ -665,7 +667,7 @@
            s4 a-template unused-orderable :before false)
           new-a (id->entity new-a-id s5)
           new-b (content (first (filter #(object? (content %))
-                                        (elements new-a))))
+                                        (all-elements new-a))))
           new-b-id (:item-id new-b)]
       (is (not= new-a-id a-id))
       ;; new-a's to-tree: an object with new-a's own :order and the
@@ -697,7 +699,7 @@
           (update-add-object-adjacent-to s4 b-template anchor :before false)
           new-b (id->entity new-b-id s5)
           new-a-id (:item-id (content (first (filter #(object? (content %))
-                                                     (elements new-b)))))]
+                                                     (all-elements new-b)))))]
       (is (not= new-b-id b-id))
       ;; Because the element's :target orientation is honored, the new
       ;; link is added in the same direction as the original A->B
@@ -729,13 +731,13 @@
          s5 a-template unused-orderable :before false)
         new-a (id->entity new-a-id s6)
         new-b (content (first (filter #(object? (content %))
-                                      (elements new-a))))
+                                      (all-elements new-a))))
         new-b-id (:item-id new-b)
         ;; The two object-content elements of new-b are new-a and
         ;; new-c (in some order).
         new-b-obj-ids (set (map #(:item-id (content %))
                                 (filter #(object? (content %))
-                                        (elements new-b))))
+                                        (all-elements new-b))))
         new-c-id (first (disj new-b-obj-ids new-a-id))
         new-c (id->entity new-c-id s6)]
     (is (not= new-a-id a-id))

@@ -3,7 +3,7 @@
             (cosheet
              [orderable :as orderable]
              [store :refer [new-element-store make-item-id]]
-             [entity :refer [elements id->entity make-tree-object]]
+             [entity :refer [all-elements id->entity make-tree-object]]
              entity-impl
              store-impl
              [store-utils :refer [add-universal-objects
@@ -44,7 +44,7 @@
     (is (orderable/earlier? (-> ordered second (nth 2) first)
                             (-> ordered (nth 2) second first)))
     ;; The last element is not semantic, as it is order information.
-    (let [semantic-elements (butlast (elements ordered))]
+    (let [semantic-elements (butlast (all-elements ordered))]
       (is (check (ordered-entities semantic-elements)
                  semantic-elements))
       (is (check (ordered-entities (reverse semantic-elements))

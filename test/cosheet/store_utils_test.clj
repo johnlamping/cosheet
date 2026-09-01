@@ -6,7 +6,7 @@
              [store-utils :refer :all]
              [entity :refer [to-tree id->object id->element
                              make-tree-element make-tree-object
-                             elements forward-elements in-different-store
+                             all-elements forward-elements in-different-store
                              name-label link-type object-type]]
              entity-impl
              query-impl
@@ -59,7 +59,7 @@
     (is (check (to-tree (id->element id3 s))
                `(~(make-tree-object '(1)) 3)))
     (is (= id7 id6))
-    (is (check (map to-tree (elements (id->object id6 s)))
+    (is (check (map to-tree (all-elements (id->object id6 s)))
                (as-set [`(1 (~(id->object (make-item-id "name") s)))
                          2]))))
   ;; In cyclic-shared-store, the tree-form starting at a contains a

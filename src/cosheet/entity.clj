@@ -211,13 +211,18 @@
   (content [this]
     "Return the content of the entity.")
 
-  (elements [this]
-    "Return a seq of items for all our elements, including reversed links
-    between objects.")
-
   (forward-elements [this]
     "Return a seq of items for all our elements, not including reversed
     links between objects.")
+
+  (reverse-elements [this]
+    "Return a seq of items for the reversed links between objects that
+    all-elements includes beyond forward-elements. This is nil for
+    anything but an object.")
+
+  (all-elements [this]
+    "Return a seq of items for all our elements, including reversed links
+    between objects.")
 
   (orientation [this]
     "The orientation of an element entity.")
@@ -470,6 +475,13 @@
               ;; TODO: !!! For now, special forms are elements.
               ;;           When they become objects, remove this case.
               (= (keyword? (first content)))))
+  ;; A reverse element must have an object as its target, which is its
+  ;; content. We also allow nil, to describe a target that is any object.
+  (assert (or (not= element-orientation :target)
+              (nil? content)
+              (object? content))
+          content)
+  ;; None of the elements we are made from may be reversed.
   (assert (not-any? #(or (object? %)
                          (not= (orientation %) :source))
                     elements))
@@ -573,10 +585,10 @@
     (cond (element? entity)
           (make-tree-element (orientation entity)
                              (content entity)
-                             (concat (elements entity) elements-to-add))
+                             (concat (forward-elements entity) elements-to-add))
           (object? entity)
           (make-tree-object-copying-id
-           entity (concat (elements entity) elements-to-add))
+           entity (concat (all-elements entity) elements-to-add))
           :else (make-tree-element :source entity elements-to-add))))
 
 (defn map-subparts
@@ -591,9 +603,9 @@
   (cond (element? entity)
         (make-tree-element (orientation entity)
                            (f (content entity))
-                           (keep f (elements entity)))
+                           (keep f (forward-elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
-        (let [new-elements (keep f (elements entity))]
+        (let [new-elements (keep f (all-elements entity))]
           (make-tree-object-copying-id entity new-elements))
         :else
         entity))
@@ -698,7 +710,7 @@
                              r)]
                      [(conj results r) caller-data]))))
              [[] caller-data]
-             (elements entity)))]
+             (all-elements entity)))]
     traverse))
 
 (defn threaded-traverse
@@ -885,7 +897,7 @@
             new-seen (record-encounter seen entity)
             new-tree (make-conflux-tree-object
                       (get new-seen (entity-key entity))
-                      (if orig-had-key? [] (elements entity)))]
+                      (if orig-had-key? [] (all-elements entity)))]
         (call-user-fn-adding-seen
          new-seen user-pre-fn parent-entity new-tree
          parent-user-data user-data))
@@ -913,7 +925,7 @@
       (let [result (if-let
                        [id (when (non-conflux-tree-object? assembled)
                              (get new-seen (entity-key original-entity)))]
-                     (make-conflux-tree-object id (elements assembled))
+                     (make-conflux-tree-object id (all-elements assembled))
                      assembled)]
         (call-user-fn-adding-seen
          new-seen user-post-fn original-entity result orig-user new-user)))))
@@ -963,7 +975,7 @@
                                           (= (get counts
                                                   (conflux-tree-object-id e))
                                              1))
-                                   (make-tree-object (elements e))
+                                   (make-tree-object (all-elements e))
                                    e))] 
     (post-traverse-entity convert-unshared tree)))
 

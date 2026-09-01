@@ -1,7 +1,8 @@
 (ns cosheet.store-impl
   (:require (cosheet [store :refer :all :as store]
-                      [entity :refer [stored-entity?
-                                      object? elements content
+                     [entity :refer [stored-entity?
+                                      object? all-elements content
+                                      forward-elements reverse-elements
                                       orientation entity-key]]
                       [utils :refer [pseudo-set-seq
                                      pseudo-set-conj
@@ -181,27 +182,25 @@
         (if (nil? estimate)
           ;; The template is so generic that none of our indices can narrow
           ;; it down based on any of its elements. Return basically everything.
-          [(seq (if (seq (elements template))
-                  ;; The template has elements. For each orientation
-                  ;; that some element of the template uses, take the
-                  ;; ids with element in that orientation, then
-                  ;; intersect across orientations.
-                  (let [orientations (set (map orientation
-                                               (elements template)))
-                        id-sets (keep
-                                 (fn [[o index]]
-                                   (when (orientations o)
-                                     (into #{} (filter id-filter
-                                                       (keys index)))))
-                                 [[:source target->ids]
-                                  [:target source->ids]])]
-                    (apply clojure.set/intersection id-sets))
-                  ;; Nothing in the index helps. Find all of the right kind
-                  ;; of ids that the store knows about.
-                  (filter id-filter (if (object? template)
-                                      (union-seqs (keys target->ids)
-                                                  (keys source->ids))
-                                      (keys id->source)))))
+          [(seq (let [forward (seq (forward-elements template))
+                      reverse (seq (reverse-elements template))]
+                  (if (or forward reverse)
+                    ;; The template has elements. For each orientation
+                    ;; that some element of the template uses, take all
+                    ;; ids with element in that orientation, then
+                    ;; intersect across orientations.
+                    (apply clojure.set/intersection
+                           (keep (fn [index]
+                                   (when index
+                                     (set (filter id-filter (keys index)))))
+                                 [(when forward target->ids)
+                                  (when reverse source->ids)]))
+                    ;; Nothing in the index helps. Find all of the right kind
+                    ;; of ids that the store knows about.
+                    (filter id-filter (if (object? template)
+                                        (union-seqs (keys target->ids)
+                                                    (keys source->ids))
+                                        (keys id->source))))))
            false]
           [(seq (filter id-filter ids)) precise]))))
 
@@ -620,7 +619,7 @@
   return a boolean that is true if an id in the intersection of the
   candidate lists is always a match."
   [store template]
-  (let [template-elements (elements template)]
+  (let [template-elements (all-elements template)]
     (if (empty? template-elements)
       [nil true]
       (let [candidates

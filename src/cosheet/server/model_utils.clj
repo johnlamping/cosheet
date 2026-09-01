@@ -14,7 +14,8 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? id->entity
-                    content elements orientation containing-elements
+                    content all-elements forward-elements orientation
+                    containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
                     label->content
@@ -90,7 +91,7 @@
 (defn semantic-elements
   "Return the elements of an entity that are semantic."
   [immutable-entity]
-  (filter semantic-element? (elements immutable-entity)))
+  (filter semantic-element? (all-elements immutable-entity)))
 
 (defn ordered-semantic-elements
   "Return the semantic elements of an entity, in the order that the
@@ -101,13 +102,13 @@
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
-  (filter #(and (label-element? %) (semantic-element? %)) (elements entity)))
+  (filter #(and (label-element? %) (semantic-element? %)) (all-elements entity)))
 
 (defn semantic-non-label-elements
   "Return the semantic elements of an entity that are not labels."
   [entity]
   (filter #(and (not (label-element? %)) (semantic-element? %))
-          (elements entity)))
+          (all-elements entity)))
 
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
@@ -260,7 +261,7 @@
               (element? original)
               (let [c (content assembled)
                     new-elements
-                    (cond-> (or (elements assembled) [])
+                    (cond-> (or (forward-elements assembled) [])
                       (and (nil? c) require-orders)
                       (concat ['(nil :order)]))]
                 [(make-tree-element
@@ -281,7 +282,7 @@
                 (let [id (conflux-tree-object-id original)
                       v-name (label->content (get conflux-map id)
                                              :cosheet.query/name)
-                      qualifier (make-tree-object (elements assembled))
+                      qualifier (make-tree-object (all-elements assembled))
                       qualified-var (variable-query v-name
                                                     :qualifier qualifier
                                                     :reference true)]
@@ -298,7 +299,7 @@
                                   (not (object-type-object? original)))]
                 [(make-tree-object-copying-id
                   original
-                  (cond-> (or (elements assembled) [])
+                  (cond-> (or (all-elements assembled) [])
                     (and require-not-type non-type)
                     (concat [(not-query `(~link-type))
                              (not-query `(~object-type))])
@@ -367,7 +368,7 @@
                      [(make-conflux-tree-object id []) conflux-map]
                      (let [id (make-tree-id (:next-number conflux-map))]
                        [(make-conflux-tree-object
-                         id (elements (variable-qualifier entity)))
+                         id (all-elements (variable-qualifier entity)))
                         (-> conflux-map
                             (assoc name id)
                             (update :next-number inc))])))
@@ -446,8 +447,8 @@
   (let [;; First find elements that extend targets. We will need to add the
         ;; un-matched targets.
         [_ unmatched-term-elements unmatched-object-elements]
-        (match-terms-and-targets (remove special-form? (elements fixed-term))
-                                 (elements object))
+        (match-terms-and-targets (remove special-form? (all-elements fixed-term))
+                                 (all-elements object))
         templates-to-add (map fixed-term-to-template unmatched-term-elements)
         ;; Now find unmatched targets that extend unmatched
         ;; elements. We won't need the elements that are extended.
@@ -498,7 +499,7 @@
   [store attachment-id template order position use-bigger seen]
   (assert (empty? (label->elements template :order)))
   (let [template-content (content template)
-        template-elements (elements template)
+        template-elements (all-elements template)
         is-ephemeral (some (fn [element] (= (content element) :ephemeral))
                            template-elements)]
     (cond
@@ -628,7 +629,7 @@
             true
             (do (assert (empty? (label->elements template :order)))
                 (update-add-object-with-given-elements-and-order-without-revisiting
-                 store (elements template) order position use-bigger seen
+                 store (all-elements template) order position use-bigger seen
                  seen-key))))))
 
 (defn update-add-element-adjacent-to-without-revisiting
@@ -750,7 +751,7 @@
   unless in a part of the template that is marked as a selector, in
   which case don't modify it."
     [pattern]
-    (cond (some #(= (content %) :selector) (elements pattern))
+    (cond (some #(= (content %) :selector) (all-elements pattern))
           pattern
           (= 'anything pattern)
           ""
@@ -953,7 +954,7 @@
    ;; It has universal content
    (= 'anything (content entity))
    ;; It is a column header.
-   (some #(= (content %) :column-headers) (elements (target-entity entity)))
+   (some #(= (content %) :column-headers) (all-elements (target-entity entity)))
    ;; It has no elements, except 'amything
    (let [semantic (semantic-elements entity)]
      (or (empty? semantic)

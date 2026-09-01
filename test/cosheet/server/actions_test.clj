@@ -8,7 +8,7 @@
              [map-reporter :refer [make-map-reporter map-reporter-get-current
                                 map-reporter-reset!]]
              [entity :as entity :refer [id->entity id->object to-tree
-                                        content elements label->element
+                                        content label->element
                                         label->elements label->content
                                         name-label link-type object-type
                                         make-tree-object make-tree-element

@@ -4,7 +4,7 @@
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [item-id? id->target]]
-                      [entity :refer [elements content label->elements
+                      [entity :refer [content label->elements
                                       id->entity entity-complexity object?]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]

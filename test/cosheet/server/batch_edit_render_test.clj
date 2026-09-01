@@ -18,7 +18,7 @@
              [query :refer [matching-items matching-elements not-query
                             extended-by?]]
              [entity :as entity  :refer [id->entity in-different-store
-                                         label->elements elements
+                                         label->elements
                                          make-tree-object link-type name-label]]
              [debug :refer [simplify-for-print]]
              entity-impl

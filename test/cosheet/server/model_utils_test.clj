@@ -14,7 +14,7 @@
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
-                                     id->source make-item-id]]
+                                     id->source id->target make-item-id]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -420,21 +420,101 @@
   (is (check (match-terms-and-targets [1 '(nil 6) 3] [2 3 4])
              [[[3 3]] (as-set [1 '(nil 6)]) (as-set [2 4])])))
 
-(deftest elements-to-change-to-satisfy-fixed-term-elements-test
-  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+(deftest changes-to-satisfy-simple-term-elements-test
+  (is (check (changes-to-satisfy-simple-term-elements
               (make-tree-object [1 2 3]) (make-tree-object [2 3 4]))
              [[1] []]))
-  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+  (is (check (changes-to-satisfy-simple-term-elements
               (make-tree-object ['(nil 1) 2 3]) (make-tree-object [2 3 4]))
-             [['("" 1)] []]))
-  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+             [['(nil 1)] []]))
+  (is (check (changes-to-satisfy-simple-term-elements
               (make-tree-object [2 '(nil 1) '(3 4)])
               (make-tree-object ['(2 1 3) 3]))
              [(as-set ['(3 4) 2]) [3]]))
-  (is (check (elements-to-change-to-satisfy-fixed-term-elements
+  (is (check (changes-to-satisfy-simple-term-elements
               (make-tree-object [2 '(nil 1) 3])
               (make-tree-object ['(2 5) 4]))
-             [(as-set [3 '("" 1)]) []])))
+             [(as-set [3 '(nil 1)]) []])))
+
+(defn object-canonical-elements
+  "The canonical semantic form of each of the object's elements."
+  [object]
+  (map entity->canonical-semantic (all-elements object)))
+
+(deftest merge-objects-test
+  ;; merge-objects requires interned (here, named) objects. An element
+  ;; the recipient object lacks is moved to it from the donor, and the
+  ;; donor object is left empty.
+  (let [[s1 recipient-id] (add-object (new-element-store)
+                                 (make-tree-object
+                                  [`("A" (~name-label) (~o1 :order))
+                                   `("x" (~o2 :order))]))
+        [s2 donor-id] (add-object s1
+                                 (make-tree-object
+                                  [`("B" (~name-label) (~o3 :order))
+                                   `("x" (~o4 :order))
+                                   `("y" (~o5 :order))]))
+        y-id (:item-id (first (filter #(= (content %) "y")
+                                      (all-elements (id->object donor-id s2)))))
+        merged (merge-objects s2 recipient-id donor-id)]
+    ;; The "y" element is now an element of the recipient object.
+    (is (= (id->target merged y-id) recipient-id))
+    (is (= (to-tree (id->object donor-id merged)) [:object]))
+    (is (check (object-canonical-elements (id->object recipient-id merged))
+               (as-set (map canonicalize
+                            [`("A" (~name-label))
+                             `("B" (~name-label))
+                             "x"
+                             "y"])))))
+  ;; The recipient object's general element is subsumed by the donor
+  ;; object's more specific one, so the general element is removed.
+  (let [[s1 recipient-id] (add-object (new-element-store)
+                                 (make-tree-object
+                                  [`("C" (~name-label) (~o1 :order))
+                                   `("a" (~o2 :order))]))
+        [s2 donor-id] (add-object s1
+                                 (make-tree-object
+                                  [`("D" (~name-label) (~o3 :order))
+                                   `("a" (~o4 :order) ("b" (~o5 :order)))]))
+        merged (merge-objects s2 recipient-id donor-id)
+        recipient (id->object recipient-id merged)]
+    (is (= (to-tree (id->object donor-id merged)) [:object]))
+    (is (check (object-canonical-elements (id->object recipient-id merged))
+               (as-set (map canonicalize
+                            [`("C" (~name-label))
+                             `("D" (~name-label))
+                             `("a"
+                               "b")])))))
+  ;; A single element joining the two objects (here the donor object
+  ;; has an element whose content is the recipient object) is re-pointed to
+  ;; reference the recipient object at both endpoints, not removed.
+  (let [[s1 recipient-id] (add-object (new-element-store)
+                                 (make-tree-object
+                                  [`("A" (~name-label) (~o1 :order))
+                                   `("x" (~o2 :order))]))
+        recipient (id->object recipient-id s1)
+        [s2 donor-id] (add-object s1
+                                 (make-tree-object
+                                  [`("B" (~name-label) (~o3 :order))
+                                   `("y" (~o4 :order))
+                                   `(~recipient (~o5 :order))]))
+        donor (id->object donor-id s2)
+        y-id (:item-id (first (filter #(= (content %) "y")
+                                      (all-elements donor))))
+        merged (merge-objects s2 recipient-id donor-id)
+        recipient (id->object recipient-id merged)]
+    ;; The "y" element was moved to the recipient object.
+    (is (= (id->target merged y-id) recipient-id))
+    (is (= (to-tree (id->object donor-id merged)) [:object]))
+    (is (check (object-canonical-elements (id->object recipient-id merged))
+               (as-set (map canonicalize
+                            [`("A" (~name-label))
+                             `("B" (~name-label))
+                             "x"
+                             "y"
+                             ;; The self-link appears as two elements.
+                             (list recipient)
+                             (list (list :target recipient))]))))))
 
 (deftest get-or-make-ordered-object-by-name-test
   (let
@@ -934,3 +1014,6 @@
            store))
     (is (= (abandon-problem-changes bad-store good-store (:item-id column))
            good-store))))
+
+
+

@@ -17,9 +17,11 @@
 ;;;     replacements may not be extended; each replacement must be identical.
 
 ;;; The simplest query is just an entity that constitutes a pattern that is to
-;;; be matched against a subject. There are three levels of elaboration
+;;; be matched against a subject. There are four levels of elaboration
 ;;; that incorporate more kinds of objects into the patterns to yield more
 ;;; involved queries.
+;;;  simple-term  May have nil as the content of an element, indicating
+;;;               anything.
 ;;;   fixed-term  May have nil as the content of an element, indicating
 ;;;               anything.  And may have negated elements, which
 ;;;               match if the subject does not have an element that

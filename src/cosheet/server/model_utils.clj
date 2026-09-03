@@ -7,7 +7,8 @@
     [reporter-macros :refer [let-R]]
     [canonical :refer [canonicalize equivalent-primitives?]]
     [store :refer [new-element-store
-                   update-source add-link declare-ephemeral-id
+                   update-source update-target id->source id->target
+                   add-link declare-ephemeral-id
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
                     link-type-object? object-type-object?
@@ -388,73 +389,121 @@
 ;;; templates.
 
 (defn match-terms-and-targets
-  "Given a sequence of fixed terms and a sequence of targets, make the
-  best possible pairing of fixed terms with targets that extend
+  "Given a sequence of simple terms and a sequence of targets, make the
+  best possible pairing of simple terms with targets that extend
   them. Return a seq of the matched pairs, a seq of the unpaired fixed
   terms and a seq of the unpaired targets.
-  We handle fixed terms that are stored entities with non-semantic
+  We handle simple terms that are stored entities with non-semantic
   parts, by matching only their semantic parts."
-  [fixed-terms targets]
+  [simple-terms targets]
   ;; We order the terms starting from highest complexity
   ;; (hardest to find an extension for), and the object elements
   ;; starting from lowest complexity (hardest to be an
   ;; extension). This way, when we start choosing matches, and
   ;; there is a choice, we take ones that are least likely to
   ;; preclude subsequent matches.
-  (let [sorted-fixed-terms (->> fixed-terms (sort-by entity-complexity) reverse)
+  (let [sorted-simple-terms (->> simple-terms
+                                 (sort-by entity-complexity)
+                                 reverse)
         sorted-targets (->> targets (sort-by entity-complexity))]
     (reduce
-     (fn [[pairs unmatched-terms unmatched-targets] fixed-term]
+     (fn [[pairs unmatched-terms unmatched-targets] simple-term]
        (let [;; If the fixed term is a stored entity; we only want to
              ;; match its semantic parts.
-             semantic (if (stored-entity? fixed-term)
-                        (semantic-to-tree fixed-term)
-                        fixed-term)
+             semantic (if (stored-entity? simple-term)
+                        (semantic-to-tree simple-term)
+                        simple-term)
              [matching-target remaining-targets]
              (extract-first #(extended-by? semantic %) unmatched-targets)]
          (if matching-target
-           [(conj pairs [fixed-term matching-target])
+           [(conj pairs [simple-term matching-target])
             unmatched-terms
             remaining-targets]
            [pairs
-            (conj unmatched-terms fixed-term)
+            (conj unmatched-terms simple-term)
             unmatched-targets])))
      [[] [] sorted-targets]
-     sorted-fixed-terms)))
+     sorted-simple-terms)))
 
-(defn elements-to-change-to-satisfy-fixed-term-elements
-  "Given a fixed-term and a stored object, return templates for elements
-  that must be added to the stored object, and ids of any elements
-  that may be removed from it, in order to make the object have as few
-  elements as possible and still satisfy:
-     * The fixed-term.
+(defn changes-to-satisfy-simple-term-elements
+  "Given a simple term (an object with no special-form elements) and a
+  stored object, return the terms for elements that must be added to
+  the stored object, and ids of any elements that must be removed from
+  it, in order to make the object have as few elements as possible and
+  still satisfy:
+     * All positive queries that the simple term satisfies.
      * All positive queries that the original object satisfies.
      * No positive queries that aren't satisfied by an object
        consisting of the union of the elements of the original object
-       and of the template.
+       and of the simple term.
   The last condition implies that you can't merge two elements from
-  the two arguments, as that could satisfy a query the union doesn't
-  satisfy. In particular, you can't match a template nil to a content
-  from the original object, because that acts like a merge. Instead,
-  you have to start with the union of the elements of the two
+  the objects, as that could satisfy a query the union of the objects
+  doesn't satisfy. For example, suppose you merged a '(5 1) element
+  with a '(5 2) element, to get a '(5 1 2) element, the '(5 1 2)
+  satisfies any positive query containing either '(5 1) or '(5 2). But
+  it also satisfies the query '(5 1 2), which an object containing
+  both '(5 1) and '(5 2) as separate elements doesn't satisfy.
+  Instead, you have to start with the union of the elements of the two
   arguments, but you can remove an element from the union if it is
   extended by an element from the other argument.
-  Return a pair of a seq of templates to add, and a seq of
-  elements to remove."
-  [fixed-term object]
-  (assert object? fixed-term)
+  Return a pair of a seq of terms from simple-term to add, and a seq of
+  elements from object to remove."
+  [simple-term object]
+  (assert object? simple-term)
   (assert object? object)
-  (let [;; First find elements that extend targets. We will need to add the
-        ;; un-matched targets.
-        [_ unmatched-term-elements unmatched-object-elements]
-        (match-terms-and-targets (remove special-form? (all-elements fixed-term))
+  (let [;; First find object elements that extend the fixed-term's
+        ;; elements. We will need to add the un-matched terms.
+        [_ terms-to-add unmatched-object-elements]
+        (match-terms-and-targets (all-elements simple-term)
                                  (all-elements object))
-        templates-to-add (map fixed-term-to-template unmatched-term-elements)
-        ;; Now find unmatched targets that extend unmatched
-        ;; elements. We won't need the elements that are extended.
+        ;; Now find unmatched object elements that are extended by
+        ;; unmatched terms. We won't need the elements that are extended.
         [object-term-pairs _ _]
-        (match-terms-and-targets unmatched-object-elements templates-to-add)]
-    [templates-to-add (map first object-term-pairs)]))
+        (match-terms-and-targets unmatched-object-elements terms-to-add)]
+    [terms-to-add (map first object-term-pairs)]))
+
+(defn merge-objects
+  "Given a store and the ids of two interned objects, modify the
+  recipient object so that it satisfies every positive query that either
+  object satisfies, then remove all remaining elements from the donor
+  object. Return the updated store.
+  Rather than copying elements, an element of the donor object that
+  the recipient object needs is moved to the recipient object, by
+  re-pointing the endpoint(s) that reference the donor to reference
+  the recipient. Elements of the recipient object that this makes
+  redundant are removed.
+  Both objects must be interned, so that a link joining them is not a
+  cycle that a traversal would have to descend into."
+  [store recipient-id donor-id]
+  (let [recipient (id->entity recipient-id store)
+        donor (id->entity donor-id store)
+        _ (assert (interned-object? recipient) recipient)
+        _ (assert (interned-object? donor) donor)
+        ;; Re-point an element's endpoint(s) that reference the donor
+        ;; object to reference the recipient.
+        repoint (fn [store id]
+                  (cond-> store
+                    (= (id->target store id) donor-id)
+                    (update-target id recipient-id)
+                    (= (id->source store id) donor-id)
+                    (update-source id recipient-id)))
+        ;; Since donor is passed as the term, the terms to add that
+        ;; we get back will be its elements, which we will move.
+        [elements-to-move elements-to-remove]
+        (changes-to-satisfy-simple-term-elements donor recipient)
+        store (reduce (fn [store element]
+                        (repoint store (:item-id element)))
+                      store elements-to-move)
+        store (reduce (fn [store element]
+                        (remove-entity-by-id store (:item-id element)))
+                      store
+                      ;; An element that referenced the recipient
+                      ;; object at one endpoint and the donor at the
+                      ;; other must not be removed from the recipient.
+                      (remove (set elements-to-move) elements-to-remove))]
+    ;; Finally, remove the left-over elements in the donor.
+    (reduce remove-entity-by-id store
+            (map :item-id (all-elements (in-different-store donor store))))))
 
 (def update-add-object-with-order-without-revisiting)
 
@@ -587,8 +636,12 @@
           (if (presumed-interned-object? fixed-term)
             ;; Don't change anything if the template is already interned.
             [nil nil]
-            (elements-to-change-to-satisfy-fixed-term-elements
-             fixed-term (id->entity object-id store)))
+            (let [simple-term (make-tree-object
+                               (remove special-form? (all-elements fixed-term)))
+                  [terms-to-add elements-to-remove]
+                  (changes-to-satisfy-simple-term-elements
+                   simple-term (id->entity object-id store))]
+              [(map fixed-term-to-template terms-to-add) elements-to-remove]))
           [store order seen]
           (update-add-elements-with-order-without-revisiting
            store object-id templates-to-add order position seen)

@@ -64,18 +64,16 @@
 
 (defn internal-get-or-make-object-by-name
   "Find or make an object with the given name, and satisfying the
-  template. Throw an error if an object is found that matches the
-  name and template type, but doesn't satisfy the template. Threads
-  the conflux-map.
+  template. If an object is found that matches the name and template
+  type, but doesn't satisfy the template, make a object.
+  Threads the conflux-map.
   Return [store object-id conflux-map]."
   [store conflux-map name template]
   (assert (tree-entity? template))
   (assert object? template)
-  (if-let [object (find-object-by-name store name template)]
-    (do (assert (extended-by? template object)
-                [(map to-tree (all-elements template))
-                 (map to-tree (all-elements object))])
-        [store (:item-id object) conflux-map])
+  (if-let [object (let [object (find-object-by-name store name template)]
+                    (when (extended-by? template object) object))]
+    [store (:item-id object) conflux-map]
     (let [;; Remove any existing name in the template, replacing it
           ;; with the name we are looking for.
           pattern (-> (remove #(seq (content->elements % name-label))
@@ -114,13 +112,13 @@
          store conflux-map template (all-elements template))))
 
 (defn add-object
-  "Add an object to the store, unless it is uniquely identified and is
-  already in the store, in which case, check that it satisfies the
-  template.  Return the new store and the id of the object.
-
-  If the template is a stored entity with a nil store, check that the
-  store already has a uniquely identified object with the same id,
-  and return the unmodified store and that id."
+  "Add an object to the store.
+  But if it is uniquely identified and there is
+  already one in the store, that satisfies its template, return that object.
+  Likewise, if the template is a stored entity with a nil store, check
+  that the store already has a uniquely identified object with the
+  same id, and return the unmodified store and that id.
+  Return the new store and the id of the object."
   [store template]
   (let [[store object-id _] (internal-add-object store {} template)]
     [store object-id]))

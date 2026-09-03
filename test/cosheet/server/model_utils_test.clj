@@ -488,6 +488,7 @@
   ;; A single element joining the two objects (here the donor object
   ;; has an element whose content is the recipient object) is re-pointed to
   ;; reference the recipient object at both endpoints, not removed.
+  ;; We also test merging objects with the same name.
   (let [[s1 recipient-id] (add-object (new-element-store)
                                  (make-tree-object
                                   [`("A" (~name-label) (~o1 :order))
@@ -495,7 +496,7 @@
         recipient (id->object recipient-id s1)
         [s2 donor-id] (add-object s1
                                  (make-tree-object
-                                  [`("B" (~name-label) (~o3 :order))
+                                  [`("A" (~name-label) (~o3 :order))
                                    `("y" (~o4 :order))
                                    `(~recipient (~o5 :order))]))
         donor (id->object donor-id s2)
@@ -509,7 +510,6 @@
     (is (check (object-canonical-elements (id->object recipient-id merged))
                (as-set (map canonicalize
                             [`("A" (~name-label))
-                             `("B" (~name-label))
                              "x"
                              "y"
                              ;; The self-link appears as two elements.

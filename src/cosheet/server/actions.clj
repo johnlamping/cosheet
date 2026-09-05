@@ -18,12 +18,13 @@
                    current-store
                    id->string id->source
                    Store]]
-    [store-utils :refer [remove-entity-by-id]]
+    [store-utils :refer [remove-entity-by-id find-object-by-name]]
     [entity :refer [id->entity id->element make-tree-object
                     add-elements-to-entity
                     all-elements content content->elements
                     label->element label->elements
-                    name-label object? element? label-element?]]
+                    name-label object? element? name-element? label-element?
+                    interned-object?]]
     mutable-store-impl
     [query :refer [matching-elements]]
     query-impl
@@ -43,6 +44,7 @@
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
                          create-possible-selector-entity
+                         merge-objects
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item]])))
@@ -132,83 +134,122 @@
       (do (println "Old source doesn't match" from (id->source store id))
           store))))
 
-(defn do-set-content
+(defn object-to-merge-into-renamed
+  "When an object is given the given name, the store may already hold a
+  different object with that name and the same general type. If the
+  name is non-trivial and there is such an object, return its id, so
+  it can be merged into the renamed object. Otherwise return nil."
+  [store renamed-object-id name]
+  (when (and (string? name) (not= name ""))
+    (when-let [existing (find-object-by-name
+                         store name (id->entity renamed-object-id store))]
+      (when (not= (:item-id existing) renamed-object-id)
+        (:item-id existing)))))
+
+(defn set-object-reference-by-name
+  "Set the content of a place that holds a named object so it holds an
+  object with a different name: Get or make an object with the new
+  name, and swap it in."
   [store {:keys [subject-ids template virtual-object-reference-template
-                 is-object-name client-id from to]}]
+                 client-id from to]}]
+  ;; We are setting a new name in a dom cell whose contents is a
+  ;; named object.
+  ;; First, get an object corresponding to the name. Then check
+  ;; that the position still holds an object, and swap in the
+  ;; new one.
+  ;; TODO: !!!  We need to handle reversed links, which we can
+  ;; do by checking which end matches the old object.
+  (let [object-template (or
+                         ;; A virtual object reference.
+                         virtual-object-reference-template
+                         ;; An existing object reference.
+                         (content (final-template template)))
+        _ (assert (object? object-template))
+        name (clojure.string/trim to)
+        order-element (order-element-for-item
+                       (id->element (first subject-ids) store) store)
+        order (content order-element)
+        ;; The template will have a name. If it's generic, remove
+        ;; it, or we'll make an object with both that and the name
+        ;; the user set.
+        template (make-tree-object
+                  (remove #(and (seq (content->elements % name-label))
+                                (= (content %) ""))
+                          (all-elements object-template)))
+        [store object-id remainder] (get-or-make-ordered-object-by-name
+                                     store name template order :after
+                                     false)
+        store (update-source store (:item-id order-element) remainder)
+        ;; TODO: !!! This needs to handle orientation.
+        logical-from (id->source store (first subject-ids))]
+    ;; We are going to claim that the user saw logical-from when
+    ;; they asked for the change. Make sure that what the user
+    ;; actually saw is consistent with that.
+    (when (or
+           ;; We were already empty.
+           (and (or (= logical-from "")
+                    (= logical-from 'anything))
+                (= from ""))
+           ;; There was an object with the name the user saw.
+           (and (object-id? logical-from)
+                (let [name (-> (id->entity logical-from store)
+                               (label->elements name-label)
+                               first
+                               content)]
+                  (equivalent-primitives? name from))))
+      (let [store (reduce
+                   (fn [store element-id]
+                     ;; TODO: !!! This needs to handle orientation.
+                     (update-set-source
+                      store element-id logical-from object-id))
+                   store subject-ids)]
+        ;; TODO: !!! This needs to handle orientation.
+        (if-let [name-element-id
+                 (first (target-label->ids
+                         store object-id name-label-id))]
+          (add-following-selection-by-ids store
+                                          client-id [name-element-id])
+          store)))))
+
+(defn do-set-content
+  [store {:keys [subject-ids is-object-name client-id from to]
+          :as arguments}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
     (if is-object-name
-      ;; We are setting a new name in a place that holds a named object.
-      ;; First, get an object corresponding to the name. Then check
-      ;; that the position still holds an object, and swap in the
-      ;; new one.
-      ;; TODO: !!!  We need to handle reversed links, which we can
-      ;; do by checking which end matches the old object.
-      (let [object-template (or
-                             ;; A virtual object reference.
-                             virtual-object-reference-template
-                             ;; An existing object reference.
-                             (content (final-template template)))
-            _ (assert (object? object-template))
-            name (clojure.string/trim to)
-            order-element (order-element-for-item
-                           (id->element (first subject-ids) store) store)
-            order (content order-element)
-            ;; The template will have a name. If it's generic, remove
-            ;; it, or we'll make an object with both that and the name
-            ;; the user set.
-            template (make-tree-object
-                      (remove #(and (seq (content->elements % name-label))
-                                    (= (content %) ""))
-                              (all-elements object-template)))
-            [store object-id remainder] (get-or-make-ordered-object-by-name
-                                         store name template order :after
-                                         false)
-            store (update-source store (:item-id order-element) remainder)
-            ;; TODO: !!! This needs to handle orientation.
-            logical-from (id->source store (first subject-ids))]
-        ;; We are going to claim that the user saw logical-from when
-        ;; they asked for the change. Make sure that what the user
-        ;; actually saw is consistent with that.
-        (when (or
-               ;; We were already empty.
-               (and (or (= logical-from "")
-                        (= logical-from 'anything))
-                    (= from ""))
-               ;; There was an object with the name the user saw.
-               (and (object-id? logical-from)
-                    (let [name (-> (id->entity logical-from store)
-                                   (label->elements name-label)
-                                   first
-                                   content)]
-                      (equivalent-primitives? name from))))
-          (let [store (reduce
-                       (fn [store element-id]
-                         ;; TODO: !!! This needs to handle orientation.
-                         (update-set-source
-                          store element-id logical-from object-id))
-                       store subject-ids)]
-            ;; TODO: !!! This needs to handle orientation.
-            (if-let [name-element-id
-                     (first (target-label->ids
-                             store object-id name-label-id))]
-              (add-following-selection-by-ids store
-                                              client-id [name-element-id])
-              store))))
-      (let [to (parse-string-as-number (clojure.string/trim to))]
-        (println "Setting" (count subject-ids) "items from" from "to"
-                 (if (object-id? to)
-                   (object-semantic-to-tree (id->entity to store))
-                   to))
-        (->
-         (reduce
-          (fn [store id]
-            (update-set-source store id from to))
-          store subject-ids)
-         ;; We might have set the source on a virtual item.
-         ;; This will make sure any newly created item is selected.
-         (add-following-selection-by-ids client-id subject-ids))))))
+      (set-object-reference-by-name store arguments)
+      (let [to (parse-string-as-number (clojure.string/trim to))
+            ;; If we are changing the name of a single object, find
+            ;; any existing object that already has that name, to
+            ;; merge with afterwards.
+            renamed-object-id (when (= (count subject-ids) 1)
+                                (let [subject-id (first subject-ids)
+                                      target-id (id->target store subject-id)
+                                      element (id->entity subject-id store)]
+                                  (when (and (object-id? target-id)
+                                             (name-element? element))
+                                    target-id)))
+            donor-id (when renamed-object-id
+                       (object-to-merge-into-renamed
+                        store renamed-object-id to))
+            _ (println "Setting" (count subject-ids) "items from" from "to"
+                       (if (object-id? to)
+                         (object-semantic-to-tree (id->entity to store))
+                         to))
+            store (reduce
+                   (fn [store id]
+                     (update-set-source store id from to))
+                   store subject-ids)
+            ;; Merge the renamed object with the object that already had
+            ;; its new name, if the rename took effect.
+            store (cond-> store
+                    (and donor-id (interned-object?
+                                   (id->entity renamed-object-id store)))
+                    (merge-objects renamed-object-id donor-id))]
+        ;; We might have set the source on a virtual item.
+        ;; This will make sure any newly created item is selected.
+        (add-following-selection-by-ids store client-id subject-ids)))))
 
 (defn do-add-twin
   [store {:keys [subject-ids template virtual-object-reference-template
@@ -270,7 +311,16 @@
                                 (let [element-content (id->source store id)]
                                   (or (string? element-content)
                                       (= element-content 'anything)))))
-                         subject-ids)]
+                         subject-ids)
+        ;; If a single subject is being turned into a non-trivial name
+        ;; of an object, find any existing object that already has that
+        ;; name, to merge into afterwards.
+        name-id (first name-ids)
+        renamed-object-id (when (= (count name-ids) 1)
+                            (id->target store name-id))        
+        donor-id (when renamed-object-id
+                   (object-to-merge-into-renamed
+                    store renamed-object-id (id->source store name-id)))]
     (when (or (seq object-ids) (seq name-ids))
       (let [[object-new-ids store] (create-possible-selector-entities
                                     `(~'anything (~name-label))
@@ -278,7 +328,13 @@
                                     :before false store)
             [name-new-ids store] (create-possible-selector-entities
                                   `(~name-label) name-ids name-ids
-                                  :before false store)]
+                                  :before false store)
+            ;; Merge the newly-named object with the object that already
+            ;; had that name, if the naming took effect.
+            store (cond-> store
+                    (and donor-id (interned-object?
+                                   (id->entity renamed-object-id store)))
+                    (merge-objects renamed-object-id donor-id))]
         (add-following-selection-by-ids
          store client-id (concat object-new-ids name-new-ids))))))
 

@@ -46,7 +46,7 @@
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [add-order-elements]]
              [model-utils :refer [entity->canonical-semantic
-                                  semantic-elements selector?
+                                  semantic-elements
                                   semantic-to-tree object-semantic-to-tree
                                   pattern-to-fixed-term
                                   label-object-template
@@ -183,7 +183,7 @@
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           "")))
+           'anything)))
   ;; Test making the new content be 'anything.
   (let [new-store (do-set-content store
                                   ;; Jane is a selector
@@ -209,7 +209,7 @@
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           ""))
+           'anything))
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
@@ -345,7 +345,7 @@
                (canonicalize
                 (make-tree-object
                  `(("Joe" (~name-label)) "male" "married"
-                   ("" 5)
+                   (~'anything 5)
                    (45 (~age-label))
                    (39 (~age-label)
                        ("doubtful" "confidence")))))))
@@ -355,7 +355,7 @@
                  `(("Jane" (~name-label)) "female"
                    (~'anything 5)
                    (45 (~age-label)))))))
-    (let [new-joe-element (first (matching-elements "" new-joe))
+    (let [new-joe-element (first (matching-elements 'anything new-joe))
           new-jane-element (first (matching-elements 'anything new-jane))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
@@ -370,10 +370,10 @@
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize `(45 (~age-label) ""))))
+               (canonicalize `(45 (~age-label) ~'anything))))
     (is (check (entity->canonical-semantic new-jane-age)
                (canonicalize `(45 (~age-label) ~'anything))))
-    (let [new-joe-element (first (matching-elements "" new-joe-age))
+    (let [new-joe-element (first (matching-elements 'anything new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
@@ -390,18 +390,14 @@
         new-joe-age (id->entity (:item-id joe-age) new-store)
         generic-label (all-presumed-interned-in-different-store
                        label-object-template
-                       new-store)
-        blank-label (all-presumed-interned-in-different-store
-                     (make-tree-object [`("" (~name-label))
-                                        `(~link-type)])
-                     new-store)]
+                       new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
                (canonicalize `(45 (~age-label)
-                                  (~blank-label)))))
+                                  (~generic-label)))))
     (is (check (entity->canonical-semantic new-jane-age)
                (canonicalize `(45 (~age-label)
                                   (~generic-label)))))
-    (let [new-joe-element (first (matching-elements `(~blank-label)
+    (let [new-joe-element (first (matching-elements `(~generic-label)
                                                     new-joe-age))
           new-jane-element (first (matching-elements `(~generic-label)
                                                      new-jane-age))]
@@ -435,9 +431,9 @@
                                  :session-state session-state
                                  :client-id nil})
         new-joe (id->entity joe-id new-store)
-        new-name (first (matching-elements `("" (~name-label)) new-joe))]
+        new-name (first (matching-elements `(~'anything (~name-label)) new-joe))]
     (is (check (entity->canonical-semantic new-name)
-               (canonicalize `("" (~name-label)))))
+               (canonicalize `(~'anything (~name-label)))))
     (is (check (:ephemeral-data new-store)
                {:following-selection-by-ids [nil [(:item-id new-name)]]})))
   ;; Does nothing to an element whose target is an object but whose

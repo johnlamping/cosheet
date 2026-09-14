@@ -268,6 +268,10 @@
 ;;;        and can't even select it. This property is inherited to
 ;;;        child elements.
 
+;;;    :selector
+;;;        If present, this component holds a selector. This property is
+;;;        inherited to child elements.
+
 ;;;    :get-action-data
 ;;;        Optional pseudo function that takes a dom specification,
 ;;;        the action data for the containing dom, a user action, and

@@ -29,6 +29,7 @@
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    condition-satisfiers
+                                   inherited-specification-keys
                                    transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
@@ -155,8 +156,9 @@
   [{:keys [relative-id] :as spec} store]
   (let-R [row-condition-object (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition-object)
-          spec-down {:template 'anything
-                     :width 0.75}
+          spec-down (assoc (select-keys spec inherited-specification-keys)
+                           :template 'anything
+                           :width 0.75)
           last-item (last (ordered-entities
                            (remove label-element? condition-elements)))
           virtual-dom
@@ -222,7 +224,7 @@
 (defn table-header-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
   Inherited describes the column requests."
-  [node]
+  [node specification]
   (hierarchy-node-DOM
    node
    table-header-subtree-DOM
@@ -231,7 +233,8 @@
        (-> spec
            (dissoc :top-level)
            (assoc :parent-cover-ids (map #(:item-id (:item %)) cover)))))
-   {:top-level true}))
+   (assoc (select-keys specification inherited-specification-keys)
+          :top-level true)))
 
 (defn table-virtual-column-header-DOM
   [hierarchy]
@@ -256,7 +259,7 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [{:keys [hierarchy] :as spec} _]
-  (let [doms (map table-header-top-level-subtree-DOM hierarchy)
+  (let [doms (map #(table-header-top-level-subtree-DOM % spec) hierarchy)
         virtual-header (table-virtual-column-header-DOM hierarchy)]
     (into [:div {:class "column-header-sequence table-header"}]
           (concat doms [virtual-header]))))
@@ -539,6 +542,7 @@
         ;; but only only the ones affected by a change.
         (let [condition-dom (make-component
                              {:relative-id row-condition-id
+                              :selector true
                               :render-dom render-table-condition-DOM-R
                               :get-action-data default-get-action-data
                               :get-do-batch-edit-action-data
@@ -547,6 +551,7 @@
               ;; TODO: Add an "other" column if a table requests it.
               header-dom (make-component
                           {:relative-id column-headers-id
+                           :selector true
                            :hierarchy hierarchy
                            :render-dom render-table-header-DOM
                            :get-action-data default-get-action-data})

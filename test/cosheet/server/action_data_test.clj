@@ -149,7 +149,7 @@
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
       (is (= (semantic-to-tree (id->entity id store))
-             ""))))
+             'anything))))
   ;; Try several initial targets, one a selector and one not, and a
   ;; vector as the template.
   (let [data (get-virtual-action-data
@@ -169,7 +169,7 @@
                  `(2 (~age-label-obj))))
       (is (check (semantic-to-tree (id->entity
                                     (id->target store new-joe-id) store))
-                 `("" (2 (~age-label-obj)))))
+                 `(~'anything (2 (~age-label-obj)))))
       (is (= (id->target store (id->target store new-jane-id)) jane-id))
       (is (check (semantic-to-tree (id->entity new-jane-id store))
                  `(2 (~age-label-obj))))
@@ -194,7 +194,7 @@
       (is (< (:right (get-order id store))
              (:right (get-order (:item-id joe-age) original-store))))
       (is (check (semantic-to-tree (id->entity id store))
-                 ""))))
+                 'anything))))
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
               {:template '(anything 2)
@@ -210,14 +210,14 @@
           age-label-obj (in-different-store (content jane-age-label) store)]
       (is (= (id->target store new-joe-id) joe-id))
       (is (check (semantic-to-tree (id->entity new-joe-id store))
-                 '("" 2)))
+                 '(anything 2)))
       (is (check (map semantic-to-tree
                       (semantic-elements
                        (order-recursively
                         (id->entity joe-id store))))
                  `("male"
                    "married"
-                   ("" 2)
+                   (~'anything 2)
                    (39 (~age-label-obj) ("doubtful" "confidence"))
                    (45 (~age-label-obj)))))
       (is (= (id->target store new-jane-id) jane-id))

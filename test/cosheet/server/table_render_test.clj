@@ -114,7 +114,7 @@
         new-store (:store data)
         new-id (first (:subject-ids data))]
     (is (= (semantic-to-tree (id->element new-id new-store))
-           `("" (~(find-object-by-name new-store " A"
+           `(~'anything (~(find-object-by-name new-store " A"
                                        (link-type-object 'anything))))))))
 
 (deftest table-DOM-test
@@ -769,6 +769,7 @@
            store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
+                        :selector true
                         :render-dom render-table-condition-DOM-R
                         :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
@@ -776,6 +777,7 @@
            [:div {:class "table-main"}
             [:component
              {:relative-id column-headers-id
+              :selector true
               :hierarchy
               [{:cosheet.server.hierarchy/hierarchy-node true
                 :leaves (any)

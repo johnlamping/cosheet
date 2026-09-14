@@ -624,7 +624,7 @@
 
 (defn element-primitive-content-DOM
   "Make dom for a primitive that is the content part of an item."
-  [item primitive {:keys [class]}]
+  [item primitive {:keys [class selector]}]
   (assert (primitive? primitive) primitive)
   (let [anything (= 'anything primitive)]
     [:div (cond-> (into-attributes
@@ -641,7 +641,7 @@
                                       (target-entity item))})
             anything
             (into-attributes (:class "placeholder")))
-     (if anything "\u00A0..." (str primitive))]))
+     (if anything (if selector "\u00A0..." "") (str primitive))]))
 
 (defn render-object-reference-DOM-R
   "Produce dom for an object reference. This means that we just show its
@@ -738,7 +738,8 @@
   (assert (= relative-id :content) relative-id)
   (let-R [element (id->updating-entity-R target-item-id store)]
     (element-content-DOM
-     element (select-keys specification [:class :width :immutable :template]))))
+     element (select-keys specification
+                          [:class :width :immutable :template :selector]))))
 
 (defmethod print-method
   cosheet.server.item_render$render_element_content_DOM_R

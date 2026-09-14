@@ -798,52 +798,23 @@
     (repetition-avoiding-threaded-traverse
      generic pre-fn identity-post-fn store)))
 
-(defn template-to-possible-non-selector-template
-  "Given a template, alter it to work as a template for a possible
-  non-selector. Specifically, replace 'anything by the empty string,
-  unless in a part of the template that is marked as a selector, in
-  which case don't modify it."
-    [pattern]
-    (cond (some #(= (content %) :selector) (all-elements pattern))
-          pattern
-          (= 'anything pattern)
-          ""
-          :else
-          (map-subparts template-to-possible-non-selector-template pattern)))
-
-(defn selector?
-  "Return whether the entity is (or is part of) a selector."
-  [entity]
-  (or (seq (content->elements entity :selector))
-      (cond (element? entity) (when-let [target (target-entity entity)]
-                                (selector? target))
-            (object? entity) (let [containing (containing-elements entity)]
-                                 (when (= (count containing) 1)
-                                   (selector? (first containing)))))))
-
-(defn create-possible-selector-entity
-  "Create an entity matching the template, but first modifying the
-  template to not be a selector if the target-id is not a
-  selector. If the template is an object and the target-id is non-nil,
-  set the source of the target to the new object. Return the updated
-  store and the id of the new entity."
+(defn create-entity
+  "Create an entity matching the template. If the template is an object
+  and the target-id is non-nil, set the source of the target to the new
+  object. Return the updated store and the id of the new entity."
   [template target-id adjacent-id position use-bigger store]
-  (let [template (if (and target-id
-                          (selector? (id->entity target-id store)))
-                   template
-                   (template-to-possible-non-selector-template template))]
-    (if (object? template)
-      (let [[store id] (update-add-object-adjacent-to
-                        store template
-                        (id->entity adjacent-id store)
-                        position use-bigger)]
-        [(if target-id
-           (update-source store target-id id)
-           store)
-         id])
-      (update-add-element-adjacent-to store target-id template
-                                      (id->entity adjacent-id store)
-                                      position use-bigger))))
+  (if (object? template)
+    (let [[store id] (update-add-object-adjacent-to
+                      store template
+                      (id->entity adjacent-id store)
+                      position use-bigger)]
+      [(if target-id
+         (update-source store target-id id)
+         store)
+       id])
+    (update-add-element-adjacent-to store target-id template
+                                    (id->entity adjacent-id store)
+                                    position use-bigger)))
 
 (defn create-possible-selector-entities
   "Create entities, specializing the template as appropriate, depending on
@@ -853,7 +824,7 @@
   (let [[specialized-template store] (specialize-generic template store)]
     (threaded-map
      (fn [[target adjacent] store]
-       (let [[store id] (create-possible-selector-entity
+       (let [[store id] (create-entity
                          specialized-template
                          target adjacent position use-bigger store)]
          [id store]))

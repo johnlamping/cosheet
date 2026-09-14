@@ -34,7 +34,7 @@
     [dom-manager :refer [client-id->action-data
                          client-id->relative-ids
                          relative-ids->client-id]]
-    [model-utils :refer [selector? semantic-elements abandon-problem-changes
+    [model-utils :refer [semantic-elements abandon-problem-changes
                          ordered-semantic-to-tree entity->canonical-semantic
                          create-possible-selector-entities
                          exemplar-to-fixed-term remove-semantic-elements
@@ -43,7 +43,7 @@
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
-                         create-possible-selector-entity
+                         create-entity
                          merge-objects
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
@@ -122,12 +122,13 @@
      (and (= from "") (= source 'anything)))))
 
 (defn update-set-source
-  "Set the source to to, provided it previously matched from."
+  "Set the source to to, provided it previously matched from. An empty
+  string becomes 'anything; to actually set the empty string, the user
+  types two quotation marks."
   [store id from to]
-  (let [to (if (and (= to "")
-                    (selector? (id->entity id store)))
-             'anything
-             to)]
+  (let [to (cond (= to "") 'anything
+                 (= to "\"\"") ""
+                 :else to)]
     (if (current-source-matches-from? store id from to)
       (let [modified (update-source store id (parse-string-as-number to))]
         (abandon-problem-changes store modified id))
@@ -261,7 +262,7 @@
     ;; what was built.
     (if virtual-object-reference-template
       (let [[store object-id]
-            (create-possible-selector-entity
+            (create-entity
              virtual-object-reference-template
              nil (first subject-ids) :after true store)
             store (reduce (fn [store subject-id]
@@ -385,7 +386,7 @@
                       [store (conj oids (id->source store subject-id))]
                       :else
                       (let [[s1 object-id]
-                            (create-possible-selector-entity
+                            (create-entity
                              template subject-id subject-id :after false store)]
                         (if (= store
                                (abandon-problem-changes store s1 subject-id))

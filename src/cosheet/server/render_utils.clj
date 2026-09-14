@@ -143,7 +143,7 @@
 ;;; The specification keys that should always be inherited by
 ;;; sub-components, unless explicitly overridden.
 (def inherited-specification-keys
-  [:width :immutable :object-ids-to-contract])
+  [:width :immutable :selector :object-ids-to-contract])
 
 (defn transform-specification-for-elements
   [specification]

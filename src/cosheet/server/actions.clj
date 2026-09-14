@@ -350,13 +350,17 @@
         ;; content, the template we get is typically the template for
         ;; the element as a whole. If the template we are given is an
         ;; element, we're in that case, and we need to use its content
-        ;; as our template.template.
+        ;; as our template.
         template (or virtual-object-reference-template
                      (cond-> (final-template template)
                        element? content))
-        template (if (or (not template) (#{'anything "" :singular} template))
-                   (make-tree-object [:selector])
-                   template)
+        ;; Turn generic templates into objects.
+        template (cond (or (nil? template) (#{'anything ""} template))
+                       (make-tree-object [])
+                       (= template :singular)
+                       (make-tree-object [:selector])
+                       :else
+                       template)
         ;; If the template is an object with no name, and this is not
         ;; a virtual component, and the first subject's content is a
         ;; string, add that string as a name.

@@ -338,6 +338,51 @@
     (is (= (set non-labels) #{a b}))
     (is (= (set labels) #{c d}))))
 
+(deftest selector?-test
+  (let [[s1 selector-root-id] (add-element
+                               (starting-store "starting-tab") nil
+                               `("thing" :selector
+                                         ("child" (1 :order)
+                                                  "grandchild")
+                                 (~(make-tree-object [4]) "object")))
+        [s non-selector-root-id] (add-element
+                                  s1 nil
+                                  `("thing" ("child" (1 :order)
+                                                      "grandchild")
+                                            (~(make-tree-object [4]) "object")))
+        selector-root (id->entity selector-root-id s)
+        selector-child (first (matching-elements "child" selector-root))
+        selector-grandchild (first (matching-elements "grandchild"
+                                                      selector-child))
+        selector-object (content (first (matching-elements
+                                         `(~(make-tree-object []))
+                                         selector-root)))
+        non-selector-root (id->entity non-selector-root-id s)
+        non-selector-child (first (matching-elements "child" non-selector-root))
+        non-selector-grandchild (first (matching-elements "grandchild"
+                                                          non-selector-child))
+        non-selector-object (content (first (matching-elements
+                                             `(~(make-tree-object []))
+                                             non-selector-root)))
+        ordered-tab-ids (ordered-tabs-ids-R s)
+        cd (make-calculator-data (make-priority-task-queue 0))]
+    (request ordered-tab-ids cd)
+    (compute cd)
+    (let [first-tab (id->entity
+                     (first (reporter-value-or-invalid ordered-tab-ids)) s)]
+      (is (selector? (content (first (label->elements
+                                      (first (label->elements first-tab
+                                                              :tab-topic))
+                                      :row-condition))))))
+    (is (selector? selector-root))
+    (is (selector? selector-child))
+    (is (selector? selector-grandchild))
+    (is (selector? selector-object))
+    (is (not (selector? non-selector-root)))
+    (is (not (selector? non-selector-child)))
+    (is (not (selector? non-selector-grandchild)))
+    (is (not (selector? non-selector-object)))))
+
 (deftest match-terms-and-targets-test
   (is (check (match-terms-and-targets [1 2 3] [2 3 4])
              [(as-set [[3 3] [2 2]]) [1] [4]]))

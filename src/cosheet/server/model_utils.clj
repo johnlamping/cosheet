@@ -188,6 +188,47 @@
   [entity]
   (canonicalize (semantic-to-tree entity)))
 
+;;; In the store, an entity is marked as a selector if it is intended
+;;; to be used as a query. This means that it should typically not be
+;;; returned as the result of a query. For example, a table's row
+;;; condition shouldn't be returned as one of the rows of a table.
+
+;;; To indicate that an entity is a selector, it is marked with an
+;;; elements whose content is :selector. All of its sub-parts are also
+;;; considered to be selectors. (But the definition of sub-part is
+;;; somewhat arbitrary in the presence of bidirectional links.)
+
+;;; DOM components are also marked :selector, which affects how an
+;;; 'anything in them is displayed. Since the sub-component
+;;; relationship is clear cut, that notion of selector is used for
+;;; displaying components, while the one here is used for queries,
+;;; where there is no alternative.
+
+(defn selector?
+  "Return whether the entity is (or is part of) a selector.
+  When there are anonymous objects, it can be ambiguous whether an
+  object should count as a sub-element, since links to objects can be
+  in either orientation. We count an object as a sub-element only if
+  there is just one forward link pointing to it. So an object that is
+  only reached from a header by a reverse link won't count as a
+  sub-object. That case should be very rare."
+  [entity]
+  (or (seq (content->elements entity :selector))
+      (cond (element? entity) (when-let [target (target-entity entity)]
+                                (selector? target))
+            (object? entity) (let [containing (containing-elements entity)]
+                                 (when (= (count containing) 1)
+                                   (selector? (first containing)))))))
+
+(defn add-non-selector-to-fixed-term
+  "Given a fixed-term pattern, return a pattern that additionally
+  requires that the matched item not have a (:selector) element. This
+  doesn't guarantee that no sub-entities of a selector are found. So
+  callers to this should generally filter the results to make sure
+  they are not selectors."
+  [pattern]
+  (add-elements-to-entity pattern [(not-query '(:selector))]))
+
 ;;; We have various list forms of entities for different purposes:
 ;;;      query: a form suitable for use as a query. It can have nils,
 ;;;             which means it can't be saved in the store. It may
@@ -200,9 +241,7 @@
 ;;;             empty value, and the only natural way to express that
 ;;;             is with an empty value, distinct from a wildcard.
 ;;;  template:  the list form for the semantic content of a new item.
-;;;             It may have 'anything as they are allowed in items. But
-;;;             since they are only allowed in selector items, they will
-;;;             be turned into "" when put into non-selector items. 
+;;;             It may have 'anything as they are allowed in items.
 ;;;    generic: a pattern or template that has '??? to indicate values
 ;;;             that need to be filled in with unique strings.
 
@@ -210,12 +249,6 @@
   "If the value is 'anything, replace it with nil."
   [value]
   (if (= 'anything value) nil value))
-
-(defn add-non-selector-to-fixed-term
-  "Given a fixed-term pattern, return a pattern that additionally
-  requires that the matched item not have a (:selector) element."
-  [pattern]
-  (add-elements-to-entity pattern [(not-query '(:selector))]))
 
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:

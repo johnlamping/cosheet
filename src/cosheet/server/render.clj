@@ -294,7 +294,7 @@
 ;;;        matching the first element of its template sequence must be
 ;;;        created, using that as the target of the next, etc. The
 ;;;        template is used by add-twin make-object, and set-content.
-;;;        It is also used by do-delete to check for :singluar. And it
+;;;        It is also used by do-delete to check for :singular. And it
 ;;;        is used by action-data to when making new items for virtual
 ;;;        components.
 

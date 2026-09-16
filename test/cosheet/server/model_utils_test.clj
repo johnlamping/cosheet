@@ -5,7 +5,7 @@
                                       link-type object-type name-label
                                       make-tree-object make-tree-element
                                       make-conflux-tree-object make-tree-id
-                                      object?
+                                      object? interned-object?
                                       all-presumed-interned-in-different-store
                                       id->object id->entity
                                       label->elements label->content
@@ -14,7 +14,8 @@
                                       to-tree]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
-                                     id->source id->target make-item-id]]
+                                     id->source id->target make-item-id
+                                     get-new-object-id add-link]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -382,6 +383,103 @@
     (is (not (selector? non-selector-child)))
     (is (not (selector? non-selector-grandchild)))
     (is (not (selector? non-selector-object)))))
+
+(deftest mark-template-as-selector-test
+  (let [template (make-tree-object
+                  [`("age" "years")
+                   (make-tree-element :target (make-tree-object [1]) [])
+                   `(~name-label "nm")])]
+    (is (check (mark-template-as-selector template)
+               (make-tree-object
+                ['("age" ("years" :selector) :selector)
+                 (make-tree-element
+                  :target (make-tree-object ['(1 :selector) :selector])
+                  ['(:selector :reverse)])
+                 `(~name-label ("nm" :selector) :selector)
+                 :selector]))))
+  ;; A non-semantic element is not marked, and its sub-elements are not
+  ;; visited, so a semantic sub-element it contains is left unmarked.
+  (is (check (mark-template-as-selector
+              (make-tree-object [`(:tag ("deep" "leaf"))]))
+             (make-tree-object
+              ['(:tag ("deep" "leaf"))
+               :selector])))
+  ;; The traversal uses repetition-avoiding-threaded-traverse, so it
+  ;; terminates on a template that shares an object across paths. Here a,
+  ;; carrying "x", is referenced twice from b: once as z's content and
+  ;; once via a reverse link. Both references share one conflux id, and
+  ;; the shared object's elements are marked at its first occurrence.
+  (let [{:keys [cyclic-shared-store b-id]} (cyclic-and-shared-a-b-stores)
+        template (to-tree (id->object b-id cyclic-shared-store))
+        a (make-conflux-tree-object
+           (make-tree-id 1)
+           ['("x" :selector) :selector])
+        a-ref (make-conflux-tree-object (make-tree-id 1) [:selector])]
+    (is (check (mark-template-as-selector template)
+               (make-tree-object
+                [`("z" (~a :selector) :selector)
+                 '("y" :selector)
+                 (make-tree-element :target a-ref ['(:selector :reverse)])
+                 :selector])))))
+
+(deftest remove-selector-markings-test
+  (let [unmarked (make-tree-object
+                  [`("x" (~o1 :order))
+                   `(~(make-tree-object [`("y" (~o2 :order))]) (~o3 :order))])
+        marked (mark-template-as-selector unmarked)
+        [store id] (add-object (new-element-store) marked)]
+    ;; The stored object's to-tree carries the :selector markings.
+    (is (check (canonicalize (to-tree (id->entity id store)))
+               (canonicalize marked)))
+    ;; Removing them reaches every :selector and restores the unmarked
+    ;; structure.
+    (let [after (remove-selector-markings store id)]
+      (is (check (canonicalize (to-tree (id->entity id after)))
+                 (canonicalize unmarked))))))
+
+(deftest remove-selector-markings-cycle-test
+  ;; The store forbids links that would create a loop among non-interned
+  ;; objects, but we can build one by linking two interned (named)
+  ;; objects and then removing their names. That leaves a cycle: a to b
+  ;; via ab, and b to a via ba. repetition-avoiding-threaded-traverse
+  ;; keeps the traversal from looping; the forward links and objects are
+  ;; unmarked, while ba, whose direction disagrees with its (non-reverse)
+  ;; :selector wherever it is reached, keeps its marking.
+  (let [[s1 a-id] (add-object
+                   (new-element-store)
+                   (make-tree-object [`("A" (~name-label) (~o1 :order))]))
+        [s2 b-id] (add-object
+                   s1 (make-tree-object [`("B" (~name-label) (~o2 :order))]))
+        [s3 ab-id] (add-link s2 a-id b-id)
+        [s4 ba-id] (add-link s3 b-id a-id)
+        [s5 _] (add-link s4 a-id :selector)
+        [s6 _] (add-link s5 b-id :selector)
+        [s7 _] (add-link s6 ab-id :selector)
+        [s8 _] (add-link s7 ba-id :selector)
+        name-id (fn [s id nm]
+                  (->> (id->object id s)
+                       all-elements
+                       (filter #(= (content %) nm))
+                       first
+                       :item-id))
+        ;; Removing the names un-interns a and b, closing the cycle.
+        store (-> s8
+                  (remove-entity-by-id (name-id s8 a-id "A"))
+                  (remove-entity-by-id (name-id s8 b-id "B")))
+        marked? (fn [s id] (boolean (seq (content->elements
+                                          (id->entity id s) :selector))))]
+    ;; The links could only be built because a and b were interned; now
+    ;; they are not.
+    (is (interned-object? (id->object a-id s8)))
+    (is (not (interned-object? (id->object a-id store))))
+    (is (not (interned-object? (id->object b-id store))))
+    ;; The traversal terminates. a, b, and the forward link ab are
+    ;; unmarked; the reverse link ba keeps its :selector.
+    (let [from-a (remove-selector-markings store a-id)]
+      (is (not (marked? from-a a-id)))
+      (is (not (marked? from-a b-id)))
+      (is (not (marked? from-a ab-id)))
+      (is (marked? from-a ba-id)))))
 
 (deftest match-terms-and-targets-test
   (is (check (match-terms-and-targets [1 2 3] [2 3 4])

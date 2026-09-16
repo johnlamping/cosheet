@@ -20,7 +20,6 @@
                     link-type object-type name-label
                     content->elements label->elements label->element
                     label->content
-                    map-subparts
                     target-entity entity-key
                     make-tree-element make-tree-object
                     make-tree-object-copying-id make-tree-id
@@ -219,6 +218,61 @@
             (object? entity) (let [containing (containing-elements entity)]
                                  (when (= (count containing) 1)
                                    (selector? (first containing)))))))
+
+(defn mark-template-as-selector
+  "Return the template with a :selector element added to it and,
+  recursively, to each of its semantic elements and non-interned
+  objects. When adding a :selector element to a reverse link, add
+  a :reverse sub-element. That allows recreating the direction in
+  which the direction the template was traversed."
+  [template]
+  (convert-unneeded-conflux-tree-objects
+   (first
+    (repetition-avoiding-threaded-traverse
+     template
+     (fn [_ entity _ caller-data]
+       (if (or (and (element? entity) (semantic-element? entity))
+               (and (object? entity) (not (presumed-interned-object? entity))))
+         [entity caller-data]
+         [[:entity/do-not-process entity] caller-data]))
+     (fn [_ assembled _ caller-data]
+       [(add-elements-to-entity
+         assembled [(if (and (element? assembled)
+                             (= (orientation assembled) :target))
+                      '(:selector :reverse)
+                      :selector)])
+        caller-data])
+     nil))))
+
+(defn remove-selector-markings
+  "Update the store by removing the :selector markings that
+  mark-template-as-selector added, starting from the element with the
+  given id. Does not recurse into interned objects or into unmarked
+  entities. Doesn't touch an element if it's not marked with :selector
+  or the :reverse information on the :selector doesn't match the
+  orientation of the element.
+  The orientation restriction is for handling removing the :selector
+  markings from objects. Without it, it could be possible recurse from
+  an object to one that had referenced it, by following the reference
+  link ikn reverse. With the orientation information, we can restrict
+  the selector removal to what was added to a selector while it was a
+  selector."
+  [store id]
+  (let [selector-ids
+        (repetition-avoiding-threaded-traverse
+         (id->entity id store)
+         (fn [_ entity _ ids]
+           (let [selector (first (content->elements entity :selector))]
+             (cond
+               (nil? selector) [:entity/omit ids]
+               (or (object? entity)
+                   (= (= (orientation entity) :target)
+                      (boolean (seq (content->elements selector :reverse)))))
+               [entity (conj ids (entity-key selector))]
+               :else [:entity/omit ids])))
+         nil
+         #{})]
+    (reduce remove-entity-by-id store selector-ids)))
 
 (defn add-non-selector-to-fixed-term
   "Given a fixed-term pattern, return a pattern that additionally
@@ -832,22 +886,28 @@
      generic pre-fn identity-post-fn store)))
 
 (defn create-entity
-  "Create an entity matching the template. If the template is an object
-  and the target-id is non-nil, set the source of the target to the new
-  object. Return the updated store and the id of the new entity."
+  "Create an entity matching the template. If the target-id is a
+  selector, mark the template as a selector before adding it. If the
+  template is an object and the target-id is non-nil, set the source of
+  the target to the new object. Return the updated store and the id of
+  the new entity."
   [template target-id adjacent-id position use-bigger store]
-  (if (object? template)
-    (let [[store id] (update-add-object-adjacent-to
-                      store template
-                      (id->entity adjacent-id store)
-                      position use-bigger)]
-      [(if target-id
-         (update-source store target-id id)
-         store)
-       id])
-    (update-add-element-adjacent-to store target-id template
-                                    (id->entity adjacent-id store)
-                                    position use-bigger)))
+  (let [template (if (and target-id
+                          (selector? (id->entity target-id store)))
+                   (mark-template-as-selector template)
+                   template)]
+    (if (object? template)
+      (let [[store id] (update-add-object-adjacent-to
+                        store template
+                        (id->entity adjacent-id store)
+                        position use-bigger)]
+        [(if target-id
+           (update-source store target-id id)
+           store)
+         id])
+      (update-add-element-adjacent-to store target-id template
+                                      (id->entity adjacent-id store)
+                                      position use-bigger))))
 
 (defn create-possible-selector-entities
   "Create entities, specializing the template as appropriate, depending on

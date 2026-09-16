@@ -355,12 +355,10 @@
                      (cond-> (final-template template)
                        element? content))
         ;; Turn generic templates into objects.
-        template (cond (or (nil? template) (#{'anything ""} template))
-                       (make-tree-object [])
-                       (= template :singular)
-                       (make-tree-object [:selector])
-                       :else
-                       template)
+        template (if (or (nil? template)
+                         (#{'anything "" :singular} template))
+                   (make-tree-object [])
+                   template)
         ;; If the template is an object with no name, and this is not
         ;; a virtual component, and the first subject's content is a
         ;; string, add that string as a name.

@@ -767,6 +767,39 @@
       ;; ia's elements, yielding a higher count.
       (is (= count 2)))))
 
+(deftest threaded-traverse-do-not-process-test
+  ;; When pre-fn returns [:entity/do-not-process e], e is included in
+  ;; the result as-is, and the traversal neither recurses into it nor
+  ;; calls post-fn on it.
+  (let [pre (fn [_ e _ cd]
+              (if (and (element? e) (= (content e) 3))
+                [[:entity/do-not-process :kept] cd]
+                [e (update cd :pre conj e)]))
+        post (fn [_ e _ cd] [e (update cd :post conj e)])
+        [result cd] (threaded-traverse
+                     '(1 2 (3 4)) pre post {:pre #{} :post #{}})]
+    ;; The (3 4) element is replaced by the given entity, not recursed.
+    (is (= result '(1 2 :kept)))
+    ;; 4, inside (3 4), is never visited by pre.
+    (is (not (contains? (:pre cd) 4)))
+    (is (not (contains? (:pre cd) '(4))))
+    ;; post-fn is never called on the (3 4) element.
+    (is (not (contains? (:post cd) '(3 4))))))
+
+(deftest repetition-avoiding-threaded-traverse-test
+  (let [counter-pre (fn [_ e _ cd] [e (inc cd)])]
+    ;; With a nil post-fn, threaded-traverse returns the bare (wrapped)
+    ;; caller-data rather than a [tree caller-data] pair, so
+    ;; repetition-avoiding-threaded-traverse must unwrap it directly and
+    ;; return just the final user caller-data.
+    (is (= (repetition-avoiding-threaded-traverse
+            '(1 2 (3 4)) counter-pre nil 0)
+           8))
+    ;; With a non-nil post-fn, it returns [tree final-user-caller-data].
+    (is (= (repetition-avoiding-threaded-traverse
+            '(1 2 (3 4)) counter-pre identity-post-fn 0)
+           ['(1 2 (3 4)) 8]))))
+
 (deftest to-tree-multi-ref-test
   ;; An element has three sub-elements: one wrapping a
   ;; conflux-tree-object with id 1 (referenced once), and two wrapping

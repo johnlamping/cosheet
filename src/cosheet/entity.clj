@@ -648,6 +648,12 @@
                                                parent-caller-data
                                                original-caller-data)]
               (cond
+                (and (vector? entity)
+                     (= (first entity) :entity/do-not-process))
+                ;; pre-fn asked us to include this entity as-is: don't
+                ;; recurse into it, and don't call post-fn on it.
+                [(second entity) caller-data]
+
                 (and (= entity :entity/omit)
                      (element? original-entity))
                 ;; pre-fn dropped this element; don't descend or assemble.
@@ -671,7 +677,7 @@
                   (if post-fn
                     (let [assembled (make-tree-element (orientation entity)
                                                        new-content
-                                                       new-elements)] 
+                                                       new-elements)]
                       (post-fn original-entity assembled
                                original-caller-data caller-data))
                     [nil caller-data]))
@@ -766,7 +772,11 @@
   entity. In the case where an element would ordinarily be represented
   by a primitive, pre-fn will be passed a full element, not the
   primitive, so it will know it is working on an element, and may
-  return :entity/omit.
+  return :entity/omit. pre-fn may instead return
+  [:entity/do-not-process revised-entity] for the revised entity. In
+  that case the revised entity is included in the result tree as-is:
+  the traversal does not recurse into it and does not call post-fn on
+  it.
 
   The post-fn is called after the traversal has finished for an
   entity. It gets passed the original entity, a tree entity the
@@ -935,15 +945,23 @@
   the elements of a non-presumed-interned object more than once. Each
   link will be traversed exactly once. Each node will be traversed
   exactly once with its elements, while the other traversals will have
-  no objects."
+  no objects.
+
+  As in threaded-traverse, pre-fn may return :entity/omit for an element
+  to drop it, or [:entity/do-not-process revised-entity] to include the
+  revised entity in the result tree as-is, without recursing into it or
+  calling post-fn on it."
   [entity pre-fn post-fn caller-data]
-  (let [[tree caller-data]
-        (threaded-traverse
-         entity
-         (wrap-pre-fn-with-repetition-avoidance pre-fn)
-         (wrap-post-fn-with-repetition-avoidance post-fn)
-         (wrap-caller-data-with-repetition-avoidance-data entity caller-data))]
-    [tree (extract-caller-data-from-repetition-avoidance-data caller-data)]))
+  (let [result (threaded-traverse
+                entity
+                (wrap-pre-fn-with-repetition-avoidance pre-fn)
+                (wrap-post-fn-with-repetition-avoidance post-fn)
+                (wrap-caller-data-with-repetition-avoidance-data
+                 entity caller-data))]
+    (if post-fn
+      (let [[tree caller-data] result]
+        [tree (extract-caller-data-from-repetition-avoidance-data caller-data)])
+      (extract-caller-data-from-repetition-avoidance-data result))))
 
 (defn all-presumed-interned-in-different-store
   "Recursively traverse the entity, changing the store of all

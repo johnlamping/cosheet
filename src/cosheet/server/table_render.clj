@@ -157,7 +157,7 @@
   (let-R [row-condition-object (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition-object)
           spec-down (assoc (select-keys spec inherited-specification-keys)
-                           :template 'anything
+                           :template `(~'anything :selector)
                            :width 0.75)
           last-item (last (ordered-entities
                            (remove label-element? condition-elements)))

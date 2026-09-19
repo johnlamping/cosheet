@@ -325,7 +325,9 @@
                           :render-dom render-item-DOM-R
                           :get-action-data (default-AD)}]
              [:div {:class "wrapped-elements"}
-              [:component {:template `(~'anything (~(id->object age-oid nil)))
+              [:component {:template `(~'anything
+                                       :selector
+                                       (~(id->object age-oid nil)))
                            :width 0.75
                            :element-ids-to-exclude #{(any)}
                            :relative-id rc1-id
@@ -338,7 +340,7 @@
                           :width 0.75
                           :sibling true
                           :template (make-sequential-template
-                                     'anything
+                                     '(anything :selector)
                                      '(""))
                           :virtual-object-reference-template
                           (make-tree-object [`(~link-type)
@@ -352,7 +354,7 @@
                           :virtual true
                           :render-dom render-virtual-DOM}]
              [:div  {:class "wrapped-elements"}
-              [:component {:template 'anything
+              [:component {:template '(anything :selector)
                            :sibling true
                            :width 0.75
                            :relative-id :virtual

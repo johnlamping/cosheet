@@ -43,7 +43,7 @@
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
-                         create-entity
+                         create-possible-selector-entity
                          merge-objects
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
@@ -262,7 +262,7 @@
     ;; what was built.
     (if virtual-object-reference-template
       (let [[store object-id]
-            (create-entity
+            (create-possible-selector-entity
              virtual-object-reference-template
              nil (first subject-ids) :after true store)
             store (reduce (fn [store subject-id]
@@ -275,7 +275,7 @@
                            (object? template) (do (assert is-object-name)
                                                   `(~template))
                            true template)
-            [ids store] (create-possible-selector-entities
+            [store ids] (create-possible-selector-entities
                          template
                          (map #(id->target store %) subject-ids)
                          subject-ids
@@ -284,7 +284,7 @@
 
 (defn do-add-element
   [store {:keys [subject-ids session-state client-id]}]
-  (let [[ids store] (create-possible-selector-entities
+  (let [[store ids] (create-possible-selector-entities
                      'anything subject-ids subject-ids
                      :before false store)]
     (add-following-selection-by-ids store client-id ids)))
@@ -293,7 +293,7 @@
   [store {:keys [subject-ids session-state client-id]}]
   ;; We disallow adding a label to a label.
   (when (not-any? #(label-element? (id->entity % store)) subject-ids)
-    (let [[ids store] (create-possible-selector-entities
+    (let [[store ids] (create-possible-selector-entities
                        `(~label-object-template) subject-ids subject-ids
                        :before false store)]
       (add-following-selection-by-ids store client-id ids))))
@@ -323,11 +323,11 @@
                    (object-to-merge-into-renamed
                     store renamed-object-id (id->source store name-id)))]
     (when (or (seq object-ids) (seq name-ids))
-      (let [[object-new-ids store] (create-possible-selector-entities
+      (let [[store object-new-ids] (create-possible-selector-entities
                                     `(~'anything (~name-label))
                                     object-ids object-ids
                                     :before false store)
-            [name-new-ids store] (create-possible-selector-entities
+            [store name-new-ids] (create-possible-selector-entities
                                   `(~name-label) name-ids name-ids
                                   :before false store)
             ;; Merge the newly-named object with the object that already
@@ -388,7 +388,7 @@
                       [store (conj oids (id->source store subject-id))]
                       :else
                       (let [[s1 object-id]
-                            (create-entity
+                            (create-possible-selector-entity
                              template subject-id subject-id :after false store)]
                         (if (= store
                                (abandon-problem-changes store s1 subject-id))
@@ -407,7 +407,7 @@
   (when (and row-id table-id)
     (let [table-entity (id->entity table-id store)
           row-template (table-row-template table-entity)
-          [ids store] (create-possible-selector-entities
+          [store ids] (create-possible-selector-entities
                        row-template [nil] [row-id]
                        :after false store)]
       (if (and column-ids client-id)
@@ -427,7 +427,7 @@
   (println "adding column")
   (when (and column-ids table-id)
     (let [column-headers-id (table-column-headers-id table-id store)
-          [ids store] (create-possible-selector-entities
+          [store ids] (create-possible-selector-entities
                        unspecified-column-header-template
                        [column-headers-id] [(last column-ids)]
                        :after false store)]

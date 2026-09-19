@@ -419,7 +419,7 @@
            (assert (or (not (object? template))
                        (every? nil? targets))
                    [targets template])
-           (let [[ids store] (create-possible-selector-entities
+           (let [[store ids] (create-possible-selector-entities
                               template targets adjacents
                               (or position :after) use-bigger store)]
              [ids ids (cons targets past-ids) store]))

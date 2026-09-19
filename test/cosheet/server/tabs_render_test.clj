@@ -17,6 +17,7 @@
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [render-utils :refer [make-sequential-template]]
+             [model-utils :refer [mark-template-as-selector]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
@@ -105,12 +106,15 @@
                         `(""
                           :tab
                           ("" :tab-topic :table
-                           (~(make-tree-object [`(~(object-type-object '???))
-                                                :selector])
+                           (~(make-tree-object
+                              [:selector
+                               (mark-template-as-selector
+                                `(~(object-type-object '???)))])
                             :row-condition)
-                           (~'anything
-                            :column-headers :selector
-                            (~'anything (~(link-type-object '???))))))
+                           ~(concat
+                             '(anything :column-headers :selector)
+                             [(mark-template-as-selector
+                               `(~'anything (~(link-type-object '???))))])))
                         'anything)
              :sibling true
              :use-bigger true

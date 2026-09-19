@@ -15,7 +15,8 @@
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      id->source id->target make-item-id
-                                     get-new-object-id add-link]]
+                                     get-new-object-id add-link
+                                     name-label-id]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
                                            remove-entity-by-id
@@ -259,16 +260,17 @@
          '(1 2)))
   (is (= (semantic-to-tree (make-tree-element :target [:object 1] '(2 (:foo))))
          (make-tree-element :target [:object 1] '(2))))
-  (is (= (semantic-to-tree `(~(make-tree-object [3 :name :bar]) (2 (:foo))))
-         `(~(make-tree-object [3 :name]) 2)))
-  (let [named (id->object (make-item-id "A") (new-element-store))]
-    (is (= (semantic-to-tree `(~named (2 (:foo))))
-           `(~named 2))))
-  (is (= (semantic-to-tree `(1 (~(make-tree-object [3 :bar]) (:foo))))
-         `(1 (~(make-tree-object [3])))))
-  (is (= (ordered-semantic-to-tree
-          `(~(make-tree-object [3 :name :bar]) (2 (:foo))))
-         `(~(make-tree-object [3 :name]) 2)))
+  (let [nl (list (id->object name-label-id nil))]
+    (is (= (semantic-to-tree `(~(make-tree-object [3 nl :bar]) (2 (:foo))))
+           `(~(make-tree-object [3 nl]) 2)))
+    (let [named (id->object (make-item-id "A") (new-element-store))]
+      (is (= (semantic-to-tree `(~named (2 (:foo))))
+             `(~named 2))))
+    (is (= (semantic-to-tree `(1 (~(make-tree-object [3 :bar]) (:foo))))
+           `(1 (~(make-tree-object [3])))))
+    (is (= (ordered-semantic-to-tree
+            `(~(make-tree-object [3 nl :bar]) (2 (:foo))))
+           `(~(make-tree-object [3 nl]) 2))))
   (is (= (ordered-semantic-to-tree
           `(1 (~(make-tree-object [3 :bar]) (:foo))))
          `(1 (~(make-tree-object [3])))))
@@ -344,8 +346,9 @@
                                (starting-store "starting-tab") nil
                                `("thing" :selector
                                          ("child" (1 :order)
-                                                  "grandchild")
-                                 (~(make-tree-object [4]) "object")))
+                                                  ("grandchild" :selector)
+                                                  :selector)
+                                 (~(make-tree-object [4 :selector]) "object")))
         [s non-selector-root-id] (add-element
                                   s1 nil
                                   `("thing" ("child" (1 :order)
@@ -939,16 +942,16 @@
                      (~(any) :order))
                    `(~(any) :order)]))))))
 
-(deftest create-entity-object-target-test
+(deftest create-possible-selector-entity-object-target-test
   ;; When the template is an object and the target-id is non-nil,
-  ;; create-entity sets the source of the target to
+  ;; create-possible-selector-entity sets the source of the target to
   ;; the id of the new object.
   (let [s0 (add-universal-objects (new-element-store))
         [s1 target-id] (add-element s0 nil `("target" (~o1 :order)))
         object-template (make-tree-object
                          ['("Fred" ("Flintstone"))
                           "Wilma"])
-        [s2 new-id] (create-entity
+        [s2 new-id] (create-possible-selector-entity
                      object-template target-id target-id :before false s1)]
     (is (check (canonicalize object-template)
                (canonicalize (semantic-to-tree (id->entity new-id s2)))))
@@ -983,7 +986,7 @@
                     `(""
                       ~(as-set
                         `(~(as-set (make-tree-object
-                                    [`(~hi-label-obj (~(any) :order))
+                                    [`(~hi-label-obj :selector (~(any) :order))
                                      `(~(any) :order)
                                      :selector]))
                           :row-condition
@@ -996,7 +999,8 @@
                           ~(as-set
                             `(~'anything
                               (~(any) :order)
-                              (~(any) (~(any) :order))))
+                              (~(any) :selector (~(any) :order))
+                              :selector))
                           :column-headers))
                       :tab-topic
                       :table))))))
@@ -1040,7 +1044,7 @@
                     `(""
                       ~(as-set
                         `(~(as-set (make-tree-object
-                                    [`(~there-label-obj (~(any) :order))
+                                    [`(~there-label-obj (~(any) :order) :selector)
                                      `(~(any) :order)
                                      :selector]))
                           (~(any) :order)
@@ -1049,10 +1053,14 @@
                         `(~'anything
                           ~(as-set `(~'anything
                                      (~(any) :order)
-                                     (~a-label-obj (~(any) :order))))
+                                     ~(as-set `(~a-label-obj
+                                                (~(any) :order) :selector))
+                                     :selector))
                           ~(as-set `(~'anything
                                      (~(any) :order)
-                                     (~b-label-obj (~(any) :order))))
+                                     ~(as-set `(~b-label-obj
+                                                (~(any) :order) :selector))
+                                     :selector))
                           :selector :column-headers
                           (~(any) :order)))
                       :table

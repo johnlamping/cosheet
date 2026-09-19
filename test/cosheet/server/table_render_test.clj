@@ -529,7 +529,7 @@
                              " column-header virtual-column")}
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
-                                   'anything
+                                   '(anything :selector)
                                    '(""))
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
@@ -545,7 +545,7 @@
                         :render-dom (virt-DOM)}]
            [:div {:class "wrapped-elements"}
             [:component {:relative-id :virtual-column
-                         :template 'anything
+                         :template '(anything :selector)
                          :width 0.75
                          :sibling true
                          :target-item-id c7-id
@@ -769,7 +769,6 @@
            store)
           [:div {:class "table"}
            [:component {:relative-id row-condition-id
-                        :selector true
                         :render-dom render-table-condition-DOM-R
                         :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
@@ -777,7 +776,6 @@
            [:div {:class "table-main"}
             [:component
              {:relative-id column-headers-id
-              :selector true
               :hierarchy
               [{:cosheet.server.hierarchy/hierarchy-node true
                 :leaves (any)

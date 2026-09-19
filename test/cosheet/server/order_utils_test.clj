@@ -14,7 +14,8 @@
              entity-impl
              [query :refer [matching-elements]]
              query-impl
-             [store :refer [new-element-store new-mutable-store store-update!]]
+             [store :refer [new-element-store new-mutable-store store-update!
+                            name-label-id]]
              store-impl
              mutable-store-impl
              [store-utils :refer [add-element remove-entity-by-id
@@ -70,7 +71,9 @@
   (is (semantic-element? (make-tree-element :source 1 [2])))
   (is (semantic-element? (make-tree-element :source "1" [2])))
   (is (semantic-element? (make-tree-element :source 'anything [2])))
-  (is (semantic-element? (make-tree-element :source :name [2])))
+  (is (semantic-element? (make-tree-element
+                          :source (entity/id->object name-label-id nil)
+                          [2])))
   (is (semantic-element? (make-tree-element
                           :source (make-tree-object [3]) [2])))
   (is (semantic-element? (make-tree-element

@@ -542,7 +542,6 @@
         ;; but only only the ones affected by a change.
         (let [condition-dom (make-component
                              {:relative-id row-condition-id
-                              :selector true
                               :render-dom render-table-condition-DOM-R
                               :get-action-data default-get-action-data
                               :get-do-batch-edit-action-data
@@ -551,7 +550,6 @@
               ;; TODO: Add an "other" column if a table requests it.
               header-dom (make-component
                           {:relative-id column-headers-id
-                           :selector true
                            :hierarchy hierarchy
                            :render-dom render-table-header-DOM
                            :get-action-data default-get-action-data})

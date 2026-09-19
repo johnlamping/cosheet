@@ -38,7 +38,7 @@
      (or (string? cont)
          (number? cont)
          (object? cont)
-         (#{:label :category :name 'anything} cont))))
+         (= cont 'anything))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."

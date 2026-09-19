@@ -21,7 +21,7 @@
     [model-utils :refer [semantic-elements
                          semantic-label-elements
                          semantic-to-tree semantic-to-tree-excluding-elements
-                         entity->canonical-semantic]]
+                         entity->canonical-semantic selector?]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves
@@ -624,7 +624,7 @@
 
 (defn element-primitive-content-DOM
   "Make dom for a primitive that is the content part of an item."
-  [item primitive {:keys [class selector]}]
+  [item primitive {:keys [class]}]
   (assert (primitive? primitive) primitive)
   (let [anything (= 'anything primitive)]
     [:div (cond-> (into-attributes
@@ -641,7 +641,7 @@
                                       (target-entity item))})
             anything
             (into-attributes (:class "placeholder")))
-     (if anything (if selector "\u00A0..." "") (str primitive))]))
+     (if anything (if (selector? item) "\u00A0..." "") (str primitive))]))
 
 (defn render-object-reference-DOM-R
   "Produce dom for an object reference. This means that we just show its
@@ -739,7 +739,7 @@
   (let-R [element (id->updating-entity-R target-item-id store)]
     (element-content-DOM
      element (select-keys specification
-                          [:class :width :immutable :template :selector]))))
+                          [:class :width :immutable :template]))))
 
 (defmethod print-method
   cosheet.server.item_render$render_element_content_DOM_R

@@ -190,34 +190,20 @@
 ;;; In the store, an entity is marked as a selector if it is intended
 ;;; to be used as a query. This means that it should typically not be
 ;;; returned as the result of a query. For example, a table's row
-;;; condition shouldn't be returned as one of the rows of a table.
+;;; condition shouldn't be returned as one of the rows of a table. And
+;;; even part of a row condition shouldn't be returned for a query
+;;; that is looking for that part.
 
 ;;; To indicate that an entity is a selector, it is marked with an
-;;; elements whose content is :selector. All of its sub-parts are also
-;;; considered to be selectors. (But the definition of sub-part is
-;;; somewhat arbitrary in the presence of bidirectional links.)
-
-;;; DOM components are also marked :selector, which affects how an
-;;; 'anything in them is displayed. Since the sub-component
-;;; relationship is clear cut, that notion of selector is used for
-;;; displaying components, while the one here is used for queries,
-;;; where there is no alternative.
+;;; element whose content is :selector. Further, all of its recursive
+;;; sub-parts (not counting interned objects) are also considered to
+;;; be selectors. In addition, reverse links encountered in the
+;;; recursion have their :selector element marked with :reversed.
 
 (defn selector?
-  "Return whether the entity is (or is part of) a selector.
-  When there are anonymous objects, it can be ambiguous whether an
-  object should count as a sub-element, since links to objects can be
-  in either orientation. We count an object as a sub-element only if
-  there is just one forward link pointing to it. So an object that is
-  only reached from a header by a reverse link won't count as a
-  sub-object. That case should be very rare."
+  "Return whether the entity is a selector."
   [entity]
-  (or (seq (content->elements entity :selector))
-      (cond (element? entity) (when-let [target (target-entity entity)]
-                                (selector? target))
-            (object? entity) (let [containing (containing-elements entity)]
-                                 (when (= (count containing) 1)
-                                   (selector? (first containing)))))))
+  (seq (content->elements entity :selector)))
 
 (defn mark-template-as-selector
   "Return the template with a :selector element added to it and,
@@ -885,12 +871,13 @@
     (repetition-avoiding-threaded-traverse
      generic pre-fn identity-post-fn store)))
 
-(defn create-entity
+(defn create-possible-selector-entity
   "Create an entity matching the template. If the target-id is a
-  selector, mark the template as a selector before adding it. If the
-  template is an object and the target-id is non-nil, set the source of
-  the target to the new object. Return the updated store and the id of
-  the new entity."
+  selector, mark the template as a selector before adding it.
+  If the template is an element, make the target-id its subject, while
+  if the template is an object and the target-id is non-nil, set the
+  source of the target to the new object.
+  Return the updated store and the id of the new entity."
   [template target-id adjacent-id position use-bigger store]
   (let [template (if (and target-id
                           (selector? (id->entity target-id store)))
@@ -911,18 +898,20 @@
 
 (defn create-possible-selector-entities
   "Create entities, specializing the template as appropriate, depending on
-   whether each target is a selector. Return the new ids and the updated
-   store."
+   whether each target is a selector. Return the updated store and the
+   new ids."
   [template targets adjacents position use-bigger store]
-  (let [[specialized-template store] (specialize-generic template store)]
-    (threaded-map
-     (fn [[target adjacent] store]
-       (let [[store id] (create-entity
-                         specialized-template
-                         target adjacent position use-bigger store)]
-         [id store]))
-     (map vector targets adjacents)
-     store)))
+  (let [[specialized-template store] (specialize-generic template store)
+        [ids store] (threaded-map
+                     (fn [[target adjacent] store]
+                       (let [[store id] (create-possible-selector-entity
+                                         specialized-template
+                                         target adjacent position use-bigger
+                                         store)]
+                         [id store]))
+                     (map vector targets adjacents)
+                     store)]
+    [store ids]))
 
 ;;; Creating new tabs and tables.
 
@@ -1012,10 +1001,12 @@
   `("" ; a keyword here would make this non-semantic and so not orderable.
     :tab-topic
     :table
-    (~(make-tree-object (conj row-condition-elements :selector))
+    (~(make-tree-object
+       (conj (map mark-template-as-selector row-condition-elements)
+             :selector))
      :row-condition)
     ~(concat '(anything :column-headers :selector)
-             header-elements)))
+             (map mark-template-as-selector header-elements))))
 
 (def new-tab-table-element
   (tab-table-element [`(~(object-type-object '???))]
@@ -1025,15 +1016,19 @@
   ;; The minimum content for a column header.
   ;; In addition, a column header must be stored as an element
   ;; of the :column-headers entity.
-  'anything ; a keyword here would make this non-semantic
-            ; and hence not orderable
+  `(~'anything ; a keyword here would make this non-semantic and hence
+               ; not orderable
+    :selector
+    ) 
   )
 
 (def unspecified-column-header-template
   ;; A header for a newly created column that we don't know anything about.
   ;; We give it a new label, so that it won't start out match everything.
   (add-elements-to-entity
-   column-header-template [`(~(link-type-object '???))]))
+   column-header-template [`(~(link-type-object '???)
+                             :selector
+                             )]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store

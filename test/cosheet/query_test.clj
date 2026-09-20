@@ -679,9 +679,9 @@
                  {"v" '(2 3)}
                  {"v" '(4 5)}
                  {"v" '(2 4)}
-                 {"v" 5}
-                 {"v" 4}
-                 {"v" 3}}))
+                 {"v" '(5)}
+                 {"v" '(4)}
+                 {"v" '(3)}}))
     (is (= (set (envs-to-trees
                  (query-matches (variable "v" (make-tree-object '((:a)))) s2)))
            #{{"v" (id->object (make-item-id "a") s2)}}))
@@ -709,7 +709,7 @@
            #{{"v" '(2 4)} {"v" '(2 3)}}))
     (is (= (set (envs-to-trees
                  (query-matches `(nil (1 (2 ~(variable "v")))) s2)))
-           #{{"v" 4} {"v" 3}}))
+           #{{"v" '(4)} {"v" '(3)}}))
     (is (= (envs-to-trees
             (query-matches `(nil (1 ~(variable "v"))
                                  (3 ~(variable "v")))
@@ -719,7 +719,7 @@
             (query-matches `(nil (1 (2 ~(variable "v")))
                                  (~(variable "v")))
                            s2))
-           [{"v" 3}]))
+           [{"v" '(3)}]))
     (is (= (envs-to-trees
             (query-matches `(nil (~(variable "v"))
                                  (1 (2 ~(variable "v"))))
@@ -765,7 +765,7 @@
                  (query-matches (and-query `(nil ~(variable "v"))
                                            `(nil (nil ~(variable "v"))))
                                 s2)))
-           #{{"v" '(2 3)} {"v" '(2 4)} {"v" 3} {"v" 4} {"v" '(4 5)} {"v" 5}}))
+           #{{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)} {"v" '(4)} {"v" '(4 5)} {"v" '(5)}}))
     (is (= (set (envs-to-trees
                  (query-matches (and-query `(nil (~(variable "v")))
                                            `(nil (nil ~(variable "v"))))
@@ -787,7 +787,7 @@
                                          `(nil (1 (2 ~(variable "v")))
                                                (~(variable "v"))))
                            s2))
-           [{"v" 3}]))
+           [{"v" '(3)}]))
     (is (= (query-matches (exists-query  "v"  `(1 (~(variable "v") 3))
                                          `(nil (~(variable "v") 4)))
                           s2)
@@ -825,7 +825,7 @@
                                          ~(not-query (variable "v")))
                                    s-more))
                ;; Shouldn't have {"v" '(1 2)}, because of the not.
-               (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" 3}])))
+               (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)}])))
     ;; Shouldn't match because we require variables to be bound to
     ;; exact entities, not to be bound to something that can be
     ;; extended to match.

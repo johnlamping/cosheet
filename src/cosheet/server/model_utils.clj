@@ -215,6 +215,7 @@
   (convert-unneeded-conflux-tree-objects
    (first
     (repetition-avoiding-threaded-traverse
+     ;; Turn primitives into elements.
      template
      (fn [_ entity _ caller-data]
        (if (or (and (element? entity) (semantic-element? entity))
@@ -228,6 +229,20 @@
                       '(:selector :reverse)
                       :selector)])
         caller-data])
+     nil))))
+
+(defn replace-anythings-with-empty-string
+  "Return the template with every 'anything value replaced by the empty
+  string. Cycles and objects reached by multiple paths are handled by
+  repetition-avoiding-threaded-traverse."
+  [template]
+  (convert-unneeded-conflux-tree-objects
+   (first
+    (repetition-avoiding-threaded-traverse
+     template
+     (fn [_ entity _ caller-data]
+       [(if (= entity 'anything) "" entity) caller-data])
+     identity-post-fn
      nil))))
 
 (defn remove-selector-markings
@@ -284,11 +299,6 @@
 ;;;             It may have 'anything as they are allowed in items.
 ;;;    generic: a pattern or template that has '??? to indicate values
 ;;;             that need to be filled in with unique strings.
-
-(defn replace-anything-by-nil
-  "If the value is 'anything, replace it with nil."
-  [value]
-  (if (= 'anything value) nil value))
 
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
@@ -869,7 +879,7 @@
                 [(str "\u00A0" s) new-store])
               [e store]))]
     (repetition-avoiding-threaded-traverse
-     generic pre-fn identity-post-fn store)))
+       generic pre-fn identity-post-fn store)))
 
 (defn create-possible-selector-entity
   "Create an entity matching the template. If the target-id is a
@@ -882,7 +892,7 @@
   (let [template (if (and target-id
                           (selector? (id->entity target-id store)))
                    (mark-template-as-selector template)
-                   template)]
+                   (replace-anythings-with-empty-string template))]
     (if (object? template)
       (let [[store id] (update-add-object-adjacent-to
                         store template

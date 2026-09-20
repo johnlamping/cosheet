@@ -61,7 +61,7 @@
     (is (= id7 id6))
     (is (check (map to-tree (all-elements (id->object id6 s)))
                (as-set [`(1 (~(id->object (make-item-id "name") s)))
-                         2]))))
+                         `(2)]))))
   ;; In cyclic-shared-store, the tree-form starting at a contains a
   ;; shared reference to a (via z-link's sub-element); starting at b
   ;; it contains two references to a (the reverse-direction back-link

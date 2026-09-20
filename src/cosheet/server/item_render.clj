@@ -629,8 +629,7 @@
   (let [anything (= 'anything primitive)]
     [:div (cond-> (into-attributes
                    {:class class}
-                   {:class (cond-> "content-text"
-                             anything (str " placeholder"))})
+                   {:class "content-text"})
             (label-element? item)
             (into-attributes (:class "link-type"))
             (name-element? item)
@@ -641,7 +640,7 @@
                                       (target-entity item))})
             anything
             (into-attributes (:class "placeholder")))
-     (if anything (if (selector? item) "\u00A0..." "") (str primitive))]))
+     (if anything "\u00A0..." (str primitive))]))
 
 (defn render-object-reference-DOM-R
   "Produce dom for an object reference. This means that we just show its

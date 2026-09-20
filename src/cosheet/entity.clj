@@ -798,11 +798,17 @@
   and only the final caller-data is returned. This supports code that
   traverses purely for their effect on caller-data."
   [entity pre-fn post-fn caller-data]
-  (let [result ((threaded-traverse-helper pre-fn post-fn)
-                nil nil entity caller-data)]
+  (let [[new-entity caller-data] ((threaded-traverse-helper pre-fn post-fn)
+                                  nil nil entity caller-data)
+        new-entity (if (and (primitive? new-entity) (element? entity))
+                     ;; We got an element consisting of just a
+                     ;; primitive, and it got turned into a
+                     ;; primitive. Turn it back into an element.
+                     (list new-entity)
+                     new-entity)]
     (if post-fn
-      result
-      (second result))))
+      [new-entity caller-data]
+      caller-data)))
 
 (defn identity-pre-fn
   "An identity pre-fn for threaded-traverse: returns its entity and

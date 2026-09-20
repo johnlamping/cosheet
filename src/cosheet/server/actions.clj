@@ -285,7 +285,7 @@
 (defn do-add-element
   [store {:keys [subject-ids session-state client-id]}]
   (let [[store ids] (create-possible-selector-entities
-                     'anything subject-ids subject-ids
+                     `(~'anything) subject-ids subject-ids
                      :before false store)]
     (add-following-selection-by-ids store client-id ids)))
 

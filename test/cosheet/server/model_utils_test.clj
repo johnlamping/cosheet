@@ -216,9 +216,9 @@
   ;; replacement if it has none.
   (is (= (fixed-term-to-template (variable-query "v" :qualifier '(2 3)))
          '(2 3)))
-  (is (= (fixed-term-to-template (variable-query "v")) ""))
+  (is (= (fixed-term-to-template (variable-query "v")) '("")))
   (is (= (fixed-term-to-template (variable-query "v") 'anything)
-         'anything))
+         '(anything)))
   (is (= (fixed-term-to-template `(1 ~(variable-query "v" :qualifier '(2 3))))
          '(1 (2 3)))))
 
@@ -328,7 +328,7 @@
     ;; Excluding all elements leaves just the content.
     (is (check (semantic-to-tree-excluding-elements
                 obj #{(:item-id a-element) (:item-id b-element)})
-               "top"))))
+               '("top")))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))
@@ -424,6 +424,16 @@
                  '("y" :selector)
                  (make-tree-element :target a-ref ['(:selector :reverse)])
                  :selector])))))
+
+(deftest replace-anythings-with-empty-string-test
+  (is (= (replace-anythings-with-empty-string 'anything) ""))
+  (is (= (replace-anythings-with-empty-string "x") "x"))
+  (is (check (replace-anythings-with-empty-string
+              `(~'anything (~'anything 5) "x"))
+             '("" ("" 5) "x")))
+  (is (check (replace-anythings-with-empty-string
+              (make-tree-object ['anything `(~'anything 3)]))
+             (make-tree-object ["" '("" 3)]))))
 
 (deftest remove-selector-markings-test
   (let [unmarked (make-tree-object
@@ -641,9 +651,10 @@
     
     ;; The new Tina object should match the template.
     (is (check (object-semantic-to-tree (id->object id1 s1))
-               (as-set (all-presumed-interned-in-different-store
-                        (make-tree-object [`("Tina" (~name-label)) 1 2])
-                        s1))))
+               (as-set (make-tree-object
+                        [(all-presumed-interned-in-different-store
+                          `("Tina" (~name-label)) s1)
+                         '(1) '(2)]))))
     ;; Nothing should have changed when it was asked for again.
     (is (= s1 s2))
     (is (= id1 id2))
@@ -660,16 +671,17 @@
     ;; matches the additional template.
     (is (= id1 id5))
     (is (check (object-semantic-to-tree (id->object id1 s5))
-               (as-set (all-presumed-interned-in-different-store
-                        (make-tree-object [`("Tina" (~name-label)) 1 2 '(3 4)])
-                        s5))))
+               (as-set (make-tree-object
+                        [(all-presumed-interned-in-different-store
+                          `("Tina" (~name-label)) s5)
+                         '(1) '(2) '(3 4)]))))
     ;; The Tina object should have gotten rid of a redundant element.
     (is (= id1 id6))
     (is (check (object-semantic-to-tree (id->object id1 s6))
-               (as-set (all-presumed-interned-in-different-store
-                        (make-tree-object
-                         [`("Tina" (~name-label)) '(1 2) 2 '(3 4)])
-                        s6))))
+               (as-set (make-tree-object
+                        [(all-presumed-interned-in-different-store
+                          `("Tina" (~name-label)) s6)
+                         '(1 2) '(2) '(3 4)]))))
     ;; The new Tony object should match its (empty) template.
     (is (not= id1 id7))
     (is (check (object-semantic-to-tree (id->object id7 s7))
@@ -757,9 +769,10 @@
     (is (check (ordered-semantic-to-tree new-entity)
                `(6 (~tina))))
     (is (check (object-semantic-to-tree tina)
-               (as-set (all-presumed-interned-in-different-store
-                        (make-tree-object [`("Tina" (~name-label)) 1 2])
-                        s))))
+               (as-set (make-tree-object
+                        [(all-presumed-interned-in-different-store
+                          `("Tina" (~name-label)) s)
+                         '(1) '(2)]))))
     ;; Now try adding another element that references the same object.
     (let [[s1 id1 order1] (update-add-element-with-order-and-ephemeral
                            s joe-id `(7 (~(make-tree-object
@@ -773,10 +786,11 @@
                  `(7 (~tina))))
       (is (check (object-semantic-to-tree tina)
                  (as-set
-                  (all-presumed-interned-in-different-store
+                  (make-tree-object
                    ;; Tina should have gotten an extra property.
-                   (make-tree-object [`("Tina" (~name-label)) 1 2 3])
-                   s1))))))
+                   [(all-presumed-interned-in-different-store
+                     `("Tina" (~name-label)) s1)
+                    '(1) '(2) '(3)]))))))
   
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.

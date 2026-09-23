@@ -331,6 +331,14 @@
   (and (element? entity)
        (seq (content->elements entity name-label))))
 
+(defn named-object?
+  "Return true if the entity is an object with at least one name
+  element. The name might be trivial, so this object is not
+  necessarily uniquely identified."
+  [entity]
+  (and (object? entity)
+       (some name-element? (all-elements entity))))
+
 (defn universal-object?
   "Return true if the object is one of the universal objects:
   name-label, link-type, and object-type. The object can be in any
@@ -341,8 +349,8 @@
 
 ;;; There are several ways that objects might be identified.
 
-;;; First, there are objects can be located in a store, based on their
-;;; properties:
+;;; First, there are objects that can be located in a store, based on
+;;; their properties:
 ;;;          id-identified: The object's item-id is a know string,
 ;;;                         like "link-type"
 ;;;    uniquely-idenfified: The object is either id-identified or it

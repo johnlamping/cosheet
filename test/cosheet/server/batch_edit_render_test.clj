@@ -297,7 +297,6 @@
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
                                            `("" (~name-label))])
-                        :is-object-name true
                         :position :after
                         :do-not-match-query true}]
            [:component {:relative-id :stack-virtual

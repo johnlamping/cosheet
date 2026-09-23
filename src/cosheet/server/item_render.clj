@@ -109,7 +109,9 @@
 (defn render-virtual-DOM [spec ms]
   (let [template (final-template (:template spec))]
     [:div (cond-> (into-attributes (select-keys spec [:class])
-                                   {:class "editable virtual"})
+                                   {:class (if (:recursively-non-editable spec)
+                                             "virtual"
+                                             "editable virtual")})
             (object? template)
             (into-attributes {:class (css-class-for-name template)}))]))
 
@@ -185,8 +187,7 @@
                   :template (replace-final-label-content template "")
                   :virtual-object-reference-template
                   (ensure-label-object
-                   (content (final-template template)) label-type)
-                  :is-object-name true)
+                   (content (final-template template)) label-type))
            (into-attributes {:class (name label-type)}))))))
 
 (defn virtual-element-and-label-DOM
@@ -657,8 +658,8 @@
           specification (->
                          specification
                          (dissoc :target-item-id :relative-id :render-dom)
-                         (assoc :is-object-name true
-                                :get-action-data get-pass-through-action-data))]
+                         (assoc :get-action-data
+                                get-pass-through-action-data))]
       (assert (> num-names 0))
       (if (= num-names 1)
         (item-component (first names)
@@ -667,16 +668,23 @@
         (into [:div {:class "object-reference vertical-stack"}]
               (map #(item-component % specification) names))))))
 
+(defmethod print-method
+  cosheet.server.item_render$render_object_reference_DOM_R
+  [v ^java.io.Writer w]
+  (.write w "render-object-reference-DOM-R"))
+
 (defn object-reference-component
-  "Return a component to display an object in object-reference form."
+  "Return a component to display an object that is a content in
+  object-reference form. The specification should be that of the
+  element that holds the object."
   [object specification]
-  ;; Our specification should be the element that holds the object.
   (assert (let [template (:template specification)]
             (or (= template 'anything) (element? template))))
   (make-component (assoc specification
                          :relative-id :content
                          :target-item-id (:item-id object)
                          :render-dom render-object-reference-DOM-R
+                         :recursively-non-editable true
                          :get-action-data get-pass-through-action-data)))
 
 (defn display-content-object-as-if-interned?
@@ -708,15 +716,16 @@
                                 (or (interned-object? contents)
                                     (display-content-object-as-if-interned?
                                      template element)))
-        ;; Only directly-editable (primitive) content is editable here.
-        ;; Entire object contents are not. (Their parts can be.)
+        ;; Only directly-editable content is editable here (primitives
+        ;; or references).  Entire object contents are not, but their
+        ;; parts can be.
         editable (and (not immutable)
-                      (not (object? contents)))
+                      (not (:recursively-non-editable specification))
+                      (or (primitive? contents) reference-contents))
         kept-spec (select-keys specification
-                               (concat [:class :template]
-                                       inherited-specification-keys))
+                               (conj inherited-specification-keys :template))
         specification (cond-> kept-spec
-                        editable (into-attributes {:class "editable"}))]
+                        editable (assoc :class "editable"))]
     (cond (primitive? contents)
           (element-primitive-content-DOM element contents specification)
           reference-contents
@@ -738,7 +747,8 @@
   (let-R [element (id->updating-entity-R target-item-id store)]
     (element-content-DOM
      element (select-keys specification
-                          [:class :width :immutable :template]))))
+                          (concat inherited-specification-keys
+                                  [:class :template])))))
 
 (defmethod print-method
   cosheet.server.item_render$render_element_content_DOM_R

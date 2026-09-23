@@ -65,29 +65,35 @@
 
 (defn find-editable
   "Given a target and click event, return the target if it is editable,
-   or the nearest child to the click event, if that child is editable."
+   or the nearest child to the click event, if that child is editable.
+   If neither is found, recurse on the parent node, unless the parent is
+   absent or has id \"root\"."
   [target event]
   (when target
-    (if (is-editable? target)
-      target
-      (let [holder (descendant-with-editable target)]
-        (when holder
-          (let [x (.-clientX event)
-                y (.-clientY event)
-                [closest-child _]
-                (reduce (fn [[closest best-distance] child]
-                          (let [rect (.getBoundingClientRect child)
-                                dist (+ (max 0 (- (.-left rect) x))
-                                        (max 0 (- x (.-right rect)))
-                                        (max 0 (- (.-top rect) y))
-                                        (max 0 (- y (.-bottom rect))))]
-                            (if (< dist best-distance)
-                              [child dist]
-                              [closest best-distance])))
-                        [nil 1e10]
-                        (array-seq (.-childNodes holder)))]
-            (when (is-editable? closest-child)
-              closest-child)))))))
+    (or
+     (if (is-editable? target)
+       target
+       (let [holder (descendant-with-editable target)]
+         (when holder
+           (let [x (.-clientX event)
+                 y (.-clientY event)
+                 [closest-child _]
+                 (reduce (fn [[closest best-distance] child]
+                           (let [rect (.getBoundingClientRect child)
+                                 dist (+ (max 0 (- (.-left rect) x))
+                                         (max 0 (- x (.-right rect)))
+                                         (max 0 (- (.-top rect) y))
+                                         (max 0 (- y (.-bottom rect))))]
+                             (if (< dist best-distance)
+                               [child dist]
+                               [closest best-distance])))
+                         [nil 1e10]
+                         (array-seq (.-childNodes holder)))]
+             (when (is-editable? closest-child)
+               closest-child)))))
+     (let [parent (.-parentNode target)]
+       (when (and parent (exists? parent) (not= (.-id parent) "root"))
+         (find-editable parent event))))))
 
 (defn find-ancestor-with-class
   "Return the first ancestor with the given class,

@@ -24,7 +24,7 @@
                     all-elements content content->elements
                     label->element label->elements
                     name-label object? element? name-element? label-element?
-                    interned-object?]]
+                    interned-object? named-object?]]
     mutable-store-impl
     [query :refer [matching-elements]]
     query-impl
@@ -212,13 +212,24 @@
                                           client-id [name-element-id])
           store)))))
 
+(defn named-object-expected?
+  "Return true if the specification calls for a named object: either it
+  has a :virtual-object-reference-template, or its :template is a
+  named object, or is an element whose content is a named object."
+  [{:keys [template virtual-object-reference-template]}]
+  (or virtual-object-reference-template
+      (let [template (final-template template)]
+        (or (named-object? template)
+            (and (element? template)
+                 (named-object? (content template)))))))
+
 (defn do-set-content
-  [store {:keys [subject-ids is-object-name client-id from to]
+  [store {:keys [subject-ids client-id from to]
           :as arguments}]
   (when (and from to (seq subject-ids)
              (every? link-id? subject-ids)
              (not (equivalent-primitives? from to)))
-    (if is-object-name
+    (if (named-object-expected? arguments)
       (set-object-reference-by-name store arguments)
       (let [to (parse-string-as-number (clojure.string/trim to))
             ;; If we are changing the name of a single object, find
@@ -254,7 +265,8 @@
 
 (defn do-add-twin
   [store {:keys [subject-ids template virtual-object-reference-template
-                 virtual is-object-name session-state client-id]}]
+                 virtual session-state client-id]
+          :as arguments}]
   (if virtual
     ;; Our subject is a virtual item, so the action data should have
     ;; already built an element for it. All we need to do is build an
@@ -272,7 +284,9 @@
       (add-following-selection-by-ids store client-id subject-ids))
     (when (not= (content template) :singular)
       (let [template (cond (not template) 'anything
-                           (object? template) (do (assert is-object-name)
+                           (object? template) (do (assert
+                                                   (named-object-expected?
+                                                    arguments))
                                                   `(~template))
                            true template)
             [store ids] (create-possible-selector-entities

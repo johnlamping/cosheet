@@ -242,7 +242,6 @@
                 "link-type label-wrapping-elements virtual-wrapper merge-with-parent"}
           [:component {:template virtual-label-template
                        :virtual-object-reference-template label-object-template
-                       :is-object-name true
                        :width 0.75
                        :parallel-ids [(:jane-id ids)]
                        :get-action-data [(comp-AD)
@@ -391,7 +390,6 @@
          [:div {:class "label-wrapping-elements object-type"}
           [:component {:template object-type-virtual-label-template
                        :virtual-object-reference-template object-type-label-object-template
-                       :is-object-name true
                        :width 0.8
                        :relative-id :virtual-label
                        :class "object-type"
@@ -405,7 +403,6 @@
             [:component {:width 0.8
                          :template virtual-label-template
                          :virtual-object-reference-template label-object-template
-                         :is-object-name true
                          :relative-id [sally-id :virtual-label]
                          :parallel-ids [sally-id]
                          :get-action-data [(comp-AD)
@@ -446,7 +443,6 @@
                            '(anything "foo")
                            '(""))
                 :virtual-object-reference-template label-object-template
-                :is-object-name true
                 :position :after
                 :get-action-data (virt-AD)
                 :class "link-type"
@@ -474,7 +470,6 @@
     (is (check (render-object-reference-DOM-R spec store)
                [:component {:width 1.5
                             :template template
-                            :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
                             :render-dom render-item-DOM-R
@@ -485,20 +480,17 @@
                 [:div {:class "object-reference vertical-stack"}
                  [:component {:width 1.5
                               :template template
-                              :is-object-name true
                               :relative-id fred-id
                               :render-dom render-item-DOM-R
                               :get-action-data (pass-AD)}]
                  [:component {:width 1.5
                               :template template
-                              :is-object-name true
                               :relative-id friedrich-id
                               :render-dom render-item-DOM-R
                               :get-action-data (pass-AD)}]])))
     (is (check (render-object-reference-DOM-R spec label-store)
                [:component {:width 1.5
                             :template template
-                            :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
                             :render-dom render-item-DOM-R
@@ -506,7 +498,6 @@
     (is (check (render-object-reference-DOM-R spec class-store)
                [:component {:width 1.5
                             :template template
-                            :is-object-name true
                             :class "object-reference"
                             :relative-id fred-id
                             :render-dom render-item-DOM-R
@@ -561,20 +552,21 @@
         inner-dom (run-renderer (:render-dom spec) spec store)]
     (is (check dom
                [:component {:width 1.5
-                            :class "element"
+                            :class "editable element"
                             :target-item-id fred-oid,
                             :relative-id :content
                             :template `(~(make-tree-object
                                           [`("" (~name-label))]))
                             :render-dom render-object-reference-DOM-R
+                            :recursively-non-editable true
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "element object-reference"
+                            :class "editable element object-reference"
                             :template `(~(make-tree-object [`("" (~name-label))]))
-                            :is-object-name true
                             :relative-id fred-name-id
                             :render-dom render-item-DOM-R
+                            :recursively-non-editable true
                             :get-action-data (pass-AD)}])))
   ;; Test an entity that is not interned, but that should be displayed
   ;; as if it is.
@@ -598,20 +590,21 @@
     (is (not (uniquely-identified-object? (id->object anonymous-oid store))))
     (is (check dom
                [:component {:width 1.5
-                            :class "element"
+                            :class "editable element"
                             :target-item-id anonymous-oid,
                             :relative-id :content
                             :template `(~(make-tree-object
                                           [`("" (~name-label))]))
                             :render-dom render-object-reference-DOM-R
+                            :recursively-non-editable true
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
-                            :class "element object-reference"
+                            :class "editable element object-reference"
                             :template `(~(make-tree-object [`("" (~name-label))]))
-                            :is-object-name true
                             :relative-id anonymous-name-id
                             :render-dom render-item-DOM-R
+                            :recursively-non-editable true
                             :get-action-data (pass-AD)}])))
   
   ;; Test a cell with a couple of labels, one excluded.
@@ -656,7 +649,6 @@
            "horizontal-labels-element virtual-wrapper narrow element"}
           [:component {:template virtual-label-template
                        :virtual-object-reference-template label-object-template
-                       :is-object-name true
                        :position :after
                        :relative-id :virtual-label
                        :class "link-type"
@@ -718,7 +710,6 @@
                 [:component
                  {:template object-type-virtual-label-template
                   :virtual-object-reference-template object-type-label-object-template
-                  :is-object-name true
                   :width 1.5
                   :relative-id :virtual-label
                   :class "object-type"
@@ -735,8 +726,7 @@
                     [:div {:class
                            "link-type horizontal-header top-border bottom-border"}
                      [:component
-                      {:is-object-name true
-                       :width 0.375
+                      {:width 0.375
                        :template virtual-label-template
                        :virtual-object-reference-template label-object-template
                        :virtual true
@@ -760,8 +750,7 @@
                     [:div {:class
                            "link-type horizontal-header top-border bottom-border"}
                      [:component
-                      {:is-object-name true
-                       :width 0.375
+                      {:width 0.375
                        :template virtual-label-template
                        :virtual-object-reference-template label-object-template
                        :virtual true
@@ -871,7 +860,6 @@
                 [:component
                  {:template object-type-virtual-label-template
                   :virtual-object-reference-template object-type-label-object-template
-                  :is-object-name true
                   :width 1.5
                   :relative-id :virtual-label
                   :class "object-type"
@@ -982,7 +970,6 @@
                    {:width 0.9
                     :template virtual-label-template
                     :virtual-object-reference-template label-object-template
-                    :is-object-name true
                     :relative-id [id1 :virtual-label]
                     :virtual true
                     :render-dom (virt-DOM)
@@ -1003,7 +990,6 @@
                    {:width 0.9
                     :template virtual-label-template
                     :virtual-object-reference-template label-object-template
-                    :is-object-name true
                     :relative-id [id2 :virtual-label]
                     :virtual true
                     :render-dom (virt-DOM)
@@ -1153,7 +1139,6 @@
                  [:component {:width 0.9
                               :template virtual-label-template
                               :virtual-object-reference-template label-object-template
-                              :is-object-name true
                               :parallel-ids [(:element-3-id ids)]
                               :get-action-data [(comp-AD)
                                                 [(parallel-AD) (item-AD)]
@@ -1194,7 +1179,6 @@
            {:width 1.5
             :template virtual-label-template
             :virtual-object-reference-template label-object-template
-            :is-object-name true
             :relative-id :virtual-label
             :position :after
             :class "link-type"
@@ -1214,7 +1198,6 @@
               [:component {:width 0.375
                            :template virtual-label-template
                            :virtual-object-reference-template label-object-template
-                           :is-object-name true
                            :relative-id [id1 :virtual-label]
                            :parallel-ids [id1]
                            :get-action-data [(comp-AD)
@@ -1234,7 +1217,6 @@
               [:component {:width 0.375
                            :template virtual-label-template
                            :virtual-object-reference-template label-object-template
-                           :is-object-name true
                            :relative-id [id2 :virtual-label]
                            :parallel-ids [id2]
                            :get-action-data [(comp-AD)
@@ -1394,7 +1376,6 @@
              [:component {:width 0.375
                           :template virtual-label-template
                           :virtual-object-reference-template label-object-template
-                          :is-object-name true
                           :relative-id [(:element-3-id ids) :virtual-label]
                           :parallel-ids [(:element-3-id ids)]
                           :virtual true

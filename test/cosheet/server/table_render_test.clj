@@ -306,7 +306,6 @@
           ;; A virtual link-type for the condition.
           [:component {:template virtual-label-template
                        :virtual-object-reference-template label-object-template
-                       :is-object-name true
                        :position :after
                        :relative-id :virtual-label
                        :width 0.75
@@ -345,7 +344,6 @@
                           :virtual-object-reference-template
                           (make-tree-object [`(~link-type)
                                              `("" (~name-label))])
-                          :is-object-name true
                           :position :after
                           :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -405,7 +403,6 @@
                :width 0.75
                :template virtual-label-template
                :virtual-object-reference-template label-object-template
-               :is-object-name true
                :position :after
                :parallel-ids [c2-id]
                :get-action-data [(comp-AD)
@@ -446,7 +443,6 @@
                :width 0.75
                :template virtual-label-template
                :virtual-object-reference-template label-object-template
-               :is-object-name true
                :position :after
                :parallel-ids [c4-id]
                :get-action-data [(comp-AD)
@@ -483,7 +479,6 @@
                         :width 0.75
                         :template virtual-label-template
                         :virtual-object-reference-template label-object-template
-                        :is-object-name true
                         :position :after
                         :parallel-ids [c6-id]
                         :get-action-data [(comp-AD)
@@ -508,7 +503,6 @@
                         :width 0.75
                         :template virtual-label-template
                         :virtual-object-reference-template label-object-template
-                        :is-object-name true
                         :position :after
                         :parallel-ids [c7-id]
                         :get-action-data [(comp-AD)
@@ -536,7 +530,6 @@
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
                                            `("" (~name-label))])
-                        :is-object-name true
                         :position :after
                         :sibling true
                         :width 0.75
@@ -685,7 +678,6 @@
             {:width 0.75
              :template virtual-label-template
              :virtual-object-reference-template label-object-template
-             :is-object-name true
              :relative-id [(any) :virtual-label]
              :parallel-ids [joe-joe-id]
              :get-action-data [(comp-AD)

@@ -268,6 +268,10 @@
 ;;;        and can't even select it. This property is inherited to
 ;;;        child elements.
 
+;;;    :recursively-non-editable
+;;;        If present, the resulting dom does not get the "editable"
+;;;        class. This property is inherited to child elements.
+
 ;;;    :get-action-data
 ;;;        Optional pseudo function that takes a dom specification,
 ;;;        the action data for the containing dom, a user action, and
@@ -293,15 +297,6 @@
 ;;;        It is also used by do-delete to check for :singular. And it
 ;;;        is used by action-data to when making new items for virtual
 ;;;        components.
-
-;;;    :is-object-name
-;;;        This cell holds the name of a named object, and while the
-;;;        cell's relative id is for the name of the object, the cell
-;;;        logically refers to the whole object. Specifically, editing
-;;;        the name in cell should not change the name of the object,
-;;;        but should make the enclosing element refer to the object
-;;;        with the name the user entered. The template is what the
-;;;        object referred to must satisfy.
 
 ;;;    :virtual
 ;;;        Present, with the value true, if and only if the component

@@ -475,8 +475,7 @@
         ;; These keys are always copied from the spec to the action
         ;; data, no matter what getter is run. They indicate overall context,
         ;; like what table, row, and column a DOM is in.
-        copied-keys [:table-id :row-id :column-ids :tab-id
-                     :is-object-name]
+        copied-keys [:table-id :row-id :column-ids :tab-id]
         partial-action-data (into containing-action-data
                                   (select-keys spec copied-keys))
         action-data (let [getter (if (= action :batch-edit)

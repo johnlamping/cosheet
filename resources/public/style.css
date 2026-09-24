@@ -447,7 +447,7 @@ body {
 /* --- object references --- */
 
 /* We don't do anything special for labels that have just a name. */
-.object, .object-reference:not(.link-type):not(.object-type) {
+.object, .object-reference:not(.content-text.link-type):not(.content-text.object-type) {
     border-radius: var(--radius);
     border-width: var(--obj-bw);
     border-color: var(--object-border-color);

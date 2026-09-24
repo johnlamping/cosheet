@@ -89,6 +89,7 @@
   ;;   * If the client had ..., it was a wild card, and we could
   ;;     have anything.
   ;;   * if the source has 'anything, the client should have "".
+  ;; TODO: !!! This needs to handle reverse orientation.
   (let [from (parse-string-as-number from)
         source (id->source store id)]
     (or
@@ -106,15 +107,15 @@
                 (= (first from) \u00A0)
                 (not= from "\u00A0...")
                 (= to ""))))
+     ;; Had an object, which the client described with a primitive
      (and (item-id? source)
-          (item-id? from)
-          (if (and (object-id? from)
-                   (not (interned-object-id? store from)))
-            ;; Equivalent non-interned objects
-            (= (entity->canonical-semantic (id->entity from store))
-               (entity->canonical-semantic (id->entity source store)))
-            ;; Identical identified objects
-            (= source from)))
+          (not (item-id? from))
+          (or (= from "") ; This is what the client sends when they
+                          ; don't have a name handy.
+              (some #(equivalent-primitives? % from)
+                    (->> (label->elements (id->entity source store) name-label)
+                         (map content)
+                         (remove object?)))))
      ;; Wildcard text matches anything, because it has to match
      ;; instances too in batch edit.
      (= from "\u00A0...")
@@ -183,34 +184,25 @@
         store (update-source store (:item-id order-element) remainder)
         ;; TODO: !!! This needs to handle orientation.
         logical-from (id->source store (first subject-ids))]
-    ;; We are going to claim that the user saw logical-from when
-    ;; they asked for the change. Make sure that what the user
-    ;; actually saw is consistent with that.
-    (when (or
-           ;; We were already empty.
-           (and (or (= logical-from "")
-                    (= logical-from 'anything))
-                (= from ""))
-           ;; There was an object with the name the user saw.
-           (and (object-id? logical-from)
-                (let [name (-> (id->entity logical-from store)
-                               (label->elements name-label)
-                               first
-                               content)]
-                  (equivalent-primitives? name from))))
-      (let [store (reduce
-                   (fn [store element-id]
-                     ;; TODO: !!! This needs to handle orientation.
-                     (update-set-source
-                      store element-id logical-from object-id))
-                   store subject-ids)]
+    (let [store-with-replacements (reduce
+                                   (fn [store element-id]
+                                     ;; TODO: !!! This needs to handle
+                                     ;; orientation.
+                                     (update-set-source
+                                      store element-id from object-id))
+                                   store subject-ids)]
+      ;; It is possible that we didn't make any replacements, because
+      ;; the from value we got from the client didn't match what we
+      ;; are seeing in the store. In that case, return nil, throwing
+      ;; away our addition of the named object to the store.
+      (when (not= store-with-replacements store)
         ;; TODO: !!! This needs to handle orientation.
         (if-let [name-element-id
                  (first (target-label->ids
                          store object-id name-label-id))]
-          (add-following-selection-by-ids store
+          (add-following-selection-by-ids store-with-replacements
                                           client-id [name-element-id])
-          store)))))
+          store-with-replacements)))))
 
 (defn named-object-expected?
   "Return true if the specification calls for a named object: either it

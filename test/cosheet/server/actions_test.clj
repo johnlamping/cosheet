@@ -138,12 +138,12 @@
   (let [[store five-id] (add-element store joe-id `(5 (~o5 :order)))]
     (is (current-source-matches-from? store five-id "5" nil))
     (is (not (current-source-matches-from? store five-id "6" nil))))
-  ;; Test named objects.
+  ;; Test a string matching the name of an interned object in the store.
   (let [[store friend-id] (add-element store joe-id
                                        `(~(id->object jane-id nil)
                                          (~o5 :order)))]
-    (is (current-source-matches-from? store friend-id jane-id nil))
-    (is (not (current-source-matches-from? store friend-id joe-id nil))))
+    (is (current-source-matches-from? store friend-id "Jane" nil))
+    (is (not (current-source-matches-from? store friend-id "Joe" nil))))
   ;; Test uninterned objects.
   (let [common-elements [`("" (~name-label)
                            `(~o5 :order))
@@ -157,16 +157,6 @@
         [s1 common-id1] (add-element store joe-id `(~common-object1))
         [s2 common-id2] (add-element s1 joe-id `(~common-object2))
         [store longer-id] (add-element s2 joe-id `(~longer-object))]
-    ;; Semantically matching
-    (is (current-source-matches-from?
-         store common-id1 (id->source store common-id2) nil))
-    (is (current-source-matches-from?
-         store longer-id (id->source store longer-id) nil))
-    ;; Semantically not matching
-    (is (not (current-source-matches-from?
-              store common-id1 (id->source store longer-id) nil)))
-    (is (not (current-source-matches-from?
-              store longer-id (id->source store common-id1) nil)))
     (let [[store anything-id] (add-element store joe-id 'anything)
           [store a-id] (add-element store joe-id "A")]
       ;; "" in place of 'anything

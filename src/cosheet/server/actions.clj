@@ -44,7 +44,7 @@
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
                          create-possible-selector-entity
-                         merge-objects
+                         merge-objects selector?
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item]])))
@@ -90,9 +90,11 @@
   ;;     have anything.
   ;;   * if the source has 'anything, the client should have "".
   ;; TODO: !!! This needs to handle reverse orientation.
-  (let [from (parse-string-as-number from)
+  (let [from (when from (parse-string-as-number from))
         source (id->source store id)]
     (or
+     ;; A nil from means the client had nothing to match against.
+     (nil? from)
      ;; Equivalent primitives
      (and ; The nots here avoid a crash in equivalent-primitives?
       (not (item-id? source))
@@ -123,11 +125,11 @@
      (and (= from "") (= source 'anything)))))
 
 (defn update-set-source
-  "Set the source to to, provided it previously matched from. An empty
-  string becomes 'anything; to actually set the empty string, the user
-  types two quotation marks."
+  "Set the source to to, provided it previously matched from. For a
+  selector, an empty string becomes 'anything; to actually set the empty
+  string, the user types two quotation marks."
   [store id from to]
-  (let [to (cond (= to "") 'anything
+  (let [to (cond (and (= to "") (selector? (id->entity id store))) 'anything
                  (= to "\"\"") ""
                  :else to)]
     (if (current-source-matches-from? store id from to)

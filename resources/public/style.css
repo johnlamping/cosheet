@@ -88,7 +88,7 @@
     --link-type-color: hsl(200, 100%, 88%);    /* link type name */
     --virtual-link-type-color: hsl(from var(--link-type-color) h 50% l);
     --object-type-color: hsl(80, 100%, 86%);   /* object type name */
-    --object-border-color: hsl(140, 30%, 75%);   /* object type name */
+    --object-border-color: hsl(80, 100%, 35%);
     --virtual-object-type-color: hsl(from var(--object-type-color) h 50% l);
     --bw: 2px;                                 /* standard border width */
     --nbw: -2px;                               /* border-width margin compensation */
@@ -194,8 +194,9 @@ body {
     overflow-wrap: break-word;
 }
 
-/* grayish indicators of places where there is no current content */
-.editable:not(.content-text) {
+/* grayish indicators of places where there is no current content and
+   that aren't providing the background for labels */
+.editable:not(.content-text):not(.label-wrapping-elements) {
     background-color: var(--bg-subtle);
 }
 
@@ -516,7 +517,7 @@ body {
 
     /* Don't override an object's border width */
     &:not(.object,
-	  .object-reference:not(.editable.link-type):not(.editable.object-type)) {
+	  .object-reference:not(.content-text.link-type):not(.content-text.object-type)) {
         border-width: var(--bw);
     }
 }
@@ -543,7 +544,7 @@ body {
 
     /* Don't override an object's border width */
     &:not(.object,
-	  .object-reference:not(.editable.link-type):not(.editable.object-type)) {
+	  .object-reference:not(.content-text.link-type):not(.content-text.object-type)) {
         border-width: var(--bw);
     }
 }

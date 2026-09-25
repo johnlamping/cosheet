@@ -50,6 +50,7 @@
                                   semantic-to-tree object-semantic-to-tree
                                   pattern-to-fixed-term
                                   label-object-template
+                                  mark-template-as-selector
                                   replace-anythings-with-empty-string
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral]]
@@ -100,12 +101,13 @@
            ;; A top-level order, as real row objects have.
            [`(~o1 :order)])))
 (def jane-object-list
-  (make-tree-object
-   (concat (map add-order-elements
-                `(("Jane" (~name-label)) :selector "female"
-                  (45 (~age-label))))
-           ;; A top-level order, as real row objects have.
-           [`(~o2 :order)])))
+  (mark-template-as-selector
+   (make-tree-object
+    (concat (map add-order-elements
+                 `(("Jane" (~name-label)) "female"
+                   (45 (~age-label))))
+            ;; A top-level order, as real row objects have.
+            [`(~o2 :order)]))))
 (def t0 (add-element base-store nil table-list))
 (def table-id (second t0))
 (def t1 (add-object (first t0) joe-object-list))
@@ -137,7 +139,9 @@
   ;; Test numbers
   (let [[store five-id] (add-element store joe-id `(5 (~o5 :order)))]
     (is (current-source-matches-from? store five-id "5" nil))
-    (is (not (current-source-matches-from? store five-id "6" nil))))
+    (is (not (current-source-matches-from? store five-id "6" nil)))
+    ;; A nil from always matches.
+    (is (current-source-matches-from? store five-id nil nil)))
   ;; Test a string matching the name of an interned object in the store.
   (let [[store friend-id] (add-element store joe-id
                                        `(~(id->object jane-id nil)
@@ -168,16 +172,16 @@
       (is (not (current-source-matches-from? store a-id "\u00A0A" ""))))))
 
 (deftest do-set-content-test
+  ;; Joe is not a selector, so a blank becomes the empty string.
   (let [new-store (do-set-content store
                                   {:subject-ids [(:item-id joe-age)]
                                    :from "45"
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           'anything)))
-  ;; Test making the new content be 'anything.
+           "")))
+  ;; Jane is a selector, so a blank becomes 'anything.
   (let [new-store (do-set-content store
-                                  ;; Jane is a selector
                                   {:subject-ids [(:item-id jane-age)]
                                    :from "45"
                                    :to ""
@@ -200,15 +204,15 @@
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           'anything))
+           ""))
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
   (let [[store columns-id] (add-element
                             store nil
                             `(~'anything :column-headers :selector
-                              (~'anything
-                               (~name-label (~o1 :order))
+                              (~'anything :selector
+                               (~name-label (~o1 :order) :selector)
                                (~o1 :order))))
         columns (id->entity columns-id store)
         column1 (first (matching-elements `(~'anything (~name-label))
@@ -362,10 +366,12 @@
         new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
                (canonicalize `(45 (~age-label) ""))))
+    ;; Jane is a selector, so the added element is 'anything.
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize `(45 (~age-label) ""))))
+               (canonicalize `(45 (~age-label) ~'anything))))
     (let [new-joe-element (first (matching-elements "" new-joe-age))
-          new-jane-element (first (matching-elements "" new-jane-age))]
+          new-jane-element (first (filter #(= (content %) 'anything)
+                                          (semantic-elements new-jane-age)))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
                   [nil (as-set [(:item-id new-joe-element)
@@ -382,16 +388,20 @@
         generic-label (all-presumed-interned-in-different-store
                        (replace-anythings-with-empty-string
                         label-object-template)
-                       new-store)]
+                       new-store)
+        ;; Jane is a selector, so its label keeps 'anything.
+        selector-label (all-presumed-interned-in-different-store
+                        label-object-template
+                        new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
                (canonicalize `(45 (~age-label)
                                   (~generic-label)))))
     (is (check (entity->canonical-semantic new-jane-age)
                (canonicalize `(45 (~age-label)
-                                  (~generic-label)))))
+                                  (~selector-label)))))
     (let [new-joe-element (first (matching-elements `(~generic-label)
                                                     new-joe-age))
-          new-jane-element (first (matching-elements `(~generic-label)
+          new-jane-element (first (matching-elements `(~selector-label)
                                                      new-jane-age))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids

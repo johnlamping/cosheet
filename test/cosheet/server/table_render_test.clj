@@ -322,6 +322,7 @@
                           :class "link-type"
                           :relative-id (any)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]
              [:div {:class "wrapped-elements"}
               [:component {:template `(~'anything
@@ -391,6 +392,7 @@
                          (item-do-batch-AD)]
                         :relative-id c2-name-id
                         :render-dom render-item-DOM-R
+                        :complete-entity true
                         :get-action-data (default-AD)
                         :class "link-type with-children"}]
            [:div {:class "column-header-sequence"}
@@ -690,6 +692,7 @@
            [:component
             {:relative-id joe-joe-id
              :render-dom render-item-DOM-R
+             :complete-entity true
              :get-action-data (default-AD)
              :template `("" (~bare-name-label-object))
              :width 0.75
@@ -703,6 +706,7 @@
                         :template label-template
                         :parallel-ids [joe-joseph-id]
                         :render-dom render-item-DOM-R
+                        :complete-entity true
                         :get-action-data (default-AD)
                         :get-do-batch-edit-action-data
                         [(comp-AD)
@@ -824,6 +828,7 @@
                        :relative-id (any)
                        :element-ids-to-exclude #{(any)}
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:component {:width 0.75
                        :template ["" "required"]
@@ -844,4 +849,5 @@
                       :relative-id (any)
                       :element-ids-to-exclude #{(any)}
                       :render-dom render-item-DOM-R
+                      :complete-entity true
                       :get-action-data (default-AD)}]))))

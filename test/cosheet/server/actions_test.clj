@@ -478,6 +478,28 @@
                                             (:item-id jane-age)]})
         new-jane (id->entity jane-id new-store)
         new-joe (id->entity joe-id new-store)]
+    ;; The deleted ages held content, so they are blanked rather than
+    ;; removed: to "" for Joe (not a selector) and to 'anything for
+    ;; Jane (a selector).
+    (is (check (canonicalize (object-semantic-to-tree new-joe))
+               (canonicalize
+                (make-tree-object
+                 `(("Joe" (~name-label)) "male" "married"
+                   (39 (~age-label)
+                       ("doubtful" "confidence"))
+                   ("" (~age-label)))))))
+    (is (check (canonicalize (object-semantic-to-tree new-jane))
+               (canonicalize
+                (make-tree-object
+                 `(("Jane" (~name-label)) "female"
+                   (~'anything (~age-label))))))))
+  ;; With :complete-entity, the same ages are removed rather than blanked.
+  (let [new-store (do-delete store
+                             {:subject-ids [(:item-id joe-age)
+                                            (:item-id jane-age)]
+                              :complete-entity true})
+        new-jane (id->entity jane-id new-store)
+        new-joe (id->entity joe-id new-store)]
     (is (check (canonicalize (object-semantic-to-tree new-joe))
                (canonicalize
                 (make-tree-object

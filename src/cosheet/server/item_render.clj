@@ -252,6 +252,7 @@
                     (map (constantly '()) ordered-labels)
                     :vertical
                     (-> specification
+                        (assoc :complete-entity true)
                         (update :template #(ensure-label-object-content
                                             % label-type))
                         (into-attributes {:class (name label-type)})))))
@@ -337,6 +338,11 @@
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
+        ;; A lone leaf under a node with a real label is not a complete
+        ;; entity: its label is shown only if it is shown.
+        lone-leaf (and (empty? (:child-nodes hierarchy-node))
+                       (= (count leaves) 1)
+                       (seq (displayable-example-labels hierarchy-node)))
         leaf-spec (cond-> (dissoc specification :orientation)
                     (not (empty? property-list))
                     (update :template
@@ -354,7 +360,10 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            leaves)]
-        (item-stack-DOM items excludeds :vertical leaf-spec)))))
+        (item-stack-DOM items excludeds :vertical
+                        (cond-> leaf-spec
+                          (not lone-leaf)
+                          (assoc :complete-entity true)))))))
 
 (defn hierarchical-elements-node-f-DOM
   "This is a node-f for hierarchy-node-DOM. It takes a node of a
@@ -525,8 +534,9 @@
                             (every? #(universal-object? (content %)) ls))
                           labels)]
     (if (and no-labels (not must-show-label))
-      (map #(item-minus-excluded-component %1 %2 specification)
-           ordered-elements excludeds)
+      (let [spec (assoc specification :complete-entity true)]
+        (map #(item-minus-excluded-component  %1 %2 spec)
+             ordered-elements excludeds))
       (let [item-maps (item-maps-by-elements ordered-elements labels)
             augmented (map (fn [item-map excluded]
                              (assoc item-map :exclude-elements excluded))
@@ -722,9 +732,9 @@
         editable (and (not immutable)
                       (not (:recursively-non-editable specification))
                       (or (primitive? contents) reference-contents))
-        kept-spec (select-keys specification
-                               (conj inherited-specification-keys :template))
-        specification (cond-> kept-spec
+        specification (cond-> (select-keys specification
+                                           (conj inherited-specification-keys
+                                                 :template :complete-entity))
                         editable (assoc :class "editable"))]
     (cond (primitive? contents)
           (element-primitive-content-DOM element contents specification)
@@ -747,8 +757,8 @@
   (let-R [element (id->updating-entity-R target-item-id store)]
     (element-content-DOM
      element (select-keys specification
-                          (concat inherited-specification-keys
-                                  [:class :template])))))
+                          (conj inherited-specification-keys
+                                :class :template :complete-entity)))))
 
 (defmethod print-method
   cosheet.server.item_render$render_element_content_DOM_R
@@ -761,8 +771,8 @@
   (let [content-dom
         (make-component
          (cond-> (-> (select-keys specification
-                                  (concat [:template :class]
-                                          inherited-specification-keys))
+                                  (conj inherited-specification-keys
+                                        :template :class :complete-entity))
                      (assoc :relative-id :content
                             :target-item-id (:item-id element)
                             :render-dom render-element-content-DOM-R
@@ -785,26 +795,28 @@
   "Given an element, its labels, and its non-label elements, and it dom
   specification, generate its dom."
   [element labels non-labels {:keys [must-show-label] :as specification}]
-  (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
-        (element-content-DOM element specification)
-        (let [inner-spec (-> specification
-                             (dissoc :class)
-                             ;; The template for making a copy inside our
-                             ;; labels is the content of the original
-                             ;; template, plus all our labels.
-                             (update :template
-                                     #(add-elements-to-entity
-                                       ;; This might come from a column header.
-                                       `(~(content %))
-                                       ;; We have exactly the required labels.
-                                       (map semantic-to-tree
-                                            (semantic-label-elements
-                                             element)))))
-              inner-dom (element-content-and-non-label-elements-DOM
-                         element non-labels inner-spec)]
-          (labels-wrapper-DOM
-           inner-dom labels specification)))
-      (add-attributes {:class "element"})))
+  (let [specification (cond-> specification
+                        (or (seq labels) (seq non-labels))
+                        (dissoc :complete-entity))]
+    (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
+          (element-content-DOM element specification)
+          (let [inner-spec (-> specification
+                               (dissoc :class)
+                               ;; The template for making a copy inside our
+                               ;; labels is the content of the original
+                               ;; template, plus all our labels.
+                               (update :template
+                                       #(add-elements-to-entity
+                                         `(~(content %))
+                                         ;; We have exactly the required labels.
+                                         (map semantic-to-tree
+                                              (semantic-label-elements
+                                               element)))))
+                inner-dom (element-content-and-non-label-elements-DOM
+                           element non-labels inner-spec)]
+            (labels-wrapper-DOM
+             inner-dom labels specification)))
+        (add-attributes {:class "element"}))))
 
 (defn element-DOM
   "Render a dom spec given the immutable entity for an item (which may
@@ -869,7 +881,7 @@
 
 (defn render-item-DOM-R
   "Render a dom spec for a store item (which may be an exemplar of a
-  group of items). This is the default renderer."
+  group of items)."
   [{:keys [relative-id target-item-id width] :as specification} store]
   (println "Generating item DOM for" (simplify-for-print relative-id))
   (let [updating-entity (id->updating-entity-R relative-id store)]

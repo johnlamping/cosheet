@@ -272,6 +272,15 @@
 ;;;        If present, the resulting dom does not get the "editable"
 ;;;        class. This property is inherited to child elements.
 
+;;;    :complete-entity
+;;;        Present if and only if the component shows all of the
+;;;        entity, except for any elements that are implied by
+;;;        non-local context. It is used by do-delete, which will
+;;;        delete the entire entity if its content is complete, but
+;;;        just the content otherwise. Another way of saying it is
+;;;        that it will delete the entire entity if that doesn't make
+;;;        any other doms disappear.
+
 ;;;    :get-action-data
 ;;;        Optional pseudo function that takes a dom specification,
 ;;;        the action data for the containing dom, a user action, and

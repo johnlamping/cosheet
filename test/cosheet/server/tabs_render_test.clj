@@ -174,11 +174,13 @@
          (as-set [:div {:class "vertical-stack"}
                   [:component {:relative-id (:item-id t3-baz)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)
                                :width 0.75
                                :template (any)}]
                   [:component {:relative-id (:item-id t3-bletch)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)
                                :width 0.75
                                :template (any)}]])))

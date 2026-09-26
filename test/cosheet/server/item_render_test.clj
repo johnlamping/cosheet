@@ -223,6 +223,7 @@
            :parallel-ids [(:joe-id ids) (:jane-id ids)]
            :relative-id (:joe-test-id ids)
            :render-dom render-item-DOM-R
+           :complete-entity true
            :get-action-data (default-AD)
            :class "link-type"}]))
     ;; A node with a leaf,  properties, and no children
@@ -281,6 +282,7 @@
                        :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:div {:class "wrapped-elements"}
            [:div {:class "vertical-stack"}
@@ -290,6 +292,7 @@
                           :class "link-type"
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]
              [:div {:class "wrapped-elements"}
               [:component {:template (as-set `(~'anything
@@ -306,6 +309,7 @@
                          :element-ids-to-exclude #{(:jane-test-id ids)}
                          :relative-id (:jane-id ids)
                          :render-dom render-item-DOM-R
+                         :complete-entity true
                          :get-action-data (default-AD)}]]]]))
     ;; Test two non-labels, laid out horizontally
     (is (check
@@ -319,6 +323,7 @@
                        :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:div {:class "wrapped-elements"}
            [:div {:class "horizontal-stack"}
@@ -329,6 +334,7 @@
                           :class "link-type"
                           :relative-id (:joe-foo-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]
              [:div {:class "wrapped-elements"}
               [:component {:template (as-set `(~'anything
@@ -345,6 +351,7 @@
                          :element-ids-to-exclude #{(:jane-test-id ids)}
                          :relative-id (:jane-id ids)
                          :render-dom render-item-DOM-R
+                         :complete-entity true
                          :get-action-data (default-AD)}]]]]))
     ;; Test two labels.
     (is (check
@@ -357,12 +364,14 @@
                        :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:component {:template label-template
                        :width 0.8
                        :class "link-type"
                        :relative-id (:joe-foo-id ids)
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]]))
     ;; Test a link-type and a non-label
     (is (check
@@ -375,12 +384,14 @@
                        :class "link-type"
                        :relative-id (:joe-test-id ids)
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:div {:class "wrapped-elements"}
            [:component {:template 'anything
                           :width 0.8
                         :relative-id sally-id
                         :render-dom render-item-DOM-R
+                        :complete-entity true
                         :get-action-data (default-AD)}]]]))
     ;; Test a non-label with must-show-label and elements-must-show-labels
     (is (check
@@ -416,6 +427,7 @@
                          :width 0.8
                          :relative-id sally-id
                          :render-dom render-item-DOM-R
+                         :complete-entity true
                          :get-action-data (default-AD)}]]]]))
     ;; Test including a virtual-dom
     (is (check
@@ -427,6 +439,7 @@
                        :width 0.8
                        :relative-id sally-id
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]
           [:div "virtual"]]))))
 
@@ -621,6 +634,7 @@
                 [:component {:template label-template
                              :relative-id (:label-two-id ids)
                              :render-dom render-item-DOM-R
+                             :complete-entity true
                              :get-action-data (default-AD)
                              :class "link-type"
                              :width 1.5}]
@@ -744,6 +758,7 @@
                                  :relative-id test-id
                                  :object-ids-to-contract #{obj-id}
                                  :render-dom render-item-DOM-R
+                                 :complete-entity true
                                  :get-action-data (default-AD)}]]
                    ;; elem-id, with no labels, gets a virtual label.
                    [:div {:class "horizontal-labels-element link-type wide"}
@@ -768,6 +783,7 @@
                                  :relative-id elem-id
                                  :object-ids-to-contract #{obj-id}
                                  :render-dom render-item-DOM-R
+                                 :complete-entity true
                                  :get-action-data (default-AD)}]]
                    ;; The "common" label, shared by e1 and e2, heads the
                    ;; hierarchy.
@@ -781,6 +797,7 @@
                        :relative-id e1-common-id
                        :object-ids-to-contract #{obj-id}
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)}]]
                     [:component {:width 1.03125
                                  :template (list 'anything (list common-object))
@@ -804,6 +821,7 @@
                         :relative-id e1-a-id
                         :object-ids-to-contract #{obj-id}
                         :render-dom render-item-DOM-R
+                        :complete-entity true
                         :get-action-data (default-AD)}]]]
                     [:component
                      {:width 1.03125
@@ -828,6 +846,7 @@
                         :relative-id e2-b-id
                         :object-ids-to-contract #{obj-id}
                         :render-dom render-item-DOM-R
+                        :complete-entity true
                         :get-action-data (default-AD)}]]]
                     [:div {:class "horizontal-value-last"}
                      [:component
@@ -879,6 +898,7 @@
                     :relative-id name-id
                     :object-ids-to-contract #{obj-id}
                     :render-dom render-item-DOM-R
+                    :complete-entity true
                     :get-action-data (default-AD)}]
                   ;; The empty "others" section is a virtual element.
                   [:component
@@ -928,6 +948,7 @@
                   :class "link-type"
                   :relative-id simple-label-id
                   :render-dom render-item-DOM-R
+                  :complete-entity true
                   :get-action-data (default-AD)}]
                 ;; The name is still shown, with the "name" class and its
                 ;; name label excluded, but the "test" other element is not.
@@ -940,6 +961,7 @@
                    :element-ids-to-exclude #{name-label-id}
                    :relative-id name-id
                    :render-dom render-item-DOM-R
+                   :complete-entity true
                    :get-action-data (default-AD)}]]]))))
 
 (deftest item-DOM-test-one-column
@@ -983,6 +1005,7 @@
                                :template 'anything
                                :relative-id id1
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]]
                  [:div {:class
                         "horizontal-labels-element virtual-wrapper narrow"}
@@ -1003,6 +1026,7 @@
                                :template 'anything
                                :relative-id id2
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
@@ -1028,6 +1052,7 @@
                                :class "link-type"
                                :relative-id (:label-one-id ids)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]
                   [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
@@ -1043,6 +1068,7 @@
                                :class "link-type"
                                :relative-id (:label-two-id ids)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]
                   [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
@@ -1077,6 +1103,7 @@
                                :class "link-type"
                                :relative-id (:label-zero-id ids)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]
                   [:div {:class "wrapped-elements"}
                    [:component {:width 0.9
@@ -1093,6 +1120,7 @@
                                :class "link-type"
                                :relative-id (:label-1-both-id ids)
                                :render-dom render-item-DOM-R
+                               :complete-entity true
                                :get-action-data (default-AD)}]
                   [:div {:class "wrapped-elements"}
                    [:div {:class "vertical-stack"}
@@ -1103,6 +1131,7 @@
                                   :class "link-type"
                                   :relative-id (:label-one-id ids)
                                   :render-dom render-item-DOM-R
+                                  :complete-entity true
                                   :get-action-data (default-AD)}]
                      [:div {:class "wrapped-elements"}
                       [:component {:width 0.9
@@ -1122,6 +1151,7 @@
                                   :class "link-type"
                                   :relative-id (:label-two-id ids)
                                   :render-dom render-item-DOM-R
+                                  :complete-entity true
                                   :get-action-data (default-AD)}]
                      [:div {:class "wrapped-elements"}
                       [:component {:width 0.9
@@ -1152,6 +1182,7 @@
                               :template 'anything
                               :relative-id (:element-3-id ids)
                               :render-dom render-item-DOM-R
+                              :complete-entity true
                               :get-action-data (default-AD)}]]]]))))
 
 (deftest item-DOM-test-two-column
@@ -1211,6 +1242,7 @@
                           :template 'anything
                           :relative-id id1
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]
             [:div {:class "horizontal-labels-element link-type wide"}
              [:div {:class "link-type horizontal-header top-border bottom-border"}
@@ -1230,6 +1262,7 @@
                           :template 'anything
                           :relative-id id2
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store ids] (make-fred-1-one-2-two-store)
@@ -1257,6 +1290,7 @@
                           :class "link-type"
                           :relative-id (:label-one-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~one-object))
@@ -1272,6 +1306,7 @@
                           :class "link-type"
                           :relative-id (:label-two-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~two-object))
@@ -1307,6 +1342,7 @@
                           :class "link-type"
                           :relative-id (:label-zero-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~zero-object))
@@ -1323,6 +1359,7 @@
                           :class "link-type"
                           :relative-id (:label-1-both-id ids)
                           :render-dom render-item-DOM-R
+                          :complete-entity true
                           :get-action-data (default-AD)}]]
             [:component {:width 1.03125
                          :template `(~'anything (~both-object))
@@ -1341,6 +1378,7 @@
                            :class "link-type"
                            :relative-id (:label-one-id ids)
                            :render-dom render-item-DOM-R
+                           :complete-entity true
                            :get-action-data (default-AD)}]]]
             [:component {:width 1.03125
                          :template (as-set `(~'anything
@@ -1360,6 +1398,7 @@
                            :class "link-type"
                            :relative-id (:label-two-id ids)
                            :render-dom render-item-DOM-R
+                           :complete-entity true
                            :get-action-data (default-AD)}]]]
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
@@ -1389,6 +1428,7 @@
                          :template 'anything
                          :relative-id (:element-3-id ids)
                          :render-dom render-item-DOM-R
+                         :complete-entity true
                          :get-action-data (default-AD)}]]]]))))
 
 (deftest render-virtual-DOM-test

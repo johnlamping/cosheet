@@ -451,15 +451,37 @@
                     new-cell-client-id))
         store))))
 
-(defn do-delete 
-  [store {:keys [subject-ids template]}]
+(defn empty-content?
+  "Return true if the content of the subject is vacuous:
+     nil, 'anything, the empty string, or the id of an empty object."
+  [store id]
+  (let [source (id->source store id)]
+    (or (nil? source)
+        (= source 'anything)
+        (= source "")
+        (and (object-id? source)
+             (empty? (semantic-elements (id->entity source store)))))))
+
+(defn do-delete
+  [store {:keys [subject-ids template complete-entity]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
           subject-ids)
-  (when (not= (content template) :singular)
+  (if (or complete-entity
+          (some object-id? subject-ids)
+          (every? #(empty-content? store %) subject-ids))
+    (when (not= (content template) :singular)
+      (reduce (fn [store id]
+                (let [target-id (id->target store id)
+                      modified (remove-entity-by-id store id)]
+                  (abandon-problem-changes store modified target-id)))
+              store subject-ids))
+    ;; We have non-trivial content in a context where deleting the
+    ;; entire element would cause label doms to disappear. So we
+    ;; instead replace the content with the empty content. If the user
+    ;; wants to delete the whole thing, they can just delete again,
+    ;; and we'll be in the first case.
     (reduce (fn [store id]
-              (let [target-id (id->target store id) 
-                    modified (remove-entity-by-id store id)]
-                (abandon-problem-changes store modified target-id)))
+              (update-set-source store id nil ""))
             store subject-ids)))
 
 (defn do-delete-row
@@ -651,7 +673,7 @@
                                       history-store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys
-                                    spec [:template :virtual
+                                    spec [:template :virtual :complete-entity
                                           :virtual-object-reference-template])
                          arguments (-> action-data
                                        (into spec-info)

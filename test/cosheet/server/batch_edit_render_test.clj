@@ -165,6 +165,7 @@
          [:div {:class "horizontal-stack query-condition"}
           [:component {:relative-id q2-2
                        :render-dom render-item-DOM-R
+                       :complete-entity true
                        :get-action-data (default-AD)
                        :template 'anything
                        :query-id q2
@@ -178,6 +179,7 @@
              :stack-id stk1
              :parallel-ids [q2-c1]
              :render-dom render-item-DOM-R
+             :complete-entity true
              :get-action-data (default-AD)
              :class "link-type"
              :relative-id q2-c1-l
@@ -219,6 +221,7 @@
                       :excluding-ids nil
                       :query-id q1
                       :render-dom render-item-DOM-R
+                      :complete-entity true
                       :get-action-data (default-AD)
                       :stack-id stk1}
                      {} nil s)
@@ -237,6 +240,7 @@
                      {:relative-id (:item-id q2-element)
                       :excluding-ids [(:item-id q2-2)]
                       :render-dom render-item-DOM-R
+                      :complete-entity true
                       :get-action-data (default-AD)
                       :query-id q1
                       :stack-id stk1}
@@ -253,6 +257,7 @@
         action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q3-element)
                       :render-dom render-item-DOM-R
+                      :complete-entity true
                       :get-action-data (default-AD)
                       :excluding-ids nil
                       :query-id q3

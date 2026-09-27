@@ -39,14 +39,15 @@
 
 (defn find-object-by-name
   "Find an object with the given name, and with the type that matches
-   the template's type."
+   the template's type. Never finds an object if the name is generic."
   [store name template]
-  (let [query (make-tree-object [`(~name (~name-label))])
-        matches (matching-items query store)
-        filtered (filter (template-type-test template) matches)]
-    (when (seq filtered)
-      (assert (= (count filtered) 1))
-      (first filtered))))
+  (when (not (generic-name? name))
+    (let [query (make-tree-object [`(~name (~name-label))])
+          matches (matching-items query store)
+          filtered (filter (template-type-test template) matches)]
+      (when (seq filtered)
+        (assert (= (count filtered) 1))
+        (first filtered)))))
 
 (defn- internal-add-object-with-given-elements
   "Allocate a new item-id for an object, record the template's

@@ -39,12 +39,17 @@
                             (make-tree-object
                              [`(1
                                 (~(id->object (make-item-id "name") nil)))]))
+        ;; A link-type object with a generic (empty) name.
+        [s generic-id] (add-link-type-object s "")
         test-label (find-object-by-name s "test" (link-type-object ""))
         by-label (find-object-by-name s "by" (link-type-object ""))]
     (is (= (id->target s id)) (make-item-id "0"))
     (is (= (id->target s id2)) id1)
     (is (= (id->source s id2)) "Fred")
     (is (= id6 id7)) ; check that we found the existing object.
+    ;; A generic name never identifies an object, so it is not found,
+    ;; even though the store holds one with that generic name.
+    (is (nil? (find-object-by-name s "" (link-type-object ""))))
     (is (check (to-tree (id->element id s))
                (as-set `(77
                          (~test-label)

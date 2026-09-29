@@ -18,12 +18,12 @@
                             name-label-id]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element remove-entity-by-id
+             [store-utils :refer [add-element
                                   link-type-object]]
              [test-utils :refer [check]])
             (cosheet.server
              [order-utils :refer :all]
-             [model-utils :refer [semantic-to-tree]])
+             [model-utils :refer [semantic-to-tree remove-entity-by-id]])
             ; :reload
             ))
 

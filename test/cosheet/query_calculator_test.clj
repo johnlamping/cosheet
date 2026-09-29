@@ -7,7 +7,7 @@
                                      current-store]]
                       store-impl
                       mutable-store-impl
-                      [store-utils :refer [add-element remove-entity-by-id]]
+                      [store-utils :refer [add-element]]
                       [task-queue :refer [make-priority-task-queue]]
                       [reporter :refer [set-calculator-data!
                                         set-attendee-and-call!
@@ -17,6 +17,8 @@
                       [query-calculator :refer [matching-item-ids-R]]
                       [test-utils :refer [check]]
                      )
+            (cosheet.server
+             [model-utils :refer [remove-entity-by-id]])
             ; :reload
             ))
 

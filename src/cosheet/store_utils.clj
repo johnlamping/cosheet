@@ -1,9 +1,7 @@
 (ns cosheet.store-utils
   (:require
    (cosheet
-    [store :refer [add-link remove-link get-new-object-id
-                   id->source target->ids source->ids
-                   link-id? object-id? interned-object-id?
+    [store :refer [add-link get-new-object-id
                    generic-name?
                    name-label-id link-type-id object-type-id]]
     [entity :refer [element? object? stored-entity?
@@ -216,35 +214,4 @@
    Return the updated store and the id of the object-type object."
   [store name]
   (add-object store (object-type-object name)))
-
-(defn- links-to-remove
-  "Return a list of ids of links to remove in order to remove the entity
-  with the given id, and all its elements and non-interned objects
-  in their contents. Don't recurse into containing-id; our caller will
-  handle that. (This prevents infinite loops when an element contains
-  an object as its source.)
-  Return the list in an order suitable for removing."
-  [store containing-id id]
-  (concat
-   ;; First, we have to remove all the elements.
-   (mapcat (partial links-to-remove store id)
-           (cond-> (target->ids store id)
-             ;; Object ids can also be sources.
-             (object-id? id)
-             (concat (remove #(= containing-id %)
-                             (source->ids store id)))))
-   ;; Once all the elements are gone, if the id is a link, we can
-   ;; remove its content, if that is an object, then the link, itself.
-   (when (link-id? id)
-     (concat (let [content-id (id->source store id)]
-               (when (and (object-id? content-id)
-                          (not (interned-object-id? store content-id)))
-                 (links-to-remove store id content-id)))
-             [id]))))
-
-(defn remove-entity-by-id
-  "Remove the entity with the given id, and all its elements."
-  [store id]
-  (reduce (fn [store id] (remove-link store id))
-          store (links-to-remove store nil id)))
 

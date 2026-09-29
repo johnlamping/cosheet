@@ -1,10 +1,10 @@
 (ns cosheet.server.format-convert
   (:require (cosheet [entity :refer [to-tree label->elements content]]
                       [store :refer [update-source id-valid-link?]]
-                      [store-utils :refer [add-element remove-entity-by-id]]
-                      [query :refer [matching-items]])))
-
-(def current-format 7)
+                      [store-utils :refer [add-element]]
+                      [query :refer [matching-items]])
+            (cosheet.server
+             [model-utils :refer [remove-entity-by-id]])))
 
 (defn convert-from-0-to-1
   "Convert a store from format 0 to format 1.

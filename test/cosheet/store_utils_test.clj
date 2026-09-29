@@ -84,34 +84,6 @@
         (is (check (canonicalize (to-tree (id->object new-id new-store)))
                    (canonicalize original-tree)))))))
 
-(deftest remove-entity-by-id-test
-  (let [;; Pre-store the link-type-objects so they exist in added-store
-        ;; as well as added-store2, which lets the final equality
-        ;; check between added-store and removed-store hold.
-        s0 (-> (new-element-store)
-               add-universal-objects
-               (add-link-type-object "test") first
-               (add-link-type-object "by") first)
-        test-label (find-object-by-name s0 "test" (link-type-object ""))
-        by-label (find-object-by-name s0 "by" (link-type-object ""))
-        [added-store e1]
-        (add-element s0 (make-item-id "0")
-                    `("foo" (~test-label)))
-        [added-store2 e2]
-        (add-element added-store e1 `(~(make-tree-object '("Fred" 1))
-                                      (~by-label)))
-        removed-store (remove-entity-by-id added-store2 e2)]
-    (println (canonicalize (id->element e1 added-store2)))
-    (is (check (canonicalize (id->element e1 added-store2))
-               (canonicalize `("foo"
-                               (~test-label)
-                               (~(make-tree-object '("Fred" 1))
-                                (~by-label))))))
-    (is (= (canonicalize (id->element e1 removed-store))
-           (canonicalize `("foo" (~test-label)))))
-    (is (= (assoc removed-store :next-number (:next-number added-store))
-           added-store))))
-
 (deftest add-universal-objects-test
   (let [s (add-universal-objects (new-element-store))
         name-label-in-s (in-different-store name-label s)

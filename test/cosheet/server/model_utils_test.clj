@@ -7,7 +7,7 @@
                                       make-conflux-tree-object make-tree-id
                                       object? interned-object?
                                       all-presumed-interned-in-different-store
-                                      id->object id->entity
+                                      id->object id->entity id->element
                                       label->elements label->content
                                       content->elements
                                       content all-elements
@@ -19,7 +19,7 @@
                                      name-label-id]]
                       [store-utils :refer [add-element add-object
                                            add-universal-objects
-                                           remove-entity-by-id
+                                           add-link-type-object
                                            find-object-by-name
                                            object-type-object
                                            link-type-object]]
@@ -1111,6 +1111,45 @@
            store))
     (is (= (abandon-problem-changes bad-store good-store (:item-id column))
            good-store))))
+
+(deftest remove-entity-by-id-test
+  (let [;; Pre-store the link-type-objects so they exist in the store.
+        s0 (-> (new-element-store)
+               add-universal-objects
+               (add-link-type-object "test") first
+               (add-link-type-object "by") first)
+        test-label (find-object-by-name s0 "test" (link-type-object ""))
+        by-label (find-object-by-name s0 "by" (link-type-object ""))
+        by-label-id (:item-id by-label)
+        [added-store e1]
+        (add-element s0 (make-item-id "0")
+                    `("foo" (~test-label)))]
+    ;; Orphan case: the "by" label is referenced only by e2, so removing
+    ;; e2 also removes the (now orphaned) bare label's own elements.
+    (let [[added-store2 e2]
+          (add-element added-store e1 `(~(make-tree-object '("Fred" 1))
+                                        (~by-label)))
+          removed-store (remove-entity-by-id added-store2 e2)]
+      (is (check (canonicalize (id->element e1 added-store2))
+                 (canonicalize `("foo"
+                                 (~test-label)
+                                 (~(make-tree-object '("Fred" 1))
+                                  (~by-label))))))
+      (is (= (canonicalize (id->element e1 removed-store))
+             (canonicalize `("foo" (~test-label)))))
+      ;; The orphaned label's name is gone.
+      (is (nil? (label->content (id->entity by-label-id removed-store)
+                                name-label))))
+    ;; Non-orphan case: two elements use the "by" label, so removing one
+    ;; leaves the label, and the other element, intact.
+    (let [[s2 e2] (add-element added-store e1 `("bar" (~by-label)))
+          [added-store3 e3] (add-element s2 e1 `("baz" (~by-label)))
+          removed-store (remove-entity-by-id added-store3 e2)]
+      (is (= (canonicalize (id->element e3 removed-store))
+             (canonicalize `("baz" (~by-label)))))
+      ;; The still-referenced label keeps its name.
+      (is (= "by" (label->content (id->entity by-label-id removed-store)
+                                  name-label))))))
 
 
 

@@ -11,12 +11,13 @@
                    store-update! id-valid-link? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
-    [store-utils :refer [add-element remove-entity-by-id]]
+    [store-utils :refer [add-element]]
     [calculator :refer [compute propagate-calculator-data!]]
     [map-reporter :refer [make-map-reporter map-reporter-get-current
                        map-reporter-reset!]])
    (cosheet.server
-    [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
+    [model-utils :refer [starting-store add-table ordered-tabs-ids-R
+                         remove-entity-by-id]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]
     [dom-manager :refer [make-dom-manager add-root-dom remove-all-doms]])))

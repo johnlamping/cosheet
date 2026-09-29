@@ -8,13 +8,15 @@
     [canonical :refer [canonicalize equivalent-primitives?]]
     [store :refer [new-element-store
                    update-source update-target id->source id->target
-                   add-link declare-ephemeral-id
+                   add-link remove-link declare-ephemeral-id
+                   target->ids source->ids
+                   link-id? object-id? interned-object-id?
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
-                    link-type-object? object-type-object?
+                    object-type-object? non-type-object? universal-object?
                     uniquely-identified-object? interned-object?
                     id-identified-object?
-                    element? label-element? id->entity
+                    element? label-element? name-element? id->entity
                     content all-elements forward-elements orientation
                     containing-elements
                     link-type object-type name-label
@@ -33,7 +35,7 @@
                     entity-complexity stored-entity?
                     tree-entity? presumed-interned-object?
                     in-different-store]]
-    [store-utils :refer [add-element remove-entity-by-id
+    [store-utils :refer [add-element
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
     [query :refer [matching-items
@@ -45,10 +47,11 @@
    (cosheet.server
     [order-utils :refer [semantic-element? orderable-entity?
                          ordered-ids-R ordered-entities
-                         order-element-for-item]]
-    [format-convert :refer [current-format]])))
+                         order-element-for-item]])))
 
 ;;; Utilities that know about how information is encoded in terms of the store.
+
+(def current-format 7)
 
 ;;; Creating new labels
 
@@ -109,6 +112,60 @@
   [entity]
   (filter #(and (not (label-element? %)) (semantic-element? %))
           (all-elements entity)))
+
+(defn- only-name-and-type-semantic-elements?
+  "Return true if every semantic element of the object with the given id
+  is either a name, or has a content that is an object-type object or
+  a universal object. That means that the object carries no
+  information beyond what was present when it was created."
+  [store id]
+  (every? (fn [element]
+            (or (name-element? element)
+                (let [element-content (content element)]
+                  (or (universal-object? element-content)
+                      (object-type-object? element-content)))))
+          (semantic-elements (id->entity id store))))
+
+(defn- links-to-remove
+  "Return a list of ids of links to remove in order to remove the entity
+  with the given id, and all its elements and non-interned objects or
+  minimal interned objects in their contents. Don't recurse into
+  containing-id; our caller will handle that. (This prevents infinite
+  loops when an element contains an object as its source.)  Return the
+  list in an order suitable for removing."
+  [store containing-id id]
+  (concat
+   ;; First, we have to remove all the elements.
+   (mapcat (partial links-to-remove store id)
+           (cond-> (target->ids store id)
+             ;; Object ids can also be sources.
+             (object-id? id)
+             (concat (remove #(= containing-id %)
+                             (source->ids store id)))))
+   ;; Once all the elements are gone, if the id is a link, we can
+   ;; remove its content, if that is an unnamed object or a trivial
+   ;; named one and we are the only reference to it. Finally, remove
+   ;; the link, itself.
+   (when (link-id? id)
+     (concat (let [content-id (id->source store id)]
+               (when (and (object-id? content-id)
+                          (empty? (remove #(= id %)
+                                          (source->ids store content-id)))
+                          (or (not (interned-object-id? store content-id))
+                              ;; An interned object that is just a bare
+                              ;; label or class, and that this link is
+                              ;; the only reference to, can have its
+                              ;; elements removed too.
+                              (only-name-and-type-semantic-elements?
+                               store content-id)))
+                 (links-to-remove store id content-id)))
+             [id]))))
+
+(defn remove-entity-by-id
+  "Remove the entity with the given id, and all its elements."
+  [store id]
+  (reduce (fn [store id] (remove-link store id))
+          store (links-to-remove store nil id)))
 
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
@@ -379,17 +436,15 @@
                     [assembled conflux-map]))
 
               (object? original)
-              (let [non-type (and (not (link-type-object? original))
-                                  (not (object-type-object? original)))]
-                [(make-tree-object-copying-id
-                  original
-                  (cond-> (or (all-elements assembled) [])
-                    (and require-not-type non-type)
-                    (concat [(not-query `(~link-type))
-                             (not-query `(~object-type))])
-                    require-orders
-                    (concat ['(nil :order)])))
-                 conflux-map])
+              [(make-tree-object-copying-id
+                original
+                (cond-> (or (all-elements assembled) [])
+                  (and require-not-type (non-type-object? original))
+                  (concat [(not-query `(~link-type))
+                           (not-query `(~object-type))])
+                  require-orders
+                  (concat ['(nil :order)])))
+               conflux-map]
 
               :else  ; primitive
               [assembled conflux-map]))]

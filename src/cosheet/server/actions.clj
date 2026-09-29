@@ -18,7 +18,7 @@
                    current-store
                    id->string id->source
                    Store]]
-    [store-utils :refer [remove-entity-by-id find-object-by-name]]
+    [store-utils :refer [find-object-by-name]]
     [entity :refer [id->entity id->element make-tree-object
                     add-elements-to-entity
                     all-elements content content->elements
@@ -45,6 +45,7 @@
                          get-or-make-ordered-object-by-name
                          create-possible-selector-entity
                          merge-objects selector?
+                         remove-entity-by-id
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item]])))

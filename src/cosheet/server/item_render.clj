@@ -826,16 +826,17 @@
                    element-ids-to-exclude
                    (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)
-        labels (seq (remove #(universal-object? (content %)) labels))]
-    (cond-> (element-content-labels-and-non-label-elements-DOM
+        labels (seq (remove #(universal-object? (content %)) labels))
+        dom (element-content-labels-and-non-label-elements-DOM
              entity labels non-labels
-             (dissoc specification :class))
+             (dissoc specification :class))]
+    (cond-> dom
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
 (defn object-DOM
   "Render a dom for an object. Shows labels (classes) wrapping names,
-  then other elements. Labels are indented to the right."
+  then other elements."
   [entity {:keys [template element-ids-to-exclude object-ids-to-contract]
            :as specification}]
   (let [entity-id (:item-id entity)
@@ -868,16 +869,18 @@
                              (assoc elem-spec :relative-id :virtual)))]
                       (nest-if-multiple-DOM [names-dom others-dom] :vertical)))
         labels-spec (transform-specification-for-labels
-                     specification :object-type)]
-    (cond-> (wrap-with-labels-DOM
-             (if labels
-               (label-stack-DOM labels labels-spec)
-               (virtual-label-DOM-component labels-spec))
-             :object-type
-             inner-dom
-             :vertical)
-      (:class specification)
-      (add-attributes {:class (:class specification)}))))
+                     specification :object-type)
+        dom (add-attributes (wrap-with-labels-DOM
+                             (if labels
+                               (label-stack-DOM labels labels-spec)
+                               (virtual-label-DOM-component labels-spec))
+                             :object-type
+                             inner-dom
+                             :vertical)
+                            {:class "object"})]
+    (cond-> dom
+            (:class specification)
+            (add-attributes {:class (:class specification)}))))
 
 (defn render-item-DOM-R
   "Render a dom spec for a store item (which may be an exemplar of a

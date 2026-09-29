@@ -222,12 +222,6 @@
   (assert (:relative-id specification) ["NO relative- id" specification])
   (assert (:render-dom specification) ["NO render-dom" specification])
   (assert (:get-action-data specification) ["NO get-action-data" specification])
-  (when (not= (:relative-id specification) :virtual-row)
-    (when-let [template (:template specification)]
-      (assert (if (sequential-template? template)
-                (not-any? object? (:template-sequence template)) 
-                (not (object? template)))
-              specification)))
   [:component specification])
 
 (defn nest-if-multiple-DOM

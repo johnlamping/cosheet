@@ -167,6 +167,7 @@ body {
     padding-right: 6px;
     padding-left: 2px;
     padding-bottom: 3px;
+    background-color: var(--object-type-color);
 }
 
 /* --- Basic items and stacks of items --- */
@@ -180,7 +181,7 @@ body {
 }
 
 .editable {
-    min-height: 15px; /* Make no-content cells have minimum height */
+    min-height: 10px; /* Make no-content cells have minimum height */
     min-width: 7px;
     font-size: small;
 }
@@ -206,6 +207,10 @@ body {
 
 .vertical-item-stack > .element.editable, .vertical-stack > .element > .editable {
     padding: 3px 0px 3px 0px;
+
+    &.virtual {
+	padding: 0px;
+    }
 }
 
 .vertical-stack > .element.with-elements > :last-child {
@@ -1090,14 +1095,16 @@ body {
 
 .object-type {
     & > .object-type {
-	 /* Don't override out parent's shimmer */
+	 /* Don't override our parent's shimmer */
         background-color: transparent;
     }
 
     &.virtual:not(.merge-with-parent) {
         background-color: var(--virtual-object-type-color);
 	/* Leave some of our parent's color around us. */
-	margin: 3px;
+	margin: 1px;
+	margin-right: 6px;
+	border-bottom-width: 1px;
     }
 }
 

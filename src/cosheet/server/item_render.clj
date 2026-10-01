@@ -688,8 +688,10 @@
   object-reference form. The specification should be that of the
   element that holds the object."
   [object specification]
-  (assert (let [template (:template specification)]
-            (or (= template 'anything) (element? template))))
+  (let [template (:template specification)]
+    (assert (or (#{'anything :singular} template)
+                (element? template))
+            template))
   (make-component (assoc specification
                          :relative-id :content
                          :target-item-id (:item-id object)

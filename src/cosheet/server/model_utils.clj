@@ -602,11 +602,11 @@
 
 (defn merge-objects
   "Given a store and the ids of two interned objects, modify the
-  recipient object so that it satisfies every positive query that either
-  object satisfies, then remove all remaining elements from the donor
-  object. Return the updated store.
-  Rather than copying elements, an element of the donor object that
-  the recipient object needs is moved to the recipient object, by
+  recipient object so that it satisfies every positive semantic query
+  that either object satisfies, then remove all remaining elements
+  from the donor object. Return the updated store.
+  Rather than copying elements, a semantic element of the donor object
+  that the recipient object needs is moved to the recipient object, by
   re-pointing the endpoint(s) that reference the donor to reference
   the recipient. Elements of the recipient object that this makes
   redundant are removed.
@@ -625,10 +625,12 @@
                     (update-target id recipient-id)
                     (= (id->source store id) donor-id)
                     (update-source id recipient-id)))
-        ;; Since donor is passed as the term, the terms to add that
-        ;; we get back will be its elements, which we will move.
+        ;; Since the donor's semantic elements are passed as the term,
+        ;; the terms to add that we get back will be those elements,
+        ;; which we will move.
         [elements-to-move elements-to-remove]
-        (changes-to-satisfy-simple-term-elements donor recipient)
+        (changes-to-satisfy-simple-term-elements
+         (make-tree-object (semantic-elements donor)) recipient)
         store (reduce (fn [store element]
                         (repoint store (:item-id element)))
                       store elements-to-move)

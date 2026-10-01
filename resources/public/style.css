@@ -181,7 +181,7 @@ body {
 }
 
 .editable {
-    min-height: 10px; /* Make no-content cells have minimum height */
+    min-height: 15px; /* Make no-content cells have minimum height */
     min-width: 7px;
     font-size: small;
 }

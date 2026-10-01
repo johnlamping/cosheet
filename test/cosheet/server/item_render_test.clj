@@ -718,7 +718,7 @@
                                  :class "element")
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type element"}
+               [:div {:class "label-wrapping-elements object-type object element"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -873,7 +873,7 @@
                                  :class "element")
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type element"}
+               [:div {:class "label-wrapping-elements object-type object element"}
                 ;; With no labels, the object gets a virtual (object-type)
                 ;; label.
                 [:component
@@ -938,7 +938,7 @@
                                  :object-ids-to-contract #{obj-id})
                           store)]
     (is (check dom
-               [:div {:class "label-wrapping-elements object-type element"}
+               [:div {:class "label-wrapping-elements object-type object element"}
                 ;; The simple label is shown. The complex label, which
                 ;; itself has another element, is dropped.
                 [:component

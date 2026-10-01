@@ -530,9 +530,10 @@
   (map entity->canonical-semantic (all-elements object)))
 
 (deftest merge-objects-test
-  ;; merge-objects requires interned (here, named) objects. An element
-  ;; the recipient object lacks is moved to it from the donor, and the
-  ;; donor object is left empty.
+  ;; merge-objects requires interned (here, named) objects. A semantic
+  ;; element the recipient object lacks is moved to it from the donor,
+  ;; a non-semantic element of the donor is not, and the donor object
+  ;; is left empty.
   (let [[s1 recipient-id] (add-object (new-element-store)
                                  (make-tree-object
                                   [`("A" (~name-label) (~o1 :order))
@@ -541,7 +542,8 @@
                                  (make-tree-object
                                   [`("B" (~name-label) (~o3 :order))
                                    `("x" (~o4 :order))
-                                   `("y" (~o5 :order))]))
+                                   `("y" (~o5 :order))
+                                   `(~o6 :order)]))
         y-id (:item-id (first (filter #(= (content %) "y")
                                       (all-elements (id->object donor-id s2)))))
         merged (merge-objects s2 recipient-id donor-id)]

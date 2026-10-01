@@ -5,7 +5,9 @@
                                      item-id-name item-id? mutable-store?
                                      new-element-store read-store]]
                       store-impl
-                      [entity :refer [content element? all-elements id->entity
+                      [entity :refer [content element? object? all-elements
+                                      label->elements name-label
+                                      id->entity
                                       orientation primitive? stored-entity?
                                       to-tree uniquely-identified-object?]]
                       [query :refer [matching-items]]
@@ -65,12 +67,16 @@
         (symbol (item-id-name item))
         (stored-entity? item)
         (symbol (clojure.string/join
-                 [(if (element? item)
-                    (if (= (orientation item) :target)
-                      "Reverse-Element" "Element")
-                    (if (uniquely-identified-object? item)
-                      "Identified-Object" "Object"))
-                  "-" (simplify-for-print (:item-id item))]))
+                 "-"
+                 (concat
+                  (when (= (orientation item) :target) ["Reverse"])
+                  (when (element? item) ["Element"])
+                  (when (object? item)
+                    (concat ["Object"]
+                            (when-let [names (seq (label->elements
+                                                   item name-label))]
+                              ["Name" (content (first names))])))
+                  [(simplify-for-print (:item-id item))])))
         (reporter? item)
         (list* "R" (simplify-for-print (reporter-computation item)))
         (instance? cosheet.orderable.Orderable item)

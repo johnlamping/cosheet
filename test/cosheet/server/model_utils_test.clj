@@ -508,20 +508,14 @@
   (is (check (match-terms-and-targets [1 '(nil 6) 3] [2 3 4])
              [[[3 3]] (as-set [1 '(nil 6)]) (as-set [2 4])])))
 
-(deftest changes-to-satisfy-simple-term-elements-test
-  (is (check (changes-to-satisfy-simple-term-elements
-              (make-tree-object [1 2 3]) (make-tree-object [2 3 4]))
+(deftest changes-to-merge-elements-test
+  (is (check (changes-to-merge-elements [1 2 3] [2 3 4])
              [[1] []]))
-  (is (check (changes-to-satisfy-simple-term-elements
-              (make-tree-object ['(nil 1) 2 3]) (make-tree-object [2 3 4]))
+  (is (check (changes-to-merge-elements ['(nil 1) 2 3] [2 3 4])
              [['(nil 1)] []]))
-  (is (check (changes-to-satisfy-simple-term-elements
-              (make-tree-object [2 '(nil 1) '(3 4)])
-              (make-tree-object ['(2 1 3) 3]))
+  (is (check (changes-to-merge-elements [2 '(nil 1) '(3 4)] ['(2 1 3) 3])
              [(as-set ['(3 4) 2]) [3]]))
-  (is (check (changes-to-satisfy-simple-term-elements
-              (make-tree-object [2 '(nil 1) 3])
-              (make-tree-object ['(2 5) 4]))
+  (is (check (changes-to-merge-elements [2 '(nil 1) 3] ['(2 5) 4])
              [(as-set [3 '(nil 1)]) []])))
 
 (defn object-canonical-elements

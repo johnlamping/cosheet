@@ -563,19 +563,19 @@
      [[] [] sorted-targets]
      sorted-simple-terms)))
 
-(defn changes-to-satisfy-simple-term-elements
-  "Given a simple term (an object with no special-form elements) and a
-  stored object, return the terms for elements that must be added to
-  the stored object, and ids of any elements that must be removed from
-  it, in order to make the object have as few elements as possible and
-  still satisfy:
-     * All positive queries that the simple term satisfies.
-     * All positive queries that the original object satisfies.
-     * No positive queries that aren't satisfied by an object
-       consisting of the union of the elements of the original object
-       and of the simple term.
+(defn changes-to-merge-elements
+  "Given two sequences of elements, find a subset of their union with as
+  few elements as possible such that an entity with those elements
+  would satisfy:
+     * All positive queries that an entity with the donor elements would
+       satisfiy.
+     * All positive queries that an entity with the recipient elements
+       would satisfy.
+     * No positive queries that aren't satisfied by an entity
+       with the union of all the elements.
+  
   The last condition implies that you can't merge two elements from
-  the objects, as that could satisfy a query the union of the objects
+  the seqs, as that could satisfy a query the union of the seqs
   doesn't satisfy. For example, suppose you merged a '(5 1) element
   with a '(5 2) element, to get a '(5 1 2) element, the '(5 1 2)
   satisfies any positive query containing either '(5 1) or '(5 2). But
@@ -584,16 +584,16 @@
   Instead, you have to start with the union of the elements of the two
   arguments, but you can remove an element from the union if it is
   extended by an element from the other argument.
-  Return a pair of a seq of terms from simple-term to add, and a seq of
-  elements from object to remove."
-  [simple-term object]
-  (assert object? simple-term)
-  (assert object? object)
-  (let [;; First find object elements that extend the fixed-term's
-        ;; elements. We will need to add the un-matched terms.
+  
+  Return the diff between that union and the recipient elements - the
+  changes to the recipients to turn it into the union - a seq of:
+     * The subset of donor elements that must be added
+     * The subset of the recipient elements that must be removed"
+  [donor-elements recipient-elements]
+  (let [;; First find object elements that extend the term elements.
+        ;; We will need to add the un-matched terms.
         [_ terms-to-add unmatched-object-elements]
-        (match-terms-and-targets (all-elements simple-term)
-                                 (all-elements object))
+        (match-terms-and-targets donor-elements recipient-elements)
         ;; Now find unmatched object elements that are extended by
         ;; unmatched terms. We won't need the elements that are extended.
         [object-term-pairs _ _]
@@ -625,12 +625,12 @@
                     (update-target id recipient-id)
                     (= (id->source store id) donor-id)
                     (update-source id recipient-id)))
-        ;; Since the donor's semantic elements are passed as the term,
+        ;; Since the donor's semantic elements are passed as the terms,
         ;; the terms to add that we get back will be those elements,
         ;; which we will move.
         [elements-to-move elements-to-remove]
-        (changes-to-satisfy-simple-term-elements
-         (make-tree-object (semantic-elements donor)) recipient)
+        (changes-to-merge-elements
+         (semantic-elements donor) (all-elements recipient))
         store (reduce (fn [store element]
                         (repoint store (:item-id element)))
                       store elements-to-move)
@@ -776,11 +776,10 @@
           (if (presumed-interned-object? fixed-term)
             ;; Don't change anything if the template is already interned.
             [nil nil]
-            (let [simple-term (make-tree-object
-                               (remove special-form? (all-elements fixed-term)))
-                  [terms-to-add elements-to-remove]
-                  (changes-to-satisfy-simple-term-elements
-                   simple-term (id->entity object-id store))]
+            (let [[terms-to-add elements-to-remove]
+                  (changes-to-merge-elements
+                   (remove special-form? (all-elements fixed-term))
+                   (all-elements (id->entity object-id store)))]
               [(map fixed-term-to-template terms-to-add) elements-to-remove]))
           [store order seen]
           (update-add-elements-with-order-without-revisiting

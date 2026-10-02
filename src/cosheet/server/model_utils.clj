@@ -9,7 +9,7 @@
     [store :refer [new-element-store
                    update-source update-target id->source id->target
                    add-link remove-link declare-ephemeral-id
-                   target->ids source->ids
+                   target->ids source->ids target-source->ids
                    link-id? object-id? interned-object-id?
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
@@ -17,6 +17,7 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? name-element? id->entity
+                    id->element
                     content all-elements forward-elements orientation
                     containing-elements
                     link-type object-type name-label
@@ -589,7 +590,7 @@
   changes to the recipients to turn it into the union - a seq of:
      * The subset of donor elements that must be added
      * The subset of the recipient elements that must be removed"
-  [donor-elements recipient-elements]
+  [recipient-elements donor-elements]
   (let [;; First find object elements that extend the term elements.
         ;; We will need to add the un-matched terms.
         [_ terms-to-add unmatched-object-elements]
@@ -600,6 +601,25 @@
         (match-terms-and-targets unmatched-object-elements terms-to-add)]
     [terms-to-add (map first object-term-pairs)]))
 
+(defn merge-elements-sourced-at
+  "Given a store, the ids of a recipient and a donor object, and the id
+  of an item that has elements whose source is one of those objects,
+  re-point the elements whose source is the donor to have the
+  recipient as their source. Then remove elements that have been made
+  redundant. Return the updated store."
+  [store recipient-id donor-id target-id]
+  (let [donor-ids (target-source->ids store target-id donor-id)
+        recipient-ids (target-source->ids store target-id recipient-id)
+        store (reduce (fn [store id] (update-source store id recipient-id))
+                      store donor-ids)
+        [donor-elements-to-keep recipient-elements-to-remove]
+        (changes-to-merge-elements (map #(id->element % store) recipient-ids)
+                                   (map #(id->element % store) donor-ids))]
+    (reduce remove-entity-by-id store
+            (concat (map :item-id recipient-elements-to-remove)
+                    (remove (set (map :item-id donor-elements-to-keep))
+                            donor-ids)))))
+
 (defn merge-objects
   "Given a store and the ids of two interned objects, modify the
   recipient object so that it satisfies every positive semantic query
@@ -607,9 +627,10 @@
   from the donor object. Return the updated store.
   Rather than copying elements, a semantic element of the donor object
   that the recipient object needs is moved to the recipient object, by
-  re-pointing the endpoint(s) that reference the donor to reference
-  the recipient. Elements of the recipient object that this makes
-  redundant are removed.
+  re-pointing its target to the recipient. Elements of the recipient
+  object that this makes redundant are removed. Likewise, elements
+  elsewhere whose source is the donor are re-pointed to have the
+  recipient as source, with redundant ones removed.
   Both objects must be interned, so that a link joining them is not a
   cycle that a traversal would have to descend into."
   [store recipient-id donor-id]
@@ -617,30 +638,26 @@
         donor (id->entity donor-id store)
         _ (assert (interned-object? recipient) recipient)
         _ (assert (interned-object? donor) donor)
-        ;; Re-point an element's endpoint(s) that reference the donor
-        ;; object to reference the recipient.
-        repoint (fn [store id]
-                  (cond-> store
-                    (= (id->target store id) donor-id)
-                    (update-target id recipient-id)
-                    (= (id->source store id) donor-id)
-                    (update-source id recipient-id)))
         ;; Since the donor's semantic elements are passed as the terms,
         ;; the terms to add that we get back will be those elements,
         ;; which we will move.
         [elements-to-move elements-to-remove]
         (changes-to-merge-elements
-         (semantic-elements donor) (all-elements recipient))
+         (forward-elements recipient)
+         (filter semantic-element? (forward-elements donor)))
         store (reduce (fn [store element]
-                        (repoint store (:item-id element)))
+                        (update-target store (:item-id element) recipient-id))
                       store elements-to-move)
-        store (reduce (fn [store element]
-                        (remove-entity-by-id store (:item-id element)))
-                      store
-                      ;; An element that referenced the recipient
-                      ;; object at one endpoint and the donor at the
-                      ;; other must not be removed from the recipient.
-                      (remove (set elements-to-move) elements-to-remove))]
+        store (reduce remove-entity-by-id store
+                      (map :item-id elements-to-remove))
+        ;; Now handle the links that have either object as source.
+        target-ids (distinct (map (fn [id] (id->target store id))
+                                  (concat (source->ids store recipient-id)
+                                          (source->ids store donor-id))))
+        store (reduce (fn [store target-id]
+                        (merge-elements-sourced-at
+                         store recipient-id donor-id target-id))
+                      store target-ids)]
     ;; Finally, remove the left-over elements in the donor.
     (reduce remove-entity-by-id store
             (map :item-id (all-elements (in-different-store donor store))))))
@@ -778,8 +795,8 @@
             [nil nil]
             (let [[terms-to-add elements-to-remove]
                   (changes-to-merge-elements
-                   (remove special-form? (all-elements fixed-term))
-                   (all-elements (id->entity object-id store)))]
+                   (all-elements (id->entity object-id store))
+                   (remove special-form? (all-elements fixed-term)))]
               [(map fixed-term-to-template terms-to-add) elements-to-remove]))
           [store order seen]
           (update-add-elements-with-order-without-revisiting

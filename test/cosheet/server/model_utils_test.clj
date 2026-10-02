@@ -15,6 +15,7 @@
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      id->source id->target make-item-id
+                                     target-source->ids
                                      get-new-object-id add-link
                                      name-label-id]]
                       [store-utils :refer [add-element add-object
@@ -509,13 +510,13 @@
              [[[3 3]] (as-set [1 '(nil 6)]) (as-set [2 4])])))
 
 (deftest changes-to-merge-elements-test
-  (is (check (changes-to-merge-elements [1 2 3] [2 3 4])
+  (is (check (changes-to-merge-elements [2 3 4] [1 2 3])
              [[1] []]))
-  (is (check (changes-to-merge-elements ['(nil 1) 2 3] [2 3 4])
+  (is (check (changes-to-merge-elements [2 3 4] ['(nil 1) 2 3])
              [['(nil 1)] []]))
-  (is (check (changes-to-merge-elements [2 '(nil 1) '(3 4)] ['(2 1 3) 3])
+  (is (check (changes-to-merge-elements ['(2 1 3) 3] [2 '(nil 1) '(3 4)])
              [(as-set ['(3 4) 2]) [3]]))
-  (is (check (changes-to-merge-elements [2 '(nil 1) 3] ['(2 5) 4])
+  (is (check (changes-to-merge-elements ['(2 5) 4] [2 '(nil 1) 3])
              [(as-set [3 '(nil 1)]) []])))
 
 (defn object-canonical-elements
@@ -598,7 +599,39 @@
                              "y"
                              ;; The self-link appears as two elements.
                              (list recipient)
-                             (list (list :target recipient))]))))))
+                             (list (list :target recipient))])))))
+  ;; Elements of a non-object item whose source is the donor object are
+  ;; re-pointed to have the recipient object as source, except that one
+  ;; made redundant by an element already sourced at the recipient is
+  ;; removed.
+  (let [[s1 recipient-id] (add-object (new-element-store)
+                                 (make-tree-object
+                                  [`("A" (~name-label) (~o1 :order))]))
+        recipient (id->object recipient-id s1)
+        [s2 donor-id] (add-object s1
+                                 (make-tree-object
+                                  [`("B" (~name-label) (~o2 :order))]))
+        donor (id->object donor-id s2)
+        [s3 holder-id] (add-object s2
+                                 (make-tree-object
+                                  [`("x" (~o3 :order) (~donor))
+                                   `("y" (~o4 :order) (~recipient) (~donor))]))
+        element-id (fn [store text]
+                     (:item-id (first (filter #(= (content %) text)
+                                              (all-elements
+                                               (id->object holder-id store))))))
+        x-id (element-id s3 "x")
+        y-id (element-id s3 "y")
+        x-donor-id (first (target-source->ids s3 x-id donor-id))
+        merged (merge-objects s3 recipient-id donor-id)]
+    ;; The "x" element's label was moved, not copied.
+    (is (= (id->source merged x-donor-id) recipient-id))
+    (is (= (count (target-source->ids merged x-id recipient-id)) 1))
+    (is (empty? (target-source->ids merged x-id donor-id)))
+    ;; The "y" element's donor label was redundant, so it was removed.
+    (is (= (count (target-source->ids merged y-id recipient-id)) 1))
+    (is (empty? (target-source->ids merged y-id donor-id)))
+    (is (= (to-tree (id->object donor-id merged)) [:object]))))
 
 (deftest get-or-make-ordered-object-by-name-test
   (let

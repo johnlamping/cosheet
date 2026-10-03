@@ -640,8 +640,11 @@
   "Do an action that applies to a DOM component, and whose
   interpretation depends on that component. We will call a contextual
   action handler with a map of the action data for the component,
-  plus :template from the spec, plus :client-id, :session-state, and
-  any other arguments the client provided. In addition to information
+  which includes the :template that corresponds to its subject ids,
+  plus :virtual, :complete-entity, and
+  :virtual-object-reference-template from the spec,
+  plus :client-id, :session-state, and any other arguments the client
+  provided. In addition to information
   for the client, the handler can also specify whether we
   are :batch-editing."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
@@ -674,7 +677,7 @@
                                       history-store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys
-                                    spec [:template :virtual :complete-entity
+                                    spec [:virtual :complete-entity
                                           :virtual-object-reference-template])
                          arguments (-> action-data
                                        (into spec-info)

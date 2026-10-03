@@ -28,15 +28,15 @@
 (deftest run-action-data-getter-test
   (is (= (run-action-data-getter
           [(fn [spec cad action store extra]
-             (is (= spec {:spec "spec"}))
+             (is (= spec {:spec "spec" :template "template"}))
              (is (= cad {:value 2}))
              (is (= action :action))
              (is (= store :store))
              (is (= extra 1))
              {:value 3})
            1]
-          {:spec "spec"} {:value 2} :action :store)
-         {:value 3}))
+          {:spec "spec" :template "template"} {:value 2} :action :store)
+         {:value 3 :template "template"}))
   (is (= (run-action-data-getter
           [(fn [spec cad action store]
              (is (= spec {:spec "spec"}))
@@ -45,7 +45,13 @@
              (is (= store "foo"))
              {:value 3})]
           {:spec "spec"} {:value 2 :store "foo"} :action :store)
-         {:value 3})))
+         {:value 3}))
+  ;; A getter that returns the inherited action data unchanged doesn't
+  ;; get the template added.
+  (is (= (run-action-data-getter
+          [(fn [spec cad action store] cad)]
+          {:spec "spec" :template "template"} {:value 2} :action :store)
+         {:value 2})))
 
 (def orderables (reduce (fn [os _] (vec (concat (pop os)
                                                 (split (peek os) :after))))
@@ -138,7 +144,7 @@
 
 (deftest get-virtual-action-data-test
   (let [data (get-virtual-action-data
-              {:template 'anything} {:subject-ids [joe-id]} nil store)]
+              {:template 'anything} {:subject-ids [joe-id]} :set-content store)]
     (is (check data {:subject-ids [(any)]
                      :past-subject-ids [[joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
@@ -155,7 +161,7 @@
   (let [data (get-virtual-action-data
               {:template (make-sequential-template
                           'anything `(2 (~age-label-object)))}
-              {:subject-ids [jane-id joe-id]} nil store)]
+              {:subject-ids [jane-id joe-id]} :set-content store)]
     (println jane-id joe-id)
     (is (check data {:subject-ids [(any) (any)]
                      :past-subject-ids [[(any) (any)] [jane-id joe-id]]
@@ -181,7 +187,7 @@
               {:template 'anything
                :sibling true
                :position :before}
-              {:subject-ids [(:item-id joe-age)]} nil store)]
+              {:subject-ids [(:item-id joe-age)]} :set-content store)]
     (is (check data {:subject-ids [(any)]
                      :past-subject-ids [[(:item-id joe)]]
                      :store (any #(satisfies? ImmutableStore %))}))
@@ -200,7 +206,7 @@
               {:template '(anything 2)
                :adjacent-query `(nil (~age-label-object))
                :position :before}
-              {:subject-ids [jane-id joe-id]} nil store)]
+              {:subject-ids [jane-id joe-id]} :set-content store)]
     (is (check data {:subject-ids [(any) (any)]
                      :past-subject-ids [[jane-id joe-id]]
                      :store (any #(satisfies? ImmutableStore %))}))
@@ -225,7 +231,12 @@
                       (ordered-entities
                        (semantic-elements
                         (id->entity jane-id store))))
-                 (as-set `(("female") (~'anything 2) (45 (~age-label-obj)))))))))
+                 (as-set `(("female") (~'anything 2) (45 (~age-label-obj))))))))
+  ;; An action that doesn't apply to virtual items passes the
+  ;; inherited action data through unchanged.
+  (is (= (get-virtual-action-data
+          {:template 'anything} {:subject-ids [joe-id]} :delete store)
+         {:subject-ids [joe-id]})))
 
 (deftest get-item-do-batch-edit-action-data-test
   (is (check (get-item-do-batch-edit-action-data
@@ -285,20 +296,20 @@
 
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data
-          {:spec "spec"} {:value 2} :action :store
+          {:spec "spec" :template "template"} {:value 2} :action :store
           (fn [spec cad action store]
-            (is (= spec {:spec "spec"}))
+            (is (= spec {:spec "spec" :template "template"}))
             (is (= cad {:value 2}))
             (is (= action :action))
             (is (= store :store))
             {:value 3})
           (fn [spec cad action store]
-            (is (= spec {:spec "spec"}))
-            (is (= cad {:value 3}))
+            (is (= spec {:spec "spec" :template "template"}))
+            (is (= cad {:value 3 :template "template"}))
             (is (= action :action))
             (is (= store :store))
             {:value 4}))
-         {:value 4})))
+         {:value 4 :template "template"})))
 
 (deftest parallel-items-get-action-data-test
   (is (= (parallel-items-get-action-data

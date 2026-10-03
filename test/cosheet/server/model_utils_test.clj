@@ -15,6 +15,7 @@
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      id->source id->target make-item-id
+                                     target->ids source->ids
                                      target-source->ids
                                      get-new-object-id add-link
                                      name-label-id]]
@@ -1178,7 +1179,20 @@
              (canonicalize `("baz" (~by-label)))))
       ;; The still-referenced label keeps its name.
       (is (= "by" (label->content (id->entity by-label-id removed-store)
-                                  name-label))))))
+                                  name-label)))))
+  ;; Removing an unnamed object that was the content of a single link
+  ;; used to try to delete the object's elements twice by descending
+  ;; from that link back into the object.
+  (let [[s1 holder-id] (add-object (new-element-store)
+                                   (make-tree-object ["x"]))
+        [s2 obj-id] (add-object s1 (make-tree-object ["a" "b"]))
+        x-id (:item-id (first (all-elements (id->object holder-id s2))))
+        [s3 link-id] (add-element s2 x-id (list (id->object obj-id s2)))
+        removed-store (remove-entity-by-id s3 obj-id)]
+    (is (= (count (target->ids s3 obj-id)) 2))
+    (is (= (count (source->ids s3 obj-id)) 1))
+    (is (empty? (target->ids removed-store obj-id)))
+    (is (empty? (source->ids removed-store obj-id)))))
 
 
 

@@ -110,7 +110,7 @@
         data (get-virtual-column-cell-action-data
               {}
               {:table-id table-id :subject-ids [row-id]}
-              nil store)
+              :set-content store)
         new-store (:store data)
         new-id (first (:subject-ids data))]
     (is (= (semantic-to-tree (id->element new-id new-store))

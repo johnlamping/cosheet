@@ -39,6 +39,10 @@
 ;;;                   were used in the calculation of the current
 ;;;                   subject ids, and their lengths match the length
 ;;;                   of the current :subject-ids.
+;;;        :template  The :template of the most recent specification
+;;;                   that had one and whose action data getter changed
+;;;                   the action data, so it is the template that
+;;;                   corresponds to the current :subject-ids.
 
 ;;; These three give information about the cell's position in a table,
 ;;; if any.  They are copied over from the specification, even before
@@ -84,7 +88,11 @@
                                  :row-ids))
   (let [store (or (:store inherited-action-data) immutable-store)
         result (call-pseudo-closure
-                getter specification inherited-action-data action store)]
+                getter specification inherited-action-data action store)
+        result (let [template (:template specification)]
+                 (cond-> result
+                   (and template result (not= result inherited-action-data))
+                   (assoc :template template)))]
     (println "  returning AD" (dissoc result :component))
     result))
 
@@ -384,6 +392,12 @@
          (if picked (:item-id picked) target)))
      targets)))
 
+(defn should-create-virtual?
+  "Return whether the action is one that should create the virtual
+  item(s) it is applied to."
+  [action]
+  (#{:set-content :add-element :add-label :make-name :make-object} action))
+
 (defn get-virtual-action-data
   "Create the specified virtual item(s) and make them the target(s).
    The new items are instances of the template.
@@ -402,37 +416,39 @@
     :as specification}
    inherited-action-data action immutable-store]
   (assert template template)
-  (let [subject-ids (:subject-ids inherited-action-data)
-        targets (if sibling
-                  (map #(id->target immutable-store %) subject-ids)
-                  subject-ids)
-        adjacents (if sibling
-                    subject-ids
-                    (find-virtual-adjacents
-                     targets specification immutable-store))
-        templates (if (sequential-template? template)
-                    (:template-sequence template)
-                    [template])
-        [targets _ past-ids new-store]
-        (reduce
-         (fn [[targets adjacents past-ids store] template]
-           (assert (or (not (object? template))
-                       (every? nil? targets))
-                   [targets template])
-           (let [[store ids] (create-possible-selector-entities
-                              template targets adjacents
-                              (or position :after) use-bigger store)]
-             [ids ids (cons targets past-ids) store]))
-         [targets adjacents past-subject-ids immutable-store]
-         templates)]
-    (println "Made items"
-             template
-             (simplify-for-print targets)
-             (simplify-for-print adjacents))
-    (assoc inherited-action-data
-           :subject-ids targets
-           :past-subject-ids past-ids
-           :store new-store)))
+  (if-not (should-create-virtual? action)
+    inherited-action-data
+    (let [subject-ids (:subject-ids inherited-action-data)
+          targets (if sibling
+                    (map #(id->target immutable-store %) subject-ids)
+                    subject-ids)
+          adjacents (if sibling
+                      subject-ids
+                      (find-virtual-adjacents
+                       targets specification immutable-store))
+          templates (if (sequential-template? template)
+                      (:template-sequence template)
+                      [template])
+          [targets _ past-ids new-store]
+          (reduce
+           (fn [[targets adjacents past-ids store] template]
+             (assert (or (not (object? template))
+                         (every? nil? targets))
+                     [targets template])
+             (let [[store ids] (create-possible-selector-entities
+                                template targets adjacents
+                                (or position :after) use-bigger store)]
+               [ids ids (cons targets past-ids) store]))
+           [targets adjacents past-subject-ids immutable-store]
+           templates)]
+      (println "Made items"
+               template
+               (simplify-for-print targets)
+               (simplify-for-print adjacents))
+      (assoc inherited-action-data
+             :subject-ids targets
+             :past-subject-ids past-ids
+             :store new-store))))
 
 (defmethod print-method
   cosheet.server.action_data$get_virtual_action_data

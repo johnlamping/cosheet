@@ -131,17 +131,17 @@
   "Return a list of ids of links to remove in order to remove the entity
   with the given id, and all its elements and non-interned objects or
   minimal interned objects in their contents. Don't recurse into
-  containing-id; our caller will handle that. (This prevents infinite
+  previous-id; our caller will handle that. (This prevents infinite
   loops when an element contains an object as its source.)  Return the
   list in an order suitable for removing."
-  [store containing-id id]
+  [store previous-id id]
   (concat
    ;; First, we have to remove all the elements.
    (mapcat (partial links-to-remove store id)
            (cond-> (target->ids store id)
              ;; Object ids can also be sources.
              (object-id? id)
-             (concat (remove #(= containing-id %)
+             (concat (remove #(= previous-id %)
                              (source->ids store id)))))
    ;; Once all the elements are gone, if the id is a link, we can
    ;; remove its content, if that is an unnamed object or a trivial
@@ -150,6 +150,7 @@
    (when (link-id? id)
      (concat (let [content-id (id->source store id)]
                (when (and (object-id? content-id)
+                          (not= content-id previous-id)
                           (empty? (remove #(= id %)
                                           (source->ids store content-id)))
                           (or (not (interned-object-id? store content-id))

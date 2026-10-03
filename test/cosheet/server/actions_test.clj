@@ -525,7 +525,18 @@
                              {:subject-ids [joe-id
                                             (:item-id name-header)]})]
     (is (not (id-valid-link? new-store joe-id)))
-    (is (id-valid-link? new-store (:item-id name-header)))))
+    (is (id-valid-link? new-store (:item-id name-header))))
+  ;; On a virtual, a subject with a forward element that would be
+  ;; displayed (one that is semantic and whose content is not a
+  ;; universal object) stops the delete from doing anything.
+  (is (nil? (do-delete store {:subject-ids [(:item-id joe-age)]
+                              :virtual true})))
+  ;; On a virtual, a subject whose only semantic element has a
+  ;; universal object as content is still acted on (here, blanked).
+  (let [joe-name-id (:item-id (first (label->elements joe name-label)))
+        new-store (do-delete store {:subject-ids [joe-name-id]
+                                    :virtual true})]
+    (is (= (content (id->entity joe-name-id new-store)) ""))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

@@ -21,10 +21,10 @@
     [store-utils :refer [find-object-by-name]]
     [entity :refer [id->entity id->element make-tree-object
                     add-elements-to-entity
-                    all-elements content content->elements
+                    all-elements forward-elements content content->elements
                     label->element label->elements
                     name-label object? element? name-element? label-element?
-                    interned-object? named-object?]]
+                    interned-object? named-object? universal-object?]]
     mutable-store-impl
     [query :refer [matching-elements]]
     query-impl
@@ -48,7 +48,7 @@
                          remove-entity-by-id
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
-    [order-utils :refer [order-element-for-item]])))
+    [order-utils :refer [order-element-for-item semantic-element?]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -463,13 +463,31 @@
         (and (object-id? source)
              (empty? (semantic-elements (id->entity source store)))))))
 
+(defn has-displayed-elements?
+  "Return true if the entity has a semantic forward element whose
+  content is not a universal object. In other words, does it have an
+  element that is displayed?"
+  [entity]
+  (some (fn [element]
+          (and (semantic-element? element)
+               (not (universal-object? (content element)))))
+        (forward-elements entity)))
+
 (defn do-delete
-  [store {:keys [subject-ids template complete-entity]}]
+  [store {:keys [subject-ids template complete-entity virtual]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
           subject-ids)
-  (if (or complete-entity
-          (some object-id? subject-ids)
-          (every? #(empty-content? store %) subject-ids))
+  (cond
+    ;; A delete on a virtual item deletes the item for the containing
+    ;; dom, because the virtual isn't created when the action data is
+    ;; made. Don't delete if that item has any thing being displayed.
+    (and virtual
+         (some (fn [id] (has-displayed-elements? (id->entity id store)))
+               subject-ids))
+    nil
+    (or complete-entity
+        (some object-id? subject-ids)
+        (every? #(empty-content? store %) subject-ids))
     (when (not= (content template) :singular)
       (reduce (fn [store id]
                 (let [target-id (id->target store id)
@@ -481,6 +499,7 @@
     ;; instead replace the content with the empty content. If the user
     ;; wants to delete the whole thing, they can just delete again,
     ;; and we'll be in the first case.
+    :else
     (reduce (fn [store id]
               (update-set-source store id nil ""))
             store subject-ids)))
@@ -698,7 +717,7 @@
                          (normalize-handler-response response store)
                          {:keys [following-selection
                                  following-selection-by-ids]}
-                         (:ephemeral-data updated-store)
+                         (when response (:ephemeral-data updated-store))
                          ;; If the user is typing into a field, and
                          ;; then clicks somewhere else, we don't want
                          ;; our filling in the content to change the

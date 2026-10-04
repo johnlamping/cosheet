@@ -11,7 +11,7 @@
                    equivalent-undo-point? update-equivalent-undo-point
                    store-update-control-return!
                    id->target target-label->ids target-source->ids
-                   id-known?
+                   source->ids id-known?
                    object-id? link-id? item-id? interned-object-id?
                    undo! redo!
                    name-label-id
@@ -24,7 +24,8 @@
                     all-elements forward-elements content content->elements
                     label->element label->elements
                     name-label object? element? name-element? label-element?
-                    interned-object? named-object? universal-object?]]
+                    interned-object? named-object? universal-object?
+                    uniquely-identified-object?]]
     mutable-store-impl
     [query :refer [matching-elements]]
     query-impl
@@ -473,6 +474,15 @@
                (not (universal-object? (content element)))))
         (forward-elements entity)))
 
+(defn anonymous-objects?
+  "Return true if every subject id is an object that is not uniquely
+  identified."
+  [store subject-ids]
+  (every? (fn [id] (and (object-id? id)
+                        (not (uniquely-identified-object?
+                              (id->entity id store)))))
+          subject-ids))
+
 (defn do-delete
   [store {:keys [subject-ids template complete-entity virtual]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
@@ -480,14 +490,30 @@
   (cond
     ;; A delete on a virtual item deletes the item for the containing
     ;; dom, because the virtual isn't created when the action data is
-    ;; made. Don't delete if that item has any thing being displayed.
+    ;; made. Don't delete if that item has anything being displayed.
     (and virtual
          (some (fn [id] (has-displayed-elements? (id->entity id store)))
                subject-ids))
     nil
-    (or complete-entity
-        (some object-id? subject-ids)
-        (every? #(empty-content? store %) subject-ids))
+    ;; The subjects are anonymous objects, and the template doesn't
+    ;; call for an object. Remove the objects, while leaving the
+    ;; elements holding them intact, with empty content.
+    (and (anonymous-objects? store subject-ids)
+         (not (object? template))
+         (not (and (element? template) (object? (content template)))))
+    (let [holder-ids (mapcat (fn [id] (source->ids store id)) subject-ids)
+          store (reduce (fn [store id] (update-set-source store id nil ""))
+                        store holder-ids)]
+      (reduce remove-entity-by-id store subject-ids))
+    ;; In these three cases, we want to remove the entire subject-id,
+    ;; not just its current content.
+    (or
+     ;; The component consists of nothing but the content.
+     complete-entity
+     ;; The subject is an object. That's what we have to delete.
+     (some object-id? subject-ids)
+     ;; The content is trivial. Maybe non-trivial content was just deleted.
+     (every? #(empty-content? store %) subject-ids))
     (when (not= (content template) :singular)
       (reduce (fn [store id]
                 (let [target-id (id->target store id)

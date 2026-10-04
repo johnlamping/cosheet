@@ -484,7 +484,8 @@
           subject-ids))
 
 (defn do-delete
-  [store {:keys [subject-ids template complete-entity virtual]}]
+  [store {:keys [subject-ids past-subject-ids template complete-entity
+                 virtual]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
           subject-ids)
   (cond
@@ -497,14 +498,20 @@
     nil
     ;; The subjects are anonymous objects, and the template doesn't
     ;; call for an object. Remove the objects, while leaving the
-    ;; elements holding them intact, with empty content.
+    ;; previous subjects that held them intact, with empty content.
+    ;; An object that is still held somewhere else is kept.
     (and (anonymous-objects? store subject-ids)
          (not (object? template))
          (not (and (element? template) (object? (content template)))))
-    (let [holder-ids (mapcat (fn [id] (source->ids store id)) subject-ids)
+    (let [holder-ids (filter
+                      (fn [id] (some #{(id->source store id)} subject-ids))
+                      (first past-subject-ids))
           store (reduce (fn [store id] (update-set-source store id nil ""))
                         store holder-ids)]
-      (reduce remove-entity-by-id store subject-ids))
+      (reduce (fn [store id]
+                (cond-> store
+                  (empty? (source->ids store id)) (remove-entity-by-id id)))
+              store subject-ids))
     ;; In these three cases, we want to remove the entire subject-id,
     ;; not just its current content.
     (or

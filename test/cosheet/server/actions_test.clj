@@ -23,7 +23,7 @@
                             name-label-id target->ids id->source
                             target-label->ids
                             current-store id-valid-link?
-                            id->source id->target
+                            id->target
                             get-new-object-id object-id? id-known-object?
                             update-source store-update!
                             update-equivalent-undo-point]]
@@ -524,7 +524,7 @@
         new-store (do-delete store
                              {:subject-ids [joe-id
                                             (:item-id name-header)]})]
-    (is (not (id-valid-link? new-store joe-id)))
+    (is (not (id-known-object? new-store joe-id)))
     (is (id-valid-link? new-store (:item-id name-header))))
   ;; On a virtual, a subject with a forward element that would be
   ;; displayed (one that is semantic and whose content is not a
@@ -537,26 +537,35 @@
         new-store (do-delete store {:subject-ids [joe-name-id]
                                     :virtual true})]
     (is (= (content (id->entity joe-name-id new-store)) "")))
-  ;; Anonymous objects are removed, while every element holding one is
-  ;; kept, with empty content and its other elements intact.
+  ;; Anonymous objects are removed from the previous subjects that
+  ;; held them, which are kept, with empty content and their other
+  ;; elements intact.
   (let [[s1 holder-id] (add-element store joe-id
                                     `(~(make-tree-object '("Fred" 1))
                                       (~age-label)))
         object-id (id->source s1 holder-id)
         [s holder2-id] (add-element s1 joe-id (list (id->object object-id s1)))
-        new-store (do-delete s {:subject-ids [object-id]})]
+        new-store (do-delete s {:subject-ids [object-id]
+                                :past-subject-ids [[holder-id]]})]
     (is (id-valid-link? new-store holder-id))
     (is (= (content (id->entity holder-id new-store)) ""))
     (is (= (count (semantic-elements (id->entity holder-id new-store))) 1))
-    (is (id-valid-link? new-store holder2-id))
-    (is (= (content (id->entity holder2-id new-store)) ""))
-    (is (not (id-valid-link? new-store object-id)))
+    ;; The other holder wasn't a previous subject, so it keeps the
+    ;; object, which therefore survives.
+    (is (= (id->source new-store holder2-id) object-id))
+    (is (id-known-object? new-store object-id))
+    ;; With both holders as previous subjects, the object goes too.
+    (let [new-store (do-delete s {:subject-ids [object-id]
+                                  :past-subject-ids [[holder-id holder2-id]]})]
+      (is (= (content (id->entity holder2-id new-store)) ""))
+      (is (not (id-known-object? new-store object-id))))
     ;; But if the template calls for an object, the holders go too.
     (let [new-store (do-delete s {:subject-ids [object-id]
+                                  :past-subject-ids [[holder-id]]
                                   :template (list (make-tree-object ["x"]))})]
       (is (not (id-valid-link? new-store holder-id)))
       (is (not (id-valid-link? new-store holder2-id)))
-      (is (not (id-valid-link? new-store object-id))))))
+      (is (not (id-known-object? new-store object-id))))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

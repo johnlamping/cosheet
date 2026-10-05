@@ -260,37 +260,22 @@
         (add-following-selection-by-ids store client-id subject-ids)))))
 
 (defn do-add-twin
-  [store {:keys [subject-ids template virtual-object-reference-template
-                 virtual session-state client-id]
+  [store {:keys [subject-ids template virtual session-state client-id]
           :as arguments}]
-  (if virtual
-    ;; Our subject is a virtual item, so the action data should have
-    ;; already built an element for it. All we need to do is build an
-    ;; object reference, if needed, and tell the client to select
-    ;; what was built.
-    (if virtual-object-reference-template
-      (let [[store object-id]
-            (create-possible-selector-entity
-             virtual-object-reference-template
-             nil (first subject-ids) :after true store)
-            store (reduce (fn [store subject-id]
-                            (update-source store subject-id object-id))
-                          store subject-ids)]
-        (add-following-selection-by-ids store client-id [object-id]))
-      (add-following-selection-by-ids store client-id subject-ids))
-    (when (not= (content template) :singular)
-      (let [template (cond (not template) 'anything
-                           (object? template) (do (assert
-                                                   (named-object-expected?
-                                                    arguments))
-                                                  `(~template))
-                           true template)
-            [store ids] (create-possible-selector-entities
-                         template
-                         (map #(id->target store %) subject-ids)
-                         subject-ids
-                         :after true store)]
-        (add-following-selection-by-ids store client-id ids)))))
+  ;; A virtual item has nothing to twin, so do nothing.
+  (when (and (not virtual) (not= (content template) :singular))
+    (let [template (cond (not template) 'anything
+                         (object? template) (do (assert
+                                                 (named-object-expected?
+                                                  arguments))
+                                                `(~template))
+                         true template)
+          [store ids] (create-possible-selector-entities
+                       template
+                       (map #(id->target store %) subject-ids)
+                       subject-ids
+                       :after true store)]
+      (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-element
   [store {:keys [subject-ids session-state client-id]}]

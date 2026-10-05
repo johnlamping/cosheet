@@ -9,7 +9,7 @@
     [store :refer [new-element-store
                    update-source update-target id->source id->target
                    add-link remove-link declare-ephemeral-id
-                   target->ids source->ids target-source->ids
+                   target->ids source->ids
                    link-id? object-id? interned-object-id?
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
@@ -17,7 +17,6 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? name-element? id->entity
-                    id->element
                     content all-elements forward-elements orientation
                     containing-elements
                     link-type object-type name-label
@@ -602,25 +601,6 @@
         (match-terms-and-targets unmatched-object-elements terms-to-add)]
     [terms-to-add (map first object-term-pairs)]))
 
-(defn merge-elements-sourced-at
-  "Given a store, the ids of a recipient and a donor object, and the id
-  of an item that has elements whose source is one of those objects,
-  re-point the elements whose source is the donor to have the
-  recipient as their source. Then remove elements that have been made
-  redundant. Return the updated store."
-  [store recipient-id donor-id target-id]
-  (let [donor-ids (target-source->ids store target-id donor-id)
-        recipient-ids (target-source->ids store target-id recipient-id)
-        store (reduce (fn [store id] (update-source store id recipient-id))
-                      store donor-ids)
-        [donor-elements-to-keep recipient-elements-to-remove]
-        (changes-to-merge-elements (map #(id->element % store) recipient-ids)
-                                   (map #(id->element % store) donor-ids))]
-    (reduce remove-entity-by-id store
-            (concat (map :item-id recipient-elements-to-remove)
-                    (remove (set (map :item-id donor-elements-to-keep))
-                            donor-ids)))))
-
 (defn merge-objects
   "Given a store and the ids of two interned objects, modify the
   recipient object so that it satisfies every positive semantic query
@@ -631,7 +611,7 @@
   re-pointing its target to the recipient. Elements of the recipient
   object that this makes redundant are removed. Likewise, elements
   elsewhere whose source is the donor are re-pointed to have the
-  recipient as source, with redundant ones removed.
+  recipient as source.
   Both objects must be interned, so that a link joining them is not a
   cycle that a traversal would have to descend into."
   [store recipient-id donor-id]
@@ -651,14 +631,9 @@
                       store elements-to-move)
         store (reduce remove-entity-by-id store
                       (map :item-id elements-to-remove))
-        ;; Now handle the links that have either object as source.
-        target-ids (distinct (map (fn [id] (id->target store id))
-                                  (concat (source->ids store recipient-id)
-                                          (source->ids store donor-id))))
-        store (reduce (fn [store target-id]
-                        (merge-elements-sourced-at
-                         store recipient-id donor-id target-id))
-                      store target-ids)]
+        ;; Now re-point the links that have the donor as source.
+        store (reduce (fn [store id] (update-source store id recipient-id))
+                      store (source->ids store donor-id))]
     ;; Finally, remove the left-over elements in the donor.
     (reduce remove-entity-by-id store
             (map :item-id (all-elements (in-different-store donor store))))))

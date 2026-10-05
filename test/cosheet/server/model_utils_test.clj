@@ -602,9 +602,8 @@
                              (list recipient)
                              (list (list :target recipient))])))))
   ;; Elements of a non-object item whose source is the donor object are
-  ;; re-pointed to have the recipient object as source, except that one
-  ;; made redundant by an element already sourced at the recipient is
-  ;; removed.
+  ;; re-pointed to have the recipient object as source, even if an
+  ;; element already sourced at the recipient makes one redundant.
   (let [[s1 recipient-id] (add-object (new-element-store)
                                  (make-tree-object
                                   [`("A" (~name-label) (~o1 :order))]))
@@ -629,8 +628,9 @@
     (is (= (id->source merged x-donor-id) recipient-id))
     (is (= (count (target-source->ids merged x-id recipient-id)) 1))
     (is (empty? (target-source->ids merged x-id donor-id)))
-    ;; The "y" element's donor label was redundant, so it was removed.
-    (is (= (count (target-source->ids merged y-id recipient-id)) 1))
+    ;; The "y" element's donor label was re-pointed too, so it now has
+    ;; two labels sourced at the recipient.
+    (is (= (count (target-source->ids merged y-id recipient-id)) 2))
     (is (empty? (target-source->ids merged y-id donor-id)))
     (is (= (to-tree (id->object donor-id merged)) [:object]))))
 

@@ -474,6 +474,55 @@
         (is (= :active (component-data-state @g-comp)))
         (is (= g-dom-R (:dom-R @g-comp)))))))
 
+(deftest resend-after-elision-change-test
+  ;; When a subcomponent stops being elided, the client discards the
+  ;; sub-doms that the elided dom referenced directly. So a grandchild
+  ;; must not be salvaged into the replacement component, but be made
+  ;; afresh and sent again, even though its dom hasn't changed.
+  (let [h (make-harness)
+        manager (:manager h)
+        a (make-item-id "a")
+        b (make-item-id "b")
+        g (make-item-id "g")
+        a-spec (spec h a)
+        ;; The replacement's spec also differs, as happens when a
+        ;; renderer adds a class in the single-item case.
+        a-spec2 (assoc (spec h a) :class "stacked")
+        b-spec (spec h b)
+        g-spec (spec h g)
+        ;; Simulate the client receiving and acknowledging everything
+        ;; queued, returning the ids of the doms it got.
+        receive! (fn []
+                   (let [[doms _] (get-response-doms manager nil nil 20)]
+                     (process-acknowledgements
+                      manager (into {} (map (fn [[_ {:keys [id version]}]]
+                                              [id version])
+                                            doms)))
+                     (set (map (fn [dom] (:id (second dom))) doms))))]
+    (start-root! h :root
+                 {:root [:component a-spec]
+                  a [:div [:component g-spec]]
+                  g [:div "g"]})
+    (let [g-comp (component-at h :root a g)
+          g-id (:client-id @g-comp)]
+      ;; Initially a is elided into root, and g is sent on its own.
+      (is (= (receive!) #{"root" g-id}))
+      (is (empty? (:components-to-send @manager)))
+      ;; Now root shows a and b side by side, so a is no longer elided.
+      (set-dom! h b [:div "b"])
+      (set-dom! h :root [:div [:component a-spec2] [:component b-spec]])
+      (quiesce h)
+      (check-invariants h)
+      ;; g was not salvaged into the new a, but made afresh.
+      (is (not= g-comp (component-at h :root a g)))
+      (is (= :defunct (component-data-state @g-comp)))
+      ;; The client gets the new root and a, the new b, and g again.
+      (is (= (receive!)
+             #{"root"
+               (:client-id @(component-at h :root a))
+               (:client-id @(component-at h :root b))
+               g-id})))))
+
 ;;; Direct lifecycle-function tests.
 
 (deftest direct-finalize-test

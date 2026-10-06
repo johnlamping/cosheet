@@ -506,9 +506,6 @@
                (= client-id new-client-id)
                ;; TODO: !!! Add this once parent gets updated.
                ; (= parent new-parent)
-               ;; We don't currently update the elision in the
-               ;; component atom, so if the elision has changed, we
-               ;; need a new one.
                (= elided-from new-elided-from))))
     old-component-atom
     (make-component-atom
@@ -815,18 +812,55 @@
            (update-next-step-when-dismantling-empty component))
        component-data))))
 
+(defn elided-from-matches?
+  "Return true if the dismantling component's dom was sent to the
+  client under the same id that its replacement's will be."
+  [dismantling replacement]
+  (let [elided-client-id (fn [component]
+                           (when-let [elided-from (:elided-from @component)]
+                             (:client-id @elided-from)))]
+    (= (elided-client-id dismantling)
+       (elided-client-id replacement))))
+
 (defn pair-and-salvage-or-finalize
   "Given a set of dismantling components and an id->subcomponent map of
-  active components, for each dismantling component look for an active
-  component with the same relative-id. If there is one and it is
-  :unstarted, salvage the dismantling component into it; otherwise
-  finalize the dismantling component."
+  active components, for each dismantling component that hasn't
+  already started dismantling, look for an active component with the
+  same relative-id. If there is one, it is :unstarted, and it elides
+  from a component with the same client-id, salvage the dismantling
+  component into it; otherwise finalize the dismantling component.
+  We can't salvage if the new and old component don't elide from
+  components with the same client-id. The problem is that a change to
+  the client-id in elided-from translates to a different atom in the
+  client. And when the client gets a new dom for one of its atoms, it
+  only reuses that atom's direct children; it doesn't reuse from a
+  child of one atom to a child of a different one. By not salvaging a
+  component's sub-doms if it changed what client-id it elided from, we
+  force rebuilding its sub-doms, which will cause them to be resent,
+  for the client to attach under the new client-id.
+  A component that has already started dismantling is left alone, as
+  the right action is already beeing taken on it, and it no longer
+  records its elided-from component, so we don't know what to do with
+  it."
   [dismantling-components id->active-subcomponent presumed-parent]
   (doseq [dismantling (approximately-deterministic-sort dismantling-components)]
     (let [id (:relative-id (:dom-specification @dismantling))
           active (get id->active-subcomponent id)]
-      (if (and active (= (component-data-state @active) :unstarted))
+      (cond
+        (not (#{:active :unstarted} (component-data-state @dismantling)))
+        nil
+        (and active
+             (= (component-data-state @active) :unstarted)
+             ;; There is a race, where dismantling was active for the
+             ;; previous cond condition, but got deactivated by the
+             ;; time we got here. Deactivation nills out its
+             ;; elided-from, so we won't realize if the elided-froms
+             ;; had matched.  That's OK; this is very rare, and the
+             ;; worst that happens is that we finalize a component
+             ;; that we could have salvaged instead.
+             (elided-from-matches? dismantling active))
         (salvage dismantling active)
+        :else
         (finalize dismantling presumed-parent)))))
 
 (defn update-next-step-when-dismantling-empty
@@ -928,12 +962,12 @@
   [component-data component-atom dom]
   (if (not= (component-data-state component-data) :active)
     component-data
-    (let [{:keys [dom-manager client-id depth]}
+    (let [{:keys [dom-manager client-id depth elided-from id->subcomponent
+                  dismantling]}
           component-data
           subcomponent-elided-from (when (= (first dom) :component)
-                                     (or (:elided-from component-data)
-                                         component-atom))
-          old-id->subcomponent (or (:id->subcomponent component-data) {})
+                                     (or elided-from component-atom))
+          old-id->subcomponent (or id->subcomponent {})
           subcomponent-specs (get-id->subcomponent-specifications dom)
           subcomponent-ids (keys subcomponent-specs)
           subcomponents (map (fn [id]
@@ -958,7 +992,7 @@
                                      (filter #(not= (id->subcomponent %)
                                                     (old-id->subcomponent %))
                                              (keys old-id->subcomponent)))
-          dismantling (not-empty (into (set (:dismantling component-data))
+          dismantling (not-empty (into (set dismantling)
                                        dropped-subcomponents))
           ;; When a component gets a new dom, we can't activate its
           ;; new sub-components until we have deactivated all its no

@@ -496,20 +496,6 @@
       (is (not (marked? from-a ab-id)))
       (is (marked? from-a ba-id)))))
 
-(deftest match-terms-and-targets-test
-  (is (check (match-terms-and-targets [1 2 3] [2 3 4])
-             [(as-set [[3 3] [2 2]]) [1] [4]]))
-  (is (check (match-terms-and-targets [1 2 '(2 6) 3] ['(2 6) 2 3 4])
-             [(as-set[['(2 6) '(2 6)] [3 3] [2 2]]) [1] [4]]))
-  (is (check (match-terms-and-targets [1 2 '(nil 6) 3] ['(2 6) 2 3 4])
-             [(as-set[['(nil 6) '(2 6)] [3 3] [2 2]]) [1] [4]]))
-  (is (check (match-terms-and-targets [1 '(nil 6) 3] ['(2 6) 2 3 4])
-             [(as-set[['(nil 6) '(2 6)] [3 3]]) [1] [2 4]]))
-  (is (check (match-terms-and-targets [1 2 3] ['(2 6) 2 3 4])
-             [(as-set [[2 2] [3 3]]) [1] (as-set ['(2 6) 4])]))
-  (is (check (match-terms-and-targets [1 '(nil 6) 3] [2 3 4])
-             [[[3 3]] (as-set [1 '(nil 6)]) (as-set [2 4])])))
-
 (deftest changes-to-merge-elements-test
   (is (check (changes-to-merge-elements [2 3 4] [1 2 3])
              [[1] []]))
@@ -518,7 +504,14 @@
   (is (check (changes-to-merge-elements ['(2 1 3) 3] [2 '(nil 1) '(3 4)])
              [(as-set ['(3 4) 2]) [3]]))
   (is (check (changes-to-merge-elements ['(2 5) 4] [2 '(nil 1) 3])
-             [(as-set [3 '(nil 1)]) []])))
+             [(as-set [3 '(nil 1)]) []]))
+  ;; Mergers of complex elements are preferred: (1 2) must merge with
+  ;; (1 2 3), not with 1, so the result has 1 and (1 2 3), whichever
+  ;; side each came from.
+  (is (check (changes-to-merge-elements [1 '(1 2 3)] ['(1 2)])
+             [[] []]))
+  (is (check (changes-to-merge-elements ['(1 2)] [1 '(1 2 3)])
+             [(as-set [1 '(1 2 3)]) ['(1 2)]])))
 
 (defn object-canonical-elements
   "The canonical semantic form of each of the object's elements."

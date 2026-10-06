@@ -527,43 +527,6 @@
 ;;; Adding new elements and objects, noting the orders in their
 ;;; templates.
 
-(defn match-terms-and-targets
-  "Given a sequence of simple terms and a sequence of targets, make the
-  best possible pairing of simple terms with targets that extend
-  them. Return a seq of the matched pairs, a seq of the unpaired fixed
-  terms and a seq of the unpaired targets.
-  We handle simple terms that are stored entities with non-semantic
-  parts, by matching only their semantic parts."
-  [simple-terms targets]
-  ;; We order the terms starting from highest complexity
-  ;; (hardest to find an extension for), and the object elements
-  ;; starting from lowest complexity (hardest to be an
-  ;; extension). This way, when we start choosing matches, and
-  ;; there is a choice, we take ones that are least likely to
-  ;; preclude subsequent matches.
-  (let [sorted-simple-terms (->> simple-terms
-                                 (sort-by entity-complexity)
-                                 reverse)
-        sorted-targets (->> targets (sort-by entity-complexity))]
-    (reduce
-     (fn [[pairs unmatched-terms unmatched-targets] simple-term]
-       (let [;; If the fixed term is a stored entity; we only want to
-             ;; match its semantic parts.
-             semantic (if (stored-entity? simple-term)
-                        (semantic-to-tree simple-term)
-                        simple-term)
-             [matching-target remaining-targets]
-             (extract-first #(extended-by? semantic %) unmatched-targets)]
-         (if matching-target
-           [(conj pairs [simple-term matching-target])
-            unmatched-terms
-            remaining-targets]
-           [pairs
-            (conj unmatched-terms simple-term)
-            unmatched-targets])))
-     [[] [] sorted-targets]
-     sorted-simple-terms)))
-
 (defn changes-to-merge-elements
   "Given two sequences of elements, find a subset of their union with as
   few elements as possible such that an entity with those elements
@@ -589,17 +552,67 @@
   Return the diff between that union and the recipient elements - the
   changes to the recipients to turn it into the union - a seq of:
      * The subset of donor elements that must be added
-     * The subset of the recipient elements that must be removed"
+     * The subset of the recipient elements that must be removed
+
+  Elements are paired greedily, from most complex to least, so that
+  mergers of complex elements are preferred. Each element, when it is
+  chosen, is paired with the most complex still unpaired element of
+  the other seq that it extends, if there is one. Ties in complexity
+  go to the recipient, so that a donor element that an equally
+  complex recipient element extends can simply be ignored."
   [recipient-elements donor-elements]
-  (let [;; First find object elements that extend the term elements.
-        ;; We will need to add the un-matched terms.
-        [_ terms-to-add unmatched-object-elements]
-        (match-terms-and-targets donor-elements recipient-elements)
-        ;; Now find unmatched object elements that are extended by
-        ;; unmatched terms. We won't need the elements that are extended.
-        [object-term-pairs _ _]
-        (match-terms-and-targets unmatched-object-elements terms-to-add)]
-    [terms-to-add (map first object-term-pairs)]))
+  (let [;; For each element, record its semantic tree, because only semantic
+        ;; information matters for whether one element can replace
+        ;; another, plus the complexity of that tree.
+        element-info (into {}
+                           (map (fn [element]
+                                  (let [semantic (if (stored-entity? element)
+                                                   (semantic-to-tree element)
+                                                   element)]
+                                    [element
+                                     [semantic (entity-complexity semantic)]]))
+                                (concat recipient-elements donor-elements)))
+        complexity (fn [element] (second (element-info element)))
+        by-complexity (fn [elements]
+                        (reverse (sort-by complexity elements)))
+        ;; Return the most complex of candidates that extender extends,
+        ;; and the remaining candidates.
+        extract-extended (fn [extender candidates]
+                           (let [semantic (first (element-info extender))]
+                             (extract-first
+                              (fn [candidate]
+                                (extended-by? (first (element-info candidate))
+                                              semantic))
+                              candidates)))]
+    (loop [unpaired-recipient (by-complexity recipient-elements)
+           unpaired-donor (by-complexity donor-elements)
+           donor-elements-to-add []
+           recipient-elements-to-remove []]
+      (cond
+        (and (empty? unpaired-recipient) (empty? unpaired-donor))
+        [donor-elements-to-add recipient-elements-to-remove]
+        (and (seq unpaired-recipient)
+             (or (empty? unpaired-donor)
+                 (>= (complexity (first unpaired-recipient))
+                     (complexity (first unpaired-donor)))))
+        ;; This recipient element is at least as complex as any donor.
+        ;; We are going to want to keep it, but we can forget a donor
+        ;; that it extends.
+        (let [[chosen & remaining-recipient] unpaired-recipient
+              [_ remaining-donor] (extract-extended chosen unpaired-donor)]
+          (recur remaining-recipient remaining-donor
+                 donor-elements-to-add recipient-elements-to-remove))
+        :else
+        ;; This donor element is more complex than any recipient.
+        ;; We are going to want to copy it, but we can remove a
+        ;; recipient that it extends.
+        (let [[chosen & remaining-donor] unpaired-donor
+              [extended remaining-recipient] (extract-extended
+                                              chosen unpaired-recipient)]
+          (recur remaining-recipient remaining-donor
+                 (conj donor-elements-to-add chosen)
+                 (cond-> recipient-elements-to-remove
+                   extended (conj extended))))))))
 
 (defn merge-objects
   "Given a store and the ids of two interned objects, modify the
@@ -619,12 +632,9 @@
         donor (id->entity donor-id store)
         _ (assert (interned-object? recipient) recipient)
         _ (assert (interned-object? donor) donor)
-        ;; Since the donor's semantic elements are passed as the terms,
-        ;; the terms to add that we get back will be those elements,
-        ;; which we will move.
         [elements-to-move elements-to-remove]
         (changes-to-merge-elements
-         (forward-elements recipient)
+         (filter semantic-element? (forward-elements recipient))
          (filter semantic-element? (forward-elements donor)))
         store (reduce (fn [store element]
                         (update-target store (:item-id element) recipient-id))

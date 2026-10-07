@@ -538,6 +538,18 @@
                             :render-dom render-item-DOM-R
                             :get-action-data (default-AD)}]))))
 
+(deftest element-primitive-content-DOM-test
+  ;; An 'anything content gets the placeholder class, and a label
+  ;; element's content gets the link-type class.
+  (let [[s1 any-id] (add-element (new-element-store) nil 'anything)
+        [s2 label-id] (add-element s1 nil :foo)]
+    (is (check (element-primitive-content-DOM
+                (id->element any-id s2) 'anything {:class "x"})
+               [:div {:class "x content-text placeholder"} "\u00A0..."]))
+    (is (check (element-primitive-content-DOM
+                (id->element label-id s2) :foo {:class "x"})
+               [:div {:class "x content-text link-type"} ":foo"]))))
+
 (deftest render-item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[store fred-id] (add-element (new-element-store) nil "Fred")

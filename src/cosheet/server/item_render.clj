@@ -642,15 +642,15 @@
                    {:class class}
                    {:class "content-text"})
             (label-element? item)
-            (into-attributes (:class "link-type"))
+            (into-attributes {:class "link-type"})
             (name-element? item)
-            ;; Note: we won't be re-run when the elements target
-            ;; entity change. But that's OK because we only depend on
+            ;; Note: we won't be re-run when the element's source
+            ;; entity changes. But that's OK because we only depend on
             ;; its types links, and those aren't allowed to change.
             (into-attributes {:class (css-class-for-name
                                       (target-entity item))})
             anything
-            (into-attributes (:class "placeholder")))
+            (into-attributes {:class "placeholder"}))
      (if anything "\u00A0..." (str primitive))]))
 
 (defn render-object-reference-DOM-R

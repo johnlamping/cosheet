@@ -361,7 +361,8 @@
         template (if (and (object? template)
                           (not virtual)
                           (empty? (label->elements template name-label))
-                          (string? first-content))
+                          (string? first-content)
+                          (not= first-content ""))
                    (add-elements-to-entity
                     template [`(~first-content (~name-label))])
                    template)

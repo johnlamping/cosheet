@@ -265,10 +265,10 @@
 
 (defn mark-template-as-selector
   "Return the template with a :selector element added to it and,
-  recursively, to each of its semantic elements and non-interned
-  objects. When adding a :selector element to a reverse link, add
-  a :reverse sub-element. That allows recreating the direction in
-  which the direction the template was traversed."
+  recursively, to each of its semantic elements and non-identified,
+  non-interned objects. When adding a :selector element to a reverse
+  link, add a :reverse sub-element. That allows recreating the
+  direction in which the template was traversed."
   [template]
   (convert-unneeded-conflux-tree-objects
    (first
@@ -277,7 +277,9 @@
      template
      (fn [_ entity _ caller-data]
        (if (or (and (element? entity) (semantic-element? entity))
-               (and (object? entity) (not (presumed-interned-object? entity))))
+               (and (object? entity)
+                    (not (uniquely-identified-object? entity))
+                    (not (presumed-interned-object? entity))))
          [entity caller-data]
          [[:entity/do-not-process entity] caller-data]))
      (fn [_ assembled _ caller-data]

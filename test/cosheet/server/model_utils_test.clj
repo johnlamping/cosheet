@@ -393,14 +393,16 @@
   (let [template (make-tree-object
                   [`("age" "years")
                    (make-tree-element :target (make-tree-object [1]) [])
-                   `(~name-label "nm")])]
+                   `(~(make-tree-object [`("Fred" (~name-label))]))])]
     (is (check (mark-template-as-selector template)
                (make-tree-object
                 ['("age" ("years" :selector) :selector)
                  (make-tree-element
                   :target (make-tree-object ['(1 :selector) :selector])
                   ['(:selector :reverse)])
-                 `(~name-label ("nm" :selector) :selector)
+                 ;; The "Fred" object should not be marked as a selector,
+                 ;; since it is named.
+                 `(~(make-tree-object [`("Fred" (~name-label))]) :selector)
                  :selector]))))
   ;; A non-semantic element is not marked, and its sub-elements are not
   ;; visited, so a semantic sub-element it contains is left unmarked.
@@ -1081,7 +1083,8 @@
                     `(""
                       ~(as-set
                         `(~(as-set (make-tree-object
-                                    [`(~there-label-obj (~(any) :order) :selector)
+                                    [(as-set `(~there-label-obj
+                                               (~(any) :order) :selector))
                                      `(~(any) :order)
                                      :selector]))
                           (~(any) :order)

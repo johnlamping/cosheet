@@ -101,10 +101,12 @@
            ;; A top-level order, as real row objects have.
            [`(~o1 :order)])))
 (def jane-object-list
+  ;; Jane is a selector. Identified objects aren't marked as selectors,
+  ;; so "Jane" is a plain element, not a name.
   (mark-template-as-selector
    (make-tree-object
     (concat (map add-order-elements
-                 `(("Jane" (~name-label)) "female"
+                 `("Jane" "female"
                    (45 (~age-label))))
             ;; A top-level order, as real row objects have.
             [`(~o2 :order)]))))
@@ -143,11 +145,11 @@
     ;; A nil from always matches.
     (is (current-source-matches-from? store five-id nil nil)))
   ;; Test a string matching the name of an interned object in the store.
-  (let [[store friend-id] (add-element store joe-id
-                                       `(~(id->object jane-id nil)
+  (let [[store friend-id] (add-element store jane-id
+                                       `(~(id->object joe-id nil)
                                          (~o5 :order)))]
-    (is (current-source-matches-from? store friend-id "Jane" nil))
-    (is (not (current-source-matches-from? store friend-id "Joe" nil))))
+    (is (current-source-matches-from? store friend-id "Joe" nil))
+    (is (not (current-source-matches-from? store friend-id "Jane" nil))))
   ;; Test uninterned objects.
   (let [common-elements [`("" (~name-label)
                            `(~o5 :order))
@@ -347,7 +349,7 @@
     (is (check (canonicalize (object-semantic-to-tree new-jane))
                (canonicalize
                 (make-tree-object
-                 `(("Jane" (~name-label)) "female"
+                 `("Jane" "female"
                    (~'anything 5)
                    (45 (~age-label)))))))
     (let [new-joe-element (first (matching-elements "" new-joe))
@@ -491,7 +493,7 @@
     (is (check (canonicalize (object-semantic-to-tree new-jane))
                (canonicalize
                 (make-tree-object
-                 `(("Jane" (~name-label)) "female"
+                 `("Jane" "female"
                    (~'anything (~age-label))))))))
   ;; With :complete-entity, the same ages are removed rather than blanked.
   (let [new-store (do-delete store
@@ -509,7 +511,7 @@
     (is (check (canonicalize (object-semantic-to-tree new-jane))
                (canonicalize
                 (make-tree-object
-                 `(("Jane" (~name-label)) "female"))))))
+                 `("Jane" "female"))))))
   ;; Test that deleting the only element of a column does nothing.
   (let [[store columns-id] (add-element
                             store nil

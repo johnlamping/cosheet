@@ -305,35 +305,52 @@
      identity-post-fn
      nil))))
 
-(defn remove-selector-markings
-  "Update the store by removing the :selector markings that
-  mark-template-as-selector added, starting from the element with the
-  given id. Does not recurse into interned objects or into unmarked
-  entities. Doesn't touch an element if it's not marked with :selector
-  or the :reverse information on the :selector doesn't match the
-  orientation of the element.
-  The orientation restriction is for handling removing the :selector
-  markings from objects. Without it, it could be possible recurse from
-  an object to one that had referenced it, by following the reference
-  link ikn reverse. With the orientation information, we can restrict
-  the selector removal to what was added to a selector while it was a
-  selector."
+(defn selector-marked-entities
+  "Returns the entities, starting from the one with the given id, that
+  carry the :selector markings that mark-template-as-selector
+  added. Does not recurse into interned objects or into unmarked
+  entities. Doesn't include an element if it's not marked with
+  :selector or the :reverse information on the :selector doesn't match
+  the orientation of the element.
+  The orientation restriction is for handling objects. Without it, it
+  could be possible recurse from an object to one that had referenced
+  it, by following the reference link in reverse. With the orientation
+  information, we can restrict the traversal to what was added to a
+  selector while it was a selector."
   [store id]
-  (let [selector-ids
-        (repetition-avoiding-threaded-traverse
-         (id->entity id store)
-         (fn [_ entity _ ids]
-           (let [selector (first (content->elements entity :selector))]
-             (cond
-               (nil? selector) [:entity/omit ids]
-               (or (object? entity)
-                   (= (= (orientation entity) :target)
-                      (boolean (seq (content->elements selector :reverse)))))
-               [entity (conj ids (entity-key selector))]
-               :else [:entity/omit ids])))
-         nil
-         #{})]
-    (reduce remove-entity-by-id store selector-ids)))
+  (repetition-avoiding-threaded-traverse
+   (let [entity (id->entity id store)]
+     ;; The traversal doesn't descend into interned objects. But the
+     ;; starting object may have just become interned, so start from
+     ;; a tree copy of its elements.
+     (if (interned-object? entity)
+       (make-tree-object (all-elements entity))
+       entity))
+   (fn [_ entity _ entities]
+     (let [selector (first (content->elements entity :selector))]
+       (cond
+         (nil? selector) [:entity/omit entities]
+         (or (object? entity)
+             (= (= (orientation entity) :target)
+                (boolean (seq (content->elements selector :reverse)))))
+         [entity (conj entities entity)]
+         :else [:entity/omit entities])))
+   nil
+   []))
+
+(defn change-to-non-selector
+  "Update the store so that the entity with the given id is no longer a
+  selector: remove its :selector markings and replace its 'anything
+  contents with the empty string."
+  [store id]
+  (reduce (fn [store entity]
+            (cond-> (reduce remove-entity-by-id store
+                            (map entity-key
+                                 (content->elements entity :selector)))
+              (and (element? entity) (= (content entity) 'anything))
+              (update-source (:item-id entity) "")))
+          store
+          (selector-marked-entities store id)))
 
 (defn add-non-selector-to-fixed-term
   "Given a fixed-term pattern, return a pattern that additionally

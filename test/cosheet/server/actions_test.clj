@@ -226,7 +226,20 @@
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source (or new-store store) (:item-id name-header))
-           (:item-id name-label)))))
+           (:item-id name-label))))
+  ;; Giving a selector object's generic name real content makes it
+  ;; uniquely identified, so it stops being a selector.
+  (let [[s1 name-id] (add-element store jane-id
+                                  `(~'anything (~name-label) :selector
+                                    (~o5 :order)))
+        new-store (do-set-content s1 {:subject-ids [name-id]
+                                      :from "" :to "Fred"
+                                      :session-state session-state})
+        new-jane (id->entity jane-id new-store)]
+    (is (uniquely-identified-object? new-jane))
+    (is (empty? (matching-elements :selector new-jane)))
+    (is (empty? (matching-elements
+                 :selector (id->entity (:item-id jane-age) new-store))))))
 
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,
@@ -445,7 +458,22 @@
   (is (not (do-make-name store
                          {:subject-ids [(:item-id joe-age)]
                           :session-state session-state
-                          :client-id nil}))))
+                          :client-id nil})))
+  ;; Naming a selector object makes it uniquely identified, so it stops
+  ;; being a selector: its markings go, and its 'anythings become "".
+  (let [jane-name-id (:item-id (first (matching-elements "Jane" jane)))
+        blanked (do-set-content store {:subject-ids [(:item-id jane-age)]
+                                       :from "45" :to ""
+                                       :session-state session-state})
+        _ (is (= (id->source blanked (:item-id jane-age)) 'anything))
+        new-store (do-make-name blanked {:subject-ids [jane-name-id]
+                                         :session-state session-state})
+        new-jane (id->entity jane-id new-store)]
+    (is (uniquely-identified-object? new-jane))
+    (is (empty? (matching-elements :selector new-jane)))
+    (is (empty? (matching-elements
+                 :selector (id->entity (:item-id jane-age) new-store))))
+    (is (= (id->source new-store (:item-id jane-age)) ""))))
 
 (deftest do-make-object-test
   ;; When the argument is the content of an element (its subject is the

@@ -439,22 +439,21 @@
               (make-tree-object ['anything `(~'anything 3)]))
              (make-tree-object ["" '("" 3)]))))
 
-(deftest remove-selector-markings-test
+(deftest change-to-non-selector-test
   (let [unmarked (make-tree-object
                   [`("x" (~o1 :order))
-                   `(~(make-tree-object [`("y" (~o2 :order))]) (~o3 :order))])
-        marked (mark-template-as-selector unmarked)
-        [store id] (add-object (new-element-store) marked)]
-    ;; The stored object's to-tree carries the :selector markings.
-    (is (check (canonicalize (to-tree (id->entity id store)))
-               (canonicalize marked)))
-    ;; Removing them reaches every :selector and restores the unmarked
-    ;; structure.
-    (let [after (remove-selector-markings store id)]
-      (is (check (canonicalize (to-tree (id->entity id after)))
-                 (canonicalize unmarked))))))
+                   `(~'anything (~o2 :order))
+                   `(~(make-tree-object [`(~'anything (~o3 :order))])
+                     (~o4 :order))])
+        [store id] (add-object (new-element-store)
+                               (mark-template-as-selector unmarked))
+        after (change-to-non-selector store id)]
+    ;; The markings are gone, and every 'anything is now "".
+    (is (check (canonicalize (to-tree (id->entity id after)))
+               (canonicalize (replace-anythings-with-empty-string
+                              unmarked))))))
 
-(deftest remove-selector-markings-cycle-test
+(deftest change-to-non-selector-cycle-test
   ;; The store forbids links that would create a loop among non-interned
   ;; objects, but we can build one by linking two interned (named)
   ;; objects and then removing their names. That leaves a cycle: a to b
@@ -492,7 +491,7 @@
     (is (not (interned-object? (id->object b-id store))))
     ;; The traversal terminates. a, b, and the forward link ab are
     ;; unmarked; the reverse link ba keeps its :selector.
-    (let [from-a (remove-selector-markings store a-id)]
+    (let [from-a (change-to-non-selector store a-id)]
       (is (not (marked? from-a a-id)))
       (is (not (marked? from-a b-id)))
       (is (not (marked? from-a ab-id)))

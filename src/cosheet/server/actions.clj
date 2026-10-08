@@ -45,7 +45,7 @@
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
                          create-possible-selector-entity
-                         merge-objects selector?
+                         merge-objects selector? change-to-non-selector
                          remove-entity-by-id
                          object-semantic-to-tree]]
     [render-utils :refer [final-template]]
@@ -152,6 +152,16 @@
       (when (not= (:item-id existing) renamed-object-id)
         (:item-id existing)))))
 
+(defn change-to-non-selector-if-identified
+  "If the object with the given id is uniquely identified and a
+  selector, return the store with the object changed to a
+  non-selector. Otherwise return the store unchanged."
+  [store object-id]
+  (let [object (id->entity object-id store)]
+    (cond-> store
+      (and (selector? object) (uniquely-identified-object? object))
+      (change-to-non-selector object-id))))
+
 (defn set-object-reference-by-name
   "Set the content of a place that holds a named object so it holds an
   object with a different name: Get or make an object with the new
@@ -254,7 +264,13 @@
             store (cond-> store
                     (and donor-id (interned-object?
                                    (id->entity renamed-object-id store)))
-                    (merge-objects renamed-object-id donor-id))]
+                    (merge-objects renamed-object-id donor-id))
+            ;; If the rename made the object uniquely identified, it
+            ;; can no longer be a selector.
+            store (cond-> store
+                    renamed-object-id
+                    (change-to-non-selector-if-identified
+                     renamed-object-id))]
         ;; We might have set the source on a virtual item.
         ;; This will make sure any newly created item is selected.
         (add-following-selection-by-ids store client-id subject-ids)))))
@@ -313,7 +329,7 @@
         ;; name, to merge into afterwards.
         name-id (first name-ids)
         renamed-object-id (when (= (count name-ids) 1)
-                            (id->target store name-id))        
+                            (id->target store name-id))
         donor-id (when renamed-object-id
                    (object-to-merge-into-renamed
                     store renamed-object-id (id->source store name-id)))]
@@ -330,7 +346,13 @@
             store (cond-> store
                     (and donor-id (interned-object?
                                    (id->entity renamed-object-id store)))
-                    (merge-objects renamed-object-id donor-id))]
+                    (merge-objects renamed-object-id donor-id))
+            ;; If the naming made the object uniquely identified, it
+            ;; can no longer be a selector.
+            store (cond-> store
+                    renamed-object-id
+                    (change-to-non-selector-if-identified
+                     renamed-object-id))]
         (add-following-selection-by-ids
          store client-id (concat object-new-ids name-new-ids))))))
 

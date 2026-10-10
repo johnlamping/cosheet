@@ -17,7 +17,7 @@
                                          canonical-have-common-elaboration?]])
             (cosheet.server
              [model-utils :refer [semantic-elements semantic-elements
-                                  entity->fixed-term
+                                  selector->fixed-term selector?
                                   entity->canonical-semantic]])))
 
 ;;; The following records hold definitions for templates for virtual items.
@@ -171,11 +171,12 @@
                                              :get-do-batch-edit-action-data]))
          :template `(~(ensure-label-object 'anything label-type))))
 
-(defn entity->canonical-term
+(defn selector->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
   with 'anything changed to nil."
   [entity]
-  (canonicalize (entity->fixed-term entity)))
+  (assert (selector? entity) entity)
+  (canonicalize (selector->fixed-term entity)))
 
 (defn competing-siblings
   "Given an element that is functioning as a query, return a seq of its
@@ -186,17 +187,17 @@
   item doesn't have.  Don't include redundant siblings more than
   once."
   [element]
-  (let [element-canonical (entity->canonical-term element)
+  (let [element-canonical (selector->canonical-term element)
         siblings (semantic-elements (target-entity element))
         [labels non-labels] (separate-by label-element? siblings)
         candidates (if ((set labels) element) labels non-labels)
-        matching (filter #(= element-canonical (entity->canonical-term %))
+        matching (filter #(= element-canonical (selector->canonical-term %))
                          candidates)]
     (cond-> (vals
              ;; We make a map from canonical to candidate so we can not
              ;; add redunant candidates
              (reduce (fn [so-far candidate]
-                       (let [candidate-canonical (entity->canonical-term
+                       (let [candidate-canonical (selector->canonical-term
                                                   candidate)]
                          (cond-> so-far
                            (and (canonical-have-common-elaboration?

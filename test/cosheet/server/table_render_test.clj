@@ -41,7 +41,8 @@
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [run-renderer add-order-elements]]
              [model-utils :refer [semantic-to-tree semantic-elements
-                                  table-row-condition-object]]
+                                  table-row-condition-object
+                                  mark-template-as-selector]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -163,33 +164,38 @@
                     `(~'anything (~o3 :order) (~temp-age-label-object
                                                (~o3 :order)))])
         table-list `("table"
-                     (~(make-tree-object
-                        [`(~'anything
-                           (~temp-age-label-object (~o1 :order))
-                           (~o8 :order))])
+                     (~(mark-template-as-selector
+                        (make-tree-object
+                         [`(~'anything
+                            (~temp-age-label-object (~o1 :order))
+                            (~o8 :order))]))
                       :row-condition)
                      (~'anything
                       :column-headers
-                      (~'anything (~temp-single-label-object (~o1 :order))
-                       (~o1 :order))
-                      (~'anything
-                       (~temp-name-label-object (~o1 :order))
-                       (~o2 :order))
-                      (~'anything
-                       (~temp-name-label-object (~o1 :order))
-                       (~temp-other-label-object (~o2 :order))
-                       (~o3 :order))
-                      (~'anything (~temp-name-label-object (~o1 :order))
-                       (~o4 :order))
-                      (~'anything
-                       (~temp-age-label-object (~o1 :order))
-                       (~temp-other-label-object (~o2 :order))
-                       (~o5 :order))
-                      (~'anything ("6-2" (~o1 :order)
-                                   (~temp-height-label-object (~o2 :order)))
-                       (~o6 :order))
-                      ("something" ("child" (~o1 :order))
-                       (~o7 :order))))
+                      ~@(map mark-template-as-selector
+                             [`(~'anything
+                                (~temp-single-label-object (~o1 :order))
+                                (~o1 :order))
+                              `(~'anything
+                                (~temp-name-label-object (~o1 :order))
+                                (~o2 :order))
+                              `(~'anything
+                                (~temp-name-label-object (~o1 :order))
+                                (~temp-other-label-object (~o2 :order))
+                                (~o3 :order))
+                              `(~'anything
+                                (~temp-name-label-object (~o1 :order))
+                                (~o4 :order))
+                              `(~'anything
+                                (~temp-age-label-object (~o1 :order))
+                                (~temp-other-label-object (~o2 :order))
+                                (~o5 :order))
+                              `(~'anything
+                                ("6-2" (~o1 :order)
+                                 (~temp-height-label-object (~o2 :order)))
+                                (~o6 :order))
+                              `("something" ("child" (~o1 :order))
+                                (~o7 :order))])))
         [s1 joe-id] (add-object sf joe-list)
         [s2 jane-id] (add-object s1 jane-list)
         [s3 test-id] (add-object s2 test-list)

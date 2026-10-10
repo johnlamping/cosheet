@@ -405,25 +405,29 @@
                                    :item `(:k (3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendant-cover-test
+  ;; The leaf items are marked as selectors, since the cover turns
+  ;; them into queries.
   (let [h {::hierarchy/hierarchy-node true
            :properties {:a 1}
-           :leaves [{:item '(:j :a)}]
+           :leaves [{:item '(:j :a :selector)}]
            :child-nodes [{::hierarchy/hierarchy-node true
                           :properties {:b 1}
-                          :leaves [{:item '(:j :a :b)}]
+                          :leaves [{:item '(:j :a :b :selector)}]
                           :child-nodes [{::hierarchy/hierarchy-node true
                                          :properties {:c 1}
-                                         :leaves [{:item '(:j :a :b :c)}
-                                                  {:item '(:jj :a :b :c)}]}]}
+                                         :leaves
+                                         [{:item '(:j :a :b :c :selector)}
+                                          {:item '(:jj :a :b :c :selector)}]}]}
                          {::hierarchy/hierarchy-node true
                           :properties {}
-                          :leaves [{:item '(:k :a)}]}]}]
+                          :leaves [{:item '(:k :a :selector)}]}]}]
     (is (check (set (hierarchy-node-descendant-cover h))
-               #{{:item '(:j :a)}
-                 ;; Not {:item '(:j :a :b)} or {:item '(:j :a :b :c)}
-                 {:item '(:jj :a :b :c)}
-                 {:item '(:k :a)}}))
+               #{{:item '(:j :a :selector)}
+                 ;; Not {:item '(:j :a :b :selector)}
+                 ;; or {:item '(:j :a :b :c :selector)}
+                 {:item '(:jj :a :b :c :selector)}
+                 {:item '(:k :a :selector)}}))
     (is (check (set (hierarchy-node-non-immediate-descendant-cover h))
-               #{{:item '(:j :a :b)}
-                 ;; Not {:item '(:j :a :b :c)}
-                 {:item '(:jj :a :b :c)}}))))
+               #{{:item '(:j :a :b :selector)}
+                 ;; Not {:item '(:j :a :b :c :selector)}
+                 {:item '(:jj :a :b :c :selector)}}))))

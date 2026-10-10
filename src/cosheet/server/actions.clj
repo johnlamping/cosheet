@@ -38,7 +38,7 @@
     [model-utils :refer [semantic-elements abandon-problem-changes
                          ordered-semantic-to-tree entity->canonical-semantic
                          create-possible-selector-entities
-                         exemplar-to-fixed-term remove-semantic-elements
+                         selector->fixed-term-query remove-semantic-elements
                          label-object-template
                          table-row-template table-column-headers-id
                          unspecified-column-header-template
@@ -589,7 +589,7 @@
   return the ids of the elements that matches it."
   [id template-id store]
   (when id
-    (let [query (exemplar-to-fixed-term
+    (let [query (selector->fixed-term-query
                  (id->entity template-id store))]
       (map :item-id
        (matching-elements query (id->entity id store))))))

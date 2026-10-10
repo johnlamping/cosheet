@@ -14,7 +14,7 @@
              [render-utils :refer [sequential-template?]]
              [model-utils :refer [semantic-to-tree
                                   entity->canonical-semantic
-                                  pattern-to-fixed-term
+                                  pattern->fixed-term-query
                                   create-possible-selector-entities]])))
 
 ;;; This file contains the basic action data getters, plus utilities for them.
@@ -176,7 +176,7 @@
     exemplar-id
     (let [template (-> (id->entity exemplar-id immutable-store)
                        semantic-to-tree
-                       pattern-to-fixed-term)
+                       pattern->fixed-term-query)
           subject (id->entity subject-id immutable-store)]
       (:item-id (best-match template (matching-elements template subject))))))
 
@@ -412,7 +412,7 @@
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
   [{:keys [template sibling position use-bigger past-subject-ids]
-           ; adjacent-query also used.
+           ; adjacent-query also used by a callee.
     :as specification}
    inherited-action-data action immutable-store]
   (assert template template)

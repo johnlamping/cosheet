@@ -12,6 +12,7 @@
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
+             [model-utils :refer [mark-template-as-selector semantic-to-tree]]
              [render-utils :refer :all])
             ; :reload
             ))
@@ -63,26 +64,30 @@
 (deftest competing-siblings-test
   (let [[s1 joe-id] (add-element
                      (new-element-store) nil
-                     '("joe"
-                       anything (anything 1) (anything 1)
-                       (2 1) (2 3)))
-        [s2 item-a1-id] (add-element s1 joe-id '(anything 1))
-        [s3 item-b3-id] (add-element s2 joe-id '("" 3))
-        [store item-21-id] (add-element s3 joe-id '(2 1))
+                     (mark-template-as-selector
+                      '("joe"
+                        anything (anything 1) (anything 1)
+                        (2 1) (2 3))))
+        [s2 item-a1-id] (add-element s1 joe-id
+                                     (mark-template-as-selector '(anything 1)))
+        [s3 item-b3-id] (add-element s2 joe-id
+                                     (mark-template-as-selector '("" 3)))
+        [store item-21-id] (add-element s3 joe-id
+                                        (mark-template-as-selector '(2 1)))
         joe (id->entity joe-id store)
         item-a1 (id->entity item-a1-id store)
         item-b3 (id->entity item-b3-id store)
         item-21 (id->entity item-21-id store)]
     (let [competing (competing-siblings item-a1)]
-      (is (check (map entity/to-tree competing)
+      (is (check (map semantic-to-tree competing)
                  (as-set ['(anything 1) '(2 1) '(2 3) '("" 3)])))
       (is (not-any? #(= % item-a1) competing)))
     (let [competing (competing-siblings item-21)]
-      (is (check (map entity/to-tree competing)
+      (is (check (map semantic-to-tree competing)
                  (as-set ['(2 1) '(2 3)])))
       (is (not-any? #(= % item-21) competing)))
     (let [competing (competing-siblings item-b3)]
-      (is (check (map entity/to-tree competing)
+      (is (check (map semantic-to-tree competing)
                  ['(anything 1)])))))
 
 (deftest display-type-test

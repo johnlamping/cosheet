@@ -18,14 +18,15 @@
                                   table-row-condition-id
                                   table-column-headers-element
                                   table-row-condition-object
-                                  object-semantic-to-tree
+                                  selector-object-semantic-to-tree
                                   semantic-to-tree
                                   semantic-elements
-                                  pattern-to-fixed-term fixed-term-to-template
+                                  pattern->fixed-term-query
+                                  fixed-term-to-template
                                   add-non-selector-to-fixed-term
                                   column-header-template
                                   unspecified-column-header-template
-                                  exemplar-to-fixed-term]]
+                                  selector->fixed-term-query]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    condition-satisfiers
@@ -184,7 +185,7 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (map #(pattern-to-fixed-term (semantic-to-tree (:item %)))
+  (map #(pattern->fixed-term-query (semantic-to-tree (:item %)))
        (hierarchy-node-non-immediate-descendant-cover node)))
 
 (defn table-header-node-specification
@@ -444,7 +445,7 @@
 (defn table-row-ids-R
   "Return a reporter whose value is the row ids for the table, in order."
   [row-template mutable-store]
-  (let [row-query (-> (pattern-to-fixed-term row-template)
+  (let [row-query (-> (pattern->fixed-term-query row-template)
                       add-non-selector-to-fixed-term)
         matching-ids-R (matching-item-ids-R row-query mutable-store)]
     (ordered-ids-R matching-ids-R mutable-store)))
@@ -452,7 +453,7 @@
 (defn table-hierarchy-leaf-column-description
   [parent-node node]
   (let [leaf (first (:leaves node))
-        query (exemplar-to-fixed-term (:item leaf))
+        query (selector->fixed-term-query (:item leaf))
         competitors (when (and  parent-node (empty? (:properties node)))
                       (hierarchy-node-non-immediate-descendant-cover
                        parent-node))]
@@ -461,7 +462,7 @@
              :width 0.75}
       (seq competitors) 
       (assoc :competing-ids (map #(:item-id (:item %)) competitors) 
-             :disqualifications (map #(exemplar-to-fixed-term (:item %))
+             :disqualifications (map #(selector->fixed-term-query (:item %))
                                      competitors)))))
 
 (defn table-hierarchy-node-column-descriptions
@@ -525,7 +526,7 @@
               ;; ids as constants, so the reporters will only
               ;; recompute when their subpart of the table description
               ;; changes.
-              row-template (app-R object-semantic-to-tree
+              row-template (app-R selector-object-semantic-to-tree
                                   (id->updating-entity-R
                                    row-condition-id store))
               column-headers (id->updating-entity-R

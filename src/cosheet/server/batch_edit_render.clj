@@ -19,7 +19,7 @@
                                    ensure-label-object]]
              [model-utils :refer [semantic-elements
                                   semantic-to-tree
-                                  pattern-to-fixed-term]]
+                                  pattern->fixed-term-query]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
                                   labels-and-elements-DOM
@@ -32,7 +32,7 @@
   "Convert a row-condition-like query entity into a fixed-term object pattern
    that matches row objects."
   [query-entity]
-  (pattern-to-fixed-term
+  (pattern->fixed-term-query
    (make-tree-object
     (map semantic-to-tree (semantic-elements query-entity)))))
 
@@ -52,7 +52,7 @@
   (let-R [query-entity query-R]
     (let [query (-> query-entity
                     semantic-to-tree
-                    pattern-to-fixed-term
+                    pattern->fixed-term-query
                     (add-elements-to-entity [query-qualifier]))]
       (let-R [matches (matching-item-ids-R query mutable-store)]
         (count matches)))))
@@ -112,7 +112,7 @@
   [{:keys [query-id stack-id do-not-match-query]} store]
   (let [query-entity (id->entity query-id store)
         stack-entity (id->entity stack-id store)
-        query (pattern-to-fixed-term (semantic-to-tree query-entity))
+        query (pattern->fixed-term-query (semantic-to-tree query-entity))
         row-query (add-elements-to-entity query [:row-condition])
         matching-table-conditions (matching-items row-query store)]
     (distinct
@@ -132,11 +132,11 @@
         selecting-query (-> (or item-id relative-id)
                             (id->entity store)
                             semantic-to-tree
-                            pattern-to-fixed-term)
+                            pattern->fixed-term-query)
         excluding-queries (map #(-> %
                                     (id->entity store)
                                     semantic-to-tree
-                                    pattern-to-fixed-term)
+                                    pattern->fixed-term-query)
                                excluding-ids)
         to-search (batch-edit-matching-rows specification store)
         matches (mapcat (fn [entity]

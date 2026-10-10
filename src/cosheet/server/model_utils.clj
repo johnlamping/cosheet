@@ -227,6 +227,32 @@
   [immutable-entity]
   (internal-semantic-to-tree immutable-entity ordered-semantic-elements))
 
+(defn selector-marked-element?
+  "Return whether the element is marked with a :selector whose :reverse
+  information matches the orientation of the element."
+  [element]
+  (when-let [selector (first (content->elements element :selector))]
+    (= (= (orientation element) :target)
+       (boolean (seq (content->elements selector :reverse))))))
+
+(defn selector-semantic-elements
+  "Return the semantic elements of an entity that are marked with a
+  :selector whose orientation matches theirs."
+  [entity]
+  (filter selector-marked-element? (semantic-elements entity)))
+
+(defn ordered-selector-semantic-elements
+  "Return the selector-marked semantic elements of an entity, in the
+  order that the :order information calls for."
+  [entity]
+  (ordered-entities (selector-semantic-elements entity)))
+
+(defn selector-semantic-to-tree
+  "Like semantic-to-tree, but only follows elements that are marked with
+  a :selector whose orientation matches theirs."
+  [immutable-entity]
+  (internal-semantic-to-tree immutable-entity selector-semantic-elements))
+
 (defn object-semantic-to-tree
   "Given an immutable object, make a list representation of its semantic
   information, even if the object is identified. Put elements in the
@@ -237,6 +263,16 @@
   ;; each of the resulting sub-elements.
   (->> (ordered-semantic-elements immutable-entity)
        (map ordered-semantic-to-tree)
+       make-tree-object))
+
+(defn selector-object-semantic-to-tree
+  "Like object-semantic-to-tree, but only follows elements that are
+  marked with a :selector whose orientation matches theirs."
+  [immutable-entity]
+  (->> (ordered-selector-semantic-elements immutable-entity)
+       (map (fn [element]
+              (internal-semantic-to-tree
+               element ordered-selector-semantic-elements)))
        make-tree-object))
 
 (defn entity->canonical-semantic
@@ -472,25 +508,27 @@
                     pattern pre-fn post-fn {})]
       tree)))
 
-(defn entity->fixed-term
-  "Convert the entity to a list, and change 'anything to nil."
-  [entity]
-  (-> entity
-      semantic-to-tree
+(defn selector->fixed-term
+  "Convert the selector entity to a list, and change 'anything to nil."
+  [selector-entity]
+  (assert (selector? selector-entity) selector-entity)
+  (-> selector-entity
+      selector-semantic-to-tree
       (transform-pattern-toward-fixed-term {})))
 
-(defn entity->fixed-term-with-negations
-    "Given an entity, alter it to work as a query that assumes everything
-     it is querying over is semantic. Specifically:
+(defn selector->fixed-term-with-negations
+  "Given a selector entity, alter it to work as a query that assumes
+  everything it is querying over is semantic. Specifically:
     * Replace 'anything by nil.
     * If an element is not a label, then require it to not match labels."
-  [entity]
-  (-> entity
-      semantic-to-tree
+  [selector-entity]
+  (assert (selector? selector-entity) selector-entity)
+  (-> selector-entity
+      selector-semantic-to-tree
       (transform-pattern-toward-fixed-term {:require-not-type true})))
 
-(defn pattern-to-fixed-term
-  "Given a pattern, alter it to work as a fixed-term. Specifically:
+(defn pattern->fixed-term-query
+  "Given a pattern, alter it to work as a fixed-term query. Specifically:
     * Replace 'anything by nil.
     * If an element is not a label, require it not to not match labels.
     * If an entity has nil content, add a '(nil :order) element to make
@@ -499,10 +537,11 @@
   (transform-pattern-toward-fixed-term
    pattern {:require-not-type true :require-orders true}))
 
-(defn exemplar-to-fixed-term
-  "Given an exemplar entity, turn it into a fixed-term"
-  [entity]
-  (pattern-to-fixed-term (semantic-to-tree entity)))
+(defn selector->fixed-term-query
+  "Given an selector entity, turn it into a fixed-term query."
+  [selector-entity]
+  (assert (selector? selector-entity) selector-entity)
+  (pattern->fixed-term-query (selector-semantic-to-tree selector-entity)))
 
 (defn fixed-term-to-template
   "Given a fixed-term, turn it into a template by removing any (nil :order),
@@ -1072,12 +1111,12 @@
   "Return the row template from the row condition. The template is the
    object each row must extend."
   [row-condition]
-  (object-semantic-to-tree (content row-condition)))
+  (selector-object-semantic-to-tree (content row-condition)))
 
 (defn table-row-template
   "Return the row condition as a template."
   [table-item]
-  (object-semantic-to-tree
+  (selector-object-semantic-to-tree
    (table-row-condition-object table-item)))
 
 (defn tab-table-element
@@ -1114,9 +1153,8 @@
   ;; A header for a newly created column that we don't know anything about.
   ;; We give it a new label, so that it won't start out match everything.
   (add-elements-to-entity
-   column-header-template [`(~(link-type-object '???)
-                             :selector
-                             )]))
+   column-header-template [(mark-template-as-selector
+                            `(~(link-type-object '???)))]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store

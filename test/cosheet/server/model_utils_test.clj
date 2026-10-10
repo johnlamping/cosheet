@@ -453,6 +453,38 @@
                (canonicalize (replace-anythings-with-empty-string
                               unmarked))))))
 
+(deftest selector-semantic-to-tree-test
+  (let [unmarked (make-tree-object
+                  [`("x" (~o1 :order))
+                   `(~(make-tree-object [`("y" (~o2 :order))]) (~o3 :order))])
+        [s1 id] (add-object (new-element-store)
+                            (mark-template-as-selector unmarked))
+        ;; An unmarked element is left out.
+        [s2 _] (add-element s1 id `("z" (~o4 :order)))
+        ;; A marked element from another object, seen in reverse from
+        ;; this one, is left out too, since its :selector isn't :reverse.
+        [s3 other-id] (add-object s2 (make-tree-object
+                                      [`("other" (~o5 :order))]))
+        [s4 link-id] (add-link s3 other-id id)
+        [s5 _] (add-link s4 link-id :selector)
+        object (id->object id s5)]
+    (is (seq (matching-elements "z" object)))
+    (is (check (canonicalize (selector-semantic-to-tree object))
+               (canonicalize (semantic-to-tree unmarked))))
+    ;; From the other object, the marked link is followed, and the
+    ;; object it reaches is expanded the same way, while the other
+    ;; object's own unmarked element is left out.
+    (is (check (canonicalize (selector-semantic-to-tree
+                              (id->object other-id s5)))
+               (canonicalize (make-tree-object
+                              [(list (semantic-to-tree unmarked))]))))
+    ;; Once the object is named, and so interned, the object version
+    ;; still expands it, following only the marked elements.
+    (let [[s6 _] (add-element s5 id `("N" (~name-label) (~o6 :order)))]
+      (is (check (canonicalize (selector-object-semantic-to-tree
+                                (id->object id s6)))
+                 (canonicalize (semantic-to-tree unmarked)))))))
+
 (deftest change-to-non-selector-cycle-test
   ;; The store forbids links that would create a loop among non-interned
   ;; objects, but we can build one by linking two interned (named)
@@ -1005,7 +1037,7 @@
         tab (first tabs)
         rows (matching-items
               (add-non-selector-to-fixed-term
-               (pattern-to-fixed-term
+               (pattern->fixed-term-query
                 (make-tree-object [`(~(object-type-object "hi"))])))
               s)
         table (first (matching-elements '(nil :table) tab))
@@ -1065,7 +1097,7 @@
         tab (first tabs)
         rows (matching-items
               (add-non-selector-to-fixed-term
-               (pattern-to-fixed-term
+               (pattern->fixed-term-query
                 (make-tree-object [`(~(object-type-object "there"))])))
               s1)
         table (first (matching-elements '(nil :table) tab))

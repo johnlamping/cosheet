@@ -48,7 +48,7 @@
              [model-utils :refer [entity->canonical-semantic
                                   semantic-elements
                                   semantic-to-tree object-semantic-to-tree
-                                  pattern-to-fixed-term
+                                  pattern->fixed-term-query
                                   label-object-template
                                   mark-template-as-selector
                                   replace-anythings-with-empty-string
@@ -82,12 +82,14 @@
 (def c2-label (find-object-by-name base-store "c2" (link-type-object "")))
 
 (def row-condition-elements [`(~'anything (~age-label))])
-(def column-headers [`(~'anything (~age-label))
-                     `(~'anything (~c2-label))])
+(def column-headers (map mark-template-as-selector
+                         [`(~'anything (~age-label))
+                          `(~'anything (~c2-label))]))
 (def table-list (add-order-elements
                  `(:x
                    :selector
-                   (~(make-tree-object row-condition-elements)
+                   (~(mark-template-as-selector
+                      (make-tree-object row-condition-elements))
                     :row-condition)
                    (:x :column-headers ~@column-headers))))
 (def joe-object-list
@@ -606,7 +608,7 @@
                                :column-ids [first-header-id]
                                :client-id (relative-ids->client-id
                                            [table-id jane-id first-header-id])})
-        row-pattern (pattern-to-fixed-term
+        row-pattern (pattern->fixed-term-query
                      (make-tree-object row-condition-elements))
         rows (matching-items row-pattern store)
         new-rows (matching-items row-pattern new-store)]
@@ -646,7 +648,7 @@
                                :table-id table-id
                                :row-id jane-id})
         [new-store client-data] (normalize-handler-response result store)
-        row-condition (pattern-to-fixed-term
+        row-condition (pattern->fixed-term-query
                        (make-tree-object row-condition-elements))
         rows (matching-items row-condition store)
         new-rows (matching-items row-condition new-store)]

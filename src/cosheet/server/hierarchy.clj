@@ -7,7 +7,7 @@
              [reporter-macros :refer [let-R]])
             (cosheet.server
              [model-utils :refer [entity->canonical-semantic
-                                  entity->fixed-term-with-negations
+                                  selector->fixed-term-with-negations
                                   semantic-elements semantic-label-elements]])))
 
 ;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,
@@ -256,12 +256,12 @@
 
 (defn hierarchy-node-descendant-cover
   "Given a hierarchy node from a hierarchy whose leaves are item maps with
-   immutable :item values, return a seq of its descendants, such that the
+   selector :item values, return a seq of its descendants, such that the
    item of each descendant of the node is an extension of one of the items
    of nodes in the seq."
   [node]
   (let [logical-leaves (hierarchy-node-logical-leaves node)
-        leaf-queries (map #(entity->fixed-term-with-negations (:item %))
+        leaf-queries (map #(selector->fixed-term-with-negations (:item %))
                           logical-leaves)]
     (concat logical-leaves
             (filter (fn [descendant]
@@ -274,7 +274,7 @@
 
 (defn hierarchy-node-non-immediate-descendant-cover
   "Given a hierarchy node from a hierarchy whose leaves are item maps with
-   immutable :item values, return a seq of its descendants, such that the
+   selector :item values, return a seq of its descendants, such that the
    item of each descendant of the node, other than a leaf or logical leaf,
    is an extension of one of the items of nodes in the seq."
   [node]

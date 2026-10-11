@@ -726,7 +726,7 @@
   components by their relative-id.
   This is not needed for correctness."
   [components]
-  (sort-by (fn [c] (:id (:relative-id (:dom-specification @c))))
+  (sort-by (fn [c] (:primitive-id (:relative-id (:dom-specification @c))))
            components))
 
 (defn finalize

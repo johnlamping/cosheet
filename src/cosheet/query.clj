@@ -1,6 +1,6 @@
 (ns cosheet.query
   (:require (cosheet [entity :refer [content all-elements
-                                     forward-elements orientation
+                                     forward-elements reverse?
                                      label->elements label->content
                                      object? primitive?
                                      tree-entity? 
@@ -140,7 +140,7 @@
   [sub-query]
   (concat (if (or (primitive? sub-query) (object? sub-query))
             (make-tree-element :source sub-query '(::content))
-            (if (= (orientation sub-query) :target)
+            (if (reverse? sub-query)
               (make-tree-element :source
                                  (content sub-query)
                                  (concat (all-elements sub-query)

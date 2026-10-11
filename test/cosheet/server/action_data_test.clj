@@ -182,10 +182,10 @@
       (is (check (semantic-to-tree (id->entity
                                     (id->target store new-jane-id) store))
                  `(~'anything (2 (~age-label-obj)))))))
-  ;; Try :sibling true
+  ;; Try :incoming-subject-is :sibling
   (let [data (get-virtual-action-data
               {:template 'anything
-               :sibling true
+               :incoming-subject-is :sibling
                :position :before}
               {:subject-ids [(:item-id joe-age)]} :set-content store)]
     (is (check data {:subject-ids [(any)]
@@ -221,11 +221,12 @@
                       (semantic-elements
                        (order-recursively
                         (id->entity joe-id store))))
-                 `(("male")
-                   ("married")
-                   ("" 2)
-                   (39 (~age-label-obj) ("doubtful" "confidence"))
-                   (45 (~age-label-obj)))))
+                 (as-set
+                  `(("male")
+                    ("married")
+                    ("" 2)
+                    (39 (~age-label-obj) ("doubtful" "confidence"))
+                    (45 (~age-label-obj))))))
       (is (= (id->target store new-jane-id) jane-id))
       (is (check (map semantic-to-tree
                       (ordered-entities

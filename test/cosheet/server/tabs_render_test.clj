@@ -116,7 +116,7 @@
                              [(mark-template-as-selector
                                `(~'anything (~(link-type-object '???))))])))
                         'anything)
-             :sibling true
+             :incoming-subject-is :sibling
              :use-bigger true
              :virtual true
              :render-dom (virt-DOM)

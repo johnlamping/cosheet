@@ -92,10 +92,6 @@
   (let [id (->ItemId -3)]
     (is (= (-> id id->string string->id) id))))
 
-(deftest stored-item-description-name-test
-  (is (= (item-id-name (make-item-id "a")) "Id:Ia"))
-  (is (= (item-id-name (->ItemId 1)) "Id:1")))
-
 (deftest index-endpoint->ids-test
   (doseq [endpoint [:target :source]] 
     (let [value-key (endpoint-value-key endpoint)
@@ -262,7 +258,7 @@
 
 (deftest get-new-object-id-test
   (let [[store id] (get-new-object-id test-store)]
-    (is (= (:id id) (- (:next-number test-store))))
+    (is (= (:primitive-id id) (- (:next-number test-store))))
     (is (= (:next-number store) (+ 1 (:next-number test-store))))))
 
 (def unindexed-object-store
@@ -312,7 +308,7 @@
 (deftest add-link-test
   (let [[added-store id]
         (add-link test-store (make-link-id 1) "test")]
-    (is (= (:id id) (:next-number test-store)))
+    (is (= (:primitive-id id) (:next-number test-store)))
     (is (= (id->source added-store id) "test"))
     (is (= (id->target added-store id) (make-link-id 1))))
   ;; Test that adding nil source fails.
@@ -484,7 +480,7 @@
                               (let [target (when (not= 0 (gen/uniform 0 10))
                                              (make-link-id (earlier-number i)))]
                                 (add-link store target (random-source target)))]
-                          (assert (= (:id id) i))
+                          (assert (= (:primitive-id id) i))
                           new-store))
                       store (range (+ items 1) (+ n 1)))
               mutated-store

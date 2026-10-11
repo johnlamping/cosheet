@@ -4,7 +4,8 @@
                                       presumed-interned-object?
                                       stored-entity?
                                       id->entity entity-key
-                                      orientation content all-elements
+                                      content-endpoint reverse?
+                                      content all-elements
                                       make-tree-element make-tree-object
                                       label->elements
                                       to-tree
@@ -107,10 +108,10 @@
           qualifier (variable-qualifier term)
           value (env var-name)]
       (cond
-        value (orientation value)
-        qualifier (orientation qualifier)
+        value (content-endpoint value)
+        qualifier (content-endpoint qualifier)
         true nil))
-    (orientation term)))
+    (content-endpoint term)))
 
 (defn contextualize-variable
   "If the term is a variable, replace it by it's value in the environment,
@@ -185,7 +186,7 @@
   (let [filter-orientation
         (if (nil? required-orientation)
           identity
-          (fn [elements] (filter #(= (orientation %) required-orientation)
+          (fn [elements] (filter #(= (content-endpoint %) required-orientation)
                                  elements)))]
     (if (empty? labels)
       (filter-orientation (all-elements entity))
@@ -216,7 +217,7 @@
       (if (seq? labels)
         (filter #(extended-by? fixed-term %)
                 (candidate-elements
-                 labels (orientation fixed-term) entity))
+                 labels (content-endpoint fixed-term) entity))
         ;; The special case where being in the label index guarantees
         ;; satisfing the fixed-term.
         (label->elements entity labels)))))
@@ -241,7 +242,7 @@
         (and (= (object? fixed-term) (object? entity))
              (or (object? fixed-term)
                  (and (extended-by? (content fixed-term) (content entity))
-                      (= (orientation fixed-term) (orientation entity))))
+                      (= (reverse? fixed-term) (reverse? entity))))
              (or (empty? (all-elements fixed-term))
                  (let [[positive negative] (separate-negations
                                             (all-elements fixed-term))]
@@ -300,7 +301,7 @@
                    elements-exact]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
-                    [(make-tree-element (orientation as-list)
+                    [(make-tree-element (content-endpoint as-list)
                                         converted-content
                                         converted-kept-elements)
                      (combine-template-exactness content-exact
@@ -487,7 +488,7 @@
   ignored."
   [item env entity entity-element-filter]
   (when (and (not (object? entity)) ;; We might match a primitive.
-             (= (orientation item) (orientation entity)))
+             (= (reverse? item) (reverse? entity)))
     (let [extensions
           ;; When matching content that is an object, our element
           ;; will also appear as an element of it, just in the

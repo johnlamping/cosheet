@@ -344,7 +344,7 @@
              [:component {:relative-id :virtual-label
                           :target-item-id rc1-id
                           :width 0.75
-                          :sibling true
+                          :incoming-subject-is :sibling
                           :template (make-sequential-template
                                      '(anything :selector)
                                      '(""))
@@ -360,7 +360,7 @@
                           :render-dom render-virtual-DOM}]
              [:div  {:class "wrapped-elements"}
               [:component {:template '(anything :selector)
-                           :sibling true
+                           :incoming-subject-is :sibling
                            :width 0.75
                            :relative-id :virtual
                            :target-item-id rc1-id
@@ -539,7 +539,7 @@
                         (make-tree-object [`(~link-type)
                                            `("" (~name-label))])
                         :position :after
-                        :sibling true
+                        :incoming-subject-is :sibling
                         :width 0.75
                         :target-item-id c7-id
                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
@@ -550,7 +550,7 @@
             [:component {:relative-id :virtual-column
                          :template '(anything :selector)
                          :width 0.75
-                         :sibling true
+                         :incoming-subject-is :sibling
                          :target-item-id c7-id
                          :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                          :virtual true
@@ -609,7 +609,7 @@
                        :column-descriptions (any)
                        :render-dom render-table-virtual-row-DOM
                        :template 'foo
-                       :sibling true
+                       :incoming-subject-is :adjacent
                        :get-action-data [(comp-AD)
                                          [(id-AD) joe-id]
                                          (virt-AD)]}]]))

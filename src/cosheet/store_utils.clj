@@ -10,7 +10,7 @@
                     id-identified-object?
                     link-type-object? object-type-object? non-type-object?
                     conflux-tree-object? conflux-tree-object-id
-                    content orientation all-elements to-tree
+                    content reverse? all-elements to-tree
                     in-different-store
                     label->elements content->elements
                     make-tree-object name-label link-type object-type]]
@@ -136,7 +136,7 @@
                              (let [id (conflux-tree-object-id element-content)]
                                (get conflux-map id)))
         ;; Look up or make the content, if needed
-        [store content-endpoint conflux-map]
+        [store content-endpoint-value conflux-map]
         (cond
           repeated-object-id
           [store repeated-object-id conflux-map]
@@ -153,9 +153,9 @@
             [store content-representation conflux-map]))
         ;; Add the link
         [store entity-link] (apply add-link store
-                                   (if (= (orientation template) :target)
-                                     [content-endpoint container-id]
-                                     [container-id content-endpoint]))
+                                   (if (reverse? template)
+                                     [content-endpoint-value container-id]
+                                     [container-id content-endpoint-value]))
         ;; Add the elements.
         [store conflux-map] (internal-add-elements
                              store conflux-map entity-link

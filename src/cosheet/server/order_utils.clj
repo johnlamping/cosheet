@@ -9,7 +9,7 @@
     [calculator :refer [modify-and-act! propagate-calculator-data!
                         update-to-invalid]]
     [store :refer [target-label->ids id->source ImmutableStore]]
-    [entity :refer [content all-elements forward-elements orientation
+    [entity :refer [content all-elements forward-elements content-endpoint
                     label->elements label->content
                     id->entity object? element? tree-object?
                     make-tree-element make-tree-object-copying-id
@@ -86,7 +86,7 @@
                           (ordered-entities (all-elements assembled)))
                          (element? assembled)
                          (make-tree-element
-                          (orientation assembled)
+                          (content-endpoint assembled)
                           (content assembled)
                           (ordered-entities (forward-elements assembled)))
                          :else assembled)

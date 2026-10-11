@@ -115,7 +115,7 @@
     :class "tab virtualTab"
     :template (make-sequential-template `("" :tab ~new-tab-table-element)
                                         'anything)
-    :sibling true
+    :incoming-subject-is :sibling
     :get-action-data get-item-or-exemplar-action-data
     :use-bigger true}))
 

@@ -3,7 +3,7 @@
                      [entity :refer [stored-entity?
                                       object? all-elements content
                                       forward-elements reverse-elements
-                                      orientation entity-key]]
+                                      reverse? entity-key]]
                       [utils :refer [pseudo-set-seq
                                      pseudo-set-conj
                                      pseudo-set-disj
@@ -305,7 +305,7 @@
      writing it out. The data consists of the next id, and a vector of
      (link-id target source) triples for its links. A few things are
      represented as vectors that start with a keyword:
-       ItemId [:id (:id ?])
+       ItemId [:id (:primitive-id ?)])
        Orderable [:ord (left ?) (right ?)]
        Vector [:vec * ?]"
     (let [ephemeral-ids (all-ephemeral-ids this)]
@@ -313,10 +313,10 @@
        (for [[id source]
              (seq (:id->source this))
              :when (not (ephemeral-ids id))]
-         [(:id id)
-          (:id (get-in this [:id->target id]))
+         [(:primitive-id id)
+          (:primitive-id (get-in this [:id->target id]))
           (cond (item-id? source)
-                [:id (:id source)]
+                [:id (:primitive-id source)]
                 (instance? cosheet.orderable.Orderable source)
                 [:ord (:left source) (:right source)]
                 (vector? source)
@@ -558,10 +558,10 @@
               ;; The one circularity we allow is that the type of
               ;; object class is an object class.
               (= target object-type-id)))
-  (when (number? (:id item-id))
-    (assert (< (:id item-id) (:next-number store)) [item-id target source])
-    (when (number? (:id target))
-      (assert (< (:id target) (:id item-id)) [item-id target source])))
+  (when (number? (:primitive-id item-id))
+    (assert (< (:primitive-id item-id) (:next-number store)) [item-id target source])
+    (when (number? (:primitive-id target))
+      (assert (< (:primitive-id target) (:primitive-id item-id)) [item-id target source])))
   (-> (if (nil? target)
         store
         (assoc-in store [:id->target item-id] target))
@@ -627,8 +627,7 @@
                     (let [[estimate element-ids precise]
                           (candidate-matching-ids-and-estimate store element)]
                       (when estimate
-                        (let [subject-getter (if (= (orientation element)
-                                                    :target)
+                        (let [subject-getter (if (reverse? element)
                                                id->source
                                                id->target)
                               ids (keep #(subject-getter store %) element-ids)]
@@ -671,7 +670,7 @@
       [element-matches false]
 
       true
-      (let [content-index (if (= (orientation template) :target)
+      (let [content-index (if (reverse? template)
                             target->ids
                             source->ids)
             content-ids (content-index store (entity-key contents))]

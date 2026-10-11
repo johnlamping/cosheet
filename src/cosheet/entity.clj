@@ -1,8 +1,8 @@
 (ns cosheet.entity
   (:require (cosheet [calculator :refer [current-value]]
                       [reporter-macros :refer [let-R]]
-                      [store :refer [link-id? object-id?
-                                     generic-name?
+                      [store :refer [link-id? object-id? item-id?
+                                     id->string generic-name?
                                      ;; These are used by entity_impl.clj
                                      ;; when it is working in our namespace.
                                      name-label-id
@@ -129,7 +129,7 @@
 
 ;;; Elements need to indicate which direction they are traversing a
 ;;; link. The most general tree form of an element is
-;;;   ((orientation content) element element ...)
+;;;   ((content-endpoint content) element element ...)
 ;;; where orientation is either :source or :target, to indicate which
 ;;; endpoint holds the content.
 
@@ -224,8 +224,13 @@
     "Return a seq of items for all our elements, including reversed links
     between objects.")
 
-  (orientation [this]
-    "The orientation of an element entity.")
+  (content-endpoint [this]
+    "The endpoint of the link that holds an element entity's content,
+    :source or :target.")
+
+  (reverse? [this]
+    "True if this is an element viewed from the opposite of the usual
+    direction. In other words, its content-endpoint is :target.")
 
   (content->elements [this content-value]
     "Return the elements with the given content")
@@ -385,7 +390,7 @@
   [entity]
   (and (stored-entity? entity)
        (object? entity)
-       (string? (:id (:item-id entity)))))
+       (string? (:primitive-id (:item-id entity)))))
 
 (defn uniquely-identified-object?
   "Return true if the entity, which must be immutable, is an object that
@@ -491,7 +496,7 @@
           content)
   ;; None of the elements we are made from may be reversed.
   (assert (not-any? #(or (object? %)
-                         (not= (orientation %) :source))
+                         (reverse? %))
                     elements))
   (assert (or (nil? element-orientation)
               (#{:source :target} element-orientation)))
@@ -534,6 +539,56 @@
   "Return true if the argument is a tree id."
   [x]
   (instance? TreeId x))
+
+(defprotocol DirectedItemId
+  "An ItemId or ReverseItemId, with the methods to determine whether the
+  item is to be seen in reverse, from its source rather than from its
+  target."
+
+  (store-item-id [this]
+    "The item id of the item in the store.")
+
+  (reverse-id? [this]
+    "True if the item is to be seen in reverse.")
+
+  (reverse-id [this]
+    "The id that sees the same item in the opposite direction.")
+
+  (item-id-name [this]
+    "A printable name for the id, indicating it is an id."))
+
+(defrecord
+    ^{:doc
+      "An item id that marks its item as being seen in reverse. This will
+       never appear in the store. Rather it represents a perspective
+       on an id that can be in the store."}
+    ReverseItemId
+    [item-id]
+
+  DirectedItemId
+  (store-item-id [this] item-id)
+  (reverse-id? [this] true)
+  (reverse-id [this] item-id)
+  (item-id-name [this] (str "RId:" (id->string item-id))))
+
+(extend-type cosheet.store.ItemId
+  DirectedItemId
+  (store-item-id [this] this)
+  (reverse-id? [this] false)
+  (reverse-id [this] (->ReverseItemId this))
+  (item-id-name [this] (str "Id:" (id->string this))))
+
+(defn make-reverse-item-id
+  "Make a directed item id that sees the item with the given id in
+  reverse."
+  [item-id]
+  (assert (item-id? item-id) item-id)
+  (->ReverseItemId item-id))
+
+(defn reverse-item-id?
+  "Return true if the argument is a reverse item id."
+  [x]
+  (instance? ReverseItemId x))
 
 (defn make-conflux-tree-object
   "Make a tree representation of an object that carries an id so that
@@ -591,7 +646,7 @@
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
-          (make-tree-element (orientation entity)
+          (make-tree-element (content-endpoint entity)
                              (content entity)
                              (concat (forward-elements entity) elements-to-add))
           (object? entity)
@@ -609,7 +664,7 @@
   be removed."
   [f entity]
   (cond (element? entity)
-        (make-tree-element (orientation entity)
+        (make-tree-element (content-endpoint entity)
                            (f (content entity))
                            (keep f (forward-elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
@@ -683,7 +738,7 @@
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (let [assembled (make-tree-element (orientation entity)
+                    (let [assembled (make-tree-element (content-endpoint entity)
                                                        new-content
                                                        new-elements)]
                       (post-fn original-entity assembled
@@ -1068,7 +1123,7 @@
   (let-R [elements (label->elements entity label)]
     (when elements
       (assert (= (count elements) 1)
-              (apply str "entity "  (:id (:item-id entity))
+              (apply str "entity "  (:primitive-id (:item-id entity))
                      " has " (count elements) " elements for label " label
                      " entity contents: " (current-value (to-tree entity))
                      " element contents: "

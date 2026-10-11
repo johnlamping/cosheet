@@ -2,13 +2,13 @@
   (:require [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [parse-string-as-number]]
                       [store :refer [Store candidate-matching-ids id->target
-                                     item-id-name item-id? mutable-store?
+                                     mutable-store?
                                      new-element-store read-store]]
                       store-impl
                       [entity :refer [content element? object? all-elements
                                       label->elements name-label
-                                      id->entity
-                                      orientation primitive? stored-entity?
+                                      id->entity item-id-name DirectedItemId
+                                      reverse? primitive? stored-entity?
                                       to-tree uniquely-identified-object?]]
                       [query :refer [matching-items]]
                       [reporter :refer [reporter?
@@ -63,13 +63,13 @@
         (if (mutable-store? item)
           (symbol "MutableStore")
           (symbol "Store"))
-        (item-id? item)
+        (satisfies? DirectedItemId item)
         (symbol (item-id-name item))
         (stored-entity? item)
         (symbol (clojure.string/join
                  "-"
                  (concat
-                  (when (= (orientation item) :target) ["Reverse"])
+                  (when (reverse? item) ["Reverse"])
                   (when (element? item) ["Element"])
                   (when (object? item)
                     (concat ["Object"]

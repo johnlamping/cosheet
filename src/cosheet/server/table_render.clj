@@ -57,7 +57,7 @@
         ;; Add the column header for the new column to the store.
         {:keys [store subject-ids]}
         (get-virtual-action-data
-         {:sibling true
+         {:incoming-subject-is :sibling
           :template unspecified-column-header-template}
          {:subject-ids [last-column-id]}
          action immutable-store)
@@ -172,7 +172,7 @@
               last-item
               (assoc :target-item-id (:item-id last-item)
                      :get-action-data get-item-or-exemplar-action-data
-                     :sibling true))
+                     :incoming-subject-is :sibling))
             :vertical)
            {:class "virtual-column"})
           dom (labels-and-elements-DOM
@@ -251,7 +251,7 @@
           (assoc spec
                  :get-action-data get-item-or-exemplar-action-data
                  :target-item-id last-column-id
-                 :sibling true)
+                 :incoming-subject-is :sibling)
           :vertical)
          {:class  "column-header virtual-column"})))))
 
@@ -413,7 +413,7 @@
     :class "table-row"
     :column-descriptions column-descriptions
     :render-dom render-table-virtual-row-DOM
-    :sibling true
+    :incoming-subject-is :adjacent
     :template row-template
     :get-action-data [composed-get-action-data
                       [get-id-action-data adjacent-id] ; our sibling

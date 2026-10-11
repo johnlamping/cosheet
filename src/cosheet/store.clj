@@ -90,7 +90,7 @@
     ^{:doc
       "The id of an item in a store."}
     ItemId
-    [id])
+    [primitive-id])
 
 (defn make-item-id
   "Make an item id that is not one that will be given out by the store."
@@ -108,7 +108,7 @@
   "Return true if the argument is an item id for a link."
   [x]
   (and (instance? ItemId x)
-       (let [id (:id x)]
+       (let [id (:primitive-id x)]
          (and (number? id)
               (> id 0)))))
 
@@ -116,7 +116,7 @@
    "Return true if the argument is an item id for an object."
   [x]
   (and (instance? ItemId x)
-       (let [id (:id x)]
+       (let [id (:primitive-id x)]
          (or (not (number? id))
              (< id 0)))))
 
@@ -124,7 +124,7 @@
   "Return a string representation of an id."
   [id]
   (assert (instance? ItemId id))
-  (let [id (:id id)]
+  (let [id (:primitive-id id)]
     (if (integer? id)
       (if (< id 0)
         (str "M" (str (- id)))
@@ -138,10 +138,6 @@
               \I (subs rep 1)
               \M (- (parse-string-as-number (subs rep 1)))
               (parse-string-as-number rep))))
-
-(defn item-id-name [this]
-  "A printable name for the item id, indicating it is an id."
-  (clojure.string/join ["Id:" (id->string this)]))
 
 
 ;;; A few item ids can turn elements or objects into labels.  Since
@@ -385,7 +381,7 @@
   (and (object-id? item-id)
        (or
         ;; Has a special id.
-        (string? (:id item-id))
+        (string? (:primitive-id item-id))
         ;; Has a non-generic name.
         (when-let [name-ids (target-label->ids
                              store item-id (make-item-id "name"))]

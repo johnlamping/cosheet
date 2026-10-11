@@ -17,7 +17,8 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? name-element? id->entity
-                    content all-elements forward-elements orientation
+                    content all-elements forward-elements content-endpoint
+                    reverse?
                     containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
@@ -194,7 +195,7 @@
                   
                   (element? e)
                   [(make-tree-element
-                    (orientation e) (content e) (elements-fn e))
+                    (content-endpoint e) (content e) (elements-fn e))
                    conflux-seen]
                   
                   :else
@@ -232,7 +233,7 @@
   information matches the orientation of the element."
   [element]
   (when-let [selector (first (content->elements element :selector))]
-    (= (= (orientation element) :target)
+    (= (reverse? element)
        (boolean (seq (content->elements selector :reverse))))))
 
 (defn selector-semantic-elements
@@ -321,7 +322,7 @@
      (fn [_ assembled _ caller-data]
        [(add-elements-to-entity
          assembled [(if (and (element? assembled)
-                             (= (orientation assembled) :target))
+                             (reverse? assembled))
                       '(:selector :reverse)
                       :selector)])
         caller-data])
@@ -367,7 +368,7 @@
        (cond
          (nil? selector) [:entity/omit entities]
          (or (object? entity)
-             (= (= (orientation entity) :target)
+             (= (reverse? entity)
                 (boolean (seq (content->elements selector :reverse)))))
          [entity (conj entities entity)]
          :else [:entity/omit entities])))
@@ -462,7 +463,7 @@
                       (and (nil? c) require-orders)
                       (concat ['(nil :order)]))]
                 [(make-tree-element
-                  (orientation original) c new-elements)
+                  (content-endpoint original) c new-elements)
                  conflux-map])
 
               (presumed-interned-object? original)
@@ -767,7 +768,7 @@
               (update-add-object-with-order-without-revisiting
                store template-content order position false seen)
               [store template-content order seen])
-            [store id] (if (= (orientation template) :target)
+            [store id] (if (reverse? template)
                          (add-link store value-to-store attachment-id)
                          (add-link store attachment-id value-to-store))
             [store remainder seen]

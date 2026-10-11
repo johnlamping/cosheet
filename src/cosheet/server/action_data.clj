@@ -402,16 +402,18 @@
   "Create the specified virtual item(s) and make them the target(s).
    The new items are instances of the template.
    The containing data's subject-ids are the target of the new items,
-   unless sibling is true, in which case they are the siblings.
-   If sibling is true, the new items will be adjacent to the
-   siblings. If not, they will be adjacent to elements of the target
-   that match adjacent-query, if there are any, otherwise, they will
-   be adjacent to the target.
+   unless incoming-subject-is is :sibling, in which case they are the
+   siblings, or :adjacent, in which case the new items have no
+   target. In either of those cases, the new items will be adjacent
+   to the subject-ids. If not, they will be adjacent to elements of
+   the target that match adjacent-query, if there are any, otherwise,
+   they will be adjacent to the target.
    The new items are ordered after what they are adjacent to, unless
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger past-subject-ids]
+  [{:keys [template incoming-subject-is position use-bigger
+           past-subject-ids]
            ; adjacent-query also used by a callee.
     :as specification}
    inherited-action-data action immutable-store]
@@ -419,10 +421,11 @@
   (if-not (should-create-virtual? action)
     inherited-action-data
     (let [subject-ids (:subject-ids inherited-action-data)
-          targets (if sibling
-                    (map #(id->target immutable-store %) subject-ids)
+          targets (case incoming-subject-is
+                    :sibling (map #(id->target immutable-store %) subject-ids)
+                    :adjacent (map (constantly nil) subject-ids)
                     subject-ids)
-          adjacents (if sibling
+          adjacents (if (#{:sibling :adjacent} incoming-subject-is)
                       subject-ids
                       (find-virtual-adjacents
                        targets specification immutable-store))

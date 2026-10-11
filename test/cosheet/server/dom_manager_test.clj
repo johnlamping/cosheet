@@ -899,7 +899,7 @@
         [s2 id2] (add-element s1 id1 "bar")
         [s id3] (add-element s2 id2 "end")
         client1 "root"
-        client3 (str client1 "_" (:id id2) "_" (:id id3))
+        client3 (str client1 "_" (:primitive-id id2) "_" (:primitive-id id3))
         ms (new-mutable-store s)
         cd (make-calculator-data (make-priority-task-queue 0))
         manager (make-dom-manager ms cd)]
@@ -1081,7 +1081,7 @@
                        (range value (+ value num))))))
             (value->keyword [value] (keyword (str "root" value)))
             (value->id [value] (make-item-id (str value)))
-            (id->value [id] (Integer. (:id id)))
+            (id->value [id] (Integer. (:primitive-id id)))
             (specification-for-dom [level]
               {:level level
                :render-dom render-dom

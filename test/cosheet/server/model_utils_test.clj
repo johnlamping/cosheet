@@ -131,20 +131,23 @@
         fixed-term (transform-pattern-toward-fixed-term pattern {})
         v-name (label->content fixed-term :cosheet.query/name)
         inner-var (variable-query v-name :reference true)]
-    (is (= fixed-term
-           (variable-query
-            v-name
-            :qualifier (make-tree-object
-                        [(make-tree-element
-                          :source
-                          (make-tree-object
-                           [(make-tree-element
-                             :source "z"
-                             [(make-tree-element :source inner-var [])])
-                            "y"])
-                          [])
-                         "x"])
-            :reference true)))
+    ;; The element order of the stored object is incidental, so
+    ;; compare canonical forms.
+    (is (= (canonicalize fixed-term)
+           (canonicalize
+            (variable-query
+             v-name
+             :qualifier (make-tree-object
+                         [(make-tree-element
+                           :source
+                           (make-tree-object
+                            [(make-tree-element
+                              :source "z"
+                              [(make-tree-element :source inner-var [])])
+                             "y"])
+                           [])
+                          "x"])
+             :reference true))))
     (is (= [item-a] (matching-items fixed-term cyclic-shared-store))))
   ;; A conflux-tree-object whose elements include a back-reference to
   ;; itself. The back-reference shows up inside the qualifier as the
@@ -423,11 +426,12 @@
            ['("x" :selector) :selector])
         a-ref (make-conflux-tree-object (make-tree-id 1) [:selector])]
     (is (check (mark-template-as-selector template)
-               (make-tree-object
-                [`("z" (~a :selector) :selector)
-                 '("y" :selector)
-                 (make-tree-element :target a-ref ['(:selector :reverse)])
-                 :selector])))))
+               (as-set
+                (make-tree-object
+                 [`("z" (~a :selector) :selector)
+                  '("y" :selector)
+                  (make-tree-element :target a-ref ['(:selector :reverse)])
+                  :selector]))))))
 
 (deftest replace-anythings-with-empty-string-test
   (is (= (replace-anythings-with-empty-string 'anything) ""))
@@ -1056,7 +1060,9 @@
                     `(""
                       ~(as-set
                         `(~(as-set (make-tree-object
-                                    [`(~hi-label-obj :selector (~(any) :order))
+                                    [(as-set
+                                      `(~hi-label-obj :selector
+                                        (~(any) :order)))
                                      `(~(any) :order)
                                      :selector]))
                           :row-condition
@@ -1069,7 +1075,7 @@
                           ~(as-set
                             `(~'anything
                               (~(any) :order)
-                              (~(any) :selector (~(any) :order))
+                              ~(as-set `(~(any) :selector (~(any) :order)))
                               :selector))
                           :column-headers))
                       :tab-topic

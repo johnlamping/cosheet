@@ -322,10 +322,17 @@
 ;;;        object once the user types the name. Other actions behave
 ;;;        similarly.
 
-;;;    :sibling
-;;;        For a virtual item, if true the new item is created as a
-;;;        sibling of the subject(s), adjacent to them, rather than as
-;;;        an element of them.
+;;;    :incoming-subject-is
+;;;        This gives information for how a virtual item should use an
+;;;        incoming-subject id.
+;;;          * If this is not present, the subject-id should become the
+;;;            subject of the new entity,
+;;;          * If it is :adjacent, the new item is adjacent to the
+;;;            subject-id, but has no target, so it is not semantically
+;;;            related to the subject.
+;;;          * If it is :sibling the new item is created adjacent to the
+;;;            subject, and with the subject's target as its subject.
+;;;            In other words, it becomes a sibling of the subject.
 
 ;;;    :position
 ;;;        For a virtual item, whether the new item should come

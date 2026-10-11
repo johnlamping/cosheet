@@ -815,7 +815,7 @@
                                  :template (list 'anything (list common-object))
                                  :object-ids-to-contract #{obj-id}
                                  :relative-id :virtual
-                                 :sibling true
+                                 :incoming-subject-is :sibling
                                  :position :after
                                  :virtual true
                                  :render-dom (virt-DOM)
@@ -1377,7 +1377,7 @@
                          :template `(~'anything (~both-object))
                          :relative-id :virtual
                          :position :after
-                         :sibling true
+                         :incoming-subject-is :sibling
                          :virtual true
                          :render-dom (virt-DOM)
                          :get-action-data (virt-AD)}]]

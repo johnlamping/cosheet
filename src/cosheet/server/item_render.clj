@@ -146,7 +146,7 @@
   isn't. The specification may have a :get-action-data, in which case
   it will be run before get-virtual-action-data.
   The specification keys unique to the virtual action data are
-  :template :sibling :position and :use-bigger."
+  :template :incoming-subject-is :position and :use-bigger."
   [specification]
   (assert (:template specification) specification)
   (make-component
@@ -354,7 +354,7 @@
         (virtual-DOM-component
          (assoc leaf-spec
                 :relative-id :virtual
-                :sibling true
+                :incoming-subject-is :sibling
                 :position :after)))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)

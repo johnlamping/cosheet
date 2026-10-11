@@ -8,7 +8,7 @@
                                      label->elements
                                      all-presumed-interned-in-different-store
                                      make-tree-element make-tree-object
-                                     content orientation]]
+                                     content content-endpoint]]
                       [utils :refer [multiset multiset-to-generating-values
                                      replace-in-seqs
                                      separate-by]]
@@ -114,7 +114,7 @@
   label object of the given label-type, if it isn't already."
   [template label-type]
   (assert (or (element? template) (universal-template? template)))
-  (make-tree-element (orientation template)
+  (make-tree-element (content-endpoint template)
                      (ensure-label-object (content template) label-type)
                      (forward-elements template)))
 

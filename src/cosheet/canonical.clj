@@ -3,7 +3,7 @@
    (cosheet
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
-                    content all-elements forward-elements orientation
+                    content all-elements forward-elements content-endpoint
                     in-different-store
                     make-tree-element presumed-interned-object?
                     conflux-tree-object? conflux-tree-object-id
@@ -117,7 +117,7 @@
         (do
           (assert (element? entity))
           (simplest-canonical
-           (orientation entity)
+           (content-endpoint entity)
            (internal-canonicalize (content entity))
            (multiset (map internal-canonicalize (forward-elements entity)))))))
 

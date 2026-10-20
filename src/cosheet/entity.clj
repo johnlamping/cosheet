@@ -298,10 +298,8 @@
     objects can be matched even if they are associated with different
     versions of the store, from after they were interned.
 
-    Note that the key ignores the orientation of elements. Query
-    matching relies on that to avoid infinite loops. The only other
-    place the key is used is to compare objects, which have no
-    orientation.")
+    Note that the key ignores the direction of elements. Query
+    matching relies on that to avoid infinite loops.")
 
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a

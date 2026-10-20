@@ -471,8 +471,8 @@
   to match a link twice, once in each direction, since everywhere else
   in matching, we match a link at most once. To handle this, when we
   traverse a link, which we do by going to the content of an element,
-  we create a filter that removes elements that have the same id as
-  that link. That gets passed in to functions that can lead to
+  we create a filter that removes elements that have the same store id
+  as that link. That gets passed in to functions that can lead to
   traversing the elements of an entity, to make those functions ignore
   that link, so they won't not traverse back on it."
   [element]

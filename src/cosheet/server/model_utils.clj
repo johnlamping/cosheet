@@ -822,7 +822,7 @@
     ;; object we are looking for, and return it
     (do (assert (equivalent-primitives?
                  name (content (label->element fixed-term name-label))))
-        (let [object-id (:item-id fixed-term)]
+        (let [object-id (entity-key fixed-term)]
           [store object-id order
            (cond-> seen seen-key (assoc seen-key object-id))]))
     
@@ -830,8 +830,8 @@
     (let [;; First, get or make an object with the given name.
           [store object-id order seen]
           (if-let [object (find-object-by-name store name fixed-term)]
-            [store (:item-id object) order
-             (cond-> seen seen-key (assoc seen-key (:item-id object)))]
+            [store (entity-key object) order
+             (cond-> seen seen-key (assoc seen-key (entity-key object)))]
             (update-add-object-with-given-elements-and-order-without-revisiting
              store `((~name (~name-label))) order position use-bigger seen
              seen-key))
@@ -867,14 +867,14 @@
     (if-let [cached-id (when seen-key (get seen seen-key))]
       [store cached-id order seen]
       (cond (id-identified-object? template)
-            (let [id (:item-id template)]
+            (let [id (entity-key template)]
               [store id order
                (cond-> seen seen-key (assoc seen-key id))])
             (and (stored-entity? template) (nil? (:store template)))
             (do (assert (uniquely-identified-object?
                          (in-different-store template store))
                         template)
-                (let [id (:item-id template)]
+                (let [id (entity-key template)]
                   [store id order
                    (cond-> seen seen-key (assoc seen-key id))]))
             (uniquely-identified-object? template)

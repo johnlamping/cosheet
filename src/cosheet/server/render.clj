@@ -227,8 +227,8 @@
 ;;;        that the new object should be adjacent to.)
 
 ;;;    :element-ids-to-exclude
-;;;        If present, this is a set of ids of elements of the entity
-;;;        being shown that should not be displayed.
+;;;        If present, this is a set of DirectedItemIds of elements of
+;;;         the entity being shown that should not be displayed.
 
 ;;;    :object-ids-to-contract
 ;;;        If present, a set of ids of objects, most of whose elements

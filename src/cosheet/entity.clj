@@ -180,10 +180,56 @@
 ;;; should be
 ;;;    [:link source target element element ...]
 
+(defprotocol DirectedItemId
+  "This protocol generalizes the item-id to also support a direction. A
+  store only holds instances of ItemId, but the implementation of
+  elements use DirectedItemId, to know their direction. This protocol
+  provides what is needed to get the direction and the underlying
+  ItemId."
+
+  (store-item-id [this]
+    "The item id of the item in the store.")
+
+  (reverse-id? [this]
+    "True if an element based on this item should have reverse direction.")
+
+  (flip-id-direction [this]
+    "The DirectedItemId with the same ItemId, but the opposite direction.")
+
+  (item-id-name [this]
+    "A printable name for the id, indicating it is an id."))
+
+(defrecord
+    ^{:doc
+      "A DirectedItemId with reverse direction. The underlying item-id must
+       be a link-id."}
+    ReverseItemId
+    [item-id]
+
+  DirectedItemId
+  (store-item-id [this] item-id)
+  (reverse-id? [this] true)
+  (flip-id-direction [this] item-id)
+  (item-id-name [this] (str "RId:" (id->string item-id))))
+
+(defn make-reverse-item-id
+  "Make a directed item id that sees the item with the given id in
+  reverse."
+  [item-id]
+  (assert (link-id? item-id) item-id)
+  (->ReverseItemId item-id))
+
+(extend-type cosheet.store.ItemId
+  DirectedItemId
+  (store-item-id [this] this)
+  (reverse-id? [this] false)
+  (flip-id-direction [this] (make-reverse-item-id this))
+  (item-id-name [this] (str "Id:" (id->string this))))
+
 (defprotocol ToStoredEntity
   "A description of an item."
-  (id->entity-m [this orientation store]
-    "Return an entity corresponding to an item id.
+  (id->entity-m [this store] [this orientation store]
+    "Return an entity corresponding to an item id, including its direction.
     If orientation is provided, the item argument must not be reversed;
     it will get reversed if orientation is :target.
     Should only be called by Entity and its implementation"))

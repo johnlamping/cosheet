@@ -13,9 +13,9 @@
                       [category-change-calculator :refer [category-change-R]])))
 
 (defn endpoint->entity
-  "Given any value of an endpoint, the store, and an optional
-  orientation, return the described entity.
-  The orientation is ignored for anything but link values."
+  "Given any value of an endpoint from a store, the store, and an
+  optional orientation, return the described entity.  The orientation
+  is ignored for anything but link values."
   ([value store]
    (endpoint->entity value store :source))
   ([value store orientation]
@@ -23,7 +23,15 @@
      (if (object-id? value)
        (id->object value store)
        (id->element value orientation store))
+     ;; The value must be a primitive.
      value)))
+
+(defn- internal-content-endpoint
+  "The content endpoint of an entity whose item-id is a directed id: nil
+  for an object, :target if it has reverse direction, else :source."
+  [entity]
+  (when (element? entity)
+    (if (reverse? entity) :target :source)))
 
 (defrecord
     ^{:doc
@@ -34,18 +42,16 @@
       store and for unit tests."}
     IdOnlyEntity
 
-    [item-id      ; The ItemId of the item in the store.
-     orientation] ; The endpoint that holds an element entity's content.
+    [item-id] ; The DirectedItemId holding the item in the store.
 
   StoredEntity
 
   (target-entity [this] nil)
-  (originating-entity [this] nil)
+  (subject-entity [this] nil)
   (containing-elements [this] nil)
 
   (in-different-store [this store-or-entity]
     (id->entity-m item-id
-                  orientation
                   (if (satisfies? Store store-or-entity)
                     store-or-entity
                     (:store store-or-entity))))
@@ -54,44 +60,47 @@
 
   (mutable-entity? [this] false)
   (primitive? [this] false)
-  (element? [this] (link-id? item-id))
-  (object? [this] (object-id? item-id))
+  (element? [this] (link-id? (store-item-id item-id)))
+  (object? [this] (object-id? (store-item-id item-id)))
   (content [this] nil)
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] orientation)
-  (reverse? [this] (= (content-endpoint this) :target))
+  (content-endpoint [this] (internal-content-endpoint this))
+  (reverse? [this] (reverse-id? item-id))
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
-  (entity-key [this] item-id)
+  (entity-key [this] (store-item-id item-id))
   (updating-immutable [this] this))
 
 (defrecord
     ^{:doc "An entity whose elements are described by a store."}
     ImmutableStoredEntity
 
-    [store        ; The immutable store that holds the information for this item.
-     item-id      ; The ItemId of the item in the store.
-     orientation] ; The endpoint that holds an element entity's content.
+    [store        ; The immutable store that holds the information
+                  ; for this item.
+     item-id]     ; The DirectedItemId holding the item in the store.
 
   StoredEntity
 
   (target-entity [this]
-    (when (not (object-id? item-id))
-      (endpoint->entity (id->target store item-id) store)))
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (endpoint->entity (id->target store underlying-item-id) store))))
 
-  (originating-entity [this]
-    (when (not (object-id? item-id))
-      (endpoint->entity (if (= orientation :target)
-                          (id->source store item-id)
-                          (id->target store item-id))
-                        store)))
+  (subject-entity [this]
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (endpoint->entity (if (reverse? this)
+                            (id->source store underlying-item-id)
+                            (id->target store underlying-item-id))
+                          store))))
 
   (containing-elements [this]
-    (assert (object-id? item-id) this)
-    (map #(endpoint->entity % store)
-         (source->ids store item-id)))
+    (let [underlying-item-id (store-item-id item-id)]
+      (assert (object-id? underlying-item-id) this)
+      (map #(endpoint->entity % store)
+           (source->ids store underlying-item-id))))
   
   (in-different-store [this store-or-entity]
     (let [new-store (if (satisfies? Store store-or-entity)
@@ -99,60 +108,68 @@
                       (:store store-or-entity))]
       (when (and (nil? new-store) (object? this))
         (assert (uniquely-identified-object? this) this))
-      (id->entity-m item-id orientation new-store)))
+      (id->entity-m (store-item-id item-id) (content-endpoint this)
+                    new-store)))
   
   Entity
 
   (mutable-entity? [this] false)
 
   (primitive? [this] false)
-  (element? [this] (link-id? item-id))
-  (object? [this] (object-id? item-id))
+  (element? [this] (link-id? (store-item-id item-id)))
+  (object? [this] (object-id? (store-item-id item-id)))
 
   (content [this]
-    (when (not (object-id? item-id))
-      (if (= orientation :target)
-        (endpoint->entity (id->target store item-id) store :target)
-        (endpoint->entity (id->source store item-id) store))))
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (if (reverse? this)
+          (endpoint->entity (id->target store underlying-item-id) store)
+          (endpoint->entity (id->source store underlying-item-id) store)))))
 
   (forward-elements [this]
-    (seq (->> (target->ids store item-id)
+    (seq (->> (target->ids store (store-item-id item-id))
               (map #(id->element % store)))))
 
   (reverse-elements [this]
-    (when (object-id? item-id)
-      (seq (->> (source->ids store item-id)
-                (filter #(object-id? (id->target store %)))
-                (map #(id->element % :target store))))))
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (object-id? underlying-item-id)
+        (seq (->> (source->ids store underlying-item-id)
+                  (filter #(object-id? (id->target store %)))
+                  (map #(id->element % :target store)))))))
 
   (all-elements [this]
     (seq (concat (forward-elements this)
                  (reverse-elements this))))
 
-  (content-endpoint [this]
-    orientation)
-  (reverse? [this] (= (content-endpoint this) :target))
+  (content-endpoint [this] (internal-content-endpoint this))
+  (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]
-    (let [content-key (entity-key content-value)]
-      (seq (cond-> (->> (target-source->ids store item-id content-key)
+    (let [underlying-item-id (store-item-id item-id)
+          content-key (entity-key content-value)]
+      (seq (cond-> (->> (target-source->ids
+                         store underlying-item-id content-key)
                         (map #(id->element % store)))
-             (and (object-id? item-id) (object-id? content-key))
+             (and (object-id? underlying-item-id) (object-id? content-key))
              (concat
-              (->> (target-source->ids store content-key item-id)
+              (->> (target-source->ids
+                    store content-key underlying-item-id)
                    (map #(id->element % :target store))))))))
 
   (label->elements [this label]
-    (let [label-key (entity-key label)]
-      (seq (cond-> (->> (target-label->ids store item-id label-key)
+    (let [underlying-item-id (store-item-id item-id)
+          label-key (entity-key label)]
+      (seq (cond-> (->> (target-label->ids
+                         store underlying-item-id label-key)
                         (map #(id->element % store)))
-             (object-id? item-id)
-             (concat (->> (source-label->ids store item-id label-key)
+             (object-id? underlying-item-id)
+             (concat (->> (source-label->ids
+                           store underlying-item-id label-key)
                           (filter #(object-id? (id->target store %)))
                           (map #(id->element % :target store))))))))
 
   (entity-key [this]
-    item-id)
+    (store-item-id item-id))
 
   (updating-immutable [this] this))
 
@@ -161,30 +178,32 @@
     MutableStoredEntity
 
     [store        ; The mutable store that holds the information for this item.
-     item-id      ; The ItemId of the item in the store.
-     orientation] ; The endpoint that holds an element entity's content.
+     item-id]     ; The DirectedItemId holding the item in the store.
 
 
   StoredEntity
 
   (target-entity [this]
-    (when (not (object-id? item-id))
-      (let-R [target-id (id->target store item-id)]
-        (endpoint->entity target-id store))))
-
-  (originating-entity [this]
-    (when (not (object-id? item-id))
-      (if (= orientation :target)
-        (let-R [source-id (id->source store item-id)]
-          (endpoint->entity source-id store))
-        (let-R [target-id (id->target store item-id)]
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (let-R [target-id (id->target store underlying-item-id)]
           (endpoint->entity target-id store)))))
 
+  (subject-entity [this]
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (if (reverse? this)
+          (let-R [source-id (id->source store underlying-item-id)]
+            (endpoint->entity source-id store))
+          (let-R [target-id (id->target store underlying-item-id)]
+            (endpoint->entity target-id store))))))
+
   (containing-elements [this]
-    (assert (object-id? item-id) this)
-    (let-R [link-ids (source->ids store item-id)]
-      (map #(endpoint->entity % store)
-           link-ids)))
+    (let [underlying-item-id (store-item-id item-id)]
+      (assert (object-id? underlying-item-id) this)
+      (let-R [link-ids (source->ids store underlying-item-id)]
+        (map #(endpoint->entity % store)
+             link-ids))))
 
   (in-different-store [this store-or-entity]
     (let [new-store (if (satisfies? Store store-or-entity)
@@ -194,70 +213,78 @@
         (assert (uniquely-identified-object?
                  (in-different-store this (current-store store)))
                 this))
-      (id->entity-m item-id orientation new-store)))
+      (id->entity-m (store-item-id item-id) (content-endpoint this)
+                    new-store)))
 
   Entity
 
   (mutable-entity? [this] true)
 
   (primitive? [this?] false)
-  (element? [this] (link-id? item-id))
-  (object? [this] (object-id? item-id))
+  (element? [this] (link-id? (store-item-id item-id)))
+  (object? [this] (object-id? (store-item-id item-id)))
 
   (content [this]
-    (when (not (object-id? item-id))
-      (if (= orientation :target)
-        (let-R [content (id->target store item-id)]
-          (endpoint->entity content store :target))
-        (let-R [content (id->source store item-id)]
-          (endpoint->entity content store)))))
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (not (object-id? underlying-item-id))
+        (if (reverse? this)
+          (let-R [content (id->target store underlying-item-id)]
+            (endpoint->entity content store :target))
+          (let-R [content (id->source store underlying-item-id)]
+            (endpoint->entity content store))))))
 
   (forward-elements [this]
-    (let-R [element-ids (target->ids store item-id)]
+    (let-R [element-ids (target->ids store (store-item-id item-id))]
       (seq (for [element-id element-ids]
              (id->element element-id store)))))
 
   (reverse-elements [this]
-    (when (object-id? item-id)
-      (let-R [element-ids (source->ids store item-id)
-              targets (seq-R (map #(id->target store %) element-ids))]
-        (seq (->> (map vector element-ids targets)
-                  (keep (fn [[element-id target]]
-                          (when (object-id? target)
-                            element-id)))
-                  (map #(id->element % :target store)))))))
+    (let [underlying-item-id (store-item-id item-id)]
+      (when (object-id? underlying-item-id)
+        (let-R [element-ids (source->ids store underlying-item-id)
+                targets (seq-R (map #(id->target store %) element-ids))]
+          (seq (->> (map vector element-ids targets)
+                    (keep (fn [[element-id target]]
+                            (when (object-id? target)
+                              element-id)))
+                    (map #(id->element % :target store))))))))
 
   (all-elements [this]
     (let-R [forward-elements (forward-elements this)]
-      (if (object-id? item-id)
+      (if (object-id? (store-item-id item-id))
         (let-R [reverse-elements (reverse-elements this)]
           (seq (concat forward-elements reverse-elements)))
         forward-elements)))
 
-  (content-endpoint [this]
-    orientation)
-  (reverse? [this] (= (content-endpoint this) :target))
+  (content-endpoint [this] (internal-content-endpoint this))
+  (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]
-    (let [content-key (entity-key content-value)]
+    (let [underlying-item-id (store-item-id item-id)
+          content-key (entity-key content-value)]
       (let-R [element-ids (target-source->ids
-                          store item-id content-key)
-              reverse-element-ids (when (and (object-id? item-id)
+                          store underlying-item-id content-key)
+              reverse-element-ids (when (and (object-id?
+                                              underlying-item-id)
                                             (object-id? content-key))
                                     (target-source->ids
-                                     store content-key item-id))]
+                                     store content-key
+                                     underlying-item-id))]
         (seq (concat (for [element-id element-ids]
                        (id->element element-id store))
                      (for [element-id reverse-element-ids]
                        (id->element element-id :target store)))))))
 
   (label->elements [this label]
-    (let [label-key (entity-key label)]
-      (let-R [element-ids (target-label->ids store item-id label-key)]
+    (let [underlying-item-id (store-item-id item-id)
+          label-key (entity-key label)]
+      (let-R [element-ids (target-label->ids
+                           store underlying-item-id label-key)]
         (let [forward-elements (seq (for [element-id element-ids]
                                       (id->element element-id store)))]
-          (if (object-id? item-id)
-            (let-R [element-ids (source-label->ids store item-id label-key)
+          (if (object-id? underlying-item-id)
+            (let-R [element-ids (source-label->ids
+                                 store underlying-item-id label-key)
                     targets (seq-R (map #(id->target store %) element-ids))]
               (seq (concat
                    forward-elements
@@ -269,10 +296,10 @@
             forward-elements)))))
 
   (entity-key [this]
-    item-id)
+    (store-item-id item-id))
 
   (updating-immutable [this]
-    (let-R [immutable-store (category-change-R [item-id] store)]
+    (let-R [immutable-store (category-change-R [(store-item-id item-id)] store)]
       (in-different-store this immutable-store))))
 
 (defn- equivalent-entities?
@@ -504,14 +531,29 @@
   (entity-key [this] this)
   (updating-immutable [this] this))
 
+(defn- make-stored-entity
+  "Make the kind of stored entity appropriate to the store, holding the
+  given directed id."
+  [directed-id store]
+  (cond
+    (nil? store) (->IdOnlyEntity directed-id)
+    (mutable-store? store) (->MutableStoredEntity store directed-id)
+    true (->ImmutableStoredEntity store directed-id)))
+
 (extend-protocol ToStoredEntity
   cosheet.store.ItemId
-  (id->entity-m [this orientation store]
-    (assert (or (nil? orientation) (#{:source :target} orientation)))
-    (cond
-      (nil? store) (->IdOnlyEntity this orientation)
-      (mutable-store? store) (->MutableStoredEntity store this orientation)
-      true (->ImmutableStoredEntity store this orientation))))
+  (id->entity-m
+    ([this store]
+     (make-stored-entity this store))
+    ([this orientation store]
+     (assert (or (nil? orientation) (#{:source :target} orientation)))
+     (make-stored-entity
+      (cond-> this (= orientation :target) flip-id-direction)
+      store)))
+  cosheet.entity.ReverseItemId
+  (id->entity-m
+    ([this store]
+     (make-stored-entity this store))))
 
 ;;; Now that id->object has been implemented, we go back to the entity
 ;;; namespace and provide the definitions of these constants.

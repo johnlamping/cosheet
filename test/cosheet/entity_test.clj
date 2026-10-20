@@ -4,7 +4,8 @@
                       [reporter :refer [reporter-valid? set-attendee!
                                         reporter-value-or-invalid]]
                       [reporter-macros :refer [let-R]]
-                      [store :refer [add-link make-item-id get-new-object-id
+                      [store :refer [add-link make-item-id ->ItemId
+                                     get-new-object-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
                                      current-store
@@ -27,18 +28,16 @@
 
 ;;; This tests the internal function of entity-impl
 (deftest directed-item-id-test
-  (let [id (make-item-id "x")
+  (let [id (->ItemId 42)
         reversed-id (make-reverse-item-id id)]
     (is (= (store-item-id id) id))
     (is (not (reverse-id? id)))
     (is (= (store-item-id reversed-id) id))
     (is (reverse-id? reversed-id))
-    (is (reverse-item-id? reversed-id))
-    (is (not (reverse-item-id? id)))
-    (is (= (item-id-name id) "Id:Ix"))
-    (is (= (item-id-name reversed-id) "RId:Ix"))
-    (is (= (reverse-id id) reversed-id))
-    (is (= (reverse-id reversed-id) id))))
+    (is (= (item-id-name id) "Id:42"))
+    (is (= (item-id-name reversed-id) "RId:42"))
+    (is (= (flip-id-direction id) reversed-id))
+    (is (= (flip-id-direction reversed-id) id))))
 
 (deftest entity<->endpoint-test
   (let [[s id] (add-link (new-element-store) (make-item-id "a") "B")
@@ -71,7 +70,7 @@
     (is (= (content-endpoint item0)) nil)
     (is (not (reverse? item0)))
     (is (= (target-entity item0) nil))
-    (is (= (originating-entity item0) nil))
+    (is (= (subject-entity item0) nil))
     (is (= (containing-elements item0) nil))
     (is (= (label->elements item99 "foo") nil))
     (is (= (all-elements item99) nil))
@@ -150,16 +149,16 @@
     (is (= (target-entity (id->element ida s)) item99))
     (is (= (target-entity item-a-reversed) item99))
     (is (= (target-entity item-b-reversed) (id->element ida s)))
-    ;; For an element with :source orientation, originating-entity
+    ;; For an element with :source orientation, subject-entity
     ;; matches target-entity (the opposite of content is the target).
-    (is (= (originating-entity (id->element ida s)) item99))
-    ;; For an element with :target orientation, originating-entity
+    (is (= (subject-entity (id->element ida s)) item99))
+    ;; For an element with :target orientation, subject-entity
     ;; returns the source endpoint instead. ida's source is the
     ;; primitive 3.
-    (is (= (originating-entity item-a-reversed) 3))
+    (is (= (subject-entity item-a-reversed) 3))
     ;; idb's source is foo-oid, so its reversed element's
-    ;; originating-entity is foo-label.
-    (is (= (originating-entity item-b-reversed) foo-label))
+    ;; subject-entity is foo-label.
+    (is (= (subject-entity item-b-reversed) foo-label))
     (is (= (label->elements item99 foo-label) [(id->element ida s)]))
     (is (= (containing-elements item1) [(id->element idm s)]))
     (is (= (containing-elements item0) []))
@@ -192,6 +191,7 @@
     (is (= (content (id->element ida s)) 3))
     (is (= (content item-b) foo-label))
     (is (= (content item-a-reversed) item99))
+    (is (= (content item-b-reversed) item-a))
     (is (= (content->elements item99 4) [(id->element idc s)]))
     (is (= (content->elements item-a foo-label) [(id->element idb s)]))
     (is (= (content->elements item0 item1) [(id->element idm s)]))
@@ -207,8 +207,6 @@
       (is (thrown? java.lang.AssertionError
                    (label->content (id->object id99 sy) foo-label))))
     (is (= (content (id->element idc s)) 4))
-    (is (= (content item-a-reversed) item99))
-    (is (= (content item-b-reversed) item-a-reversed))
     (is (= (entity-key item-a) ida))
     (is (= (entity-key item-a-reversed) ida))
     (is (= (to-tree item99) item99))
@@ -288,10 +286,10 @@
     (is (= (current-value (target-entity item-a-reversed)) item99))
     (is (= (current-value (target-entity item-b-reversed))
            (id->element ida ms)))
-    (is (= (current-value (originating-entity (id->element ida ms)))
+    (is (= (current-value (subject-entity (id->element ida ms)))
            item99))
-    (is (= (current-value (originating-entity item-a-reversed)) 3))
-    (is (= (current-value (originating-entity item-b-reversed))
+    (is (= (current-value (subject-entity item-a-reversed)) 3))
+    (is (= (current-value (subject-entity item-b-reversed))
            (id->object foo-oid ms)))
     (is (= (current-value (containing-elements item1)) [(id->element idm ms)]))
     (is (= (current-value (containing-elements item0)) []))
@@ -775,7 +773,7 @@
     ;; presumed-interned object, the traversal must not loop back
     ;; through that object via a back-link from a descendant.
     ;; wrap-caller-data-with-repetition-avoidance-data invokes
-    ;; originating-entity on the element and pre-populates the seen
+    ;; subject-entity on the element and pre-populates the seen
     ;; map with that ancestor's key, so the back-link is dropped on
     ;; first encounter.
     (let [[s1 ia-id] (get-new-object-id (new-element-store))

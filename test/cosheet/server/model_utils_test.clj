@@ -1075,7 +1075,8 @@
                           ~(as-set
                             `(~'anything
                               (~(any) :order)
-                              ~(as-set `(~(any) :selector (~(any) :order)))
+                              ~(as-set `(~(any stored-entity?) :selector
+                                         (~(any) :order)))
                               :selector))
                           :column-headers))
                       :tab-topic

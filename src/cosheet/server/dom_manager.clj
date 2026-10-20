@@ -8,6 +8,7 @@
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [item-id? id->string string->id
                                      mutable-store?]]
+                      [entity :refer [DirectedItemId store-item-id]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
                                      with-latest-value
@@ -429,7 +430,7 @@
   "Turn a subpart of a :relative-id to its client form."
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
-        (item-id? id) (id->string id)
+        (satisfies? DirectedItemId id) (id->string (store-item-id id))
         true (assert false (str "unknown relative id subpart:"
                                 [(type id) id]))))
 

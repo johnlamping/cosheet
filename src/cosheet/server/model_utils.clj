@@ -18,7 +18,7 @@
                     id-identified-object?
                     element? label-element? name-element? id->entity
                     content all-elements forward-elements content-endpoint
-                    reverse?
+                    reverse? store-item-id
                     containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
@@ -175,7 +175,8 @@
   (let [item (id->entity id immutable-store)]
     (reduce remove-entity-by-id
             immutable-store
-            (map :item-id (semantic-elements item)))))
+            (map (fn [element] (store-item-id (:item-id element)))
+                 (semantic-elements item)))))
 
 (defn internal-semantic-to-tree
   "Make a tree form of the entity that includes only its semantic
@@ -705,7 +706,8 @@
                       store (source->ids store donor-id))]
     ;; Finally, remove the left-over elements in the donor.
     (reduce remove-entity-by-id store
-            (map :item-id (all-elements (in-different-store donor store))))))
+            (map (fn [element] (store-item-id (:item-id element)))
+                 (all-elements (in-different-store donor store))))))
 
 (def update-add-object-with-order-without-revisiting)
 
@@ -847,7 +849,8 @@
           (update-add-elements-with-order-without-revisiting
            store object-id templates-to-add order position seen)
           store (reduce remove-entity-by-id store
-                        (map :item-id elements-to-remove))]
+                        (map (fn [element] (store-item-id (:item-id element)))
+                             elements-to-remove))]
       [store object-id order seen])))
 
 (defn update-add-object-with-order-without-revisiting

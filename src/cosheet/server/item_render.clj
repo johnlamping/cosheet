@@ -2,7 +2,7 @@
   (:require
    (cosheet
     [canonical :refer [canonical-set-to-list canonicalize]]
-    [entity :refer [id->updating-entity-R
+    [entity :refer [id->updating-entity-R flip-id-direction
                     content label-element? primitive? object? element?
                     interned-object? universal-object?
                     label-object? name-element? target-entity
@@ -711,12 +711,13 @@
         object (content element)]
     (and (seq (label->elements object name-label))
          ;; The template and object might mention identified objects
-         ;; with the same id, but from different stores. That shouldn't
-         ;; count as a difference. We also exclude the element itself,
-         ;; which appears among the object's elements as a reversed link.
+         ;; with the same id, but from different stores. That
+         ;; shouldn't count as a difference. We also exclude the
+         ;; reverse of the element itself, which appears among the
+         ;; object's elements.
          (= (canonicalize
              (semantic-to-tree-excluding-elements
-              object #{(:item-id element)}))
+              object #{(flip-id-direction (:item-id element))}))
             (entity->canonical-semantic
              (all-presumed-interned-in-different-store template nil))))))
 
@@ -748,7 +749,8 @@
                contents
                (-> specification
                    (assoc :template (content template)
-                          :element-ids-to-exclude #{(:item-id element)})
+                          :element-ids-to-exclude
+                          #{(flip-id-direction (:item-id element))})
                    (into-attributes {:class "object"})))))))
 
 (defn render-element-content-DOM-R

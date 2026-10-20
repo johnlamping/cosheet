@@ -11,95 +11,97 @@
 ;;; An entity is either
 ;;;    a primitive
 ;;;    an object
-;;;    a link
+;;;    a link (not currently used)
 ;;;    an element
 
 ;;; Primitives, objects, and links have the same meaning as they do in
-;;; stores. But elements are a little different.  An element is a
-;;; property, qualifier, or relation of another entity, as seen from
-;;; that entity. There is no ordering among the elements of an entity.
+;;; stores. But elements are a little different. While an element can
+;;; be represented by a link in a store, the element is a property,
+;;; qualifier, or relation of another entity, as seen from that
+;;; entity. There is no inherent on ordering among the elements of an
+;;; entity.
 
-;;; Elements give a way of overlaying a hierarchical structure on
+;;; An element consists of:
+;;;   * a content, which is an entity.
+;;;   * a set of sub-elements.
+;;;   * a direction, either forward or reverse.
+;;;     The forward direction is the usual case. If a forward element
+;;;     is represented by a link in the store, the element's content
+;;;     is the link's source, and the element is a sub-element of the
+;;;     link's target. In other words, a forward element is what is
+;;;     seen from the perspective of the target. That also means that
+;;;     the target is not itelf part of the element; it's implicit
+;;;     from the perspective.
+;;;     A reverse element swaps the roles of the target and source
+;;;     endpoints.  This direction is only allowed if both endpoints
+;;;     are objectes. All other links con only represent elements in
+;;;     the forward direction.
+;;;     If an element is not represented by a link in the store, still
+;;;     has a direction, and if it is added to a store, the link that
+;;;     represents it will be oriented according to that direction.
+
+;;; Some uses of entities require making an entity that is not in the
+;;; store. For example, an entity could be a pattern to query for in
+;;; the store, or it could be a description of an entity that should
+;;; be added to the store. For these uses, there is a representation
+;;; of entities, called the tree form, that is largely independent of
+;;; stores.
+
+;;; Elements are normally accessed in terms of content, direction, and
+;;; sub-elements. But elements that are associated with stores also
+;;; support three other methods. The target-entity method takes an
+;;; element and returns the entity corresponding to the underlying
+;;; link's target, independent of the element's direction. The
+;;; subject-entity method returns the entity at the opposite
+;;; endpoint from the one holding the content. And the
+;;; containing-elements method takes an entity and returns the forward
+;;; elements that have it as its their content.
+
+;;; Sub-elements overlay a largely hierarchical structure on
 ;;; information in a store, or on information that might be stored
-;;; there. That makes them more convenient than just a bunch of
+;;; there. That makes elements more convenient than just a bunch of
 ;;; links. They give a convenient way to describe:
 ;;;    * What should be displayed in a cell.
 ;;;    * Information that should be added to entities in the store.
 ;;;    * Queries for searches over the store (to find entities matching
 ;;;      an element or containing matches to an element).
 
-;;; An element's description consists of
-;;;   * a content, which is an entity.
-;;;   * an orientation, either :source or :target, which indicates how the
-;;;     content is related to the element.
-;;;   * any sub-elements of the element.
-;;;     So each element determines a tree of its elements, their
-;;;     elements, etc.
-
-;;; In a store, an element is represented by a link, and the element's
-;;; orientation says which endpoint of the link holds the element's
-;;; content. The other endpoint is the entity that the element is
-;;; about, that is, where the element is seen from. That endpoint of
-;;; the link is the context of the element, and not considered to be
-;;; part of the element. For example, it's not included in the
-;;; element's description.
-
-;;; The store's restriction that the target can't be a primitive and
-;;; the source can't be a link restricts the possible elements. In
-;;; addition, a link can only be an element in both directions if both
-;;; its source and target are objects. In other words, only
-;;; relationships between objects are reversible. All other links only
-;;; represent elements where their source is the content.
-
-;;; This, in turn, means that the elements of an object correspond to
-;;; all links that have it as a target, plus all links that have it as
-;;; a source and that have an object as their target.
-
-;;; That still allows for circularity in the element
-;;; structure. Trivially, if two objects have a link between them,
-;;; there an element going each way. And cycles can be formed without
-;;; reversing links; there can be a link from object A to object B,
-;;; and another one from B to A. And there can be larger cycles, as
-;;; well. And the linkages can be more indirect, where object A has an
-;;; element with a sub-element with content object B, etc.
+;;; There can still be circularity in the element structure,
+;;; however. Trivially, if two objects have a link between them, there
+;;; an element going each way, one corresponding to the forward
+;;; direction, and one in the reverse direction. But cycles can also
+;;; be formed without reverse links; there can be a link from object A
+;;; to object B, and another one from B to A. And there can be larger
+;;; cycles, as well. Furthermore, cycles can go through elements, such
+;;; as where object A has an element with a sub-element with content
+;;; object B, and that has a link back to A.
 
 ;;; This means that any traversal of an entity structure has to avoid
 ;;; looping forever through circularities. And it should also avoid
-;;; re-processing objects that can be reached via multiple paths. The
-;;; repetition-avoiding-threaded-traverse function handles these cases in
-;;; a general enough way to meet most needs. It is built on the more
-;;; basic threaded-traverse function which threads user data through a
-;;; depth first traversal; that enables repeat avoidance, without
-;;; committing to a particular approach.
+;;; re-processing objects that are reachable through multiple
+;;; paths. The repetition-avoiding-threaded-traverse function handles
+;;; these cases in a general enough way to meet most needs. It is
+;;; built on the more basic threaded-traverse function, which threads
+;;; user data through a depth first traversal, and allows a user
+;;; provided funtion to request cutting a traversal path short.
 
-;;; Elements are normally accessed in terms of content, orientation,
-;;; and sub-elements. But elements that are associated with stores
-;;; also support three other methods. The target-entity method takes
-;;; an element and returns the entity corresponding to its target,
-;;; independent of its orientation. The originating-entity method
-;;; returns the entity at the opposite endpoint from the one holding
-;;; the content. And the containing-elements method takes an entity
-;;; and returns the elements that have it as its their content and
-;;; have orientation :source.
+;;; Any entity can be converted to tree form, by using a repetition
+;;; avoiding travers. The tree form of primitives is just the
+;;; primitive, since they are already independent of stores. The tree
+;;; form of elements gives their content, sub-elements, and direction.
 
-;;; Since some uses of entities require making an entity that is not
-;;; in the store. For example, it could be a pattern to query for in
-;;; the store, or it could be a description of an entity that should
-;;; be added to the store. For these uses, there is a representation
-;;; of entities, called the tree form, that is largely independent of
-;;; stores.
+;;; The tree form of mutable objects and named objects is their stored
+;;; form. That gives these objects an identity, independent of what
+;;; they may link to. In particular, one of these objects in a query
+;;; matches a stored object iff the two have the same id (independent
+;;; of which store they are in).
 
-;;; The tree form of primitives is just the primitive, since they are
-;;; already independent of stores. The tree form of mutable objects
-;;; and named objects is their normal element form. That provides the
-;;; support for the object methods, while also including their id. And
-;;; one of these objects in a query matches a subject object iff the
-;;; two have the same id (independent of which store they are in).
-
-;;; The tree form of anonymous objects needs to be able to express
-;;; circularity and sharing across multiple paths. So, even though a
-;;; tree form is a tree, a location in that tree needs a way to
-;;; reference objects elsewhere in the tree.
+;;; The tree form of anonymous objects, on the other hand, reflects
+;;; only what they link to; two anonymous objects with the same
+;;; linkage pattern have the same tree form. This form needs to be
+;;; able to express circularity and sharing across multiple paths. To
+;;; handle this, while keeping to a tree structure, a location in that
+;;; tree has a way to reference objects elsewhere in the tree.
 
 ;;; Anonymous objects that don't need to be referenced more than once
 ;;; don't have to worry about this, and have a tree form that includes
@@ -127,11 +129,11 @@
 ;;; a tree form built afresh from the new node would have all the
 ;;; necessary information.
 
-;;; Elements need to indicate which direction they are traversing a
-;;; link. The most general tree form of an element is
+;;; The representation of elements has short-cuts for common cases.
+;;; The most general tree form of an element is
 ;;;   ((content-endpoint content) element element ...)
-;;; where orientation is either :source or :target, to indicate which
-;;; endpoint holds the content.
+;;; where content-endpoint is either :source or :target, to indicate
+;;; which endpoint holds the content.
 
 ;;; But the most general form isn't always necessary. If an element
 ;;; has orientation :source, and its content is not a list, then one
@@ -182,6 +184,8 @@
   "A description of an item."
   (id->entity-m [this orientation store]
     "Return an entity corresponding to an item id.
+    If orientation is provided, the item argument must not be reversed;
+    it will get reversed if orientation is :target.
     Should only be called by Entity and its implementation"))
 
 (defprotocol Entity
@@ -263,23 +267,23 @@
   "A tag for stored entities. They must have unique item-ids."
 
   (target-entity [this]
-    "If the entity represents a link, return the entity corresponding to
-    its target. This is independent of the orientation of the
-    entity. If the target is a link, the resulting entity will be given
-    orientation :source.
+    "If the entity is an element, return the entity corresponding to the
+    underlying link's target. This is independent of the direction of
+    the entity. If the resulting entity is an element it will be given
+    a forward direction.
     Note: Registering for notification of changes to this element in a
     mutable store doesn't generate notifications of changes to the
     elements of the target entity. So this method should only be used
     by code that doesn't depend on changes to the target or that also
     registers for changes to it.")
 
-  (originating-entity [this]
-    "If the entity represents a link, return the entity corresponding
-    to the endpoint of the link opposite the entity's content. That is,
-    when the orientation is :source it is the target endpoint, and when
-    the orientation is :target it is the source endpoint. If the
-    opposite endpoint is a link, the resulting entity will be given
-    orientation :source.")
+  (subject-entity [this]
+    "If the entity is an element, return the entity that the element is
+    'about'.  That is, when the direction is forward it is the entity
+    described by the underlying link's target endpoint, while when the
+    direction is reverse it is the entity described by the source
+    endpoint. If the resulting entity is an element it will be given a
+    forward direction.")
 
   (containing-elements [this]
     "If the entity is an object, return all the elements that contain it
@@ -294,27 +298,23 @@
 
 (defn id->element 
   ([id store]
-   (id->element id :source store))
+   (assert (link-id? (store-item-id id)) id)
+   (id->entity-m id store))
   ([id orientation store]
-   (assert (link-id? id) id)
+   (assert (link-id? (store-item-id id)) id)
    (id->entity-m id orientation store)))
 
 (defn id->object [id store]
   (assert (object-id? id) id)
-  (id->entity-m id nil store))
+  (id->entity-m id store))
 
 (defn id->entity
   [id store]
-  (if (object-id? id)
-    (id->entity-m id nil store)
-    (id->entity-m id :source store)))
+  (id->entity-m id store))
 
 (defn id->updating-entity-R
-  ([id store]
-   (id->updating-entity-R id store (when (not (object-id? id)) :source)))
-  ([id store orientation]
-   (let [entity (id->entity-m id orientation store)]
-     (updating-immutable entity))))
+  [id store]
+  (updating-immutable (id->entity-m id store)))
 
 ;;; Utility functions that work on entities
 
@@ -539,56 +539,6 @@
   "Return true if the argument is a tree id."
   [x]
   (instance? TreeId x))
-
-(defprotocol DirectedItemId
-  "An ItemId or ReverseItemId, with the methods to determine whether the
-  item is to be seen in reverse, from its source rather than from its
-  target."
-
-  (store-item-id [this]
-    "The item id of the item in the store.")
-
-  (reverse-id? [this]
-    "True if the item is to be seen in reverse.")
-
-  (reverse-id [this]
-    "The id that sees the same item in the opposite direction.")
-
-  (item-id-name [this]
-    "A printable name for the id, indicating it is an id."))
-
-(defrecord
-    ^{:doc
-      "An item id that marks its item as being seen in reverse. This will
-       never appear in the store. Rather it represents a perspective
-       on an id that can be in the store."}
-    ReverseItemId
-    [item-id]
-
-  DirectedItemId
-  (store-item-id [this] item-id)
-  (reverse-id? [this] true)
-  (reverse-id [this] item-id)
-  (item-id-name [this] (str "RId:" (id->string item-id))))
-
-(extend-type cosheet.store.ItemId
-  DirectedItemId
-  (store-item-id [this] this)
-  (reverse-id? [this] false)
-  (reverse-id [this] (->ReverseItemId this))
-  (item-id-name [this] (str "Id:" (id->string this))))
-
-(defn make-reverse-item-id
-  "Make a directed item id that sees the item with the given id in
-  reverse."
-  [item-id]
-  (assert (item-id? item-id) item-id)
-  (->ReverseItemId item-id))
-
-(defn reverse-item-id?
-  "Return true if the argument is a reverse item id."
-  [x]
-  (instance? ReverseItemId x))
 
 (defn make-conflux-tree-object
   "Make a tree representation of an object that carries an id so that
@@ -923,7 +873,7 @@
   have its content already in seen and so will be dropped."
   [starting-entity user-data]
   (let [originating (when (stored-entity? starting-entity)
-                      (originating-entity starting-entity))
+                      (subject-entity starting-entity))
         seen (record-encounter {:next-number 1} originating)]
     [user-data seen]))
 

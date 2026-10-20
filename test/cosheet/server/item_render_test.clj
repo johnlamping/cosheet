@@ -5,7 +5,7 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-trees simplify-for-print]]
-             [entity :refer [id->element id->object
+             [entity :refer [id->element id->object flip-id-direction
                              name-label link-type object-type
                              make-tree-object uniquely-identified-object?
                              to-tree]]
@@ -533,7 +533,8 @@
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id
-                            :element-ids-to-exclude #{elem-id}
+                            :element-ids-to-exclude
+                            #{(flip-id-direction elem-id)}
                             :class "object"
                             :render-dom render-item-DOM-R
                             :get-action-data (default-AD)}]))))

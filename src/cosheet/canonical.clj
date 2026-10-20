@@ -3,7 +3,7 @@
    (cosheet
     [utils :refer [multiset multiset-diff multiset-sum multiset-conj]]
     [entity :refer [mutable-entity? primitive? object? element?
-                    content all-elements forward-elements content-endpoint
+                    content all-elements forward-elements entity-direction
                     in-different-store
                     make-tree-element presumed-interned-object?
                     conflux-tree-object? conflux-tree-object-id
@@ -37,7 +37,7 @@
 ;;;               The conflux-tree-object's id.
 ;;;               A multiset of the canonical descriptions of their elements.]
 ;;;           Other immutable elements: A triple of
-;;;              [Their orientation.
+;;;              [Their direction.
 ;;;               The canonical form of their content.
 ;;;               A multiset of the canonical descriptions of their elements.]
 
@@ -80,18 +80,16 @@
   [c]
   (and (vector? c) (#{:object :conflux-object} (first c))))
 
-(defn simplest-canonical
-  "Given an orientation, a canonical content and a multiset of canonical
+(defn simplest-canonical-element
+  "Given an direction, a canonical content and a multiset of canonical
   elements, return the most compact canonical representation."
-  [orientation canonical-content canonical-elements]
-  (cond (= canonical-content :object)
-        (do (assert (= orientation :source))
-            [:object canonical-elements])
-        (and (= orientation :source)
-             (empty? canonical-elements)
-             (primitive? canonical-content))
-        canonical-content
-        true [orientation canonical-content canonical-elements]))
+  [direction canonical-content canonical-elements]
+  (assert (not (#{:object :conflux-object} canonical-content)))
+  (if (and (= direction :forward)
+           (empty? canonical-elements)
+           (primitive? canonical-content))
+    canonical-content
+    [direction canonical-content canonical-elements]))
 
 (defn internal-canonicalize
   "Given a tree-form entity, return a canonical representation of it.
@@ -116,8 +114,8 @@
         true
         (do
           (assert (element? entity))
-          (simplest-canonical
-           (content-endpoint entity)
+          (simplest-canonical-element
+           (entity-direction entity)
            (internal-canonicalize (content entity))
            (multiset (map internal-canonicalize (forward-elements entity)))))))
 
@@ -151,22 +149,22 @@
                (canonical-set-to-list (nth entity 2))))
           :else
           (do (assert (= (count entity) 3))
-              (let [[orientation content elements] entity]
-                (make-tree-element orientation
+              (let [[direction content elements] entity]
+                (make-tree-element direction
                                    (canonical-to-tree content)
                                    (canonical-set-to-list elements)))))
     entity))
 
 (def common-canonical)
 
-(defn canonical-orientation-and-content
+(defn canonical-direction-and-content
   "Given a canonical representation of an element, return its
-  orientation and the canonical form of its content."
+  direction and the canonical form of its content."
   [r]
   (assert (not (canonical-tree-object? r)))
   (if (vector? r)
     [(first r) (second r)]
-    [:source r]))
+    [:forward r]))
 
 (defn canonical-elements-multiset
   [r]
@@ -192,17 +190,17 @@
   "clear the elements of a canonical representation of an element."
   [r]
   (if (vector? r)
-    (let [[orientation content elements] r]
+    (let [[direction content elements] r]
       (assert (= (count r) 3))
-      (assert (#{:source :target} (first r)))
-      (simplest-canonical orientation content {}))
+      (assert (#{:forward :reverse} direction))
+      (simplest-canonical-element direction content {}))
     r))
 
-(defn partition-by-orientation-and-content
+(defn partition-by-direction-and-content
   "Given a multiset of canonical representations of elements, partition
-  by content and orientation, and return a map from [orientation
+  by content and direction, and return a map from [direction
   content] to multiset of canonical representations with that
-  orientation and content. Plain tree-object content is normalized to
+  direction and content. Plain tree-object content is normalized to
   :object in the key (so elements with object content share a
   partition regardless of which object they hold); conflux-tree-object
   content is normalized to [:conflux-object id] (so references to the
@@ -210,8 +208,8 @@
   [m]
   (reduce
    (fn [accum [entity count]]
-     (let [[orientation content] (canonical-orientation-and-content entity)
-           key [orientation
+     (let [[direction content] (canonical-direction-and-content entity)
+           key [direction
                 (cond (not (canonical-tree-object? content)) content
                       (= (first content) :conflux-object)
                       [:conflux-object (second content)]
@@ -239,8 +237,8 @@
   ;;; which can be the number of parts it has, which can be easily
   ;;; computed from its multiset.
   [s1 s2]
-  (let [m1 (partition-by-orientation-and-content s1)
-        m2 (partition-by-orientation-and-content s2)
+  (let [m1 (partition-by-direction-and-content s1)
+        m2 (partition-by-direction-and-content s2)
         commons
         (keep
          (fn [[key entities1]]
@@ -260,8 +258,8 @@
                            (multiset-conj both common count)))))
                    (when (not (empty? both)) both)
                    (let [example (first (first (seq entities1)))
-                         [orientation content]
-                         (canonical-orientation-and-content example)]
+                         [direction content]
+                         (canonical-direction-and-content example)]
                      (if (canonical-tree-object? content)
                        ;; Within this partition the elements all have
                        ;; object content but the contents differ; the
@@ -270,10 +268,10 @@
                        ;; element with no sub-elements.
                        (let [other (first (first (seq entities2)))
                              [_ other-content]
-                             (canonical-orientation-and-content other)
+                             (canonical-direction-and-content other)
                              common (common-canonical content other-content)]
                          (multiset-conj
-                          {} (simplest-canonical orientation common {})))
+                          {} (simplest-canonical-element direction common {})))
                        (multiset-conj
                         {} (clear-canonical-elements example))))))))
          (seq m1))]
@@ -289,8 +287,8 @@
   conflux-objects with the same id, the result is a conflux-object
   with that same id; otherwise it is a plain object.
 
-  For two non-objects (primitives or elements), their orientations
-  and contents must match; if so, the result has that orientation and
+  For two non-objects (primitives or elements), their directions
+  and contents must match; if so, the result has that direction and
   content, with elements that are the commonality of the two
   arguments' elements."
   [c1 c2]
@@ -308,21 +306,22 @@
             [:conflux-object (second c1) common-elements]
             [:object common-elements]))
         ;; Both are non-objects.
-        (let [[orientation1 content1] (canonical-orientation-and-content c1)
-              [orientation2 content2] (canonical-orientation-and-content c2)
+        (let [[direction1 content1] (canonical-direction-and-content c1)
+              [direction2 content2] (canonical-direction-and-content c2)
               [contents-match common-content]
               (if (and (canonical-tree-object? content1)
                        (canonical-tree-object? content2))
                 ;; Objects always have objectness in common.
                 [true (common-canonical content1 content2)]
                 [(= content1 content2) content1])]
-          (when (and (= orientation1 orientation2) contents-match)
+          (when (and (= direction1 direction2) contents-match)
             (if (and (sequential? c1) (sequential? c2))
               (let [common-elements (common-canonical-multiset
                                      (canonical-elements-multiset c1)
                                      (canonical-elements-multiset c2))]
-                (simplest-canonical orientation1 common-content common-elements))
-              (simplest-canonical orientation1 common-content {}))))))))
+                (simplest-canonical-element
+                 direction1 common-content common-elements))
+              (simplest-canonical-element direction1 common-content {}))))))))
 
 (defn canonical-extended-by?
   "Return true if every part of c1 has a corresponding part in c2.
@@ -345,11 +344,11 @@
                                  (canonical-elements-multiset c2))]
             (= common-elements (canonical-elements-multiset c1))))
         ;; Both are non-objects (primitives or elements).
-        (let [[orientation1 content1] (canonical-orientation-and-content c1)
-              [orientation2 content2] (canonical-orientation-and-content c2)]
+        (let [[direction1 content1] (canonical-direction-and-content c1)
+              [direction2 content2] (canonical-direction-and-content c2)]
           (when (and (or (nil? content1)
                          (= content1 content2))
-                     (= orientation1 orientation2))
+                     (= direction1 direction2))
             (or (not (sequential? c1))
                 (and (sequential? c2)
                      (let [common-elements (common-canonical-multiset
@@ -371,9 +370,9 @@
                   (= (first c2) :conflux-object)
                   (not= (second c1) (second c2))))
         ;; Both are non-objects.
-        (let [[orientation1 content1] (canonical-orientation-and-content c1)
-              [orientation2 content2] (canonical-orientation-and-content c2)]
+        (let [[direction1 content1] (canonical-direction-and-content c1)
+              [direction2 content2] (canonical-direction-and-content c2)]
           (and (or (nil? content1)
                    (nil? content2)
                    (= content1 content2))
-               (= orientation1 orientation2)))))))
+               (= direction1 direction2)))))))

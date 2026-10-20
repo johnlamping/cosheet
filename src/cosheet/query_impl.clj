@@ -5,6 +5,7 @@
                                       stored-entity?
                                       id->entity entity-key
                                       content-endpoint reverse?
+                                      entity-direction
                                       content all-elements
                                       make-tree-element make-tree-object
                                       label->elements
@@ -301,7 +302,7 @@
                    elements-exact]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
-                    [(make-tree-element (content-endpoint as-list)
+                    [(make-tree-element (entity-direction as-list)
                                         converted-content
                                         converted-kept-elements)
                      (combine-template-exactness content-exact

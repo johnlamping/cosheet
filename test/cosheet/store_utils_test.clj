@@ -26,7 +26,7 @@
         [s2 id1] (add-object s1 (make-tree-object '("Hello")))
         ;; A reversed link. "Fred" is the source.
         [s3 id2] (add-element s2 "Fred" (make-tree-element
-                                         :target
+                                         :reverse
                                          (id->object id1 s2)
                                          `((~(link-type-object "by")))))
         [s4 id3] (add-element s3 id `(~(make-tree-object '(1)) 3))

@@ -32,20 +32,20 @@
 
 (deftest canonicalize-test
   (is (check (canonicalize joe-list)
-             '[:source
+             '[:forward
                "joe"
                {"male" 1
                 "married" 1
-                [:source 39 {[:source "age" {tag 1}] 1
-                             [:source "doubtful" {"confidence" 1}] 1}] 1
-                [:source 45 {[:source "age" {tag 1}] 1}] 1}]))
+                [:forward 39 {[:forward "age" {tag 1}] 1
+                             [:forward "doubtful" {"confidence" 1}] 1}] 1
+                [:forward 45 {[:forward "age" {tag 1}] 1}] 1}]))
   (is (check (canonicalize joe-anonymous-object)
              '[:object
                {"male" 1
                 "married" 1
-                [:source 39 {[:source "age" {tag 1}] 1
-                             [:source "doubtful" {"confidence" 1}] 1}] 1
-                [:source 45 {[:source "age" {tag 1}] 1}] 1}]))
+                [:forward 39 {[:forward "age" {tag 1}] 1
+                             [:forward "doubtful" {"confidence" 1}] 1}] 1
+                [:forward 45 {[:forward "age" {tag 1}] 1}] 1}]))
     (is (= (canonicalize joe-named-object)
            (in-different-store joe-named-object nil))))
 
@@ -88,9 +88,9 @@
          (canonicalize `("Jeanette" "plain" "plain"))))
   (is (= (update-canonical-content (canonicalize "Jane") "Jeanette")
          (canonicalize "Jeanette")))
-  (is (= (update-canonical-content (canonicalize '((:target [:object "Jane"])))
+  (is (= (update-canonical-content (canonicalize '((:reverse [:object "Jane"])))
                                    (canonicalize [:object "Jeanette"]))
-         (canonicalize '((:target [:object "Jeanette"])))))
+         (canonicalize '((:reverse [:object "Jeanette"])))))
   (is (= (update-canonical-content (canonicalize joe-anonymous-object)
                                    "Jeanette")
          (canonicalize  joe-anonymous-object))))
@@ -112,14 +112,14 @@
                            (canonicalize joe-anonymous-object))
          (canonicalize joe-anonymous-object)))
   (is (= (common-canonical (canonicalize "joe")
-                           (canonicalize '((:source "joe"))))
+                           (canonicalize '((:forward "joe"))))
          (canonicalize "joe")))
   (is (= (common-canonical (canonicalize "joe")
-                           (canonicalize '((:target [:object "joe"]))))
+                           (canonicalize '((:reverse [:object "joe"]))))
          nil))
-  (is (= (common-canonical (canonicalize '((:target [:object "joe"])))
-                           (canonicalize '((:target [:object "joe"]))))
-         (canonicalize '((:target [:object "joe"])))))
+  (is (= (common-canonical (canonicalize '((:reverse [:object "joe"])))
+                           (canonicalize '((:reverse [:object "joe"]))))
+         (canonicalize '((:reverse [:object "joe"])))))
   (is (= (common-canonical (canonicalize "joe") (canonicalize "jane")) nil))
   (is (= (common-canonical (canonicalize "joe") (canonicalize '("joe" "name")))
          (canonicalize "joe")))
@@ -178,7 +178,7 @@
          [:object {"x" 1}]))
   ;; An object and an element are not commensurable.
   (is (= (common-canonical [:object {"x" 1}]
-                           [:source "joe" {"x" 1}])
+                           [:forward "joe" {"x" 1}])
          nil))
   (is (= (common-canonical [:conflux-object (make-tree-id 1) {"x" 1}]
                            "joe")
@@ -211,15 +211,16 @@
        (canonicalize '("joe" "b" ("name" "c" "e") ("name" "c")))))
   (is (not (canonical-extended-by?
             (canonicalize
-             [:object "joe" '((:target [:object "name"]) "e" "c") '("name" "c") "b"])
+             [:object "joe" '((:reverse [:object "name"]) "e" "c") '("name" "c") "b"])
             (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c"))))))
   (is (canonical-extended-by?
        (canonicalize
-        [:object "joe" '((:target [:object "name"]) "e" "c") '("name" "c") "b"])
+        [:object "joe" '((:reverse [:object "name"]) "e" "c") '("name" "c")
+         "b"])
        (canonicalize
-        [:object "joe" "a" "b" '((:target [:object "name"]) "c" "e") '("name" "c")])))
+        [:object "joe" "a" "b" '((:reverse [:object "name"]) "c" "e") '("name" "c")])))
   (is (canonical-extended-by?
-       (canonicalize '("joe" ((:source "name") "e" "c") ("name" "c") "b"))
+       (canonicalize '("joe" ((:forward "name") "e" "c") ("name" "c") "b"))
        (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c")))))
   (is (not (canonical-extended-by?
             (canonicalize '("joe" "a" "b" ("name" "c" "e") ("name" "c")))
@@ -265,7 +266,7 @@
             [:conflux-object (make-tree-id 2) {"x" 1}])))
   ;; Object vs non-object: not commensurable.
   (is (not (canonical-extended-by? [:object {"x" 1}]
-                                   [:source "joe" {"x" 1}])))
+                                   [:forward "joe" {"x" 1}])))
   (is (not (canonical-extended-by? "joe"
                                    [:object {}]))))
 
@@ -273,9 +274,9 @@
   (is (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
                                           (canonicalize '("joe" "b"))))
   (is (not (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
-                                               (canonicalize '((:target [:object "joe"]) "b")))))
-  (is (canonical-have-common-elaboration? (canonicalize '((:target [:object "joe"]) "a"))
-                                          (canonicalize '((:target [:object "joe"]) "b"))))
+                                               (canonicalize '((:reverse [:object "joe"]) "b")))))
+  (is (canonical-have-common-elaboration? (canonicalize '((:reverse [:object "joe"]) "a"))
+                                          (canonicalize '((:reverse [:object "joe"]) "b"))))
   (is (canonical-have-common-elaboration? (canonicalize '(nil "a"))
                                           (canonicalize '("joe" "b"))))
   (is (canonical-have-common-elaboration? (canonicalize '("joe" "a"))
@@ -300,5 +301,5 @@
             [:conflux-object (make-tree-id 2) {"y" 1}])))
   ;; Object vs non-object: not commensurable.
   (is (not (canonical-have-common-elaboration? [:object {"x" 1}]
-                                               [:source "joe" {"x" 1}])))
+                                               [:forward "joe" {"x" 1}])))
   (is (not (canonical-have-common-elaboration? "joe" [:object {}]))))

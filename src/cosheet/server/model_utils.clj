@@ -17,7 +17,7 @@
                     uniquely-identified-object? interned-object?
                     id-identified-object?
                     element? label-element? name-element? id->entity
-                    content all-elements forward-elements content-endpoint
+                    content all-elements forward-elements entity-direction
                     reverse? store-item-id
                     containing-elements
                     link-type object-type name-label
@@ -196,7 +196,7 @@
                   
                   (element? e)
                   [(make-tree-element
-                    (content-endpoint e) (content e) (elements-fn e))
+                    (entity-direction e) (content e) (elements-fn e))
                    conflux-seen]
                   
                   :else
@@ -464,7 +464,7 @@
                       (and (nil? c) require-orders)
                       (concat ['(nil :order)]))]
                 [(make-tree-element
-                  (content-endpoint original) c new-elements)
+                  (entity-direction original) c new-elements)
                  conflux-map])
 
               (presumed-interned-object? original)

@@ -783,8 +783,8 @@
               :hierarchy
               [{:cosheet.server.hierarchy/hierarchy-node true
                 :leaves (any)
-                :properties {[:source (id->object single-oid nil) {}] 1}
-                :cumulative-properties {[:source (id->object single-oid nil)
+                :properties {[:forward (id->object single-oid nil) {}] 1}
+                :cumulative-properties {[:forward (id->object single-oid nil)
                                                 {}] 1}}
                (any) (any) (any) (any)]
               :render-dom render-table-header-DOM

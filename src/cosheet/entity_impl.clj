@@ -14,24 +14,17 @@
 
 (defn endpoint->entity
   "Given any value of an endpoint from a store, the store, and an
-  optional orientation, return the described entity.  The orientation
-  is ignored for anything but link values."
+  optional direction, :forward or :reverse, return the described
+  entity. The direction is ignored for anything but link values."
   ([value store]
-   (endpoint->entity value store :source))
-  ([value store orientation]
+   (endpoint->entity value store :forward))
+  ([value store direction]
    (if (item-id? value)
      (if (object-id? value)
        (id->object value store)
-       (id->element value orientation store))
+       (id->element value direction store))
      ;; The value must be a primitive.
      value)))
-
-(defn- internal-content-endpoint
-  "The content endpoint of an entity whose item-id is a directed id: nil
-  for an object, :target if it has reverse direction, else :source."
-  [entity]
-  (when (element? entity)
-    (if (reverse? entity) :target :source)))
 
 (defrecord
     ^{:doc
@@ -66,7 +59,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] (internal-content-endpoint this))
   (reverse? [this] (reverse-id? item-id))
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -108,8 +100,7 @@
                       (:store store-or-entity))]
       (when (and (nil? new-store) (object? this))
         (assert (uniquely-identified-object? this) this))
-      (id->entity-m (store-item-id item-id) (content-endpoint this)
-                    new-store)))
+      (id->entity-m item-id new-store)))
   
   Entity
 
@@ -135,13 +126,11 @@
       (when (object-id? underlying-item-id)
         (seq (->> (source->ids store underlying-item-id)
                   (filter #(object-id? (id->target store %)))
-                  (map #(id->element % :target store)))))))
+                  (map #(id->element % :reverse store)))))))
 
   (all-elements [this]
     (seq (concat (forward-elements this)
                  (reverse-elements this))))
-
-  (content-endpoint [this] (internal-content-endpoint this))
   (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]
@@ -154,7 +143,7 @@
              (concat
               (->> (target-source->ids
                     store content-key underlying-item-id)
-                   (map #(id->element % :target store))))))))
+                   (map #(id->element % :reverse store))))))))
 
   (label->elements [this label]
     (let [underlying-item-id (store-item-id item-id)
@@ -166,7 +155,7 @@
              (concat (->> (source-label->ids
                            store underlying-item-id label-key)
                           (filter #(object-id? (id->target store %)))
-                          (map #(id->element % :target store))))))))
+                          (map #(id->element % :reverse store))))))))
 
   (entity-key [this]
     (store-item-id item-id))
@@ -213,8 +202,7 @@
         (assert (uniquely-identified-object?
                  (in-different-store this (current-store store)))
                 this))
-      (id->entity-m (store-item-id item-id) (content-endpoint this)
-                    new-store)))
+      (id->entity-m item-id new-store)))
 
   Entity
 
@@ -229,7 +217,7 @@
       (when (not (object-id? underlying-item-id))
         (if (reverse? this)
           (let-R [content (id->target store underlying-item-id)]
-            (endpoint->entity content store :target))
+            (endpoint->entity content store :reverse))
           (let-R [content (id->source store underlying-item-id)]
             (endpoint->entity content store))))))
 
@@ -247,7 +235,7 @@
                     (keep (fn [[element-id target]]
                             (when (object-id? target)
                               element-id)))
-                    (map #(id->element % :target store))))))))
+                    (map #(id->element % :reverse store))))))))
 
   (all-elements [this]
     (let-R [forward-elements (forward-elements this)]
@@ -255,8 +243,6 @@
         (let-R [reverse-elements (reverse-elements this)]
           (seq (concat forward-elements reverse-elements)))
         forward-elements)))
-
-  (content-endpoint [this] (internal-content-endpoint this))
   (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]
@@ -273,7 +259,7 @@
         (seq (concat (for [element-id element-ids]
                        (id->element element-id store))
                      (for [element-id reverse-element-ids]
-                       (id->element element-id :target store)))))))
+                       (id->element element-id :reverse store)))))))
 
   (label->elements [this label]
     (let [underlying-item-id (store-item-id item-id)
@@ -292,7 +278,7 @@
                         (keep (fn [[element-id target]]
                                 (when (object-id? target)
                                   element-id)))
-                        (map #(id->element % :target store))))))
+                        (map #(id->element % :reverse store))))))
             forward-elements)))))
 
   (entity-key [this]
@@ -312,7 +298,7 @@
          (= (entity-key e1) (entity-key e2)))))
 
 ;;; Make a list work as an element. The format is either
-;;;  ((content orientation) element element...)
+;;;  ((direction content) element element...)
 ;;;  (content element element...)
 ;;;
 ;;; We extend ISeq, because, for example, while '(1 2) is a
@@ -330,7 +316,7 @@
 
   (content [this]
     (let [f (first this)]
-      (if (and (seq? f) (#{:source :target :either} (first f)))
+      (if (and (seq? f) (#{:forward :reverse} (first f)))
         (second f)
         f)))
 
@@ -341,12 +327,9 @@
 
   (all-elements [this] (seq (rest this)))
 
-  (content-endpoint [this]
+  (reverse? [this]
     (let [f (first this)]
-      (if (and (seq? f) (#{:source :target :either} (first f)))
-        (first f)
-        :source)))
-  (reverse? [this] (= (content-endpoint this) :target))
+      (and (seq? f) (= (first f) :reverse))))
 
   (content->elements [this content-value]
     (seq (filter #(equivalent-entities? content-value (content %))
@@ -395,8 +378,6 @@
     (seq (case (first this)
            :object (rest this)
            :conflux-object (nthrest this 2))))
-
-  (content-endpoint [this] nil)
   (reverse? [this] false)
 
   (content->elements [this content-value]
@@ -428,7 +409,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -444,7 +424,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -460,7 +439,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -476,7 +454,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -492,7 +469,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -508,7 +484,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -524,7 +499,6 @@
   (forward-elements [this] nil)
   (reverse-elements [this] nil)
   (all-elements [this] nil)
-  (content-endpoint [this] :source)
   (reverse? [this] false)
   (content->elements [this content-value] nil)
   (label->elements [this label] nil)
@@ -545,10 +519,10 @@
   (id->entity-m
     ([this store]
      (make-stored-entity this store))
-    ([this orientation store]
-     (assert (or (nil? orientation) (#{:source :target} orientation)))
+    ([this direction store]
+     (assert (or (nil? direction) (#{:forward :reverse} direction)))
      (make-stored-entity
-      (cond-> this (= orientation :target) flip-id-direction)
+      (cond-> this (= direction :reverse) flip-id-direction)
       store)))
   cosheet.entity.ReverseItemId
   (id->entity-m

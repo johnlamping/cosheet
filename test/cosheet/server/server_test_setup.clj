@@ -7,7 +7,7 @@
              [task-queue :refer [make-priority-task-queue]]
              [store :refer [new-element-store new-mutable-store
                             add-link get-new-object-id]]
-             [entity :refer [content all-elements content-endpoint
+             [entity :refer [content all-elements entity-direction
                              element? object? tree-object? interned-object?
                              make-tree-element make-tree-object-copying-id
                              tree-entity?]]
@@ -55,7 +55,7 @@
                                     contents remainder)
                                    [contents remainder])
             [before after] (split remainder :after)]
-        [(make-tree-element (content-endpoint entity)
+        [(make-tree-element (entity-direction entity)
                             contents
                             (concat elements [`(~before :order)]))
          after])

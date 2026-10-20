@@ -528,36 +528,37 @@
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->object (make-object-id "object") nil) nil))
+                 :reverse (id->object (make-object-id "object") nil) nil))
                [1 [(make-link-id 1)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target (id->object (make-object-id "object") nil) '("Foo")))
+                 :reverse (id->object (make-object-id "object") nil) '("Foo")))
                [1 [(make-link-id 1)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target foo-object nil))
+                 :reverse foo-object nil))
                [2 (as-set [(make-link-id 7) (make-link-id 71)]) true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target foo-object `((~(id->object name-label-id nil)))))
+                 :reverse foo-object `((~(id->object name-label-id nil)))))
                [2 [(make-link-id 71)] true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target foo-object '(5)))
+                 :reverse foo-object '(5)))
                [1 () true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store
                 (make-tree-element
-                 :target foo-object nil))
+                 :reverse foo-object nil))
                [2 (as-set [(make-link-id 7) (make-link-id 71)]) true]))
     (is (check (candidate-matching-ids-and-estimate
                 test-store (make-tree-element
-                            :target (id->object (make-object-id -999) nil) nil))
+                            :reverse (id->object (make-object-id -999) nil)
+                            nil))
                [0 () true]))
     (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
     (is (check (candidate-matching-ids test-store nil)
@@ -616,7 +617,7 @@
                 false]))
     (is (check (candidate-matching-ids
                 test-store (make-tree-object
-                            `(~(make-tree-element :target nil nil))))
+                            `(~(make-tree-element :reverse nil nil))))
                [(as-set [(make-object-id "name")
                          (make-object-id "link-type")
                          foo-oid
@@ -624,7 +625,7 @@
                 false]))
     (is (check (candidate-matching-ids
                 test-store (make-tree-object
-                            `((nil) ~(make-tree-element :target nil nil))))
+                            `((nil) ~(make-tree-element :reverse nil nil))))
                [(as-set [foo-oid bar-oid])
                 false]))
     (is (check (candidate-matching-ids

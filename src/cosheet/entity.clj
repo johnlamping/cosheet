@@ -131,12 +131,11 @@
 
 ;;; The representation of elements has short-cuts for common cases.
 ;;; The most general tree form of an element is
-;;;   ((content-endpoint content) element element ...)
-;;; where content-endpoint is either :source or :target, to indicate
-;;; which endpoint holds the content.
+;;;   ((direction content) element element ...)
+;;; where direction is either :forward or :reverse.
 
 ;;; But the most general form isn't always necessary. If an element
-;;; has orientation :source, and its content is not a list, then one
+;;; has direction forward, and its content is not a list, then one
 ;;; of two simplified forms is possible.
 ;;;    * If its content is a primitive and it has no sub-elements of
 ;;;      its own, then its tree form is just its content.
@@ -150,10 +149,10 @@
 ;;; nothing but a primitive content is just that content. So
 ;;; converting to tree form can change an entity from an element to a
 ;;; primitive.  To reduce the problems from that, primitives return
-;;; the same answers to content, orientation, and elememts as would an
+;;; the same answers to content, direction, and elememts as would an
 ;;; element consisting of just that primitive as its content. That is,
-;;; they return themselves for their content, :souce for their
-;;; orientation, nil for their elements.
+;;; they return themselves for their content, false for reverse? and
+;;; nil for their elements.
 
 ;;; We can't use the same trick for the tree form of an element
 ;;; consisting of nothing but an object, because objects are defined
@@ -228,10 +227,11 @@
 
 (defprotocol ToStoredEntity
   "A description of an item."
-  (id->entity-m [this store] [this orientation store]
+  (id->entity-m [this store] [this direction store]
     "Return an entity corresponding to an item id, including its direction.
-    If orientation is provided, the item argument must not be reversed;
-    it will get reversed if orientation is :target.
+    If direction is provided, it must be :forward, :reverse, or nil, and
+    the id argument must not be reversed; it will get reversed if
+    direction is :reverse.
     Should only be called by Entity and its implementation"))
 
 (defprotocol Entity
@@ -273,10 +273,6 @@
   (all-elements [this]
     "Return a seq of items for all our elements, including reversed links
     between objects.")
-
-  (content-endpoint [this]
-    "The endpoint of the link that holds an element entity's content,
-    :source or :target.")
 
   (reverse? [this]
     "True if this is an element viewed from the opposite of the usual
@@ -331,7 +327,7 @@
 
   (containing-elements [this]
     "If the entity is an object, return all the elements that contain it
-    and have orientation :source.")
+    and are not reverse")
 
   (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,
@@ -344,9 +340,9 @@
   ([id store]
    (assert (link-id? (store-item-id id)) id)
    (id->entity-m id store))
-  ([id orientation store]
+  ([id direction store]
    (assert (link-id? (store-item-id id)) id)
-   (id->entity-m id orientation store)))
+   (id->entity-m id direction store)))
 
 (defn id->object [id store]
   (assert (object-id? id) id)
@@ -522,11 +518,30 @@
     (or (keyword? content)
         (label-object? content))))
 
+(defn entity-direction
+  "The direction of an entity: :reverse if it is an element whose
+  content is at the target of its link, :forward for any other
+  non-object, and nil for an object."
+  [entity]
+  (cond (object? entity) nil
+        (reverse? entity) :reverse
+        true :forward))
+
+(defn content-endpoint
+  "The endpoint of the link that holds an entity's content: :target if
+  it is an element seen in reverse, :source for any other non-object,
+  and nil for an object."
+  [entity]
+  (cond (object? entity) nil
+        (reverse? entity) :target
+        true :source))
+
 (defn make-tree-element
   "Make the tree representation of the described entity, simplifying it
   as much as possible without leaving ambiguities. This can turn
-  elements into primitives."
-  [element-orientation content elements]
+  elements into primitives. The element-direction must be :forward,
+  :reverse, or nil."
+  [element-direction content elements]
   ;; Validate the constraints on our object and elements
   (assert (or (not (element? content))
               ;; TODO: !!! For now, special forms are elements.
@@ -534,7 +549,7 @@
               (= (keyword? (first content)))))
   ;; A reverse element must have an object as its target, which is its
   ;; content. We also allow nil, to describe a target that is any object.
-  (assert (or (not= element-orientation :target)
+  (assert (or (not= element-direction :reverse)
               (nil? content)
               (object? content))
           content)
@@ -542,12 +557,12 @@
   (assert (not-any? #(or (object? %)
                          (reverse? %))
                     elements))
-  (assert (or (nil? element-orientation)
-              (#{:source :target} element-orientation)))
-  ;; We leave off the orientation if we can.
+  (assert (or (nil? element-direction)
+              (#{:forward :reverse} element-direction)))
+  ;; We leave off the direction if we can.
   (if (or (seq? content)
-          (not= element-orientation :source))
-    (cons (list element-orientation content) elements)
+          (not= element-direction :forward))
+    (cons (list element-direction content) elements)
     (if (and (primitive? content)
              (empty? elements))
       content
@@ -640,13 +655,13 @@
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
-          (make-tree-element (content-endpoint entity)
+          (make-tree-element (entity-direction entity)
                              (content entity)
                              (concat (forward-elements entity) elements-to-add))
           (object? entity)
           (make-tree-object-copying-id
            entity (concat (all-elements entity) elements-to-add))
-          :else (make-tree-element :source entity elements-to-add))))
+          :else (make-tree-element :forward entity elements-to-add))))
 
 (defn map-subparts
   "Run the function on each subpart of the entity, and reassemble the
@@ -658,7 +673,7 @@
   be removed."
   [f entity]
   (cond (element? entity)
-        (make-tree-element (content-endpoint entity)
+        (make-tree-element (entity-direction entity)
                            (f (content entity))
                            (keep f (forward-elements entity)))
         (and (object? entity) (not (presumed-interned-object? entity)))
@@ -732,7 +747,7 @@
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (let [assembled (make-tree-element (content-endpoint entity)
+                    (let [assembled (make-tree-element (entity-direction entity)
                                                        new-content
                                                        new-elements)]
                       (post-fn original-entity assembled

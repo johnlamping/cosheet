@@ -39,17 +39,17 @@
 ;;; All special forms can have sub-queries. These are encoded by
 ;;; elements with a label of ::sub-query. But they need to be able to
 ;;; encode primitives, objects, or elements. And for elements, they
-;;; need to be able to encode either orientation. These cases are
+;;; need to be able to encode either direction. These cases are
 ;;; indicated by a few additional labels on the sub-query.
 ;;;   * If the sub-query is a primitive or an object, it is
 ;;;     represented by an element with the sub-query as its content
 ;;;     and with the ::content and :sub-query keywords.
 ;;;   * Otherwise, the sub-query is an element.
-;;;       * If it has orientation :source, it is represented by
+;;;       * If it is a forward element, it is represented by
 ;;;         itself, plus the ::sub-query keyword.
-;;;       * if it has orientation :target, it is represented by the
-;;;         equivalent element, but with orientation :source, plus the
-;;;         keywords ::reversed and ::sub-query.
+;;;       * if it is a reverse element, it is represented by the
+;;;         equivalent forward element, plus the keywords
+;;;         ::flipped and ::sub-query.
 
 ;;; A variable can match anything, and the entity it matches is recorded.
 ;;;   (::special-form (:variable ::type)
@@ -139,12 +139,12 @@
   "Encode a sub-query as an element, as described above."
   [sub-query]
   (concat (if (or (primitive? sub-query) (object? sub-query))
-            (make-tree-element :source sub-query '(::content))
+            (make-tree-element :forward sub-query '(::content))
             (if (reverse? sub-query)
-              (make-tree-element :source
+              (make-tree-element :forward
                                  (content sub-query)
                                  (concat (all-elements sub-query)
-                                         '(::reversed)))
+                                         '(::flipped)))
               sub-query))
           '(::sub-query)))
 
@@ -154,10 +154,10 @@
   (when encoded
     (if (some #(= ::content %) (forward-elements encoded))
       (content encoded)
-      (let [cleaned (remove #{::sub-query ::first ::second ::reversed}
+      (let [cleaned (remove #{::sub-query ::first ::second ::flipped}
                             encoded)]
-        (if (some #(= ::reversed %) (forward-elements encoded))
-          (make-tree-element :target (content cleaned)
+        (if (some #(= ::flipped %) (forward-elements encoded))
+          (make-tree-element :reverse (content cleaned)
                              (forward-elements cleaned))
           cleaned)))))
 

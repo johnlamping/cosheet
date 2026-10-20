@@ -371,8 +371,7 @@
   by their labels and it takes doms for all its child nodes. It makes
   the dom for the leaves, and assembles that with the child doms. The
   specification must give orientation in which to lay out the
-  contained elements. (That is totally different from the orientation
-  of an element, which is either :source or :target)."
+  contained elements."
   [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
   (assert (empty? (:element-ids-to-exclude specification)) specification)

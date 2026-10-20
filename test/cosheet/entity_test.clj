@@ -42,7 +42,7 @@
 (deftest entity<->endpoint-test
   (let [[s id] (add-link (new-element-store) (make-item-id "a") "B")
         item (id->element id s)
-        reversed-item (id->element id :target s)]
+        reversed-item (id->element id :reverse s)]
     (is (= (entity-impl/endpoint->entity 2 s) 2))
     (is (= (entity-impl/endpoint->entity :foo s) :foo))
     (is (= (entity-impl/endpoint->entity 'foo s) 'foo))
@@ -50,7 +50,7 @@
            orderable/initial))
     (is (= (entity-impl/endpoint->entity "1" s) "1"))
     (is (= (entity-impl/endpoint->entity id s) item))
-    (is (= (entity-impl/endpoint->entity id s :target) reversed-item))))
+    (is (= (entity-impl/endpoint->entity id s :reverse) reversed-item))))
 
 (deftest id-only-item-test
   (let [[sa id0] (get-new-object-id (new-element-store))
@@ -126,8 +126,8 @@
         item-a (id->element ida s)
         item-b (id->element idb s)
         item-m (id->element idm s)
-        item-a-reversed (id->element ida :target s)
-        item-b-reversed (id->element idb :target s)]
+        item-a-reversed (id->element ida :reverse s)
+        item-b-reversed (id->element idb :reverse s)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (primitive? item0)))
@@ -169,7 +169,7 @@
     (is (= (label->elements item0 rel-label)
            [(id->element idm s)]))
     (is (= (label->elements item1 rel-label)
-           [(id->element idm :target s)]))
+           [(id->element idm :reverse s)]))
     (is (= (set (all-elements item99))
            #{(id->element ida s)
              (id->element idc s)
@@ -195,7 +195,7 @@
     (is (= (content->elements item99 4) [(id->element idc s)]))
     (is (= (content->elements item-a foo-label) [(id->element idb s)]))
     (is (= (content->elements item0 item1) [(id->element idm s)]))
-    (is (= (content->elements item1 item0) [(id->element idm :target s)]))
+    (is (= (content->elements item1 item0) [(id->element idm :reverse s)]))
     (is (= (label->element item99 foo-label) (id->element ida s)))
     (is (= (label->element item99 "bletch") nil))
     (is (= (label->content item99 foo-label) 3))
@@ -217,18 +217,18 @@
                (as-set [(id->element idl s)
                         (id->element idm s)])))
     (is (check (all-elements item1)
-               (as-set [(id->element idm :target s)])))
+               (as-set [(id->element idm :reverse s)])))
     (is (= (forward-elements item1)
            nil))
     (is (check (reverse-elements item1)
-               (as-set [(id->element idm :target s)])))
+               (as-set [(id->element idm :reverse s)])))
     (is (check (to-tree item1) item1))
-    (is (= (to-tree item-a-reversed) `((:target ~item99) (~foo-label))))
-    (is (= (to-tree item-m) (make-tree-element :source item1
+    (is (= (to-tree item-a-reversed) `((:reverse ~item99) (~foo-label))))
+    (is (= (to-tree item-m) (make-tree-element :forward item1
                                                `((~rel-label)))))
     (is (check (to-tree item0)
                (as-set (make-tree-object
-                        `(~(make-tree-element :source item1
+                        `(~(make-tree-element :forward item1
                                               `((~rel-label)))
                           "irrelevant")))))))
 
@@ -268,8 +268,8 @@
         rel-label (id->object rel-oid ms)
         item-a (id->element ida ms)
         item-b (id->element idb ms)
-        item-a-reversed (id->element ida :target ms)
-        item-b-reversed (id->element idb :target ms)]
+        item-a-reversed (id->element ida :reverse ms)
+        item-b-reversed (id->element idb :reverse ms)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (element? item0)))
@@ -301,7 +301,7 @@
     (is (= (current-value (label->elements item0 rel-label))
            [(id->element idm ms)]))
     (is (= (current-value (label->elements item1 rel-label))
-           [(id->element idm :target ms)]))
+           [(id->element idm :reverse ms)]))
     (is (= (set (current-value (all-elements item99)))
            #{(id->element ida ms)
              (id->element idc ms)
@@ -327,7 +327,7 @@
     (is (= (current-value (content->elements item0 item1))
            [(id->element idm ms)]))
     (is (= (current-value (content->elements item1 item0))
-           [(id->element idm :target ms)]))
+           [(id->element idm :reverse ms)]))
     (is (= (current-value (content (id->element ida ms))) 3))
     (is (= (current-value (content item-a-reversed)) item99))
     (is (current-value
@@ -347,11 +347,11 @@
                (as-set [(id->element idl ms)
                         (id->element idm ms)])))
     (is (check (current-value (all-elements item1))
-               (as-set [(id->element idm :target ms)])))
+               (as-set [(id->element idm :reverse ms)])))
     (is (= (current-value (forward-elements item1))
            nil))
     (is (check (current-value (reverse-elements item1))
-               (as-set [(id->element idm :target ms)])))
+               (as-set [(id->element idm :reverse ms)])))
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
           updating-immutable-result (let-R [current-item (updating-immutable
@@ -406,9 +406,9 @@
   (is (not (id-identified-object? '(1 2))))
   (is (not (interned-object? '(1 2))))
   (is (= (content-endpoint '(1 2)) :source))
-  (is (= (content-endpoint '((:target [:object 6]) 2)) :target))
+  (is (= (content-endpoint '((:reverse [:object 6]) 2)) :target))
   (is (not (reverse? '(1 2))))
-  (is (reverse? '((:target [:object 6]) 2)))
+  (is (reverse? '((:reverse [:object 6]) 2)))
   (is (= (all-elements '(1 2)) [2]))
   (is (= (forward-elements '(1 2)) [2]))
   (is (= (all-elements '(1 (2 3) (4 5))) '[(2 3) (4 5)]))
@@ -416,15 +416,15 @@
   ;; A reversed element must have an object as its target. A list is an
   ;; element, not an object, so reverse-elements is nil, and its
   ;; elements, which cannot themselves be reversed, are all forward.
-  (let [reversed-element '((:target [:object 6]) 5)]
+  (let [reversed-element '((:reverse [:object 6]) 5)]
     (is (= (all-elements reversed-element) '(5)))
     (is (= (forward-elements reversed-element) '(5)))
     (is (= (reverse-elements reversed-element) nil)))
   (is (= (label->elements '(1 (2 :foo) (4 3)) :foo)
          '[(2 :foo)]))
   (is (= (content '(1 (2 3) (4 5))) 1))
-  (is (= (content '((:source 1) (2 3) (4 5))) 1))
-  (is (= (content '((:target [:object 6]) (2 3) (4 5))) [:object 6]))
+  (is (= (content '((:forward 1) (2 3) (4 5))) 1))
+  (is (= (content '((:reverse [:object 6]) (2 3) (4 5))) [:object 6]))
   (is (= (content->elements '(1 (2 3) (4 5)) 4) ['(4 5)]))
   (is (=(entity-key '(1 2)) '(1 2)))
   (is (= (to-tree '(nil (1 nil))) '(nil (1 nil)))))
@@ -441,10 +441,10 @@
   ;; An object with both a forward and a reversed element. The reversed
   ;; element's target must be an object. all-elements is the
   ;; concatenation of forward-elements and reverse-elements.
-  (let [obj '[:object (2 3) ((:target [:object 6]) 5)]]
-    (is (= (all-elements obj) '[(2 3) ((:target [:object 6]) 5)]))
+  (let [obj '[:object (2 3) ((:reverse [:object 6]) 5)]]
+    (is (= (all-elements obj) '[(2 3) ((:reverse [:object 6]) 5)]))
     (is (= (forward-elements obj) '[(2 3)]))
-    (is (= (reverse-elements obj) '[((:target [:object 6]) 5)])))
+    (is (= (reverse-elements obj) '[((:reverse [:object 6]) 5)])))
   (is (= (label->elements '[:object (2 :foo) (4 3)] :foo)
          '[(2 :foo)]))
   (is (= (content [:object 1 2]) nil))
@@ -601,10 +601,10 @@
          '(1 2 (3 4))))
   (is (= (add-elements-to-entity '(1 2 (3 4)) '(5 (6 7)))
          '(1 2 (3 4) 5 (6 7))))
-  (is (= (add-elements-to-entity (make-tree-element :target [:object 6]
+  (is (= (add-elements-to-entity (make-tree-element :reverse [:object 6]
                                                     '(2 (3 4)))
                                  '(5 (6 7)))
-         (make-tree-element :target [:object 6] '(2 (3 4) 5 (6 7)))))
+         (make-tree-element :reverse [:object 6] '(2 (3 4) 5 (6 7)))))
   (is (= (add-elements-to-entity 1 '(5 (6 7)))
          '(1 5 (6 7))))
   (is (= (add-elements-to-entity (make-tree-object '(1 2 (3 4))) '(5 (6 7)))
@@ -896,7 +896,7 @@
                       (as-set
                        (make-tree-object
                         [(make-tree-element
-                          :target
+                          :reverse
                           (make-conflux-tree-object
                            (make-tree-id 2) ["x"])
                           [])
@@ -910,7 +910,7 @@
                       (as-set
                        (make-tree-object
                         [(make-tree-element
-                          :target
+                          :reverse
                           (make-conflux-tree-object
                            (make-tree-id 2) [])
                           [])
@@ -1006,14 +1006,14 @@
     (is (not (name-element? `(~(special-object "name")))))))
 
 (deftest make-element-list-test
-  (is (= (make-tree-element :source 1 nil)
+  (is (= (make-tree-element :forward 1 nil)
          1))
-  (is (= (make-tree-element :source 1 [2])
+  (is (= (make-tree-element :forward 1 [2])
          '(1 2)))
-  (is (= (make-tree-element :target [:object 6] nil)
-         '((:target [:object 6]))))
-  (is (= (make-tree-element :target [:object 6] [2])
-         '((:target [:object 6]) 2))))
+  (is (= (make-tree-element :reverse [:object 6] nil)
+         '((:reverse [:object 6]))))
+  (is (= (make-tree-element :reverse [:object 6] [2])
+         '((:reverse [:object 6]) 2))))
 
 (deftest make-tree-object-test
   (is (= (make-tree-object [1])

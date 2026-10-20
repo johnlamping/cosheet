@@ -68,17 +68,17 @@
                          ("male" (~o2 :order))))
 
 (deftest semantic-element?-test
-  (is (semantic-element? (make-tree-element :source 1 [2])))
-  (is (semantic-element? (make-tree-element :source "1" [2])))
-  (is (semantic-element? (make-tree-element :source 'anything [2])))
+  (is (semantic-element? (make-tree-element :forward 1 [2])))
+  (is (semantic-element? (make-tree-element :forward "1" [2])))
+  (is (semantic-element? (make-tree-element :forward 'anything [2])))
   (is (semantic-element? (make-tree-element
-                          :source (entity/id->object name-label-id nil)
+                          :forward (entity/id->object name-label-id nil)
                           [2])))
   (is (semantic-element? (make-tree-element
-                          :source (make-tree-object [3]) [2])))
+                          :forward (make-tree-object [3]) [2])))
   (is (semantic-element? (make-tree-element
-                          :target (make-tree-object [3]) [2])))
-  (is (not (semantic-element? (make-tree-element :source :foo [2])))))
+                          :reverse (make-tree-object [3]) [2])))
+  (is (not (semantic-element? (make-tree-element :forward :foo [2])))))
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
@@ -112,7 +112,7 @@
                      [`("z" (~o4 :order))
                       `("y" (~o3 :order))
                       (make-tree-element
-                       :target
+                       :reverse
                        (make-conflux-tree-object (make-tree-id 1) [])
                        [`(~o2 :order)])])
                    (~o2 :order))
@@ -123,7 +123,7 @@
                 [`("x" (~o1 :order))
                  `(~(make-tree-object
                       [(make-tree-element
-                        :target
+                        :reverse
                         (make-conflux-tree-object (make-tree-id 1) [])
                         [`(~o2 :order)])
                        `("y" (~o3 :order))

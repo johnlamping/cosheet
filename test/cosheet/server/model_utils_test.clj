@@ -80,7 +80,7 @@
 
 (deftest transform-pattern-toward-fixed-term-test
   (let [pattern (make-tree-element
-                 :target
+                 :reverse
                  [:object]
                  ['anything
                   `(~(make-tree-object `((~link-type))))
@@ -88,7 +88,7 @@
     (is (check (transform-pattern-toward-fixed-term
                 pattern {})
                (make-tree-element
-                 :target
+                 :reverse
                  [:object]
                  [nil
                   `(~(make-tree-object `((~link-type))))
@@ -96,7 +96,7 @@
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true})
                (make-tree-element
-                 :target
+                 :reverse
                  (make-tree-object `(~(not-query `(~link-type))
                                      ~(not-query `(~object-type))))
                  [nil
@@ -108,7 +108,7 @@
                 pattern {:require-not-type true
                          :require-orders true})
                (make-tree-element
-                 :target
+                 :reverse
                  (make-tree-object `(~(not-query `(~link-type))
                                      ~(not-query `(~object-type))
                                      (nil :order)))
@@ -139,11 +139,11 @@
              v-name
              :qualifier (make-tree-object
                          [(make-tree-element
-                           :source
+                           :forward
                            (make-tree-object
                             [(make-tree-element
-                              :source "z"
-                              [(make-tree-element :source inner-var [])])
+                              :forward "z"
+                              [(make-tree-element :forward inner-var [])])
                              "y"])
                            [])
                           "x"])
@@ -163,7 +163,7 @@
            (variable-query
             v-name
             :qualifier (make-tree-object
-                        ["x" (make-tree-element :source inner-var [])])
+                        ["x" (make-tree-element :forward inner-var [])])
             :reference true))))
   ;; A second reference to a conflux tree object, outside of the first
   ;; one. Both should have the qualifier.
@@ -179,8 +179,8 @@
                 :reference true)))
     (is (check fixed-term
                `("y"
-                 ~(make-tree-element :source variable [])
-                 ~(make-tree-element :source variable [])))))
+                 ~(make-tree-element :forward variable [])
+                 ~(make-tree-element :forward variable [])))))
   ;; All changes should apply to the qualifier elements.
   (let [pattern (make-conflux-tree-object (make-tree-id 1) ['anything "x"])
         fixed-term (transform-pattern-toward-fixed-term
@@ -263,8 +263,8 @@
                `("Joe" (~(any) :order)))))
   (is (= (semantic-to-tree '(1 (2 (:foo))))
          '(1 2)))
-  (is (= (semantic-to-tree (make-tree-element :target [:object 1] '(2 (:foo))))
-         (make-tree-element :target [:object 1] '(2))))
+  (is (= (semantic-to-tree (make-tree-element :reverse [:object 1] '(2 (:foo))))
+         (make-tree-element :reverse [:object 1] '(2))))
   (let [nl (list (id->object name-label-id nil))]
     (is (= (semantic-to-tree `(~(make-tree-object [3 nl :bar]) (2 (:foo))))
            `(~(make-tree-object [3 nl]) 2)))
@@ -395,13 +395,13 @@
 (deftest mark-template-as-selector-test
   (let [template (make-tree-object
                   [`("age" "years")
-                   (make-tree-element :target (make-tree-object [1]) [])
+                   (make-tree-element :reverse (make-tree-object [1]) [])
                    `(~(make-tree-object [`("Fred" (~name-label))]))])]
     (is (check (mark-template-as-selector template)
                (make-tree-object
                 ['("age" ("years" :selector) :selector)
                  (make-tree-element
-                  :target (make-tree-object ['(1 :selector) :selector])
+                  :reverse (make-tree-object ['(1 :selector) :selector])
                   ['(:selector :reverse)])
                  ;; The "Fred" object should not be marked as a selector,
                  ;; since it is named.
@@ -430,7 +430,7 @@
                 (make-tree-object
                  [`("z" (~a :selector) :selector)
                   '("y" :selector)
-                  (make-tree-element :target a-ref ['(:selector :reverse)])
+                  (make-tree-element :reverse a-ref ['(:selector :reverse)])
                   :selector]))))))
 
 (deftest replace-anythings-with-empty-string-test
@@ -630,7 +630,7 @@
                              "y"
                              ;; The self-link appears as two elements.
                              (list recipient)
-                             (list (list :target recipient))])))))
+                             (list (list :reverse recipient))])))))
   ;; Elements of a non-object item whose source is the donor object are
   ;; re-pointed to have the recipient object as source, even if an
   ;; element already sourced at the recipient makes one redundant.
@@ -914,10 +914,10 @@
                              (~(any) :order))]))))
       (is (not= new-b-id b-id))
       ;; new-b's to-tree is symmetric: the back-pointer to new-a is
-      ;; rendered as a (:target ...) element.
+      ;; rendered as a (:reverse ...) element.
       (is (check (to-tree (id->entity new-b-id s5))
                  (as-set (make-tree-object
-                          [`((:target ~(as-set (make-tree-object
+                          [`((:reverse ~(as-set (make-tree-object
                                                 [`(~(any) :order)])))
                              (~(any) :order))
                            `(~(any) :order)])))))
@@ -936,10 +936,10 @@
       ;; Because the element's :target orientation is honored, the new
       ;; link is added in the same direction as the original A->B
       ;; link, so new-b's to-tree is structurally the same as case 1's
-      ;; new-b: the back-pointer to new-a appears with (:target ...).
+      ;; new-b: the back-pointer to new-a appears with (:reverse ...).
       (is (check (to-tree new-b)
                  (as-set (make-tree-object
-                          [`((:target ~(as-set (make-tree-object
+                          [`((:reverse ~(as-set (make-tree-object
                                                 [`(~(any) :order)])))
                              (~(any) :order))
                            `(~(any) :order)]))))
@@ -989,26 +989,26 @@
                                             [`(~(any) :order)]))
                                   (~(any) :order))]))
                      (~(any) :order))]))))
-    ;; new-b's to-tree shows both directions: the (:target ...) entry
+    ;; new-b's to-tree shows both directions: the (:reverse ...) entry
     ;; is the reverse link to new-a; the bare object entry is the
     ;; forward link to new-c.
     (is (check
          (to-tree new-b)
          (as-set (make-tree-object
-                  [`((:target ~(as-set (make-tree-object
+                  [`((:reverse ~(as-set (make-tree-object
                                         [`(~(any) :order)])))
                      (~(any) :order))
                    `(~(any) :order)
                    `(~(as-set (make-tree-object [`(~(any) :order)]))
                      (~(any) :order))]))))
     ;; new-c's to-tree walks the chain backward; the back-pointer to
-    ;; new-b appears as (:target ...), and inside that new-b the
+    ;; new-b appears as (:reverse ...), and inside that new-b the
     ;; further back-pointer to new-a appears the same way.
     (is (check
          (to-tree new-c)
          (as-set (make-tree-object
-                  [`((:target ~(as-set (make-tree-object
-                                        [`((:target
+                  [`((:reverse ~(as-set (make-tree-object
+                                        [`((:reverse
                                             ~(as-set (make-tree-object
                                                       [`(~(any) :order)])))
                                            (~(any) :order))

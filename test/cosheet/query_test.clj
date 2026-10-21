@@ -9,7 +9,8 @@
                                            add-link-type-object]]
                       [entity :refer [to-tree id->element id->object content
                                       all-presumed-interned-in-different-store
-                                      all-elements label->elements mutable-entity?
+                                      all-elements label->elements
+                                      mutable-entity?
                                       primitive? entity-key
                                       make-tree-object make-tree-element
                                       add-elements-to-entity
@@ -79,12 +80,12 @@
                         2])))
     (is (extended-by? `(~(id->object (make-item-id "name") nil))
                       `(~(id->object (make-item-id "name") nil))))
-    (is (not (extended-by? (make-tree-element :forward 1 '(2))
-                           (make-tree-element :reverse [:object 1] '((2 3))))))
-    (is (not (extended-by? (make-tree-element :reverse [:object 1] '(2))
-                           (make-tree-element :forward 1 '((2 3))))))
-    (is (extended-by? (make-tree-element :reverse [:object 1] '(2))
-                      (make-tree-element :reverse [:object 1] '((2 3)))))
+    (is (not (extended-by? (make-tree-element 1 '(2))
+                           (make-tree-element [:object 1] '((2 3)) :reverse))))
+    (is (not (extended-by? (make-tree-element [:object 1] '(2) :reverse)
+                           (make-tree-element 1 '((2 3))))))
+    (is (extended-by? (make-tree-element [:object 1] '(2) :reverse)
+                      (make-tree-element [:object 1] '((2 3)) :reverse)))
     (is (extended-by? 3 element0))
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
@@ -120,14 +121,14 @@
                         2])))
     (is (not (extended-by? (make-tree-object '(1 2 3))
                            (make-tree-object '(1 2)))))
-    (is (not (extended-by? (make-tree-element :forward 1 '(1 2))
+    (is (not (extended-by? (make-tree-element 1 '(1 2))
                            (make-tree-object '(1 2)))))
     (is (not (extended-by? (make-tree-object '(1 2))
-                           (make-tree-element :forward 1 '(1 2)))))
-    (is (not (extended-by? (make-tree-element :forward 1 '(2))
+                           (make-tree-element 1 '(1 2)))))
+    (is (not (extended-by? (make-tree-element 1 '(2))
                            (make-tree-object '(1 2)))))
     (is (not (extended-by? (make-tree-object '(1 2))
-                           (make-tree-element :forward 1 '(2)))))
+                           (make-tree-element 1 '(2)))))
     (is (not (extended-by? (make-tree-object
                             [`(1 (~(id->object (make-item-id "name") nil)))
                              2])
@@ -141,19 +142,19 @@
                            (make-tree-object nil))))
     ;; Objects by themselves can't stand in for entities with that content.
     (is (not (extended-by? object-foo
-                           (make-tree-element :forward object-foo nil))))
-    (is (extended-by? (make-tree-element :forward object-foo nil)
-                      (make-tree-element :forward object-foo nil)))
-    (is (extended-by? (make-tree-element :forward object-foo nil)
+                           (make-tree-element object-foo nil))))
+    (is (extended-by? (make-tree-element object-foo nil)
+                      (make-tree-element object-foo nil)))
+    (is (extended-by? (make-tree-element object-foo nil)
                       (make-tree-element
-                       :forward object-foo `((~object-bare-foo)))))
+                       object-foo `((~object-bare-foo)))))
     (is (extended-by? (make-tree-element
-                       :forward object-foo `((~object-foo)))
+                       object-foo `((~object-foo)))
                       (make-tree-element
-                       :forward object-foo `((~object-bare-foo) 5))))
+                       object-foo `((~object-bare-foo) 5))))
     (is (not (extended-by? (make-tree-element
-                            :forward object-foo `((~object-bare-foo)))
-                           (make-tree-element :forward object-foo nil))))
+                            object-foo `((~object-bare-foo)))
+                           (make-tree-element object-foo nil))))
     ;; An anonymous store-less object (identified only by a numeric id,
     ;; so not uniquely identified) is now treated as presumed-interned,
     ;; so it matches only an entity with the same id, not any object.
@@ -182,38 +183,42 @@
     (is (= (variable-qualifier query) '(1 2)))
     (is (= (variable-reference query) true)))
   (let [query (variable-query
-             "foo" :qualifier (make-tree-element :reverse [:object 2] '(1)))]
+             "foo" :qualifier (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (variable-query? query))
     (is (= (variable-name query) "foo"))
-    (is (= (variable-qualifier query) (make-tree-element :reverse [:object 2] '(1))))
+    (is (= (variable-qualifier query)
+           (make-tree-element [:object 2] '(1) :reverse)))
     (is (= (variable-reference query) nil)))
   (let [query (not-query 1)]
     (is (special-form? query))
     (is (= (special-form-type query) :not))
     (is (= (sub-query query) 1)))
-  (let [query (not-query (make-tree-element :reverse [:object 2] '(1)))]
+  (let [query (not-query (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :not))
-    (is (= (sub-query query) (make-tree-element :reverse [:object 2] '(1)))))
-  (let [query (and-query 1 (make-tree-element :reverse [:object 2] '(1)))]
+    (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse))))
+  (let [query (and-query 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :and))
-    (is (= (sub-queries query) [1 (make-tree-element :reverse [:object 2] '(1))])))
-  (let [query (forall-query "foo" 1 (make-tree-element :reverse [:object 2] '(1)))]
+    (is (= (sub-queries query)
+           [1 (make-tree-element [:object 2] '(1) :reverse)])))
+  (let [query (forall-query
+               "foo" 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :forall))
     (is (= (quantifier-variable query)
            (add-elements-to-entity (variable-query "foo" :qualifier 1)
                                    '(::query/variable))))
-    (is (= (sub-query query) (make-tree-element :reverse [:object 2] '(1)))))
-  (let [query (exists-query "foo" 1 (make-tree-element :reverse [:object 2] '(1)))]
+    (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse))))
+  (let [query (exists-query
+               "foo" 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :exists))
     (is (= (quantifier-variable query)
            (add-elements-to-entity (variable-query "foo" :qualifier 1)
                                    '(::query/variable))))
-    (is (= (sub-query query) (make-tree-element :reverse [:object 2] '(1))))))
+    (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse)))))
 
 (deftest closest-template-test
   (is (= (closest-template '(1 2 (3 4))
@@ -232,7 +237,7 @@
                            {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) true]))
   (let [reversed (fn [content elements]
-                   (make-tree-element :reverse content elements))]
+                   (make-tree-element content elements :reverse))]
     ;; TODO: !!! Commented out for now: these use a variable (or
     ;; primitive) as a reversed element's content, which
     ;; make-tree-element's assert forbids. Once variables are
@@ -243,12 +248,13 @@
                                 `(2 ~(reversed (variable "bar") '(3))))
                                {"bar" 7})
              [(make-tree-object `(2 ~(reversed 7 '(3)))) true]))
-      (is (= (closest-template (make-tree-object
-                                `(2 (3 (~(make-tree-object [(variable "bar")
-                                                            (reversed 7 nil)])))))
-                               {})
-             [(make-tree-object `(2 (3 (~(make-tree-object [nil
-                                                            (reversed 7 nil)])))))
+      (is (= (closest-template
+              (make-tree-object
+               `(2 (3 (~(make-tree-object [(variable "bar")
+                                           (reversed 7 nil)])))))
+              {})
+             [(make-tree-object
+               `(2 (3 (~(make-tree-object [nil (reversed 7 nil)])))))
               #{"bar"}])))
     (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
                              {"bar" '(7 6)})
@@ -358,27 +364,34 @@
          nil))
 
   ;; Orientation
-  (is (= (matching-extensions (make-tree-element :reverse [:object 1] '(2 3)) {:a :b}
-                              (make-tree-element :reverse [:object 1] '(2 3)))
+  (is (= (matching-extensions (make-tree-element [:object 1] '(2 3) :reverse)
+                              {:a :b}
+                              (make-tree-element [:object 1] '(2 3) :reverse))
          [{:a :b}]))
-  (is (= (matching-extensions (make-tree-element :reverse [:object 1] '(2 3)) {:a :b}
-                              (make-tree-element :forward 1 '(2 3)))
+  (is (= (matching-extensions (make-tree-element [:object 1] '(2 3) :reverse)
+                              {:a :b}
+                              (make-tree-element 1 '(2 3)))
          nil))
-  (is (= (matching-extensions (make-tree-element :reverse [:object 1] '(2 3)) {:a :b}
+  (is (= (matching-extensions (make-tree-element [:object 1] '(2 3) :reverse)
+                              {:a :b}
                               1)
          nil))
-  (is (= (matching-extensions (make-tree-element :forward 1 '(2 3)) {:a :b}
-                              (make-tree-element :reverse [:object 1] '(2 3)))
+  (is (= (matching-extensions (make-tree-element 1 '(2 3)) {:a :b}
+                              (make-tree-element [:object 1] '(2 3) :reverse))
          nil))
-  (is (= (matching-extensions (make-tree-object
-                               `(~(make-tree-element :reverse [:object 1] '(2 3)))) {:a :b}
-                              (make-tree-object
-                               `(~(make-tree-element :reverse [:object 1] '(2 3)))))
+  (is (= (matching-extensions
+          (make-tree-object
+           `(~(make-tree-element [:object 1] '(2 3) :reverse)))
+          {:a :b}
+          (make-tree-object
+           `(~(make-tree-element [:object 1] '(2 3) :reverse))))
          [{:a :b}]))
-  (is (= (matching-extensions (make-tree-object
-                               `(~(make-tree-element :reverse [:object 1] '(2 3)))) {:a :b}
-                              (make-tree-object
-                               `(~(make-tree-element :forward 1 '(2 3)))))
+  (is (= (matching-extensions
+          (make-tree-object
+           `(~(make-tree-element [:object 1] '(2 3) :reverse)))
+          {:a :b}
+          (make-tree-object
+           `(~(make-tree-element 1 '(2 3)))))
          nil))
   
   ;; Duplicates in term
@@ -405,8 +418,8 @@
                               '(1 (2 3)))
          [{:a :b, "foo" '(1 (2 3))}]))
   (is (= (matching-extensions (variable "foo") {:a :b}
-                              (make-tree-element :reverse [:object 1] '(2 3)))
-         [{:a :b, "foo" (make-tree-element :reverse [:object 1] '(2 3))}]))
+                              (make-tree-element [:object 1] '(2 3) :reverse))
+         [{:a :b, "foo" (make-tree-element [:object 1] '(2 3) :reverse)}]))
   (is (= (matching-extensions (variable "foo") {:a :b}
                               (make-tree-object '(2 3)))
          [{:a :b, "foo" (make-tree-object '(2 3))}]))
@@ -477,27 +490,29 @@
          [{:a :b, "foo" 2}]))
   (is (= (matching-extensions
           (make-tree-object `(~(variable
-                                "foo" (make-tree-element :forward 2 nil))))
+                                "foo" (make-tree-element 2 nil))))
           {:a :b}
-          (make-tree-object `(~(make-tree-element :forward 2 '(:foo)))))
-         [{:a :b, "foo" (make-tree-element :forward 2 '(:foo))}]))
+          (make-tree-object `(~(make-tree-element 2 '(:foo)))))
+         [{:a :b, "foo" (make-tree-element 2 '(:foo))}]))
   (is (= (matching-extensions
-          (make-tree-object `(~(variable
-                                "foo" (make-tree-element :reverse [:object 2] nil))))
+          (make-tree-object
+           `(~(variable "foo" (make-tree-element [:object 2] nil :reverse))))
           {:a :b}
-          (make-tree-object `(~(make-tree-element :reverse [:object 2] '(:foo)))))
-         [{:a :b, "foo" (make-tree-element :reverse [:object 2] '(:foo))}]))
+          (make-tree-object
+           `(~(make-tree-element [:object 2] '(:foo) :reverse))))
+         [{:a :b, "foo" (make-tree-element [:object 2] '(:foo) :reverse)}]))
   (is (= (matching-extensions
-          (make-tree-object `(~(variable
-                                "foo" (make-tree-element :reverse [:object 2] nil))))
+          (make-tree-object
+           `(~(variable "foo" (make-tree-element [:object 2] nil :reverse))))
           {:a :b}
-          (make-tree-object `(~(make-tree-element :forward 2 '(:foo)))))
+          (make-tree-object `(~(make-tree-element 2 '(:foo)))))
          nil))
   (is (= (matching-extensions
           (make-tree-object `(~(variable
-                                "foo" (make-tree-element :forward 2 nil))))
+                                "foo" (make-tree-element 2 nil))))
           {:a :b}
-          (make-tree-object `(~(make-tree-element :reverse [:object 2] '(:foo)))))
+          (make-tree-object
+           `(~(make-tree-element [:object 2] '(:foo) :reverse))))
          nil))
   (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
                               '(1 (3 :foo)))
@@ -563,7 +578,7 @@
         [s4 id4] (add-element s3 oid1 `(2 (~(link-type-object "C"))
                                           (~(link-type-object "C"))))
         [s5 id5] (add-element s4 ia (make-tree-element
-                                     :reverse (id->object ib s4) '("reversed")))
+                                     (id->object ib s4) '("reversed") :reverse))
         [s id6] (add-element s5 ia `(~(make-tree-object '(1)) 3))]
     (let [matches (matching-elements '(nil ("A"))
                                      (id->object ia s))]
@@ -576,7 +591,7 @@
                           '(3 (4 5))
                           `(~(make-tree-object '(1)) 3)
                           (make-tree-element
-                           :reverse (id->object ib s) '("reversed"))]))))
+                           (id->object ib s) '("reversed") :reverse)]))))
     ;; Test elements of an element.
     (let [matches (matching-elements "A" (id->element id1 s))]
       (is (= (map to-tree matches)
@@ -587,17 +602,17 @@
       (is (= matches
              [(id->element id6 s)])))
     ;; Test matching the link that was put in backwards.
-    (let [term (make-tree-element :forward (id->object ia s) nil)]
+    (let [term (make-tree-element (id->object ia s) nil)]
       (is (= (matching-elements term (id->object ib s))
              [(id->element id5 s)])))
-    (let [term (make-tree-element :forward (id->object ib s) nil)]
+    (let [term (make-tree-element (id->object ib s) nil)]
       (is (= (matching-elements term (id->object ia s))
              nil)))
     ;; Test matching elements in reversed orientation.
-    (let [term (make-tree-element :reverse (id->object ib s) nil)]
+    (let [term (make-tree-element (id->object ib s) nil :reverse)]
       (is (= (matching-elements term (id->object ia s))
              [(id->element id5 :reverse s)])))
-    (let [term (make-tree-element :reverse (id->object ia s) nil)]
+    (let [term (make-tree-element (id->object ia s) nil :reverse)]
       (is (= (matching-elements term (id->object ib s))
              nil)))
     ;; Test matching a label template.
@@ -649,16 +664,16 @@
     ;; reversed elements
     (let [item-a (id->object (make-item-id "a") s-relationship)
           item-d (id->object (make-item-id "d") s-relationship)]
-      (is (= (query-matches (make-tree-element :reverse item-a nil)
+      (is (= (query-matches (make-tree-element item-a nil :reverse)
                             s-relationship)
              [{}]))
-      (is (= (query-matches (make-tree-element :reverse item-d nil)
+      (is (= (query-matches (make-tree-element item-d nil :reverse)
                             s-relationship)
              nil))
-      (is (= (query-matches (make-tree-element :forward item-a nil)
+      (is (= (query-matches (make-tree-element item-a nil)
                             s-relationship)
              nil))
-      (is (= (query-matches (make-tree-element :forward item-d nil)
+      (is (= (query-matches (make-tree-element item-d nil)
                             s-relationship)
              [{}])))
     ;; objects
@@ -765,7 +780,8 @@
                  (query-matches (and-query `(nil ~(variable "v"))
                                            `(nil (nil ~(variable "v"))))
                                 s2)))
-           #{{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)} {"v" '(4)} {"v" '(4 5)} {"v" '(5)}}))
+           #{{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)} {"v" '(4)} {"v" '(4 5)}
+             {"v" '(5)}}))
     (is (= (set (envs-to-trees
                  (query-matches (and-query `(nil (~(variable "v")))
                                            `(nil (nil ~(variable "v"))))
@@ -892,7 +908,8 @@
     (is (= (query-matches
             (make-tree-object [`(1 (~v-ref-query)) `(1 (~v-ref-query))])
             x-obj-store)
-           [{"v" (all-presumed-interned-in-different-store x-obj x-obj-store)}])))
+           [{"v" (all-presumed-interned-in-different-store
+                  x-obj x-obj-store)}])))
   ;; In cyclic-shared-store, object a is reachable by two paths, so its
   ;; tree form is a conflux-tree-object. transform-pattern-toward-fixed-
   ;; term turns each occurrence into a reference variable, with the
@@ -908,11 +925,10 @@
                "v"
                :qualifier (make-tree-object
                            [(make-tree-element
-                             :forward
                              (make-tree-object
                               [(make-tree-element
-                                :forward "z"
-                                [(make-tree-element :forward inner-var [])])
+                                "z"
+                                [(make-tree-element inner-var [])])
                                "y"])
                              [])
                             "x"])

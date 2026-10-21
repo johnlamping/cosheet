@@ -302,9 +302,9 @@
                    elements-exact]
                   (let [[converted-content content-exact]
                         (closest-template (content as-list) env)]
-                    [(make-tree-element (entity-direction as-list)
-                                        converted-content
-                                        converted-kept-elements)
+                    [(make-tree-element converted-content
+                                        converted-kept-elements
+                                        (entity-direction as-list))
                      (combine-template-exactness content-exact
                                                  elements-exact)])))))))))
 

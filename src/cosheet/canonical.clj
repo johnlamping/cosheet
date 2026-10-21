@@ -150,9 +150,9 @@
           :else
           (do (assert (= (count entity) 3))
               (let [[direction content elements] entity]
-                (make-tree-element direction
-                                   (canonical-to-tree content)
-                                   (canonical-set-to-list elements)))))
+                (make-tree-element (canonical-to-tree content)
+                                   (canonical-set-to-list elements)
+                                   direction))))
     entity))
 
 (def common-canonical)

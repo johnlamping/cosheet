@@ -139,10 +139,9 @@
   "Encode a sub-query as an element, as described above."
   [sub-query]
   (concat (if (or (primitive? sub-query) (object? sub-query))
-            (make-tree-element :forward sub-query '(::content))
+            (make-tree-element sub-query '(::content))
             (if (reverse? sub-query)
-              (make-tree-element :forward
-                                 (content sub-query)
+              (make-tree-element (content sub-query)
                                  (concat (all-elements sub-query)
                                          '(::flipped)))
               sub-query))
@@ -157,8 +156,8 @@
       (let [cleaned (remove #{::sub-query ::first ::second ::flipped}
                             encoded)]
         (if (some #(= ::flipped %) (forward-elements encoded))
-          (make-tree-element :reverse (content cleaned)
-                             (forward-elements cleaned))
+          (make-tree-element
+           (content cleaned) (forward-elements cleaned) :reverse)
           cleaned)))))
 
 (defn variable-query

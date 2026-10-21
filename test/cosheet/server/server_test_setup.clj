@@ -55,9 +55,9 @@
                                     contents remainder)
                                    [contents remainder])
             [before after] (split remainder :after)]
-        [(make-tree-element (entity-direction entity)
-                            contents
-                            (concat elements [`(~before :order)]))
+        [(make-tree-element contents
+                            (concat elements [`(~before :order)])
+                            (entity-direction entity))
          after])
       (orderable-entity? entity)
       ;; We have an orderable primitive acting like an element. Turn

@@ -540,33 +540,35 @@
   "Make the tree representation of the described entity, simplifying it
   as much as possible without leaving ambiguities. This can turn
   elements into primitives. The element-direction must be :forward,
-  :reverse, or nil."
-  [element-direction content elements]
-  ;; Validate the constraints on our object and elements
-  (assert (or (not (element? content))
-              ;; TODO: !!! For now, special forms are elements.
-              ;;           When they become objects, remove this case.
-              (= (keyword? (first content)))))
-  ;; A reverse element must have an object as its target, which is its
-  ;; content. We also allow nil, to describe a target that is any object.
-  (assert (or (not= element-direction :reverse)
-              (nil? content)
-              (object? content))
-          content)
-  ;; None of the elements we are made from may be reversed.
-  (assert (not-any? #(or (object? %)
-                         (reverse? %))
-                    elements))
-  (assert (or (nil? element-direction)
-              (#{:forward :reverse} element-direction)))
-  ;; We leave off the direction if we can.
-  (if (or (seq? content)
-          (not= element-direction :forward))
-    (cons (list element-direction content) elements)
-    (if (and (primitive? content)
-             (empty? elements))
-      content
-      (cons content elements))))
+  :reverse, or nil, and defaults to :forward."
+  ([content elements]
+   (make-tree-element content elements :forward))
+  ([content elements element-direction]
+   ;; Validate the constraints on our object and elements
+   (assert (or (not (element? content))
+               ;; TODO: !!! For now, special forms are elements.
+               ;;           When they become objects, remove this case.
+               (= (keyword? (first content)))))
+   ;; A reverse element must have an object as its target, which is its
+   ;; content. We also allow nil, to describe a target that is any object.
+   (assert (or (not= element-direction :reverse)
+               (nil? content)
+               (object? content))
+           content)
+   ;; None of the elements we are made from may be reversed.
+   (assert (not-any? #(or (object? %)
+                          (reverse? %))
+                     elements))
+   (assert (or (nil? element-direction)
+               (#{:forward :reverse} element-direction)))
+   ;; We leave off the direction if we can.
+   (if (or (seq? content)
+           (not= element-direction :forward))
+     (cons (list element-direction content) elements)
+     (if (and (primitive? content)
+              (empty? elements))
+       content
+       (cons content elements)))))
 
 (defn make-tree-object
   "Make the tree representation of the described object."
@@ -655,13 +657,13 @@
   (if (empty? elements-to-add)
     entity
     (cond (element? entity)
-          (make-tree-element (entity-direction entity)
-                             (content entity)
-                             (concat (forward-elements entity) elements-to-add))
+          (make-tree-element (content entity)
+                             (concat (forward-elements entity) elements-to-add)
+                             (entity-direction entity))
           (object? entity)
           (make-tree-object-copying-id
            entity (concat (all-elements entity) elements-to-add))
-          :else (make-tree-element :forward entity elements-to-add))))
+          :else (make-tree-element entity elements-to-add))))
 
 (defn map-subparts
   "Run the function on each subpart of the entity, and reassemble the
@@ -673,9 +675,9 @@
   be removed."
   [f entity]
   (cond (element? entity)
-        (make-tree-element (entity-direction entity)
-                           (f (content entity))
-                           (keep f (forward-elements entity)))
+        (make-tree-element (f (content entity))
+                           (keep f (forward-elements entity))
+                           (entity-direction entity))
         (and (object? entity) (not (presumed-interned-object? entity)))
         (let [new-elements (keep f (all-elements entity))]
           (make-tree-object-copying-id entity new-elements))
@@ -747,9 +749,10 @@
                       (traverse-elements entity original-caller-data
                                          caller-data)]
                   (if post-fn
-                    (let [assembled (make-tree-element (entity-direction entity)
-                                                       new-content
-                                                       new-elements)]
+                    (let [assembled (make-tree-element
+                                     new-content
+                                     new-elements
+                                     (entity-direction entity))]
                       (post-fn original-entity assembled
                                original-caller-data caller-data))
                     [nil caller-data]))

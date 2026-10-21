@@ -114,9 +114,9 @@
   label object of the given label-type, if it isn't already."
   [template label-type]
   (assert (or (element? template) (universal-template? template)))
-  (make-tree-element (entity-direction template)
-                     (ensure-label-object (content template) label-type)
-                     (forward-elements template)))
+  (make-tree-element (ensure-label-object (content template) label-type)
+                     (forward-elements template)
+                     (entity-direction template)))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of

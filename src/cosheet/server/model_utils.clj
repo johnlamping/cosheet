@@ -196,7 +196,7 @@
                   
                   (element? e)
                   [(make-tree-element
-                    (entity-direction e) (content e) (elements-fn e))
+                    (content e) (elements-fn e) (entity-direction e))
                    conflux-seen]
                   
                   :else
@@ -464,7 +464,7 @@
                       (and (nil? c) require-orders)
                       (concat ['(nil :order)]))]
                 [(make-tree-element
-                  (entity-direction original) c new-elements)
+                  c new-elements (entity-direction original))
                  conflux-map])
 
               (presumed-interned-object? original)

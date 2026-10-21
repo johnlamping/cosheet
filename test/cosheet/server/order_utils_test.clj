@@ -68,17 +68,17 @@
                          ("male" (~o2 :order))))
 
 (deftest semantic-element?-test
-  (is (semantic-element? (make-tree-element :forward 1 [2])))
-  (is (semantic-element? (make-tree-element :forward "1" [2])))
-  (is (semantic-element? (make-tree-element :forward 'anything [2])))
+  (is (semantic-element? (make-tree-element 1 [2])))
+  (is (semantic-element? (make-tree-element "1" [2])))
+  (is (semantic-element? (make-tree-element 'anything [2])))
   (is (semantic-element? (make-tree-element
-                          :forward (entity/id->object name-label-id nil)
+                          (entity/id->object name-label-id nil)
                           [2])))
   (is (semantic-element? (make-tree-element
-                          :forward (make-tree-object [3]) [2])))
+                          (make-tree-object [3]) [2])))
   (is (semantic-element? (make-tree-element
-                          :reverse (make-tree-object [3]) [2])))
-  (is (not (semantic-element? (make-tree-element :forward :foo [2])))))
+                          (make-tree-object [3]) [2] :reverse)))
+  (is (not (semantic-element? (make-tree-element :foo [2])))))
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
@@ -112,9 +112,9 @@
                      [`("z" (~o4 :order))
                       `("y" (~o3 :order))
                       (make-tree-element
-                       :reverse
                        (make-conflux-tree-object (make-tree-id 1) [])
-                       [`(~o2 :order)])])
+                       [`(~o2 :order)]
+                       :reverse)])
                    (~o2 :order))
                  `("x" (~o1 :order))])]
     (is (check (order-recursively item-a)
@@ -123,9 +123,9 @@
                 [`("x" (~o1 :order))
                  `(~(make-tree-object
                       [(make-tree-element
-                        :reverse
                         (make-conflux-tree-object (make-tree-id 1) [])
-                        [`(~o2 :order)])
+                        [`(~o2 :order)]
+                        :reverse)
                        `("y" (~o3 :order))
                        `("z" (~o4 :order))])
                     (~o2 :order))])))))

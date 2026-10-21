@@ -224,11 +224,11 @@
                (as-set [(id->element idm :reverse s)])))
     (is (check (to-tree item1) item1))
     (is (= (to-tree item-a-reversed) `((:reverse ~item99) (~foo-label))))
-    (is (= (to-tree item-m) (make-tree-element :forward item1
+    (is (= (to-tree item-m) (make-tree-element item1
                                                `((~rel-label)))))
     (is (check (to-tree item0)
                (as-set (make-tree-object
-                        `(~(make-tree-element :forward item1
+                        `(~(make-tree-element item1
                                               `((~rel-label)))
                           "irrelevant")))))))
 
@@ -601,10 +601,10 @@
          '(1 2 (3 4))))
   (is (= (add-elements-to-entity '(1 2 (3 4)) '(5 (6 7)))
          '(1 2 (3 4) 5 (6 7))))
-  (is (= (add-elements-to-entity (make-tree-element :reverse [:object 6]
-                                                    '(2 (3 4)))
+  (is (= (add-elements-to-entity (make-tree-element
+                                  [:object 6] '(2 (3 4)) :reverse)
                                  '(5 (6 7)))
-         (make-tree-element :reverse [:object 6] '(2 (3 4) 5 (6 7)))))
+         (make-tree-element [:object 6] '(2 (3 4) 5 (6 7)) :reverse)))
   (is (= (add-elements-to-entity 1 '(5 (6 7)))
          '(1 5 (6 7))))
   (is (= (add-elements-to-entity (make-tree-object '(1 2 (3 4))) '(5 (6 7)))
@@ -895,11 +895,10 @@
                       actual
                       (as-set
                        (make-tree-object
-                        [(make-tree-element
-                          :reverse
-                          (make-conflux-tree-object
-                           (make-tree-id 2) ["x"])
-                          [])
+                        [(make-tree-element (make-conflux-tree-object
+                                             (make-tree-id 2) ["x"])
+                                            []
+                                            :reverse)
                          "y"
                          `("z" (~(make-conflux-tree-object
                                   (make-tree-id 2) [])))])))))
@@ -909,11 +908,10 @@
                       actual
                       (as-set
                        (make-tree-object
-                        [(make-tree-element
-                          :reverse
-                          (make-conflux-tree-object
-                           (make-tree-id 2) [])
-                          [])
+                        [(make-tree-element (make-conflux-tree-object
+                                             (make-tree-id 2) [])
+                                            []
+                                            :reverse)
                          "y"
                          `("z" (~(make-conflux-tree-object
                                   (make-tree-id 2) ["x"])))])))))))))))
@@ -1006,13 +1004,13 @@
     (is (not (name-element? `(~(special-object "name")))))))
 
 (deftest make-element-list-test
-  (is (= (make-tree-element :forward 1 nil)
+  (is (= (make-tree-element 1 nil)
          1))
-  (is (= (make-tree-element :forward 1 [2])
+  (is (= (make-tree-element 1 [2])
          '(1 2)))
-  (is (= (make-tree-element :reverse [:object 6] nil)
+  (is (= (make-tree-element [:object 6] nil :reverse)
          '((:reverse [:object 6]))))
-  (is (= (make-tree-element :reverse [:object 6] [2])
+  (is (= (make-tree-element [:object 6] [2] :reverse)
          '((:reverse [:object 6]) 2))))
 
 (deftest make-tree-object-test

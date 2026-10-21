@@ -86,9 +86,9 @@
                           (ordered-entities (all-elements assembled)))
                          (element? assembled)
                          (make-tree-element
-                          (entity-direction assembled)
                           (content assembled)
-                          (ordered-entities (forward-elements assembled)))
+                          (ordered-entities (forward-elements assembled))
+                          (entity-direction assembled))
                          :else assembled)
                    cd])
         [tree _] (repetition-avoiding-threaded-traverse

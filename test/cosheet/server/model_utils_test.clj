@@ -80,35 +80,34 @@
 
 (deftest transform-pattern-toward-fixed-term-test
   (let [pattern (make-tree-element
-                 :reverse
                  [:object]
                  ['anything
                   `(~(make-tree-object `((~link-type))))
-                  `(~(make-tree-object `("a")))])]
+                  `(~(make-tree-object `("a")))]
+                 :reverse)]
     (is (check (transform-pattern-toward-fixed-term
                 pattern {})
                (make-tree-element
-                 :reverse
                  [:object]
                  [nil
                   `(~(make-tree-object `((~link-type))))
-                  `(~(make-tree-object `("a")))])))
+                  `(~(make-tree-object `("a")))]
+                 :reverse)))
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true})
                (make-tree-element
-                 :reverse
                  (make-tree-object `(~(not-query `(~link-type))
                                      ~(not-query `(~object-type))))
                  [nil
                   `(~(make-tree-object `((~link-type))))
                   `(~(make-tree-object `("a"
                                          ~(not-query `(~link-type))
-                                         ~(not-query `(~object-type)))))])))
+                                         ~(not-query `(~object-type)))))]
+                 :reverse)))
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true
                          :require-orders true})
                (make-tree-element
-                 :reverse
                  (make-tree-object `(~(not-query `(~link-type))
                                      ~(not-query `(~object-type))
                                      (nil :order)))
@@ -117,7 +116,8 @@
                   `(~(make-tree-object `("a"
                                          ~(not-query `(~link-type))
                                          ~(not-query `(~object-type))
-                                         (nil :order))))])))
+                                         (nil :order))))]
+                 :reverse)))
   ;; In cyclic-shared-store, a is reachable via two paths (the back-
   ;; link from b and z-link's sub-element), so to-tree preserves a as
   ;; a conflux-tree-object. transform-pattern-toward-fixed-term
@@ -139,11 +139,10 @@
              v-name
              :qualifier (make-tree-object
                          [(make-tree-element
-                           :forward
                            (make-tree-object
                             [(make-tree-element
-                              :forward "z"
-                              [(make-tree-element :forward inner-var [])])
+                              "z"
+                              [(make-tree-element inner-var [])])
                              "y"])
                            [])
                           "x"])
@@ -163,7 +162,7 @@
            (variable-query
             v-name
             :qualifier (make-tree-object
-                        ["x" (make-tree-element :forward inner-var [])])
+                        ["x" (make-tree-element inner-var [])])
             :reference true))))
   ;; A second reference to a conflux tree object, outside of the first
   ;; one. Both should have the qualifier.
@@ -179,8 +178,8 @@
                 :reference true)))
     (is (check fixed-term
                `("y"
-                 ~(make-tree-element :forward variable [])
-                 ~(make-tree-element :forward variable [])))))
+                 ~(make-tree-element variable [])
+                 ~(make-tree-element variable [])))))
   ;; All changes should apply to the qualifier elements.
   (let [pattern (make-conflux-tree-object (make-tree-id 1) ['anything "x"])
         fixed-term (transform-pattern-toward-fixed-term
@@ -263,8 +262,8 @@
                `("Joe" (~(any) :order)))))
   (is (= (semantic-to-tree '(1 (2 (:foo))))
          '(1 2)))
-  (is (= (semantic-to-tree (make-tree-element :reverse [:object 1] '(2 (:foo))))
-         (make-tree-element :reverse [:object 1] '(2))))
+  (is (= (semantic-to-tree (make-tree-element [:object 1] '(2 (:foo)) :reverse))
+         (make-tree-element [:object 1] '(2) :reverse)))
   (let [nl (list (id->object name-label-id nil))]
     (is (= (semantic-to-tree `(~(make-tree-object [3 nl :bar]) (2 (:foo))))
            `(~(make-tree-object [3 nl]) 2)))
@@ -395,14 +394,15 @@
 (deftest mark-template-as-selector-test
   (let [template (make-tree-object
                   [`("age" "years")
-                   (make-tree-element :reverse (make-tree-object [1]) [])
+                   (make-tree-element (make-tree-object [1]) [] :reverse)
                    `(~(make-tree-object [`("Fred" (~name-label))]))])]
     (is (check (mark-template-as-selector template)
                (make-tree-object
                 ['("age" ("years" :selector) :selector)
                  (make-tree-element
-                  :reverse (make-tree-object ['(1 :selector) :selector])
-                  ['(:selector :reverse)])
+                  (make-tree-object ['(1 :selector) :selector])
+                  ['(:selector :reverse)]
+                  :reverse)
                  ;; The "Fred" object should not be marked as a selector,
                  ;; since it is named.
                  `(~(make-tree-object [`("Fred" (~name-label))]) :selector)
@@ -430,7 +430,7 @@
                 (make-tree-object
                  [`("z" (~a :selector) :selector)
                   '("y" :selector)
-                  (make-tree-element :reverse a-ref ['(:selector :reverse)])
+                  (make-tree-element a-ref ['(:selector :reverse)] :reverse)
                   :selector]))))))
 
 (deftest replace-anythings-with-empty-string-test

@@ -3,6 +3,7 @@
                                      target->ids source->ids
                                      target-source->ids
                                      id->source id->target
+                                     id-endpoint->value
                                      item-id? link-id? object-id?
                                      mutable-store?
                                      current-store
@@ -83,9 +84,8 @@
   (subject-entity [this]
     (let [underlying-item-id (store-item-id item-id)]
       (when (not (object-id? underlying-item-id))
-        (endpoint->entity (if (reverse? this)
-                            (id->source store underlying-item-id)
-                            (id->target store underlying-item-id))
+        (endpoint->entity (id-endpoint->value
+                           store underlying-item-id (subject-endpoint this))
                           store))))
 
   (containing-elements [this]
@@ -113,9 +113,9 @@
   (content [this]
     (let [underlying-item-id (store-item-id item-id)]
       (when (not (object-id? underlying-item-id))
-        (if (reverse? this)
-          (endpoint->entity (id->target store underlying-item-id) store)
-          (endpoint->entity (id->source store underlying-item-id) store)))))
+        (endpoint->entity (id-endpoint->value
+                           store underlying-item-id (content-endpoint this))
+                          store))))
 
   (forward-elements [this]
     (seq (->> (target->ids store (store-item-id item-id))
@@ -181,11 +181,9 @@
   (subject-entity [this]
     (let [underlying-item-id (store-item-id item-id)]
       (when (not (object-id? underlying-item-id))
-        (if (reverse? this)
-          (let-R [source-id (id->source store underlying-item-id)]
-            (endpoint->entity source-id store))
-          (let-R [target-id (id->target store underlying-item-id)]
-            (endpoint->entity target-id store))))))
+        (let-R [subject-id (id-endpoint->value
+                            store underlying-item-id (subject-endpoint this))]
+          (endpoint->entity subject-id store)))))
 
   (containing-elements [this]
     (let [underlying-item-id (store-item-id item-id)]
@@ -215,11 +213,9 @@
   (content [this]
     (let [underlying-item-id (store-item-id item-id)]
       (when (not (object-id? underlying-item-id))
-        (if (reverse? this)
-          (let-R [content (id->target store underlying-item-id)]
-            (endpoint->entity content store :reverse))
-          (let-R [content (id->source store underlying-item-id)]
-            (endpoint->entity content store))))))
+        (let-R [content (id-endpoint->value
+                         store underlying-item-id (content-endpoint this))]
+          (endpoint->entity content store (entity-direction this))))))
 
   (forward-elements [this]
     (let-R [element-ids (target->ids store (store-item-id item-id))]

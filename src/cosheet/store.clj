@@ -360,6 +360,14 @@
 (defmulti new-mutable-store
   (constantly true))
 
+(defn id-endpoint->value
+  "Given the id of a link and an endpoint, :source or :target, return
+  the value of that endpoint of the link."
+  [store id endpoint]
+  (case endpoint
+    :source (id->source store id)
+    :target (id->target store id)))
+
 (defn id-known?
   "Return true if the store knows anything about the id."
   [store id]

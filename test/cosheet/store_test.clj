@@ -182,6 +182,11 @@
   (is (= (id->source test-store (make-link-id 2)) "Foo"))
   (is (= (id->source test-store (make-link-id 6)) :foo-keyword)))
 
+(deftest id-endpoint->value-test
+  (is (= (id-endpoint->value test-store (make-link-id 2) :target)
+         (make-link-id 1)))
+  (is (= (id-endpoint->value test-store (make-link-id 2) :source) "Foo")))
+
 (deftest target->ids-test
   (is (= (target->ids test-store (make-object-id "object"))
          [(make-link-id 1)]))

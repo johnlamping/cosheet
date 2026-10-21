@@ -528,13 +528,22 @@
         true :forward))
 
 (defn content-endpoint
-  "The endpoint of the link that holds an entity's content: :target if
-  it is an element seen in reverse, :source for any other non-object,
-  and nil for an object."
+  "The link endpoint that holds an entity's content: :target if it is a
+  reverse element, :source for any other non-object, and nil for an
+  object."
   [entity]
   (cond (object? entity) nil
         (reverse? entity) :target
         true :source))
+
+(defn subject-endpoint
+  "The link endpoint that holds an entity's subject: :source if it is a
+  reverse element, :target for any other non-object, and nil for an
+  object."
+  [entity]
+  (cond (object? entity) nil
+        (reverse? entity) :source
+        true :target))
 
 (defn make-tree-element
   "Make the tree representation of the described entity, simplifying it

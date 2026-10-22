@@ -174,7 +174,7 @@
 
 (deftest id->target-test
   (is (= (id->target test-store (make-link-id 2)) (make-link-id 1)))
-  (is (= (id->target test-store 2) nil)))
+  (is (thrown? AssertionError (id->target test-store 2))))
 
 (deftest id->source-test
   (is (= (id->source test-store (make-link-id 999)) nil))

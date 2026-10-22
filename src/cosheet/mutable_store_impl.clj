@@ -228,18 +228,22 @@
   Store
 
   (id-valid-link? [this id]
+    (assert (item-id? id))
     (cache-and-categorize
      [id] id-valid-link? this id))
 
   (id-known-object? [this id]
+    (assert (item-id? id))
     (cache-and-categorize
      [id] id-known-object? this id))
 
   (id->target [this id]
+    (assert (item-id? id))
     (cache-and-categorize
         [id] id->target this id))
 
   (id->source [this id]
+    (assert (item-id? id))
     (cache-and-categorize
         [id] id->source this id))
 

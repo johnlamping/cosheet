@@ -106,19 +106,23 @@
   Store
 
   (id-valid-link? [this id]
+    (assert (item-id? id))
     (and (link-id? id)
          (contains? (:id->source this) id)))
 
   (id-known-object? [this id]
+    (assert (item-id? id))
     (and (object-id? id)
          (or (contains? (:target->ids this) id)
               (contains? (:source->ids this) id))))
 
   (id->target [this id]
+    (assert (item-id? id))
     (when (link-id? id)
       (get-in this [:id->target id])))
 
   (id->source [this id]
+    (assert (item-id? id))
     (when (link-id? id)
       (get-in this [:id->source id])))
 
@@ -253,6 +257,7 @@
         (add-modified-id id)))
 
   (update-target [this id target]
+    (assert (item-id? id))
     (assert (not (nil? (store/id->source this id)))
             ["Link id not present." id])
     (assert (not (nil? target)))
@@ -264,6 +269,7 @@
         (add-modified-id id)))
 
   (update-source [this id source]
+    (assert (item-id? id))
     (assert (not (nil? (store/id->source this id)))
             ["Link id not present." id])
     (assert (not (nil? source)))
@@ -297,6 +303,7 @@
     [(assoc this :further-actions nil) (:further-actions this)])
 
   (declare-ephemeral-id [this id]
+    (assert (item-id? id))
     (assert (:id->source this))
     (update this :ephemeral-ids #(conj % id)))
 
@@ -433,7 +440,8 @@
   to the target of that link, and index by either its target or source
   endpoint."
   [store old-store endpoint id]
-  (let [fetcher (endpoint-fetcher endpoint)
+  (let [fetcher (let [fetcher (endpoint-fetcher endpoint)]
+                  (fn [store id] (when id (fetcher store id))))
         index-key (endpoint-label-index-key endpoint)
         is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
@@ -465,9 +473,10 @@
       ;; Handle when id is a label.
       (index-endpoint->label->label-ids-from-label store old-store endpoint id)
       ;; Handle when id makes its target a label.
-      (index-endpoint->label->label-ids-from-label
-       store old-store
-       endpoint (or (id->target store id) (id->target old-store id)))
+      (if-let [target (or (id->target store id) (id->target old-store id))]
+        (index-endpoint->label->label-ids-from-label
+         store old-store endpoint target)
+        store)
       ;; Handle when id is a link that got a label, and its endpoint changed.
       (let [fetcher (endpoint-fetcher endpoint)]
         (if (= (fetcher store id) (fetcher old-store id))

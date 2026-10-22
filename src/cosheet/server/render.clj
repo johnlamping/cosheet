@@ -517,7 +517,7 @@
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
   (let-R [id (map-reporter-get client-state :root-id)
-          known (id-known? store id)]
+          known (and id (id-known? store id))]
     (if known
       id
       (app-R first (ordered-tabs-ids-R store)))))

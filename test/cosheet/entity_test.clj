@@ -222,6 +222,17 @@
            nil))
     (is (check (reverse-elements item1)
                (as-set [(id->element idm :reverse s)])))
+    ;; A link from an object to itself shows up once in all-elements.
+    (let [[sp idp] (add-link s id1 id1)
+          item1p (id->object id1 sp)]
+      (is (check (forward-elements item1p)
+                 [(id->element idp sp)]))
+      (is (check (reverse-elements item1p)
+                 (as-set [(id->element idm :reverse sp)
+                          (id->element idp :reverse sp)])))
+      (is (check (all-elements item1p)
+                 (as-set [(id->element idp sp)
+                          (id->element idm :reverse sp)]))))
     (is (check (to-tree item1) item1))
     (is (= (to-tree item-a-reversed) `((:reverse ~item99) (~foo-label))))
     (is (= (to-tree item-m) (make-tree-element item1
@@ -352,6 +363,18 @@
            nil))
     (is (check (current-value (reverse-elements item1))
                (as-set [(id->element idm :reverse ms)])))
+    ;; A link from an object to itself shows up once in all-elements.
+    (let [[sp idp] (add-link s id1 id1)
+          msp (new-mutable-store sp)
+          item1p (id->object id1 msp)]
+      (is (check (current-value (forward-elements item1p))
+                 [(id->element idp msp)]))
+      (is (check (current-value (reverse-elements item1p))
+                 (as-set [(id->element idm :reverse msp)
+                          (id->element idp :reverse msp)])))
+      (is (check (current-value (all-elements item1p))
+                 (as-set [(id->element idp msp)
+                          (id->element idm :reverse msp)]))))
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
           updating-immutable-result (let-R [current-item (updating-immutable

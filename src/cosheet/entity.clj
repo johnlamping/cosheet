@@ -272,7 +272,8 @@
 
   (all-elements [this]
     "Return a seq of items for all our elements, including reversed links
-    between objects.")
+    between objects. A link from an object to itself appears only once,
+    in its forward direction.")
 
   (reverse? [this]
     "True if this is an element viewed from the opposite of the usual

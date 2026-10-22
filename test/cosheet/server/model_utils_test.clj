@@ -628,9 +628,8 @@
                             [`("A" (~name-label))
                              "x"
                              "y"
-                             ;; The self-link appears as two elements.
-                             (list recipient)
-                             (list (list :reverse recipient))])))))
+                             ;; The self-link appears once, forward.
+                             (list recipient)])))))
   ;; Elements of a non-object item whose source is the donor object are
   ;; re-pointed to have the recipient object as source, even if an
   ;; element already sourced at the recipient makes one redundant.

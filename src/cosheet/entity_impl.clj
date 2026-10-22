@@ -129,8 +129,11 @@
                   (map #(id->element % :reverse store)))))))
 
   (all-elements [this]
-    (seq (concat (forward-elements this)
-                 (reverse-elements this))))
+    (let [underlying-item-id (store-item-id item-id)]
+      (seq (concat (forward-elements this)
+                   (remove #(= (entity-key (content %)) underlying-item-id)
+                           (reverse-elements this))))))
+  
   (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]
@@ -234,11 +237,18 @@
                     (map #(id->element % :reverse store))))))))
 
   (all-elements [this]
-    (let-R [forward-elements (forward-elements this)]
-      (if (object-id? (store-item-id item-id))
-        (let-R [reverse-elements (reverse-elements this)]
-          (seq (concat forward-elements reverse-elements)))
-        forward-elements)))
+    (let [underlying-item-id (store-item-id item-id)]
+      (let-R [forward-elements (forward-elements this)]
+        (if (object-id? underlying-item-id)
+          (let-R [reverse-elements (reverse-elements this)
+                  contents (seq-R (map content reverse-elements))]
+            (seq (concat forward-elements
+                         (keep (fn [[element element-content]]
+                                 (when (not= (entity-key element-content)
+                                             underlying-item-id)
+                                   element))
+                               (map vector reverse-elements contents)))))
+          forward-elements))))
   (reverse? [this] (reverse-id? item-id))
 
   (content->elements [this content-value]

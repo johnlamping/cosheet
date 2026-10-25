@@ -8,6 +8,7 @@
              [map-reporter :refer [make-map-reporter map-reporter-get-current
                                 map-reporter-reset!]]
              [entity :as entity :refer [id->entity id->object to-tree
+                                        make-reverse-item-id
                                         content label->element
                                         label->elements label->content
                                         name-label link-type object-type
@@ -31,7 +32,7 @@
                                   add-universal-objects
                                   add-link-type-object
                                   find-object-by-name
-                                  link-type-object]]
+                                  link-type-object object-type-object]]
              [task-queue :refer [make-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize]]
@@ -139,19 +140,19 @@
                         :store (new-mutable-store store)
                         :client-state (make-map-reporter {})})
 
-(deftest current-source-matches-from?-test
+(deftest current-content-matches-from?-test
   ;; Test numbers
   (let [[store five-id] (add-element store joe-id `(5 (~o5 :order)))]
-    (is (current-source-matches-from? store five-id "5" nil))
-    (is (not (current-source-matches-from? store five-id "6" nil)))
+    (is (current-content-matches-from? store five-id "5" nil))
+    (is (not (current-content-matches-from? store five-id "6" nil)))
     ;; A nil from always matches.
-    (is (current-source-matches-from? store five-id nil nil)))
+    (is (current-content-matches-from? store five-id nil nil)))
   ;; Test a string matching the name of an interned object in the store.
   (let [[store friend-id] (add-element store jane-id
                                        `(~(id->object joe-id nil)
                                          (~o5 :order)))]
-    (is (current-source-matches-from? store friend-id "Joe" nil))
-    (is (not (current-source-matches-from? store friend-id "Jane" nil))))
+    (is (current-content-matches-from? store friend-id "Joe" nil))
+    (is (not (current-content-matches-from? store friend-id "Jane" nil))))
   ;; Test uninterned objects.
   (let [common-elements [`("" (~name-label)
                            `(~o5 :order))
@@ -168,12 +169,12 @@
     (let [[store anything-id] (add-element store joe-id 'anything)
           [store a-id] (add-element store joe-id "A")]
       ;; "" in place of 'anything
-      (is (current-source-matches-from? store anything-id "" nil))
+      (is (current-content-matches-from? store anything-id "" nil))
       ;; A universal header matching something random
-      (is (current-source-matches-from? store common-id1 "\u00A0..." nil))
+      (is (current-content-matches-from? store common-id1 "\u00A0..." nil))
       ;; The special case where a universal header shouldn't match
-      (is (current-source-matches-from? store a-id "\u00A0A" "B"))
-      (is (not (current-source-matches-from? store a-id "\u00A0A" ""))))))
+      (is (current-content-matches-from? store a-id "\u00A0A" "B"))
+      (is (not (current-content-matches-from? store a-id "\u00A0A" ""))))))
 
 (deftest do-set-content-test
   ;; Joe is not a selector, so a blank becomes the empty string.
@@ -241,7 +242,36 @@
     (is (uniquely-identified-object? new-jane))
     (is (empty? (matching-elements :selector new-jane)))
     (is (empty? (matching-elements
-                 :selector (id->entity (:item-id jane-age) new-store))))))
+                 :selector (id->entity (:item-id jane-age) new-store)))))
+  ;; A reverse element's content is the target of its link. Setting it
+  ;; to a non-object is illegal, and should do nothing, returning nil
+  ;; or an unaltered store.
+  (let [[s1 holder-id] (add-element store joe-id
+                                    (list (id->object jane-id store)))
+        [s _] (add-element s1 holder-id `(~unused-orderable :order))
+        reverse-holder-id (make-reverse-item-id holder-id)
+        new-store (do-set-content s {:subject-ids [reverse-holder-id]
+                                     :from "Joe"
+                                     :to "x"
+                                     :session-state session-state})]
+    (is (= (id->target (or new-store s) holder-id) joe-id))
+    (is (= (id->source (or new-store s) holder-id) jane-id))
+    ;; Setting it to a named object re-points the target to that object.
+    (let [new-store (do-set-content
+                     s {:subject-ids [reverse-holder-id]
+                        :template (list (make-tree-object
+                                         `(("" (~name-label)))))
+                        :from "Joe"
+                        :to "Fred"
+                        :session-state session-state})
+          new-target (id->target (or new-store s) holder-id)]
+      (is (some? new-store))
+      (is (object-id? new-target))
+      (is (not= new-target joe-id))
+      (is (= (label->content (id->entity new-target (or new-store s))
+                             name-label)
+             "Fred"))
+      (is (= (id->source (or new-store s) holder-id) jane-id)))))
 
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,
@@ -597,7 +627,25 @@
                                   :template (list (make-tree-object ["x"]))})]
       (is (not (id-valid-link? new-store holder-id)))
       (is (not (id-valid-link? new-store holder2-id)))
-      (is (not (id-known-object? new-store object-id))))))
+      (is (not (id-known-object? new-store object-id)))))
+  ;; Deleting through a reverse id removes the whole link. The unnamed
+  ;; object it held is kept when it has an object type label.
+  (let [[s1 _] (add-element store jane-id `(~(object-type-object "row")))
+        [s holder-id] (add-element s1 joe-id (list (id->object jane-id s1)))
+        new-store (do-delete s {:subject-ids [(make-reverse-item-id
+                                               holder-id)]})]
+    (is (not (id-valid-link? new-store holder-id)))
+    (is (id-known-object? new-store joe-id))
+    (is (id-known-object? new-store jane-id)))
+  ;; Without an object type label, the unnamed object goes too, since
+  ;; the link was its only reference.
+  (let [[s holder-id] (add-element store joe-id
+                                   (list (id->object jane-id store)))
+        new-store (do-delete s {:subject-ids [(make-reverse-item-id
+                                               holder-id)]})]
+    (is (not (id-valid-link? new-store holder-id)))
+    (is (id-known-object? new-store joe-id))
+    (is (not (id-known-object? new-store jane-id)))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

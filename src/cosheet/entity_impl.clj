@@ -11,7 +11,8 @@
                       [canonical :refer [equivalent-primitives?]]
                       [entity :refer :all]
                       [reporter-macros :refer [seq-R let-R]]
-                      [category-change-calculator :refer [category-change-R]])))
+                      [category-change-calculator :refer [category-change-R]]
+                      orderable)))
 
 (defn endpoint->entity
   "Given any value of an endpoint from a store, the store, and an

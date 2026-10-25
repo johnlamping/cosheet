@@ -5,7 +5,9 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-tree id->object id->element
+                             make-reverse-item-id
                              make-tree-element make-tree-object
+                             content
                              all-elements forward-elements in-different-store
                              name-label link-type object-type]]
              entity-impl
@@ -24,11 +26,12 @@
         [s1 id] (add-element s (make-item-id "0")
                              `(77 (~(link-type-object "test"))))
         [s2 id1] (add-object s1 (make-tree-object '("Hello")))
+        fred-id (make-item-id "Fred")
         ;; A reversed link. "Fred" is the source.
-        [s3 id2] (add-element s2 "Fred" (make-tree-element
-                                         (id->object id1 s2)
-                                         `((~(link-type-object "by")))
-                                         :reverse))
+        [s3 id2] (add-element s2 fred-id (make-tree-element
+                                           (id->object id1 s2)
+                                           `((~(link-type-object "by")))
+                                           :reverse))
         [s4 id3] (add-element s3 id `(~(make-tree-object '(1)) 3))
         [s5 id4] (add-element s4 id1 `(~(id->object (make-item-id "a") nil)))
         [s6 id6] (add-object s5
@@ -55,11 +58,12 @@
                          (~test-label)
                          (~(make-tree-object '(1)) 3)))))
     (is (= (to-tree (id->element id2 s))
-           `("Fred" (~by-label))))
+           `(~(id->object fred-id s) (~(in-different-store by-label s)))))
     (is (check (to-tree (id->object id1 s))
                (as-set (make-tree-object
                         `("Hello"
-                          ("Fred" (~by-label))
+                          (~(id->object fred-id s)
+                           (~(in-different-store by-label s)))
                           (~(id->object (make-item-id "a") s)))))))
     (is (check (to-tree (id->element id3 s))
                `(~(make-tree-object '(1)) 3)))
@@ -133,4 +137,21 @@
     ;; If the store doesn't have the object, the assertion fails.
     (is (thrown? AssertionError
                  (add-object s0 (id->object foo-oid nil))))))
+
+(deftest directed-id-test
+  (let [[s0 a-id] (get-new-object-id (new-element-store))
+        [s1 b-id] (get-new-object-id s0)
+        [s2 c-id] (get-new-object-id s1)
+        [s link-id] (add-link s2 a-id b-id)
+        reverse-link-id (make-reverse-item-id link-id)]
+    (is (= (directed-id->content-value s link-id) b-id))
+    (is (= (directed-id->content-value s reverse-link-id) a-id))
+    (is (= (directed-id->subject-value s link-id) a-id))
+    (is (= (directed-id->subject-value s reverse-link-id) b-id))
+    (let [s-source (update-directed-id-content-value s link-id c-id)
+          s-target (update-directed-id-content-value s reverse-link-id c-id)]
+      (is (= (directed-id->content-value s-source link-id) c-id))
+      (is (= (directed-id->content-value s-source reverse-link-id) a-id))
+      (is (= (directed-id->content-value s-target link-id) b-id))
+      (is (= (directed-id->content-value s-target reverse-link-id) c-id)))))
 

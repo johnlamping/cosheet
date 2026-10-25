@@ -10,7 +10,7 @@
                    update-source update-target id->source id->target
                    add-link remove-link declare-ephemeral-id
                    target->ids source->ids
-                   link-id? object-id? interned-object-id?
+                   item-id? link-id? object-id? interned-object-id?
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
                     object-type-object? non-type-object? universal-object?
@@ -127,6 +127,16 @@
                       (object-type-object? element-content)))))
           (semantic-elements (id->entity id store))))
 
+(defn- has-object-type-label?
+  "Return true if the object with the given id has an element whose
+  content is a non-universal object-type object."
+  [store id]
+  (some (fn [element]
+          (let [element-content (content element)]
+            (and (object-type-object? element-content)
+                 (not (universal-object? element-content)))))
+        (forward-elements (id->entity id store))))
+
 (defn- links-to-remove
   "Return a list of ids of links to remove in order to remove the entity
   with the given id, and all its elements and non-interned objects or
@@ -135,6 +145,7 @@
   loops when an element contains an object as its source.)  Return the
   list in an order suitable for removing."
   [store previous-id id]
+  (assert (item-id? id))
   (concat
    ;; First, we have to remove all the elements.
    (mapcat (partial links-to-remove store id)
@@ -145,14 +156,15 @@
                              (source->ids store id)))))
    ;; Once all the elements are gone, if the id is a link, we can
    ;; remove its content, if that is an unnamed object or a trivial
-   ;; named one and we are the only reference to it. Finally, remove
-   ;; the link, itself.
+   ;; named one, it has no object type label, and we are the only
+   ;; reference to it. Finally, remove the link, itself.
    (when (link-id? id)
      (concat (let [content-id (id->source store id)]
                (when (and (object-id? content-id)
                           (not= content-id previous-id)
                           (empty? (remove #(= id %)
                                           (source->ids store content-id)))
+                          (not (has-object-type-label? store content-id))
                           (or (not (interned-object-id? store content-id))
                               ;; An interned object that is just a bare
                               ;; label or class, and that this link is
@@ -166,6 +178,7 @@
 (defn remove-entity-by-id
   "Remove the entity with the given id, and all its elements."
   [store id]
+  (assert (item-id? id))
   (reduce (fn [store id] (remove-link store id))
           store (links-to-remove store nil id)))
 
@@ -688,6 +701,8 @@
   Both objects must be interned, so that a link joining them is not a
   cycle that a traversal would have to descend into."
   [store recipient-id donor-id]
+  (assert (item-id? recipient-id))
+  (assert (item-id? donor-id))
   (let [recipient (id->entity recipient-id store)
         donor (id->entity donor-id store)
         _ (assert (interned-object? recipient) recipient)
@@ -722,6 +737,7 @@
    object → entity id) is threaded through for cycle detection.
    Return [store remainder seen]."
   [store entity-id template-elements order position use-bigger seen]
+  (assert (or (nil? entity-id) (item-id? entity-id)))
   (let [entity-order-index (case position :before 0 :after 1)
         other-position ([:after :before] entity-order-index)
         split-order (split order (if use-bigger position other-position))
@@ -750,6 +766,7 @@
    for :target orientation it becomes the link's source. Return
    [store id remainder seen]."
   [store attachment-id template order position use-bigger seen]
+  (assert (or (nil? attachment-id) (item-id? attachment-id)))
   (assert (empty? (label->elements template :order)))
   (let [template-content (content template)
         template-elements (all-elements template)
@@ -784,6 +801,7 @@
 (defn update-add-elements-with-order-without-revisiting
   "Return [store order seen]."
   [store attachment-id elements order position seen]
+  (assert (or (nil? attachment-id) (item-id? attachment-id)))
   (let [[s _ order seen]
         (reduce (fn [[store _ order seen] element]
                   (update-add-element-with-order-and-ephemeral-without-revisiting
@@ -893,6 +911,7 @@
   "Like update-add-element-adjacent-to, threading seen. Return
    [store id seen]."
   [store attachment-id element adjacent-to position use-bigger seen]
+  (assert (or (nil? attachment-id) (item-id? attachment-id)))
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store id remainder seen]
@@ -930,6 +949,7 @@
   template has a :ephemeral element, mark it ephemeral in the store.
   Return the new store, the id of the item, and the remaining order."
   [store attachment-id template order position use-bigger]
+  (assert (or (nil? attachment-id) (item-id? attachment-id)))
   (let [[store id remainder _]
         (update-add-element-with-order-and-ephemeral-without-revisiting
          store attachment-id template order position use-bigger {})]
@@ -969,6 +989,7 @@
    the bigger piece if use-bigger is true. Return the updated store
    and the id of the entity."
   [store attachment-id element adjacent-to position use-bigger]
+  (assert (or (nil? attachment-id) (item-id? attachment-id)))
   (let [[store id _]
         (update-add-element-adjacent-to-without-revisiting
          store attachment-id element adjacent-to position use-bigger {})]
@@ -1010,6 +1031,7 @@
   source of the target to the new object.
   Return the updated store and the id of the new entity."
   [template target-id adjacent-id position use-bigger store]
+  (assert (or (nil? target-id) (item-id? target-id)))
   (let [template (if (and target-id
                           (selector? (id->entity target-id store)))
                    (mark-template-as-selector template)
@@ -1092,6 +1114,7 @@
 
 (defn table-column-headers-id
   [table-id immutable-store]
+  (assert (item-id? table-id))
   (first (target-label->ids immutable-store table-id :column-headers)))
 
 (defn table-column-headers-element
@@ -1100,6 +1123,7 @@
 
 (defn table-row-condition-id
   [table-id immutable-store]
+  (assert (item-id? table-id))
   (first (target-label->ids immutable-store table-id :row-condition)))
 
 (defn table-row-condition-element

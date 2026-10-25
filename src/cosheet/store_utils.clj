@@ -2,9 +2,11 @@
   (:require
    (cosheet
     [store :refer [add-link get-new-object-id
-                   generic-name?
+                   generic-name? item-id?
+                   id-endpoint->value update-target update-source
                    name-label-id link-type-id object-type-id]]
     [entity :refer [element? object? stored-entity?
+                    store-item-id reverse-id?
                     tree-entity?
                     uniquely-identified-object?
                     id-identified-object?
@@ -19,6 +21,29 @@
 
 ;;; These are utilities for adding and removing elements and objects
 ;;; from the store.
+
+(defn directed-id->content-value
+  "Return the content of the entity with the given directed id: the
+  target of its link for a reverse id, otherwise the source."
+  [store directed-id]
+  (id-endpoint->value store (store-item-id directed-id)
+                      (if (reverse-id? directed-id) :target :source)))
+
+(defn directed-id->subject-value
+  "Return the subject of the entity with the given directed id: the
+  source of its link for a reverse id, otherwise the target."
+  [store directed-id]
+  (id-endpoint->value store (store-item-id directed-id)
+                      (if (reverse-id? directed-id) :source :target)))
+
+(defn update-directed-id-content-value
+  "Return the store updated so that directed-id->content-value returns the
+  given value for the directed id."
+  [store directed-id value]
+  (let [id (store-item-id directed-id)]
+    (if (reverse-id? directed-id)
+      (update-target store id value)
+      (update-source store id value))))
 
 ;;; The conflux-map threaded through the internal-* functions maps a
 ;;; conflux-tree-object's id to the item-id of the stored object made
@@ -178,6 +203,7 @@
   entity with the given id.
   Return the new store and the id of the new element."
   [store container-id template]
+  (when container-id (assert (item-id? container-id)))
   (let [[store entity-link _] (internal-add-element
                                store {} container-id template)]
     [store entity-link]))

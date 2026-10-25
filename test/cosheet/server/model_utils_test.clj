@@ -11,7 +11,7 @@
                                       label->elements label->content
                                       content->elements
                                       content all-elements
-                                      to-tree]]
+                                      to-tree make-reverse-item-id]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
                                      id->source id->target make-item-id
@@ -1015,20 +1015,49 @@
                      (~(any) :order))
                    `(~(any) :order)]))))))
 
-(deftest create-possible-selector-entity-object-target-test
-  ;; When the template is an object and the target-id is non-nil,
-  ;; create-possible-selector-entity sets the source of the target to
-  ;; the id of the new object.
+(deftest create-possible-selector-entity-test
   (let [s0 (add-universal-objects (new-element-store))
-        [s1 target-id] (add-element s0 nil `("target" (~o1 :order)))
+        [s1 subject-id] (add-element s0 nil `("subject" (~o1 :order)))
+        [s1 holder-id] (add-object s1 (make-tree-object ["holder"]))
         object-template (make-tree-object
                          ['("Fred" ("Flintstone"))
-                          "Wilma"])
-        [s2 new-id] (create-possible-selector-entity
-                     object-template target-id target-id :before false s1)]
-    (is (check (canonicalize object-template)
-               (canonicalize (semantic-to-tree (id->entity new-id s2)))))
-    (is (= (id->source s2 target-id) new-id))))
+                          "Wilma"])]
+    ;; When the template is an object and the subject-id is non-nil,
+    ;; create-possible-selector-entity sets the content of the subject to
+    ;; the id of the new object.
+    (let [[s2 new-id] (create-possible-selector-entity
+                       object-template subject-id subject-id :before false
+                       s1)]
+      (is (check (canonicalize object-template)
+                 (canonicalize (semantic-to-tree (id->entity new-id s2)))))
+      (is (= (id->source s2 subject-id) new-id)))
+    ;; When the subject-id is reverse, the content of the subject is the
+    ;; target of its link, so that is what gets set. The subject's link
+    ;; then becomes a forward element of the new object.
+    (let [[s2 new-id] (create-possible-selector-entity
+                       object-template (make-reverse-item-id subject-id)
+                       subject-id :before false s1)]
+      (is (check (canonicalize object-template)
+                 (canonicalize (semantic-to-tree-excluding-elements
+                                (id->entity new-id s2) #{subject-id}))))
+      (is (= (id->target s2 subject-id) new-id))
+      (is (= (id->source s2 subject-id) "subject")))
+    ;; When the template is a forward element, the subject is the
+    ;; target of the new link.
+    (let [[s2 new-id] (create-possible-selector-entity
+                       '("Barney") subject-id subject-id :before false s1)]
+      (is (= (id->target s2 new-id) subject-id))
+      (is (= (id->source s2 new-id) "Barney")))
+    ;; When the template is a reverse element, the subject is the
+    ;; source of the new link, so it must be an object.
+    (let [[s2 new-id] (create-possible-selector-entity
+                       (make-tree-element object-template [] :reverse)
+                       holder-id subject-id :before false s1)]
+      (is (= (id->source s2 new-id) holder-id))
+      (is (check (canonicalize object-template)
+                 (canonicalize (semantic-to-tree-excluding-elements
+                                (id->entity (id->target s2 new-id) s2)
+                                #{new-id})))))))
 
 (deftest starting-store-test
   (let [s (starting-store "hi")

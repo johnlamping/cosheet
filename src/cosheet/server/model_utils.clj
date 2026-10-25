@@ -18,7 +18,7 @@
                     id-identified-object?
                     element? label-element? name-element? id->entity
                     content all-elements forward-elements entity-direction
-                    reverse? store-item-id
+                    reverse? store-item-id DirectedItemId
                     containing-elements
                     link-type object-type name-label
                     content->elements label->elements label->element
@@ -36,7 +36,7 @@
                     entity-complexity stored-entity?
                     tree-entity? presumed-interned-object?
                     in-different-store]]
-    [store-utils :refer [add-element
+    [store-utils :refer [add-element update-directed-id-content-value
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
     [query :refer [matching-items
@@ -1024,16 +1024,18 @@
        generic pre-fn identity-post-fn store)))
 
 (defn create-possible-selector-entity
-  "Create an entity matching the template. If the target-id is a
+  "Create an entity matching the template. If the subject-id is a
   selector, mark the template as a selector before adding it.
-  If the template is an element, make the target-id its subject, while
-  if the template is an object and the target-id is non-nil, set the
-  source of the target to the new object.
+  If the template is an element, make the subject-id its subject, with
+  the new link direction matching the template's.
+  If the template is an object and the subject-id is non-nil, it may
+  be a DirectedItemId; its content endpoint will be set to the new
+  object.
   Return the updated store and the id of the new entity."
-  [template target-id adjacent-id position use-bigger store]
-  (assert (or (nil? target-id) (item-id? target-id)))
-  (let [template (if (and target-id
-                          (selector? (id->entity target-id store)))
+  [template subject-id adjacent-id position use-bigger store]
+  (assert (or (nil? subject-id) (satisfies? DirectedItemId subject-id)))
+  (let [template (if (and subject-id
+                          (selector? (id->entity subject-id store)))
                    (mark-template-as-selector template)
                    (replace-anythings-with-empty-string template))]
     (if (object? template)
@@ -1041,28 +1043,28 @@
                         store template
                         (id->entity adjacent-id store)
                         position use-bigger)]
-        [(if target-id
-           (update-source store target-id id)
+        [(if subject-id
+           (update-directed-id-content-value store subject-id id)
            store)
          id])
-      (update-add-element-adjacent-to store target-id template
+      (update-add-element-adjacent-to store subject-id template
                                       (id->entity adjacent-id store)
                                       position use-bigger))))
 
 (defn create-possible-selector-entities
   "Create entities, specializing the template as appropriate, depending on
-   whether each target is a selector. Return the updated store and the
+   whether each subject is a selector. Return the updated store and the
    new ids."
-  [template targets adjacents position use-bigger store]
+  [template subjects adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-generic template store)
         [ids store] (threaded-map
-                     (fn [[target adjacent] store]
+                     (fn [[subject adjacent] store]
                        (let [[store id] (create-possible-selector-entity
                                          specialized-template
-                                         target adjacent position use-bigger
+                                         subject adjacent position use-bigger
                                          store)]
                          [id store]))
-                     (map vector targets adjacents)
+                     (map vector subjects adjacents)
                      store)]
     [store ids]))
 

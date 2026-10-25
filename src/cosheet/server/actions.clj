@@ -322,7 +322,8 @@
   [store {:keys [subject-ids session-state client-id]}]
   (let [object-ids (filter object-id? subject-ids)
         name-ids (filter (fn [id]
-                           (and (link-id? id)
+                           (and (item-id? id)
+                                (link-id? id)
                                 (object-id? (id->target store id))
                                 (let [element-content (id->source store id)]
                                   (or (string? element-content)

@@ -433,15 +433,22 @@
                   (make-tree-element a-ref ['(:selector :reverse)] :reverse)
                   :selector]))))))
 
-(deftest replace-anythings-with-empty-string-test
-  (is (= (replace-anythings-with-empty-string 'anything) ""))
-  (is (= (replace-anythings-with-empty-string "x") "x"))
-  (is (check (replace-anythings-with-empty-string
+(deftest replace-anythings-with-empty-test
+  (is (= (replace-anythings-with-empty 'anything) ""))
+  (is (= (replace-anythings-with-empty "x") "x"))
+  (is (check (replace-anythings-with-empty
               `(~'anything (~'anything 5) "x"))
              '("" ("" 5) "x")))
-  (is (check (replace-anythings-with-empty-string
+  (is (check (replace-anythings-with-empty
               (make-tree-object ['anything `(~'anything 3)]))
-             (make-tree-object ["" '("" 3)]))))
+             (make-tree-object ["" '("" 3)])))
+  ;; An 'anything that is the content of a reversed element becomes an
+  ;; empty object.
+  (is (check (replace-anythings-with-empty
+              (make-tree-object
+               [(make-tree-element 'anything ["x"] :reverse)]))
+             (make-tree-object
+              [(make-tree-element (make-tree-object []) ["x"] :reverse)]))))
 
 (deftest change-to-non-selector-test
   (let [unmarked (make-tree-object
@@ -454,7 +461,7 @@
         after (change-to-non-selector store id)]
     ;; The markings are gone, and every 'anything is now "".
     (is (check (canonicalize (to-tree (id->entity id after)))
-               (canonicalize (replace-anythings-with-empty-string
+               (canonicalize (replace-anythings-with-empty
                               unmarked))))))
 
 (deftest selector-semantic-to-tree-test

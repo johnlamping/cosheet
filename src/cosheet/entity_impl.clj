@@ -126,7 +126,8 @@
     (let [underlying-item-id (store-item-id item-id)]
       (when (object-id? underlying-item-id)
         (seq (->> (source->ids store underlying-item-id)
-                  (filter #(object-id? (id->target store %)))
+                  (filter #(let [target (id->target store %)]
+                             (or (object-id? target) (symbol? target))))
                   (map #(id->element % :reverse store)))))))
 
   (all-elements [this]
@@ -158,7 +159,8 @@
              (object-id? underlying-item-id)
              (concat (->> (source-label->ids
                            store underlying-item-id label-key)
-                          (filter #(object-id? (id->target store %)))
+                          (filter #(let [target (id->target store %)]
+                                     (or (object-id? target) (symbol? target))))
                           (map #(id->element % :reverse store))))))))
 
   (entity-key [this]
@@ -233,7 +235,7 @@
                 targets (seq-R (map #(id->target store %) element-ids))]
           (seq (->> (map vector element-ids targets)
                     (keep (fn [[element-id target]]
-                            (when (object-id? target)
+                            (when (or (object-id? target) (symbol? target))
                               element-id)))
                     (map #(id->element % :reverse store))))))))
 
@@ -283,7 +285,7 @@
                    forward-elements
                    (->> (map vector element-ids targets)
                         (keep (fn [[element-id target]]
-                                (when (object-id? target)
+                                (when (or (object-id? target) (symbol? target))
                                   element-id)))
                         (map #(id->element % :reverse store))))))
             forward-elements)))))

@@ -233,6 +233,26 @@
       (is (check (all-elements item1p)
                  (as-set [(id->element idp sp)
                           (id->element idm :reverse sp)]))))
+    ;; A link whose target is a symbol is a reverse element of its
+    ;; source object, with the symbol as its content.
+    (let [[sq idq] (add-link s 'anything id1)
+          [sr idr] (add-link sq idq rel-oid)
+          item1q (id->object id1 sr)
+          item-q-reversed (id->element idq :reverse sr)]
+      (is (= (content item-q-reversed) 'anything))
+      (is (= (subject-entity item-q-reversed) item1q))
+      (is (= (target-entity (id->element idq sr)) 'anything))
+      (is (check (reverse-elements item1q)
+                 (as-set [(id->element idm :reverse sr)
+                          item-q-reversed])))
+      (is (check (all-elements item1q)
+                 (as-set [(id->element idm :reverse sr)
+                          item-q-reversed])))
+      (is (check (label->elements item1q rel-label)
+                 (as-set [(id->element idm :reverse sr)
+                          item-q-reversed])))
+      (is (= (to-tree item-q-reversed)
+             `((:reverse ~'anything) (~(id->object rel-oid sr))))))
     (is (check (to-tree item1) item1))
     (is (= (to-tree item-a-reversed) `((:reverse ~item99) (~foo-label))))
     (is (= (to-tree item-m) (make-tree-element item1
@@ -375,6 +395,26 @@
       (is (check (current-value (all-elements item1p))
                  (as-set [(id->element idp msp)
                           (id->element idm :reverse msp)]))))
+    ;; A link whose target is a symbol is a reverse element of its
+    ;; source object, with the symbol as its content.
+    (let [[sq idq] (add-link s 'anything id1)
+          [sr idr] (add-link sq idq rel-oid)
+          msr (new-mutable-store sr)
+          item1q (id->object id1 msr)
+          item-q-reversed (id->element idq :reverse msr)]
+      (is (= (current-value (content item-q-reversed)) 'anything))
+      (is (= (current-value (subject-entity item-q-reversed)) item1q))
+      (is (= (current-value (target-entity (id->element idq msr)))
+             'anything))
+      (is (check (current-value (reverse-elements item1q))
+                 (as-set [(id->element idm :reverse msr)
+                          item-q-reversed])))
+      (is (check (current-value (all-elements item1q))
+                 (as-set [(id->element idm :reverse msr)
+                          item-q-reversed])))
+      (is (check (current-value (label->elements item1q rel-label))
+                 (as-set [(id->element idm :reverse msr)
+                          item-q-reversed]))))
     ;; Now make sure updating-immutable tracks right.
     (let [record-of-updates (atom [])
           updating-immutable-result (let-R [current-item (updating-immutable
@@ -448,6 +488,12 @@
   (is (= (content '(1 (2 3) (4 5))) 1))
   (is (= (content '((:forward 1) (2 3) (4 5))) 1))
   (is (= (content '((:reverse [:object 6]) (2 3) (4 5))) [:object 6]))
+  ;; A reversed element may have a symbol as its content.
+  (is (reverse? '((:reverse anything) 2)))
+  (is (= (content-endpoint '((:reverse anything) 2)) :target))
+  (is (= (content '((:reverse anything) (2 3))) 'anything))
+  (is (= (make-tree-element 'anything '(2) :reverse)
+         '((:reverse anything) 2)))
   (is (= (content->elements '(1 (2 3) (4 5)) 4) ['(4 5)]))
   (is (=(entity-key '(1 2)) '(1 2)))
   (is (= (to-tree '(nil (1 nil))) '(nil (1 nil)))))

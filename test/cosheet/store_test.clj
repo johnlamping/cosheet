@@ -316,6 +316,14 @@
     (is (= (:primitive-id id) (:next-number test-store)))
     (is (= (id->source added-store id) "test"))
     (is (= (id->target added-store id) (make-link-id 1))))
+  ;; A symbol may be a target.
+  (let [[added-store id] (add-link test-store 'anything "test")
+        [labeled-store label-id] (add-link added-store id :lbl)]
+    (is (= (id->target added-store id) 'anything))
+    (is (= (target->ids added-store 'anything) [id]))
+    ;; The label indices work for a link with a symbol target.
+    (is (= (target-label->ids labeled-store 'anything :lbl) [id]))
+    (is (= (source-label->ids labeled-store "test" :lbl) [id])))
   ;; Test that adding nil source fails.
   (is (thrown? java.lang.AssertionError
                (add-link test-store (make-link-id 1) nil)))
@@ -359,6 +367,9 @@
                         id (make-object-id -2))]
     (is (= (:modified-ids changed-store) #{id}))
     (is (= (id->target changed-store id) (make-object-id -2)))
+    ;; A symbol may be set as a target.
+    (is (= (id->target (update-target different-store id 'anything) id)
+           'anything))
     ;; Test that setting nil as a target fails.
     (is (thrown? java.lang.AssertionError
                  (update-target test-store id nil)))
@@ -692,7 +703,12 @@
                           )]
     (is (check (into {} smaller-store)
                (into {} (data-to-store (new-element-store)
-                                       (store-to-data ephemeral-store)))))))
+                                       (store-to-data ephemeral-store))))))
+  ;; A symbol target survives the round trip.
+  (let [[symbol-store _] (add-link test-store 'anything "test")]
+    (is (check (into {} symbol-store)
+               (into {} (data-to-store (new-element-store)
+                                       (store-to-data symbol-store)))))))
 
 (deftest write-read-test
   (let [store (first

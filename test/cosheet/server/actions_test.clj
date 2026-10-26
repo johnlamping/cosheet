@@ -52,7 +52,7 @@
                                   pattern->fixed-term-query
                                   label-object-template
                                   mark-template-as-selector
-                                  replace-anythings-with-empty-string
+                                  replace-anythings-with-empty
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral]]
              [session-state :refer [update-add-session-ephemeral-element]]
@@ -433,7 +433,7 @@
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)
         generic-label (all-presumed-interned-in-different-store
-                       (replace-anythings-with-empty-string
+                       (replace-anythings-with-empty
                         label-object-template)
                        new-store)
         ;; Jane is a selector, so its label keeps 'anything.

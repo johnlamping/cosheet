@@ -310,18 +310,25 @@
   (store-to-data [this]
     "Extract just the essential data from the store, in preparation for
      writing it out. The data consists of the next id, and a vector of
-     (link-id target source) triples for its links. A few things are
-     represented as vectors that start with a keyword:
-       ItemId [:id (:primitive-id ?)])
-       Orderable [:ord (left ?) (right ?)]
-       Vector [:vec * ?]"
+     (link-id target source) triples for its links.
+     A target that is an item id is represented by its primitive id, while
+     other target values are represented by themselves. 
+     A few source values are represented as vectors that start with a
+     keyword:
+       ItemId [:id (:primitive-id %)])
+       Orderable [:ord (left ?) (right %)]
+       Vector [:vec * %]"
     (let [ephemeral-ids (all-ephemeral-ids this)]
       [(:next-number this)
        (for [[id source]
              (seq (:id->source this))
              :when (not (ephemeral-ids id))]
          [(:primitive-id id)
-          (:primitive-id (get-in this [:id->target id]))
+          (let [target (get-in this [:id->target id])]
+            (if (item-id? target)
+              (:primitive-id target)
+              ;; The target must be a symbol or nil.
+              target))
           (cond (item-id? source)
                 [:id (:primitive-id source)]
                 (instance? cosheet.orderable.Orderable source)
@@ -342,7 +349,10 @@
       (let [[store deferred]
             (reduce (fn [[store deferred] [id target source]]
                       (let [id (->ItemId id)
-                            target (when target (->ItemId target))
+                            target (if (or (nil? target)
+                                           (symbol? target))
+                                     target
+                                     (->ItemId target))
                             source (if (vector? source)
                                       (apply (case (first source)
                                                :id ->ItemId
@@ -430,9 +440,10 @@
      * the id of a label object
   Requires that :target->ids and :source->ids are up to date."
   [store id]
-  (let [source (id->source store id)]
-    (or (keyword? source)
-        (id-is-label-object? store source))))
+  (when (link-id? id)
+    (let [source (id->source store id)]
+      (or (keyword? source)
+          (id-is-label-object? store source)))))
 
 (defn index-endpoint->label->label-ids-from-label
   "Reflect a label in endpoint->label->label-ids.
@@ -441,7 +452,7 @@
   endpoint."
   [store old-store endpoint id]
   (let [fetcher (let [fetcher (endpoint-fetcher endpoint)]
-                  (fn [store id] (when id (fetcher store id))))
+                  (fn [store id] (when (link-id? id) (fetcher store id))))
         index-key (endpoint-label-index-key endpoint)
         is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
@@ -473,7 +484,8 @@
       ;; Handle when id is a label.
       (index-endpoint->label->label-ids-from-label store old-store endpoint id)
       ;; Handle when id makes its target a label.
-      (if-let [target (or (id->target store id) (id->target old-store id))]
+      (if-let [target (first (filter link-id? [(id->target store id)
+                                               (id->target old-store id)]))]
         (index-endpoint->label->label-ids-from-label
          store old-store endpoint target)
         store)
@@ -557,6 +569,7 @@
   [store item-id target source]
   ;; TODO: !!! disallow nil once objects are supported.
   (assert (or (nil? target)
+              (symbol? target)
               (object-id? target)
               (id-valid-link? store target))
           [item-id target source])

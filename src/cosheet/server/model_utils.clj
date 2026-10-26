@@ -342,17 +342,23 @@
         caller-data])
      nil))))
 
-(defn replace-anythings-with-empty-string
-  "Return the template with every 'anything value replaced by the empty
-  string. Cycles and objects reached by multiple paths are handled by
-  repetition-avoiding-threaded-traverse."
+(defn replace-anythings-with-empty
+  "Return the template with every 'anything value replaced by an empty
+  value: an empty object when it is the content of a reversed element,
+  otherwise the empty string. Cycles and objects reached by multiple
+  paths are handled by repetition-avoiding-threaded-traverse."
   [template]
   (convert-unneeded-conflux-tree-objects
    (first
     (repetition-avoiding-threaded-traverse
      template
-     (fn [_ entity _ caller-data]
-       [(if (= entity 'anything) "" entity) caller-data])
+     (fn [parent entity _ caller-data]
+       [(if (= entity 'anything)
+          (if (and (element? parent) (reverse? parent))
+            (make-tree-object [])
+            "")
+          entity)
+        caller-data])
      identity-post-fn
      nil))))
 
@@ -1037,7 +1043,7 @@
   (let [template (if (and subject-id
                           (selector? (id->entity subject-id store)))
                    (mark-template-as-selector template)
-                   (replace-anythings-with-empty-string template))]
+                   (replace-anythings-with-empty template))]
     (if (object? template)
       (let [[store id] (update-add-object-adjacent-to
                         store template

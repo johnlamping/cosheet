@@ -25,7 +25,7 @@
 ;;; indicates.
 
 ;;; A link can never be a source of another. And a primitive can
-;;; never be a target of a link.
+;;; never be a target of a link, unless the primitive is a symbol.
 
 ;;; A link's target can't change if it is another link. And a link's
 ;;; target can never be changed to become a link. In other words, a
@@ -225,10 +225,10 @@
    after an undo or redo."
 
   (add-link [this target source]
-    "Add an item with the given target and source. The target must be an
-     object id or a link id that is already in the store, and the
-     source must be primitive or an object id. Return the modified
-     store and the id of the new element.")
+    "Add an item with the given target and source. The target must be a
+     symbol, an object id or a link id that is already in the store,
+     and the source must be primitive or an object id. Return the
+     modified store and the id of the new element.")
   
   (remove-link [this id]
     "Remove the link with the given id from the store.

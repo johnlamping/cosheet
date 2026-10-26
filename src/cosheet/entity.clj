@@ -266,9 +266,9 @@
     links between objects.")
 
   (reverse-elements [this]
-    "Return a seq of items for the reversed links between objects that
-    all-elements includes beyond forward-elements. This is nil for
-    anything but an object.")
+    "Return a seq of items for the reversed links from this object to
+    objects or symbols that all-elements includes beyond
+    forward-elements. This is nil for anything but an object.")
 
   (all-elements [this]
     "Return a seq of items for all our elements, including reversed links
@@ -559,11 +559,14 @@
                ;; TODO: !!! For now, special forms are elements.
                ;;           When they become objects, remove this case.
                (= (keyword? (first content)))))
-   ;; A reverse element must have an object as its target, which is its
-   ;; content. We also allow nil, to describe a target that is any object.
+   ;; A reverse element must have nil, a symbol or an object as its
+   ;; content. (The content will become the target of any link
+   ;; representing the element, so it has to follow the rules for a
+   ;; link target.)
    (assert (or (not= element-direction :reverse)
                (nil? content)
-               (object? content))
+               (object? content)
+               (symbol? content))
            content)
    ;; None of the elements we are made from may be reversed.
    (assert (not-any? #(or (object? %)

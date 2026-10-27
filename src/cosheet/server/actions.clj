@@ -544,9 +544,11 @@
                 ;; the element-id has, because that is the id that
                 ;; abandon-problem-changes needs to check from.
                 (let [store-id (store-item-id id)
-                      target-id (id->target store store-id)
+                      target (id->target store store-id)
                       modified (remove-entity-by-id store store-id)]
-                  (abandon-problem-changes store modified target-id)))
+                  (if (item-id? target)
+                    (abandon-problem-changes store modified target)
+                    modified)))
               store subject-ids))
     ;; We have non-trivial content in a context where deleting the
     ;; entire element would cause label doms to disappear. So we
@@ -586,7 +588,7 @@
           ;; subject, rather than the subject, itself:
           ;;    * The subject is an element with nothing but a label.
           ;;    * The subject is the current root.
-          show-target (when target
+          show-target (when (item-id? target)
                         (or (let [entity (id->entity subject-id store)
                                   displayed-elements (semantic-elements entity)]
                               (and (<= (count displayed-elements) 1)

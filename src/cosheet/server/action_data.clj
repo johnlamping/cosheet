@@ -398,8 +398,13 @@
   [action]
   (#{:set-content :add-element :add-label :make-name :make-object} action))
 
+;;; TODO: This has to handle reverse templates. That requires several
+;;; changes.  First, the targets variable should be subjects, and in
+;;; she :sibling case, it should be the subject ids of the siblings,
+;;; not their targets. That will also ensure it is an id, not a
+;;; symbol. Then the created thing has to have the right orientation.
 (defn get-virtual-action-data
-  "Create the specified virtual item(s) and make them the target(s).
+  "Create the specified virtual item(s) and make them the subject(s).
    The new items are instances of the template.
    The containing data's subject-ids are the target of the new items,
    unless incoming-subject-is is :sibling, in which case they are the

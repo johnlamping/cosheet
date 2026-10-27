@@ -24,7 +24,7 @@
                             name-label-id target->ids id->source
                             target-label->ids
                             current-store id-valid-link?
-                            id->target
+                            id->target id->string
                             get-new-object-id object-id? id-known-object?
                             update-source store-update!
                             update-equivalent-undo-point]]
@@ -645,7 +645,23 @@
                                                holder-id)]})]
     (is (not (id-valid-link? new-store holder-id)))
     (is (id-known-object? new-store joe-id))
-    (is (not (id-known-object? new-store jane-id)))))
+    (is (not (id-known-object? new-store jane-id))))
+  ;; Deleting through a reverse id whose link's target is a symbol
+  ;; removes the link.
+  (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
+        new-store (do-delete s {:subject-ids [(make-reverse-item-id
+                                               holder-id)]})]
+    (is (not (id-valid-link? new-store holder-id)))
+    (is (id-known-object? new-store joe-id))))
+
+(deftest do-expand-test
+  ;; When the subject's target is a symbol, the subject itself is opened.
+  (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
+        session-state {:client-state (make-map-reporter {:root-id nil})}]
+    (is (check (do-expand s {:subject-ids [holder-id]
+                             :session-state session-state})
+               {:store s
+                :open (str "?root=" (id->string holder-id))}))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

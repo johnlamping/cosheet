@@ -459,7 +459,16 @@
         [store id] (add-object (new-element-store)
                                (mark-template-as-selector unmarked))
         after (change-to-non-selector store id)]
-    ;; The markings are gone, and every 'anything is now "".
+    (is (check (canonicalize (to-tree (id->entity id after)))
+               (canonicalize (replace-anythings-with-empty
+                              unmarked)))))
+  ;; A reversed 'anything element gets an empty object as its content.
+  (let [unmarked (make-tree-object
+                  [`("x" (~o1 :order))
+                   `((:reverse ~'anything) (~o2 :order))])
+        [store id] (add-object (new-element-store)
+                               (mark-template-as-selector unmarked))
+        after (change-to-non-selector store id)]
     (is (check (canonicalize (to-tree (id->entity id after)))
                (canonicalize (replace-anythings-with-empty
                               unmarked))))))

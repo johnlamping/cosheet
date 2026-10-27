@@ -36,7 +36,8 @@
                     entity-complexity stored-entity?
                     tree-entity? presumed-interned-object?
                     in-different-store]]
-    [store-utils :refer [add-element update-directed-id-content-value
+    [store-utils :refer [add-element add-object
+                         update-directed-id-content-value
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
     [query :refer [matching-items
@@ -395,17 +396,28 @@
    nil
    []))
 
+(defn- replace-anything-content-with-empty
+  "Return the store with the content of the element replaced by an
+  empty object if the element is reversed, otherwise by the empty
+  string."
+  [store element]
+  (let [[store value] (if (reverse? element)
+                        (add-object store (make-tree-object []))
+                        [store ""])]
+    (update-directed-id-content-value store (:item-id element) value)))
+
 (defn change-to-non-selector
   "Update the store so that the entity with the given id is no longer a
   selector: remove its :selector markings and replace its 'anything
-  contents with the empty string."
+  contents with the empty string, or with an empty object for reversed
+  elements."
   [store id]
   (reduce (fn [store entity]
             (cond-> (reduce remove-entity-by-id store
                             (map entity-key
                                  (content->elements entity :selector)))
               (and (element? entity) (= (content entity) 'anything))
-              (update-source (:item-id entity) "")))
+              (replace-anything-content-with-empty entity)))
           store
           (selector-marked-entities store id)))
 

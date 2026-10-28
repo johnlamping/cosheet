@@ -1238,6 +1238,7 @@
   [entity]
   ;; A header is a problem if it has the vacuous condition.
   (and
+   (item-id? (:item-id entity))
    ;; It has universal content
    (= 'anything (content entity))
    ;; It is a column header.
@@ -1254,8 +1255,10 @@
    changes were made, return the new store if the changes don't have any
    problems, otherwise the old store."
   [old-store new-store id]
-  (if (and id
-           (let [revised-entity (id->entity id new-store)]
+  (if (and (satisfies? DirectedItemId id)
+           ;; No matter which orientation the id has, we examine the
+           ;; forward orientation of the underlying link.
+           (let [revised-entity (id->entity (store-item-id id) new-store)]
              (or (column-header-problem revised-entity)
                  (column-header-problem (target-entity revised-entity)))))
     old-store

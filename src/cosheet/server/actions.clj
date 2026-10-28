@@ -138,8 +138,8 @@
                  (= to "\"\"") ""
                  :else to)]
     (cond
-      (and (reverse-id? id) (not (object-id? to)))
-      (do (println "Reverse elements may only hold objects.")
+      (and (reverse-id? id) (not (or (object-id? to) (= to 'anything))))
+      (do (println "Reverse elements may only hold objects or 'anything.")
           store)
       (current-content-matches-from? store id from to)
       (let [modified (update-directed-id-content-value

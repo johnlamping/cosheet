@@ -361,7 +361,6 @@
         (add-following-selection-by-ids
          store client-id (concat object-new-ids name-new-ids))))))
 
-;;; TODO: !!! This needs to handle reversed links.
 (defn do-make-object
   "Make a new object, and set the content(s) of the subject element(s)
   to it. Does nothing to subjects that are not elements or that are an
@@ -393,22 +392,22 @@
                    (add-elements-to-entity
                     template [`(~first-content (~name-label))])
                    template)
-        [store oids]
+        [store ids-to-select]
         (if (object? template)
-          (reduce (fn [[store oids] subject-id]
+          (reduce (fn [[store ids-to-select] subject-id]
                     (cond
                       ;; Don't set the content if our subject isn't an
                       ;; element, or if it is a name.
-                      (or (not (link-id? subject-id))
+                      (or (not (link-id? (store-item-id subject-id)))
                           (seq (target-source->ids
                                 store subject-id name-label-id)))
-                      [store oids]
+                      [store ids-to-select]
                       ;; Our content is already an object. But if this
                       ;; is a virtual component, it may have been
                       ;; added by the action-data. Don't change it,
                       ;; but ask for it to be selected.
                       (object-id? (directed-id->content-value store subject-id))
-                      [store (conj oids (directed-id->content-value
+                      [store (conj ids-to-select (directed-id->content-value
                                          store subject-id))]
                       :else
                       (let [[s1 object-id]
@@ -416,14 +415,14 @@
                              template subject-id subject-id :after false store)]
                         (if (= store
                                (abandon-problem-changes store s1 subject-id))
-                          [store oids]
-                          [s1 (conj oids object-id)]))))
+                          [store ids-to-select]
+                          [s1 (conj ids-to-select object-id)]))))
                   [store []] subject-ids)
           ;; Our template is not an object, and couldn't be converted
           ;; into one. Do nothing.
           [store []])]
-    (when (seq oids)
-      (add-following-selection-by-ids store client-id oids))))
+    (when (seq ids-to-select)
+      (add-following-selection-by-ids store client-id ids-to-select))))
 
 (defn do-add-row
   [store {:keys [row-id table-id column-ids client-id]}]

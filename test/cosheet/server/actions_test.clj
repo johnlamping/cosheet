@@ -532,7 +532,22 @@
   ;; Does nothing when the subject is not an element.
   (is (not (do-make-object store
                           {:subject-ids [(:item-id age-label)]
-                           :client-id nil}))))
+                           :client-id nil})))
+  ;; A reverse element's content is the target of its link. Making an
+  ;; object for it sets the target to the new object.
+  (let [[s1 holder-id] (add-element store joe-id
+                                    (make-tree-element 'anything nil :reverse))
+        [s _] (add-element s1 holder-id `(~unused-orderable :order))
+        new-store (do-make-object s {:subject-ids [(make-reverse-item-id
+                                                    holder-id)]
+                                     :client-id nil})
+        new-content-id (id->target new-store holder-id)]
+    (is (object-id? new-content-id))
+    (is (not (id-known-object? s new-content-id)))
+    (is (id-known-object? new-store new-content-id))
+    (is (= (id->source new-store holder-id) joe-id))
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids [nil [new-content-id]]}))))
 
 (deftest do-delete-test
   (let [new-store (do-delete store

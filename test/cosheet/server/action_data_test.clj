@@ -3,10 +3,13 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [orderable :refer [split initial]]
-                     [entity :refer [id->entity to-tree content
-                                     make-tree-object in-different-store]]
+                     [entity :refer [id->entity id->object to-tree content
+                                     make-tree-object make-tree-element
+                                     in-different-store
+                                     make-reverse-item-id reverse-id?
+                                     store-item-id]]
                       [store :refer [new-element-store ImmutableStore
-                                     id->target id->source
+                                     id->target id->source object-id?
                                      target-label->ids
                                      get-new-object-id]] 
                       [store-utils :refer [add-element add-object
@@ -201,6 +204,41 @@
              (:right (get-order (:item-id joe-age) original-store))))
       (is (check (semantic-to-tree (id->entity id store))
                  '("")))))
+  ;; With :incoming-subject-is :sibling and a reversed subject id, the
+  ;; new item's subject is the source of the subject's link.
+  (let [[s0 object-id] (add-object store (make-tree-object ["x"]))
+        [s holder-id] (add-element s0 joe-id
+                                   `(~(id->object object-id s0) (~o3 :order)))
+        data (get-virtual-action-data
+              {:template 'anything :incoming-subject-is :sibling}
+              {:subject-ids [(make-reverse-item-id holder-id)]}
+              :set-content s)]
+    (is (check data {:subject-ids [(any)]
+                     :past-subject-ids [[object-id]]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [{:keys [subject-ids store]} data
+          id (first subject-ids)]
+      (is (= (id->target store id) object-id))
+      (is (check (semantic-to-tree (id->entity id store))
+                 '("")))))
+  ;; A reverse element template makes a link whose source is the
+  ;; subject, which must be an object, and the new subject id is
+  ;; reversed.
+  (let [[s object-id] (add-object store (make-tree-object
+                                         [`("x" (~o3 :order)) `(~o4 :order)]))
+        data (get-virtual-action-data
+              {:template (make-tree-element 'anything nil :reverse)}
+              {:subject-ids [object-id]} :set-content s)]
+    (is (check data {:subject-ids [(any)]
+                     :past-subject-ids [[object-id]]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [{:keys [subject-ids store]} data
+          id (first subject-ids)
+          link-id (store-item-id id)]
+      (is (reverse-id? id))
+      (is (= (id->source store link-id) object-id))
+      ;; The 'anything became an empty object.
+      (is (object-id? (id->target store link-id)))))
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
               {:template '(anything 2)

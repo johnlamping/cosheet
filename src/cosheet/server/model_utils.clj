@@ -1044,8 +1044,9 @@
 (defn create-possible-selector-entity
   "Create an entity matching the template. If the subject-id is a
   selector, mark the template as a selector before adding it.
-  If the template is an element, make the subject-id its subject, with
-  the new link direction matching the template's.
+  If the template is an element, make the subject-id, whatever its
+  direction, its subject, with the new link direction matching the
+  template's.
   If the template is an object and the subject-id is non-nil, it may
   be a DirectedItemId; its content endpoint will be set to the new
   object.
@@ -1065,8 +1066,8 @@
            (update-directed-id-content-value store subject-id id)
            store)
          id])
-      (update-add-element-adjacent-to store subject-id template
-                                      (id->entity adjacent-id store)
+      (update-add-element-adjacent-to store (some-> subject-id store-item-id)
+                                      template (id->entity adjacent-id store)
                                       position use-bigger))))
 
 (defn create-possible-selector-entities

@@ -4,8 +4,10 @@
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
                       [store :refer [item-id? id->target]]
+                      [store-utils :refer [directed-id->subject-value]]
                       [entity :refer [content label->elements
-                                      id->entity entity-complexity object?]]
+                                      id->entity entity-complexity object?
+                                      reverse? make-reverse-item-id]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
@@ -398,21 +400,15 @@
   [action]
   (#{:set-content :add-element :add-label :make-name :make-object} action))
 
-;;; TODO: This has to handle reverse templates. That requires several
-;;; changes.  First, the targets variable should be subjects, and in
-;;; she :sibling case, it should be the subject ids of the siblings,
-;;; not their targets. That will also ensure it is an id, not a
-;;; symbol. Then the created thing has to have the right orientation.
 (defn get-virtual-action-data
   "Create the specified virtual item(s) and make them the subject(s).
-   The new items are instances of the template.
-   The containing data's subject-ids are the target of the new items,
-   unless incoming-subject-is is :sibling, in which case they are the
-   siblings, or :adjacent, in which case the new items have no
-   target. In either of those cases, the new items will be adjacent
-   to the subject-ids. If not, they will be adjacent to elements of
-   the target that match adjacent-query, if there are any, otherwise,
-   they will be adjacent to the target.
+   The containing data's subject-ids are the subjects of the new items,
+   unless incoming-subject-is is :sibling, in which case their subjects
+   are the subjects of the new items, or :adjacent, in which case the
+   new items have no subject. In either of those cases, the new items
+   will be adjacent to the subject-ids. If not, they will be adjacent
+   to elements of the subject that match adjacent-query, if there are
+   any, otherwise, they will be adjacent to the subject.
    The new items are ordered after what they are adjacent to, unless
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
@@ -426,35 +422,40 @@
   (if-not (should-create-virtual? action)
     inherited-action-data
     (let [subject-ids (:subject-ids inherited-action-data)
-          targets (case incoming-subject-is
-                    :sibling (map #(id->target immutable-store %) subject-ids)
-                    :adjacent (map (constantly nil) subject-ids)
-                    subject-ids)
+          subjects (case incoming-subject-is
+                     :sibling (map #(directed-id->subject-value
+                                     immutable-store %)
+                                   subject-ids)
+                     :adjacent (map (constantly nil) subject-ids)
+                     subject-ids)
           adjacents (if (#{:sibling :adjacent} incoming-subject-is)
                       subject-ids
                       (find-virtual-adjacents
-                       targets specification immutable-store))
+                       subjects specification immutable-store))
           templates (if (sequential-template? template)
                       (:template-sequence template)
                       [template])
-          [targets _ past-ids new-store]
+          [subjects _ past-ids new-store]
           (reduce
-           (fn [[targets adjacents past-ids store] template]
+           (fn [[subjects adjacents past-ids store] template]
              (assert (or (not (object? template))
-                         (every? nil? targets))
-                     [targets template])
+                         (every? nil? subjects))
+                     [subjects template])
              (let [[store ids] (create-possible-selector-entities
-                                template targets adjacents
-                                (or position :after) use-bigger store)]
-               [ids ids (cons targets past-ids) store]))
-           [targets adjacents past-subject-ids immutable-store]
+                                template subjects adjacents
+                                (or position :after) use-bigger store)
+                   ids (if (reverse? template)
+                         (map make-reverse-item-id ids)
+                         ids)]
+               [ids ids (cons subjects past-ids) store]))
+           [subjects adjacents past-subject-ids immutable-store]
            templates)]
       (println "Made items"
                template
-               (simplify-for-print targets)
+               (simplify-for-print subjects)
                (simplify-for-print adjacents))
       (assoc inherited-action-data
-             :subject-ids targets
+             :subject-ids subjects
              :past-subject-ids past-ids
              :store new-store))))
 

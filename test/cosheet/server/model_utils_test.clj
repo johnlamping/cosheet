@@ -407,6 +407,9 @@
                  ;; since it is named.
                  `(~(make-tree-object [`("Fred" (~name-label))]) :selector)
                  :selector]))))
+  ;; A primitive template becomes a marked element.
+  (is (check (mark-template-as-selector 'anything) '(anything :selector)))
+  (is (check (mark-template-as-selector "") '("" :selector)))
   ;; A non-semantic element is not marked, and its sub-elements are not
   ;; visited, so a semantic sub-element it contains is left unmarked.
   (is (check (mark-template-as-selector
@@ -450,7 +453,7 @@
              (make-tree-object
               [(make-tree-element (make-tree-object []) ["x"] :reverse)]))))
 
-(deftest change-to-non-selector-test
+(deftest modify-to-non-selector-test
   (let [unmarked (make-tree-object
                   [`("x" (~o1 :order))
                    `(~'anything (~o2 :order))
@@ -458,7 +461,7 @@
                      (~o4 :order))])
         [store id] (add-object (new-element-store)
                                (mark-template-as-selector unmarked))
-        after (change-to-non-selector store id)]
+        after (modify-to-non-selector store id)]
     (is (check (canonicalize (to-tree (id->entity id after)))
                (canonicalize (replace-anythings-with-empty
                               unmarked)))))
@@ -468,7 +471,7 @@
                    `((:reverse ~'anything) (~o2 :order))])
         [store id] (add-object (new-element-store)
                                (mark-template-as-selector unmarked))
-        after (change-to-non-selector store id)]
+        after (modify-to-non-selector store id)]
     (is (check (canonicalize (to-tree (id->entity id after)))
                (canonicalize (replace-anythings-with-empty
                               unmarked))))))
@@ -505,7 +508,7 @@
                                 (id->object id s6)))
                  (canonicalize (semantic-to-tree unmarked)))))))
 
-(deftest change-to-non-selector-cycle-test
+(deftest modify-to-non-selector-cycle-test
   ;; The store forbids links that would create a loop among non-interned
   ;; objects, but we can build one by linking two interned (named)
   ;; objects and then removing their names. That leaves a cycle: a to b
@@ -543,7 +546,7 @@
     (is (not (interned-object? (id->object b-id store))))
     ;; The traversal terminates. a, b, and the forward link ab are
     ;; unmarked; the reverse link ba keeps its :selector.
-    (let [from-a (change-to-non-selector store a-id)]
+    (let [from-a (modify-to-non-selector store a-id)]
       (is (not (marked? from-a a-id)))
       (is (not (marked? from-a b-id)))
       (is (not (marked? from-a ab-id)))
@@ -778,7 +781,12 @@
     ;; A name that doesn't match the interned object's name is an error.
     (is (thrown? java.lang.AssertionError
                  (get-or-make-ordered-object-by-name
-                  s7 "Nobody" (id->object id1 s7) order7 :before false)))))
+                  s7 "Nobody" (id->object id1 s7) order7 :before false))))
+  ;; A generic name is an error.
+  (is (thrown? java.lang.AssertionError
+               (get-or-make-ordered-object-by-name
+                store "" (make-tree-object [1]) unused-orderable
+                :before false))))
 
 (deftest update-add-element-with-order-and-ephemeral-test
   (let [[s id order] (update-add-element-with-order-and-ephemeral

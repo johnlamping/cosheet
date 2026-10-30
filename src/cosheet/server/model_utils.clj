@@ -11,6 +11,7 @@
                    add-link remove-link declare-ephemeral-id
                    target->ids source->ids
                    item-id? link-id? object-id? interned-object-id?
+                   generic-name?
                    target-label->ids get-new-object-id]]
     [entity :refer [object?
                     object-type-object? non-type-object? universal-object?
@@ -24,7 +25,7 @@
                     content->elements label->elements label->element
                     label->content
                     target-entity entity-key
-                    make-tree-element make-tree-object
+                    make-tree-element make-tree-object primitive?
                     make-tree-object-copying-id make-tree-id
                     make-conflux-tree-object conflux-tree-object-id
                     conflux-tree-object? non-conflux-tree-object?
@@ -243,6 +244,25 @@
   [immutable-entity]
   (internal-semantic-to-tree immutable-entity ordered-semantic-elements))
 
+(defn entity->canonical-semantic
+  "Return the canonical form of the semantic information for the entity.
+  Only works on immutable entities."
+  [entity]
+  (canonicalize (semantic-to-tree entity)))
+
+;;; In the store, an entity is marked as a selector if it is intended
+;;; to be used as a query. This means that it should typically not be
+;;; returned as the result of a query. For example, a table's row
+;;; condition shouldn't be returned as one of the rows of a table. And
+;;; even part of a row condition shouldn't be returned for a query
+;;; that is looking for that part.
+
+;;; To indicate that an entity is a selector, it is marked with an
+;;; element whose content is :selector. Further, all of its recursive
+;;; sub-parts (not counting interned objects) are also considered to
+;;; be selectors. In addition, reverse links encountered in the
+;;; recursion have their :selector element marked with :reversed.
+
 (defn selector-marked-element?
   "Return whether the element is marked with a :selector whose :reverse
   information matches the orientation of the element."
@@ -291,25 +311,6 @@
                element ordered-selector-semantic-elements)))
        make-tree-object))
 
-(defn entity->canonical-semantic
-  "Return the canonical form of the semantic information for the entity.
-  Only works on immutable entities."
-  [entity]
-  (canonicalize (semantic-to-tree entity)))
-
-;;; In the store, an entity is marked as a selector if it is intended
-;;; to be used as a query. This means that it should typically not be
-;;; returned as the result of a query. For example, a table's row
-;;; condition shouldn't be returned as one of the rows of a table. And
-;;; even part of a row condition shouldn't be returned for a query
-;;; that is looking for that part.
-
-;;; To indicate that an entity is a selector, it is marked with an
-;;; element whose content is :selector. Further, all of its recursive
-;;; sub-parts (not counting interned objects) are also considered to
-;;; be selectors. In addition, reverse links encountered in the
-;;; recursion have their :selector element marked with :reversed.
-
 (defn selector?
   "Return whether the entity is a selector."
   [entity]
@@ -322,26 +323,30 @@
   link, add a :reverse sub-element. That allows recreating the
   direction in which the template was traversed."
   [template]
-  (convert-unneeded-conflux-tree-objects
-   (first
-    (repetition-avoiding-threaded-traverse
-     ;; Turn primitives into elements.
-     template
-     (fn [_ entity _ caller-data]
-       (if (or (and (element? entity) (semantic-element? entity))
-               (and (object? entity)
-                    (not (uniquely-identified-object? entity))
-                    (not (presumed-interned-object? entity))))
-         [entity caller-data]
-         [[:entity/do-not-process entity] caller-data]))
-     (fn [_ assembled _ caller-data]
-       [(add-elements-to-entity
-         assembled [(if (and (element? assembled)
-                             (reverse? assembled))
-                      '(:selector :reverse)
-                      :selector)])
-        caller-data])
-     nil))))
+  (if (primitive? template)
+    ;; Our recursion doesn't touch primitives, because it will have
+    ;; marked their holders as selectors. So if we start with a bare
+    ;; primitive, we have to handle it specially.
+    (make-tree-element template [:selector])
+    (convert-unneeded-conflux-tree-objects
+     (first
+      (repetition-avoiding-threaded-traverse
+       template
+       (fn [_ entity _ caller-data]
+         (if (or (and (element? entity) (semantic-element? entity))
+                 (and (object? entity)
+                      (not (uniquely-identified-object? entity))
+                      (not (presumed-interned-object? entity))))
+           [entity caller-data]
+           [[:entity/do-not-process entity] caller-data]))
+       (fn [_ assembled _ caller-data]
+         [(add-elements-to-entity
+           assembled [(if (and (element? assembled)
+                               (reverse? assembled))
+                        '(:selector :reverse)
+                        :selector)])
+          caller-data])
+       nil)))))
 
 (defn replace-anythings-with-empty
   "Return the template with every 'anything value replaced by an empty
@@ -406,7 +411,7 @@
                         [store ""])]
     (update-directed-id-content-value store (:item-id element) value)))
 
-(defn change-to-non-selector
+(defn modify-to-non-selector
   "Update the store so that the entity with the given id is no longer a
   selector: remove its :selector markings and replace its 'anything
   contents with the empty string, or with an empty object for reversed
@@ -979,10 +984,12 @@
   to make it satisfy the fixed term, and remove elements that were
   rendered redundant because we added a more specific element. A newly
   created object gets the bigger piece of the order split if
-  use-bigger is true, otherwise the smaller piece. Return the new
-  store, the id of the matching object, and the unused part of the
-  order."
+  use-bigger is true, otherwise the smaller piece. The name must not
+  be generic, since a generic name can't identify an object. Return
+  the new store, the id of the matching object, and the unused part of
+  the order."
   [store name fixed-term order position use-bigger]
+  (assert (not (generic-name? name)) name)
   (let [[store id order _]
         (get-or-make-ordered-object-by-name-without-revisiting
          store name fixed-term order position use-bigger {} nil)]

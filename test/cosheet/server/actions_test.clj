@@ -51,7 +51,7 @@
                                   semantic-to-tree object-semantic-to-tree
                                   pattern->fixed-term-query
                                   label-object-template
-                                  mark-template-as-selector
+                                  mark-template-as-selector selector?
                                   replace-anythings-with-empty
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral]]
@@ -272,6 +272,44 @@
                              name-label)
              "Fred"))
       (is (= (id->source (or new-store s) holder-id) jane-id)))))
+
+(deftest change-object-reference-by-name-test
+  (let [header-id (first header-ids)
+        bare-template (list (make-tree-object `(("" (~name-label)))))
+        run (fn [subject-ids to]
+              (change-object-reference-by-name
+               store {:subject-ids subject-ids :template bare-template
+                      :from "" :to to}))]
+    ;; A generic name on a selector makes a selector object, with a
+    ;; selector name element.
+    (let [new-store (run [header-id] "")
+          object (content (id->entity header-id new-store))
+          name-element (first (label->elements object name-label))]
+      (is (object-id? (id->source new-store header-id)))
+      (is (selector? object))
+      (is (= (content name-element) ""))
+      (is (selector? name-element)))
+    ;; A non-generic name on a selector makes a non-selector object.
+    (let [new-store (run [header-id] "Fred")
+          object (content (id->entity header-id new-store))]
+      (is (uniquely-identified-object? object))
+      (is (not (selector? object)))
+      (is (not (selector? (first (label->elements object name-label))))))
+    ;; A generic name gives each subject its own object, marked as a
+    ;; selector when that subject is.
+    (let [label-id (:item-id joe-age-label)
+          new-store (run [header-id label-id] "")
+          header-object (content (id->entity header-id new-store))
+          label-object (content (id->entity label-id new-store))]
+      (is (object-id? (id->source new-store label-id)))
+      (is (not= (:item-id header-object) (:item-id label-object)))
+      (is (selector? header-object))
+      (is (not (selector? label-object)))
+      (is (= (content (first (label->elements label-object name-label))) "")))
+    ;; Nothing is done when no subject's content matches from.
+    (is (nil? (change-object-reference-by-name
+               store {:subject-ids [header-id] :template bare-template
+                      :from "wrong" :to ""})))))
 
 (deftest do-set-content-named-object-test
   ;; This tests the whole path from rendering dom, getting its action data,

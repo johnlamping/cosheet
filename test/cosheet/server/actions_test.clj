@@ -29,7 +29,7 @@
                             get-new-object-id object-id? id-known-object?
                             update-source store-update!
                             update-equivalent-undo-point]]
-             [store-utils :refer [add-element add-object
+             [store-utils :refer [add-isolated-element add-element add-object
                                   add-universal-objects
                                   add-link-type-object
                                   find-object-by-name
@@ -114,7 +114,7 @@
                    (45 (~age-label))))
             ;; A top-level order, as real row objects have.
             [`(~o2 :order)]))))
-(def t0 (add-element base-store nil table-list))
+(def t0 (add-isolated-element base-store table-list))
 (def table-id (second t0))
 (def t1 (add-object (first t0) joe-object-list))
 (def joe-id (second t1))
@@ -214,8 +214,8 @@
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
-  (let [[store columns-id] (add-element
-                            store nil
+  (let [[store columns-id] (add-isolated-element
+                            store
                             `(~'anything :column-headers :selector
                               (~'anything :selector
                                (~name-label (~o1 :order) :selector)
@@ -321,8 +321,9 @@
                              (add-universal-objects (new-element-store))
                              (make-tree-object `(("Fred" (~name-label)) "foo"))
                              initial :after false)
+        [s1 container-id] (add-isolated-element s1 "container")
         [s2 fred-holder-id order] (update-add-element-with-order-and-ephemeral
-                                   s1 nil
+                                   s1 container-id
                                    `(~(id->object fred-oid s1))
                                    initial :after false)
         [store sally-oid order] (update-add-object-with-order
@@ -627,8 +628,8 @@
                 (make-tree-object
                  `("Jane" "female"))))))
   ;; Test that deleting the only element of a column does nothing.
-  (let [[store columns-id] (add-element
-                            store nil
+  (let [[store columns-id] (add-isolated-element
+                            store
                             `(~'anything :column-headers :selector
                               (~'anything
                                (~name-label (~o1 :order))

@@ -20,7 +20,7 @@
                                      get-new-object-id add-link
                                      name-label-id]]
                       [store-utils :refer [add-element add-object
-                                           add-singleton-object
+                                           add-isolated-element
                                            add-universal-objects
                                            add-link-type-object
                                            find-object-by-name
@@ -75,7 +75,7 @@
         (~age-label-object (~o3 :order)))))
 (def joe-list (joe-list-maker (link-type-object "age")))
 
-(def t1 (add-singleton-object (new-element-store) joe-list))
+(def t1 (add-isolated-element (new-element-store) joe-list))
 (def joe-id (second t1))
 (def store (first t1))
 (def joe (id->entity joe-id store))
@@ -320,7 +320,7 @@
                                  (make-tree-id 1) [])))])))]))))))
 
 (deftest semantic-to-tree-excluding-elements-test
-  (let [[s obj-id] (add-singleton-object (new-element-store)
+  (let [[s obj-id] (add-isolated-element (new-element-store)
                                          `("top"
                                            ("a" (~o1 :order))
                                            ("b" (~o2 :order))))
@@ -351,15 +351,15 @@
     (is (= (set labels) #{c d}))))
 
 (deftest selector?-test
-  (let [[s1 selector-root-id] (add-element
-                               (starting-store "starting-tab") nil
+  (let [[s1 selector-root-id] (add-isolated-element
+                               (starting-store "starting-tab")
                                `("thing" :selector
                                          ("child" (1 :order)
                                                   ("grandchild" :selector)
                                                   :selector)
                                  (~(make-tree-object [4 :selector]) "object")))
-        [s non-selector-root-id] (add-element
-                                  s1 nil
+        [s non-selector-root-id] (add-isolated-element
+                                  s1
                                   `("thing" ("child" (1 :order)
                                                       "grandchild")
                                             (~(make-tree-object [4]) "object")))
@@ -917,7 +917,7 @@
         [s2 b-id] (add-object s1 (make-tree-object []))
         [s3 _] (add-element s2 a-id `(~(id->object b-id s2)))
         ;; A primitive anchor (with order) for the adjacent-to variant.
-        [s4 anchor-id] (add-singleton-object
+        [s4 anchor-id] (add-isolated-element
                         s3 `("anchor" (~unused-orderable :order)))
         a-template (id->object a-id s4)]
     ;; First case: copy a-template with update-add-object-with-order.
@@ -1046,7 +1046,7 @@
 
 (deftest create-possible-selector-entity-test
   (let [s0 (add-universal-objects (new-element-store))
-        [s1 subject-id] (add-singleton-object s0 `("subject" (~o1 :order)))
+        [s1 subject-id] (add-isolated-element s0 `("subject" (~o1 :order)))
         [s1 holder-id] (add-object s1 (make-tree-object ["holder"]))
         object-template (make-tree-object
                          ['("Fred" ("Flintstone"))

@@ -14,7 +14,7 @@
                             ->ItemId]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element add-object
+             [store-utils :refer [add-isolated-element add-element add-object
                                   add-universal-objects
                                   add-link-type-object]]
              [test-utils :refer [check any as-set]])
@@ -89,10 +89,10 @@
         test-label-object (id->object test-label-oid nil)
         [s2 foo-label-oid] (add-link-type-object s1 "foo")
         foo-label-object (id->object foo-label-oid nil)
-        [s4 joe-id] (add-element s2 nil "Joe")
+        [s4 joe-id] (add-isolated-element s2 "Joe")
         [s5 joe-test-id] (add-element s4 joe-id `(~test-label-object))
         [s7 joe-foo-id] (add-element s5 joe-id `(~foo-label-object))
-        [s9 jane-id] (add-element s7 nil "Jane")
+        [s9 jane-id] (add-isolated-element s7 "Jane")
         [store jane-test-id] (add-element s9 jane-id `(~test-label-object))]
     [store {:test-label-oid test-label-oid
             :foo-label-oid foo-label-oid
@@ -111,7 +111,7 @@
   (let [s (add-universal-objects (new-element-store))
         [s1 one-oid] (add-link-type-object s "one")
         [s2 two-oid] (add-link-type-object s1 "two")
-        [s3 fred-id] (add-element s2 nil "Fred")
+        [s3 fred-id] (add-isolated-element s2 "Fred")
         [s4 label-one-id] (add-element s3 fred-id `(~(id->object one-oid nil)
                                                    (~o1 :order)))
         [store label-two-id] (add-element s4 fred-id `(~(id->object two-oid nil)
@@ -131,7 +131,7 @@
   (let [s (add-universal-objects (new-element-store))
         [s1 one-oid] (add-link-type-object s "one")
         [s2 two-oid] (add-link-type-object s1 "two")
-        [s3 fred-id] (add-element s2 nil "Fred")
+        [s3 fred-id] (add-isolated-element s2 "Fred")
         [s4 element-1-id] (add-element s3 fred-id `(1 (~o1 :order)))
         [s5 label-one-id] (add-element s4 element-1-id
                                        `(~(id->object one-oid nil)))
@@ -161,7 +161,7 @@
         [s2 two-oid] (add-link-type-object s1 "two")
         [s3 zero-oid] (add-link-type-object s2 "zero")
         [s4 both-oid] (add-link-type-object s3 "both")
-        [s5 fred-id] (add-element s4 nil "Fred")
+        [s5 fred-id] (add-isolated-element s4 "Fred")
         [s6 element-0-id] (add-element s5 fred-id `(0 (~o1 :order)))
         [s7 label-zero-id] (add-element s6 element-0-id
                                         `(~(id->object zero-oid s6)))
@@ -262,7 +262,7 @@
 
 (deftest labels-and-elements-DOM-test
   (let [[s ids] (make-joe-and-jane-store)
-        [store sally-id] (add-element s nil "Sally")
+        [store sally-id] (add-isolated-element s "Sally")
         joe (id->element (:joe-id ids) store)
         joe-test (id->element (:joe-test-id ids) store)
         joe-foo (id->element (:joe-foo-id ids) store)
@@ -524,8 +524,8 @@
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-content-id] (get-new-object-id s0)
         [s2 _] (add-element s1 obj-content-id "x")
-        [store elem-id] (add-element s2 nil
-                                     `(~(id->object obj-content-id s2)))
+        [store elem-id] (add-isolated-element s2
+                                              `(~(id->object obj-content-id s2)))
         element (id->element elem-id store)]
     (is (check (element-content-DOM element
                                     {:width 1.5
@@ -542,8 +542,8 @@
 (deftest element-primitive-content-DOM-test
   ;; An 'anything content gets the placeholder class, and a label
   ;; element's content gets the link-type class.
-  (let [[s1 any-id] (add-element (new-element-store) nil 'anything)
-        [s2 label-id] (add-element s1 nil :foo)]
+  (let [[s1 any-id] (add-isolated-element (new-element-store) 'anything)
+        [s2 label-id] (add-isolated-element s1 :foo)]
     (is (check (element-primitive-content-DOM
                 (id->element any-id s2) 'anything {:class "x"})
                [:div {:class "x content-text placeholder"} "\u00A0..."]))
@@ -553,7 +553,7 @@
 
 (deftest render-item-DOM-R-test-simple
   ;; Test a simple cell
-  (let [[store fred-id] (add-element (new-element-store) nil "Fred")
+  (let [[store fred-id] (add-isolated-element (new-element-store) "Fred")
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id fred-id)
@@ -566,7 +566,8 @@
                           (add-universal-objects)
                           (get-new-object-id))
         [s2 fred-name-id] (add-element s1 fred-oid `("Fred" (~name-label)))
-        [store fred-holder-id] (add-element s2 nil `(~(id->object fred-oid nil)))
+        [store fred-holder-id] (add-isolated-element
+                                s2 `(~(id->object fred-oid nil)))
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id fred-holder-id
@@ -601,8 +602,8 @@
                           (get-new-object-id))
         [s2 anonymous-name-id] (add-element
                                 s1 anonymous-oid `("" (~name-label)))
-        [store anonymous-holder-id] (add-element
-                                     s2 nil `(~(id->object anonymous-oid nil)))
+        [store anonymous-holder-id] (add-isolated-element
+                                     s2 `(~(id->object anonymous-oid nil)))
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id anonymous-holder-id
@@ -662,8 +663,8 @@
                               :width 1.5}]]])))
   
   ;; Test must-show-label.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                     "Fred")
+  (let [[store fred-id] (add-isolated-element (new-element-store)
+                                              "Fred")
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id fred-id
@@ -979,10 +980,10 @@
 
 (deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (2 (~o2 :order))
-                                      (1 (~o1 :order))))
+  (let [[store fred-id] (add-isolated-element (new-element-store)
+                                              `("Fred"
+                                                (2 (~o2 :order))
+                                                (1 (~o1 :order))))
         fred (id->element fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
@@ -1200,11 +1201,11 @@
 
 (deftest item-DOM-test-two-column
   ;; Try three elements with no labels, but one of them marked as excluded.
-  (let [[store fred-id] (add-element (new-element-store) nil
-                                    `("Fred"
-                                      (3 (~o3 :order))
-                                      (2 (~o2 :order))
-                                      (1 (~o1 :order))))
+  (let [[store fred-id] (add-isolated-element (new-element-store)
+                                              `("Fred"
+                                                (3 (~o3 :order))
+                                                (2 (~o2 :order))
+                                                (1 (~o1 :order))))
         fred (id->element fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))

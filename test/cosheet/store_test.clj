@@ -43,6 +43,7 @@
     {(make-link-id 1) (make-object-id "object")
      (make-link-id 2) (make-link-id 1)
      (make-link-id 3) (make-link-id 2)
+     (make-link-id 4) 'top-level
      (make-link-id 5) (make-link-id 2)
      (make-link-id 6) (make-link-id 3)
      (make-link-id 7) foo-oid
@@ -467,12 +468,17 @@
         earlier-number (fn [n] (gen/uniform 1 (+ 1 (int (/ n 2)))))
         random-object (fn [] (make-object-id
                               (- (+ 1 (int (/ 200 (gen/uniform 1 100)))))))
+        random-primitive (fn [] (if (= (gen/uniform 0 2) 0)
+                                  (str "N" (int (/ 200 (gen/uniform 1 100))))
+                                  (int (/ 200 (gen/uniform 1 100)))))
         random-source (fn [target]
                         (case (gen/uniform 0 4)
-                          0 (if (= (gen/uniform 0 2) 0)
-                              (str "N" (int (/ 200 (gen/uniform 1 100))))
-                              (int (/ 200 (gen/uniform 1 100))))
-                          1 (random-object)
+                          0 (random-primitive)
+                          ;; Don't link objects to objects, which could
+                          ;; make loops through non-interned objects.
+                          1 (if (object-id? target)
+                              (random-primitive)
+                              (random-object))
                           2 (if (link-id? target)
                               link-type-id
                               object-type-id)
@@ -493,8 +499,9 @@
         (let [added-store
               (reduce (fn [store i]
                         (let [[new-store id]
-                              (let [target (when (not= 0 (gen/uniform 0 10))
-                                             (make-link-id (earlier-number i)))]
+                              (let [target (if (not= 0 (gen/uniform 0 10))
+                                             (make-link-id (earlier-number i))
+                                             (random-object))]
                                 (add-link store target (random-source target)))]
                           (assert (= (:primitive-id id) i))
                           new-store))

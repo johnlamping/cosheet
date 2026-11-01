@@ -7,7 +7,7 @@
              [canonical :refer [canonicalize]]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-isolated-element add-element]]
              [query :refer [matching-items]]
              query-impl
              [debug :refer [simplify-for-print]]
@@ -152,7 +152,8 @@
                          (~o2 :order))
                         (42 ("answer" :label (~o1 :order))
                          (~o1 :order))))]
-    (let [store-0 (first (add-element (new-element-store) nil table-list-0))
+    (let [store-0 (first (add-isolated-element (new-element-store)
+                                               table-list-0))
           store-1 (convert-from-0-to-1 store-0)
           tables-1 (matching-items '(nil :table) store-1)
           versions-1 (matching-items '(nil :format) store-1)

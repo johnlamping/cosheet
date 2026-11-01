@@ -5,6 +5,7 @@
                                      get-new-object-id ->ItemId]]
                       store-impl
                       [store-utils :refer [add-element add-object
+                                           add-isolated-element
                                            link-type-object
                                            add-link-type-object]]
                       [entity :refer [to-tree id->element id->object content
@@ -406,16 +407,16 @@
   
   ;; Duplicates in term
   (let [s (new-element-store)
-        [s1 id1] (add-element s nil '(1 2))]
+        [s1 id1] (add-isolated-element s '(1 2))]
     (is (empty? (matching-extensions '(1 2 2) {:a :b}
                                      (id->element id1 s1)))))
   (let [s (new-element-store)
-        [s1 id1] (add-element s nil '(1 2 2))]
+        [s1 id1] (add-isolated-element s '(1 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
                                 (id->element id1 s1))
            [{:a :b}])))
   (let [s (new-element-store)
-        [s1 id1] (add-element s nil '(1 2 2 2))]
+        [s1 id1] (add-isolated-element s '(1 2 2 2))]
     (is (= (matching-extensions '(1 2 2) {:a :b}
                                 (id->element id1 s1))
            [{:a :b}])))

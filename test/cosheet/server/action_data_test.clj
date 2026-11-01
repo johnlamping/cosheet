@@ -13,6 +13,7 @@
                                      target-label->ids
                                      get-new-object-id]] 
                       [store-utils :refer [add-element add-object
+                                           add-isolated-element
                                            add-object-type-object
                                            link-type-object]]
                       [query :refer [matching-elements]]
@@ -84,13 +85,13 @@
                 ("female" (~o2 :order))
                 ("female" (~o3 :order))))
 (def age-condition-list `(~'anything (~age-label-object)))
-(def t1 (add-element (new-element-store) nil joe-list))
+(def t1 (add-isolated-element (new-element-store) joe-list))
 (def joe-id (second t1))
-(def t2 (add-element (first t1) nil jane-list))
+(def t2 (add-isolated-element (first t1) jane-list))
 (def jane-id (second t2))
-(def t3 (add-element (first t2) nil dup-list))
+(def t3 (add-isolated-element (first t2) dup-list))
 (def dup-id (second t3))
-(def t4 (add-element (first t3) nil age-condition-list))
+(def t4 (add-isolated-element (first t3) age-condition-list))
 (def age-condition-id (second t4))
 (def store (first t4))
 (def joe (id->entity joe-id store))

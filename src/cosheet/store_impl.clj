@@ -57,9 +57,6 @@
 
     ;;; A derived map from the canonical-primitive-form of source to a
     ;;; pseudo-set of ids with that source.
-    ;;; TODO: !!! Remove the following comment once sources can no
-    ;;; longer be nil.
-    ;;; Nil source is not indexed.
     source->ids
 
     ;;; A derived map from ItemId to a pseudo-set of the keywords that
@@ -213,13 +210,15 @@
   ImmutableStore
 
   (add-link [this target source]
-    (assert (not (link-id? source)) [target source])
-    (assert (not (vector? source)) [target source])
-    (assert (not (stored-entity? source)) source)
-    (assert (not (stored-entity? target)) target)
-    ;; TODO: !!! Once we are using objects at top level, assert that
-    ;;       neither target nor source are nil.
-    
+    (assert (or (symbol? target)
+                (object-id? target)
+                (and (link-id? target) (id-valid-link? this target)))
+            [target source])
+    (assert (and (not (nil? source))
+                 (not (vector? source))
+                 (not (link-id? source))
+                 (not (stored-entity? source)))
+            [target source])
     ;; Disallow links between two non-interned objects that both
     ;; already have links to non-interned objects. This ensures that
     ;; the relationships between non-interned objects will not have
@@ -327,7 +326,7 @@
           (let [target (get-in this [:id->target id])]
             (if (item-id? target)
               (:primitive-id target)
-              ;; The target must be a symbol or nil.
+              ;; The target must be a symbol.
               target))
           (cond (item-id? source)
                 [:id (:primitive-id source)]
@@ -348,9 +347,10 @@
     (let [[next-number links] data]
       (let [[store deferred]
             (reduce (fn [[store deferred] [id target source]]
+                      (assert (not (nil? target)) [id target source])
+                      (assert (not (nil? source)) [id target source])
                       (let [id (->ItemId id)
-                            target (if (or (nil? target)
-                                           (symbol? target))
+                            target (if (symbol? target)
                                      target
                                      (->ItemId target))
                             source (if (vector? source)
@@ -567,22 +567,21 @@
   "Add a link to the store, given its target, source, and id. And do all
   necessary indexing."
   [store item-id target source]
-  ;; TODO: !!! disallow nil once objects are supported.
-  (assert (or (nil? target)
-              (symbol? target)
+  (assert (or (symbol? target)
               (object-id? target)
-              (id-valid-link? store target))
+              (and (link-id? target) (id-valid-link? store target)))
           [item-id target source])
   (assert (and (not (nil? source))
                (not (link-id? source)))
           [item-id target source])
   (when (number? (:primitive-id item-id))
-    (assert (< (:primitive-id item-id) (:next-number store)) [item-id target source])
+    (assert (< (:primitive-id item-id) (:next-number store))
+            [item-id target source])
     (when (number? (:primitive-id target))
-      (assert (< (:primitive-id target) (:primitive-id item-id)) [item-id target source])))
-  (-> (if (nil? target)
-        store
-        (assoc-in store [:id->target item-id] target))
+      (assert (< (:primitive-id target) (:primitive-id item-id))
+              [item-id target source])))
+  (-> store
+      (assoc-in [:id->target item-id] target)
       (assoc-in [:id->source item-id] source)
       (index-all store item-id)
       (add-modified-id item-id)))

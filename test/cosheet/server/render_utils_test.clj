@@ -6,7 +6,8 @@
              [entity :as entity  :refer [to-tree id->entity id->object
                                          name-label]]
              [canonical :refer [canonicalize]]
-             [store-utils :refer [add-element add-universal-objects
+             [store-utils :refer [add-element add-isolated-element
+                                  add-universal-objects
                                   add-link-type-object
                                   add-object-type-object]]
              [debug :refer [simplify-for-print]]
@@ -62,8 +63,8 @@
                [(canonicalize `(~label-object))]))))
 
 (deftest competing-siblings-test
-  (let [[s1 joe-id] (add-element
-                     (new-element-store) nil
+  (let [[s1 joe-id] (add-isolated-element
+                     (new-element-store)
                      (mark-template-as-selector
                       '("joe"
                         anything (anything 1) (anything 1)
@@ -94,8 +95,8 @@
   (let [s0 (add-universal-objects (new-element-store))
         [s1 link-type-oid] (add-link-type-object s0 "foo")
         [s2 object-type-oid] (add-object-type-object s1 "bar")
-        [s3 name-elem-id] (add-element s2 nil `("Fred" (~name-label)))
-        [store plain-elem-id] (add-element s3 nil '("plain"))
+        [s3 name-elem-id] (add-isolated-element s2 `("Fred" (~name-label)))
+        [store plain-elem-id] (add-isolated-element s3 '("plain"))
         link-type-obj (id->entity link-type-oid store)
         object-type-obj (id->entity object-type-oid store)
         name-elem (id->entity name-elem-id store)

@@ -208,8 +208,8 @@
                                store {} container-id template)]
     [store entity-link]))
 
-(defn add-singleton-object
-  "Add a new object holding just the given element.
+(defn add-isolated-element
+  "Add a new element whose target is a new empty object.
   Return the updated store and the id of the element."
   [store element]
   (let [[store object-id] (add-object store (make-tree-object []))]

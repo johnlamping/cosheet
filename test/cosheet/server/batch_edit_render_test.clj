@@ -10,7 +10,7 @@
                             id->target]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element add-object
+             [store-utils :refer [add-isolated-element add-element add-object
                                   add-universal-objects
                                   add-link-type-object
                                   find-object-by-name
@@ -90,12 +90,12 @@
 (def s1-label (find-object-by-name base-store "s1" (link-type-object "")))
 (def c1-label (find-object-by-name base-store "c1" (link-type-object "")))
 (def c2-label (find-object-by-name base-store "c2" (link-type-object "")))
-(def t0 (add-element base-store nil
-                    (add-order-elements
-                     `(:x (~s1-label)
-                          (~'anything (~c1-label) :column)
-                          (~'anything (~c2-label) :column)
-                          :row-condition))))
+(def t0 (add-isolated-element base-store
+                              (add-order-elements
+                               `(:x (~s1-label)
+                                    (~'anything (~c1-label) :column)
+                                    (~'anything (~c2-label) :column)
+                                    :row-condition))))
 (def h1 (second t0))
 (def t1 (add-object (first t0)
                     (first (add-order-elements-inside-object
@@ -111,19 +111,22 @@
                                                `(~orderable/initial :order)])
                             orderable/initial))))
 (def r2 (second t2))
-(def t3 (add-element (first t2) nil (add-order-elements
-                                    `(~'anything (~'anything (~c1-label))))))
+(def t3 (add-isolated-element (first t2)
+                              (add-order-elements
+                               `(~'anything (~'anything (~c1-label))))))
 (def q1 (second t3))
-(def t4 (add-element (first t3) nil (add-order-elements
-                                    `(~'anything 2
-                                                 (~'anything (~c1-label))))))
+(def t4 (add-isolated-element (first t3)
+                              (add-order-elements
+                               `(~'anything 2
+                                            (~'anything (~c1-label))))))
 (def q2 (second t4))
-(def t5 (add-element (first t4) nil (add-order-elements
-                                    `(~'anything
-                                      (~'anything (~c1-label))))))
+(def t5 (add-isolated-element (first t4) (add-order-elements
+                                          `(~'anything
+                                            (~'anything (~c1-label))))))
 (def q3 (second t5))
-(def t6 (add-element (first t5) nil (add-order-elements
-                                    `(~'anything (~'anything (~c1-label))))))
+(def t6 (add-isolated-element (first t5)
+                              (add-order-elements
+                               `(~'anything (~'anything (~c1-label))))))
 (def stk1 (second t6))
 (def s (first t6))
 

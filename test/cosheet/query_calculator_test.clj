@@ -7,7 +7,7 @@
                                      current-store]]
                       store-impl
                       mutable-store-impl
-                      [store-utils :refer [add-element]]
+                      [store-utils :refer [add-isolated-element add-element]]
                       [task-queue :refer [make-priority-task-queue]]
                       [reporter :refer [set-calculator-data!
                                         set-attendee-and-call!
@@ -33,9 +33,9 @@
 (deftest query-calculator-test
   (let [cd (make-calculator-data (make-priority-task-queue 0))
         s0 (new-element-store)
-        [s1 id1] (add-element s0 nil '(:a (3 (4 5))))
+        [s1 id1] (add-isolated-element s0 '(:a (3 (4 5))))
         [s2 id2] (add-element s1 id1 '(1 (2 3)))
-        [s3 id3] (add-element s2 nil '(:b 3))
+        [s3 id3] (add-isolated-element s2 '(:b 3))
         [s4 id4] (add-element s3 id3 1)
         [s5 id5] (add-element s4 id4 2)
         ms (new-mutable-store s5)
@@ -61,7 +61,7 @@
                (reporter-value-or-invalid answer)))
     (let [id6
           (store-update-control-return!
-           ms #(add-element % nil '(1 2 3 4)))]
+           ms #(add-isolated-element % '(1 2 3 4)))]
       (compute cd)
       (is (check (reporter-value-or-invalid answer)
                  #{id2 id4 id6}))

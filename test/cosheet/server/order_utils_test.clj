@@ -18,7 +18,7 @@
                             name-label-id]]
              store-impl
              mutable-store-impl
-             [store-utils :refer [add-element
+             [store-utils :refer [add-isolated-element add-element
                                   link-type-object]]
              [test-utils :refer [check]])
             (cosheet.server
@@ -48,7 +48,7 @@
                     ("doubtful" "confidence" (~o7 :order)))
                 (45 (~o5 :order)
                     (~(link-type-object "age")))))
-(def t1 (add-element (new-element-store) nil joe-list))
+(def t1 (add-isolated-element (new-element-store) joe-list))
 (def joe-id (second t1))
 (def store (first t1))
 (def joe (id->entity joe-id store))

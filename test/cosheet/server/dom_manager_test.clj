@@ -24,7 +24,7 @@
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]
              mutable-store-impl
-             [store-utils :refer [add-element]]
+             [store-utils :refer [add-isolated-element add-element]]
              [hiccup-utils :refer [dom-attributes add-attributes]]
              [task-queue :refer [make-priority-task-queue
                                  run-all-pending-tasks
@@ -895,7 +895,7 @@
 
 (deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
-  (let [[s1 id1] (add-element (new-element-store) nil "foo")
+  (let [[s1 id1] (add-isolated-element (new-element-store) "foo")
         [s2 id2] (add-element s1 id1 "bar")
         [s id3] (add-element s2 id2 "end")
         client1 "root"

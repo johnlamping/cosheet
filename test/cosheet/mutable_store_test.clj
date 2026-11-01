@@ -36,9 +36,8 @@
   (let [s0 (add-universal-objects (new-element-store))
         [s0a by-label-id] (add-link-type-object s0 "by")
         [store element]
-        (add-element s0a
-                     nil `(77 (~(link-type-object "test"))
-                              ("Fred" (~(link-type-object "by")))))
+        (add-isolated-element s0a `(77 (~(link-type-object "test"))
+                                       ("Fred" (~(link-type-object "by")))))
         initial-store (track-modified-ids store)
         queue (make-priority-task-queue 0)
         calculator-data (make-calculator-data queue)

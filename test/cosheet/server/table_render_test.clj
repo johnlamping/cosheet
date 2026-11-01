@@ -5,7 +5,7 @@
              [orderable :as orderable]
              [store :refer [new-element-store]]
              store-impl
-             [store-utils :refer [add-element add-object
+             [store-utils :refer [add-isolated-element add-element add-object
                                   add-universal-objects
                                   add-link-type-object
                                   find-object-by-name
@@ -96,18 +96,18 @@
         [s2 c2-label-oid] (add-link-type-object s1 "c2")
         c1-object (id->object c1-label-oid s2)
         c2-object (id->object c2-label-oid s2)
-        [s3 table-id] (add-element s2 nil
-                                   (add-order-elements
-                                    `(""
-                                      (:x :row-condition
-                                          ~'anything)
-                                      (:x :column-headers
-                                          (~'anything (~c1-object))
-                                          (~'anything (~c2-object))))))
-        [store row-id] (add-element s3 nil (add-order-elements
-                                            `(~'anything
-                                              (1 (~c1-object))
-                                              (2 (~c2-object)))))
+        [s3 table-id] (add-isolated-element s2
+                                            (add-order-elements
+                                             `(""
+                                               (:x :row-condition
+                                                   ~'anything)
+                                               (:x :column-headers
+                                                   (~'anything (~c1-object))
+                                                   (~'anything (~c2-object))))))
+        [store row-id] (add-isolated-element s3 (add-order-elements
+                                                 `(~'anything
+                                                   (1 (~c1-object))
+                                                   (2 (~c2-object)))))
         data (get-virtual-column-cell-action-data
               {}
               {:table-id table-id :subject-ids [row-id]}
@@ -199,7 +199,7 @@
         [s1 joe-id] (add-object sf joe-list)
         [s2 jane-id] (add-object s1 jane-list)
         [s3 test-id] (add-object s2 test-list)
-        [store table-id] (add-element s3 nil table-list)
+        [store table-id] (add-isolated-element s3 table-list)
         age-label-object (id->object age-oid store)
         name-label-object (id->object nickname-oid store)
         id-label-object (id->object id-oid store)
@@ -812,13 +812,13 @@
   ;; stack) only when the entity has a semantic element beyond what the
   ;; query requires.
   (let [s (add-universal-objects (new-element-store))
-        [s1 plain-row-id] (add-element s nil
-                                          `("r2" (45 ("required" (~o3 :order))
-                                                     (~o2 :order))))
-        [store extra-row-id] (add-element s1 nil
-                                          `("r1" (45 ("required" (~o3 :order))
-                                                     ("extra" (~o1 :order))
-                                                     (~o2 :order))))
+        [s1 plain-row-id] (add-isolated-element
+                           s `("r2" (45 ("required" (~o3 :order))
+                                        (~o2 :order))))
+        [store extra-row-id] (add-isolated-element
+                              s1 `("r1" (45 ("required" (~o3 :order))
+                                            ("extra" (~o1 :order))
+                                            (~o2 :order))))
         query `(nil "required" (nil :order))
         base-spec {:width 0.75 :query query}]
     ;; The value has an "extra" element beyond the query, so a filler is

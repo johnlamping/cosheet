@@ -37,7 +37,7 @@
                     entity-complexity stored-entity?
                     tree-entity? presumed-interned-object?
                     in-different-store]]
-    [store-utils :refer [add-element add-object add-singleton-object
+    [store-utils :refer [add-element add-object add-isolated-element
                          update-directed-id-content-value
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
@@ -84,7 +84,7 @@
            (if last-string-item
              (update-source
               store (:item-id last-string-item) next-new)
-             (first (add-singleton-object
+             (first (add-isolated-element
                      store `(~next-new :last-new-string))))])))))
 
 (defn get-n-new-strings
@@ -1213,11 +1213,11 @@
   will have a single tab with that name and a table with that name."
   [tab-name]
   (let [store (add-universal-objects (new-element-store))
-        [store _] (add-singleton-object store
+        [store _] (add-isolated-element store
                                         (list current-format :format))
-        [store orderable-id] (add-singleton-object
+        [store orderable-id] (add-isolated-element
                               store (list initial :unused-orderable))
-        [store tabs-holder-id] (add-singleton-object store '("tabs" :tabs))]
+        [store tabs-holder-id] (add-isolated-element store '("tabs" :tabs))]
     (if tab-name
       (let [[tab store] (specialize-generic
                          `(""

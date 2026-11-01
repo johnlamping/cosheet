@@ -131,7 +131,7 @@
         ms (new-mutable-store store)
         queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)]
-    (add-session-ephemeral-element! ms)
+    (add-session-ephemeral-object! ms)
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                            :log-agent (agent stream)}}})

@@ -20,6 +20,7 @@
                                      get-new-object-id add-link
                                      name-label-id]]
                       [store-utils :refer [add-element add-object
+                                           add-singleton-object
                                            add-universal-objects
                                            add-link-type-object
                                            find-object-by-name
@@ -74,7 +75,7 @@
         (~age-label-object (~o3 :order)))))
 (def joe-list (joe-list-maker (link-type-object "age")))
 
-(def t1 (add-element (new-element-store) nil joe-list))
+(def t1 (add-singleton-object (new-element-store) joe-list))
 (def joe-id (second t1))
 (def store (first t1))
 (def joe (id->entity joe-id store))
@@ -319,10 +320,10 @@
                                  (make-tree-id 1) [])))])))]))))))
 
 (deftest semantic-to-tree-excluding-elements-test
-  (let [[s obj-id] (add-element (new-element-store) nil
-                                `("top"
-                                  ("a" (~o1 :order))
-                                  ("b" (~o2 :order))))
+  (let [[s obj-id] (add-singleton-object (new-element-store)
+                                         `("top"
+                                           ("a" (~o1 :order))
+                                           ("b" (~o2 :order))))
         obj (id->entity obj-id s)
         a-element (first (matching-elements "a" obj))
         b-element (first (matching-elements "b" obj))]
@@ -916,8 +917,8 @@
         [s2 b-id] (add-object s1 (make-tree-object []))
         [s3 _] (add-element s2 a-id `(~(id->object b-id s2)))
         ;; A primitive anchor (with order) for the adjacent-to variant.
-        [s4 anchor-id] (add-element s3 nil
-                                    `("anchor" (~unused-orderable :order)))
+        [s4 anchor-id] (add-singleton-object
+                        s3 `("anchor" (~unused-orderable :order)))
         a-template (id->object a-id s4)]
     ;; First case: copy a-template with update-add-object-with-order.
     ;; Without cycle detection, this call would not return.
@@ -1045,7 +1046,7 @@
 
 (deftest create-possible-selector-entity-test
   (let [s0 (add-universal-objects (new-element-store))
-        [s1 subject-id] (add-element s0 nil `("subject" (~o1 :order)))
+        [s1 subject-id] (add-singleton-object s0 `("subject" (~o1 :order)))
         [s1 holder-id] (add-object s1 (make-tree-object ["holder"]))
         object-template (make-tree-object
                          ['("Fred" ("Flintstone"))
@@ -1057,7 +1058,9 @@
                        object-template subject-id subject-id :before false
                        s1)]
       (is (check (canonicalize object-template)
-                 (canonicalize (semantic-to-tree (id->entity new-id s2)))))
+                 (canonicalize (semantic-to-tree-excluding-elements
+                                (id->entity new-id s2)
+                                #{(make-reverse-item-id subject-id)}))))
       (is (= (id->source s2 subject-id) new-id)))
     ;; When the subject-id is reverse, the content of the subject is the
     ;; target of its link, so that is what gets set. The subject's link

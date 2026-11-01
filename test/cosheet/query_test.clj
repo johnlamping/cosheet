@@ -181,6 +181,14 @@
                         :reference reference
                         :form (when (nil? qualifier) :element))))
 
+(defn object-variable
+  "Make a variable that is an object."
+  ([name] (object-variable name nil))
+  ([name qualifier] (object-variable name qualifier nil))
+  ([name qualifier reference]
+   (make-variable-query name :qualifier qualifier :reference reference
+                        :form :object)))
+
 (deftest special-forms-test
   (let [query (make-variable-query "foo" :qualifier '(1 2) :reference true)]
     (is (special-form? query))
@@ -268,41 +276,42 @@
                       (new-element-store))
         [_ anonymous-object-id] (get-new-object-id (new-element-store))
         anonymous-object (id->object anonymous-object-id nil)]
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "baz" (variable "bar")))
                                ~(make-not-query 8))
                              {"bar" 7})
            [`(5 (~anonymous-object) (:foo 7)) false]))
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "baz")))
                              {"bar" 7})
            [`(5 (~anonymous-object) (:foo nil)) #{"foo" "baz"}]))
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "foo")))
                              {"bar" 7})
            [`(5 (~anonymous-object) (:foo nil)) false]))
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~named-object)
                                (:foo ~(variable "baz" (variable "bar")))
                                ~(make-not-query 8))
                              {"bar" 7})
            [`(5 (~named-object) (:foo 7)) false]))
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~named-object)
                                (:foo ~(variable "baz")))
                              {"bar" 7})
            [`(5 (~named-object) (:foo nil)) #{"foo" "baz"}]))
-    (is (= (closest-template `(~(variable "foo" 5)
+    (is (= (closest-template `(~(object-variable "foo" 5)
                                (~named-object)
                                (:foo ~(variable "foo")))
                              {"bar" 7})
            [`(5 (~named-object) (:foo nil)) false])))
   (is (thrown? java.lang.AssertionError
                (closest-template
-                `(~(make-and-query (variable "foo" 5) (variable "bar" 6)))
+                `(~(make-and-query (object-variable "foo" 5)
+                                   (object-variable "bar" 6)))
                 {"bar" 7}))))
 
 (deftest minimal-label?-test
@@ -345,9 +354,6 @@
   (is (= (matching-extensions '(nil (nil 2)) {:a :b} '(1 (2 3 4)))
          nil))
   (is (= (matching-extensions '(1 (4 6)) {:a :b} '(1 (4 6)))
-         [{:a :b}]))
-  (is (= (matching-extensions '((1 2) 3 (4 (5 6))) {:a :b}
-                              '((1 2) 3 (4 (5 6))))
          [{:a :b}]))
 
   ;; Objects
@@ -430,66 +436,69 @@
   (is (= (matching-extensions `(1 ~(variable "foo")) {:a :b}
                               '(1 2))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)) {:a :b}
                               '(1 (2 :foo)))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)) {:a :b}
                               '(1 (2 :bar :foo)))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)) {:a :b}
                               '(1 (2 :bar)))
          nil))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)) {:a :b}
                               '(1 2))
          nil))
-  (is (= (matching-extensions `(1 (~(variable "foo") false)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") false)) {:a :b}
                               '(1 (2 false)))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") false))  {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") false))  {:a :b}
                               '(1 (2 true)))
            nil))
-  (is (= (set (matching-extensions `(1 (~(variable "foo") :foo)) {:a :b}
+  (is (= (set (matching-extensions `(1 (~(object-variable "foo") :foo)) {:a :b}
                                    '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))))
          #{{:a :b, "foo" 2} {:a :b, "foo" 3}}))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)
-                                  (~(variable "foo") :bar)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)
+                                  (~(object-variable "foo") :bar)) {:a :b}
                               '(1 (2 :foo) (2 :bar)))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(nil (~(variable "foo") :foo)
-                                    (~(variable "foo") :bar))
+  (is (= (matching-extensions `(nil (~(object-variable "foo") :foo)
+                                    (~(object-variable "foo") :bar))
                               {:a :b}
                               '(1 (2 :foo) (2 :bar)))
          [{:a :b, "foo" 2}]))
-  (is (= (matching-extensions `(2 (~(variable "foo") :foo)
-                                  (~(variable "foo") :bar)) {:a :b}
+  (is (= (matching-extensions `(2 (~(object-variable "foo") :foo)
+                                  (~(object-variable "foo") :bar)) {:a :b}
                               '(1 (2 :foo) (2 :bar)))
          nil))
-  (is (= (matching-extensions `(~(variable "foo")) {:a :b}
+  (is (= (matching-extensions `(~(object-variable "foo")) {:a :b}
                               '(1))
          [{:a :b, "foo" 1}]))
-  (is (= (matching-extensions `(~(variable "foo") ~(variable "foo")) {:a :b}
+  (is (= (matching-extensions `(~(object-variable "foo") ~(variable "foo"))
+                              {:a :b}
                               '(1 1))
          [{:a :b, "foo" 1}]))
-  (is (= (matching-extensions `(~(variable "foo") ~(variable "foo")) {:a :b}
+  (is (= (matching-extensions `(~(object-variable "foo") ~(variable "foo"))
+                              {:a :b}
                               '(1 2))
          nil))
-  (is (= (matching-extensions `(~(variable "foo") ~(variable "foo")) {:a :b}
+  (is (= (matching-extensions `(~(object-variable "foo") ~(variable "foo"))
+                              {:a :b}
                               '(1 2 3 1))
          [{:a :b, "foo" 1}]))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)
-                                  (~(variable "foo") :bar)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)
+                                  (~(object-variable "foo") :bar)) {:a :b}
                               '(1 (2 :foo) (3 :bar)))
          nil))
-  (is (= (set (matching-extensions `(1 (~(variable "foo") :foo)
-                                       (~(variable "foo") :bar)) {:a :b}
+  (is (= (set (matching-extensions `(1 (~(object-variable "foo") :foo)
+                                       (~(object-variable "foo") :bar)) {:a :b}
                                    '(1 (1 :foo) (2 :foo)
                                        (1 :bar) (2 :bar) (3 :bar))))
          #{{:a :b, "foo" 1} {:a :b, "foo" 2}}))
-  (is (= (matching-extensions `(1 (~(variable "foo") :foo)
-                                  (~(variable "bar") :bar)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo") :foo)
+                                  (~(object-variable "bar") :bar)) {:a :b}
                               '(1 (2 :foo) (3 :bar)))
          [{:a :b, "foo" 2, "bar" 3}]))
-  (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo" 2) :foo)) {:a :b}
                               '(1 (2 :foo)))
          [{:a :b, "foo" 2}]))
   (is (= (matching-extensions
@@ -518,10 +527,11 @@
           (make-tree-object
            `(~(make-tree-element [:object 2] '(:foo) :reverse))))
          nil))
-  (is (= (matching-extensions `(1 (~(variable "foo" 2) :foo)) {:a :b}
+  (is (= (matching-extensions `(1 (~(object-variable "foo" 2) :foo)) {:a :b}
                               '(1 (3 :foo)))
          nil))
-  (is (= (matching-extensions `(~(variable "foo" 1) ~(variable "foo")) {:a :b}
+  (is (= (matching-extensions `(~(object-variable "foo" 1) ~(variable "foo"))
+                              {:a :b}
                               '(1 (1 :foo)))
          nil))
   (is (= (matching-extensions `(1 ~(variable "foo" `(nil ~(variable "bar"))))
@@ -742,16 +752,16 @@
            nil)) 
     (is (= (envs-to-trees
             (query-matches `(nil (1 (2 ~(variable "v")))
-                                 (~(variable "v")))
+                                 (~(object-variable "v")))
                            s2))
            [{"v" '(3)}]))
     (is (= (envs-to-trees
-            (query-matches `(nil (~(variable "v"))
+            (query-matches `(nil (~(object-variable "v"))
                                  (1 (2 ~(variable "v"))))
                            s2))
            [{"v" 3}]))
     (let [matches (query-matches
-                   `(1 (~(variable "v" nil true) 3))
+                   `(1 (~(object-variable "v" nil true) 3))
                    s2)]
       (is (= matches [{"v" 2}])))
     (let [matches (query-matches
@@ -759,33 +769,37 @@
                    s2)]
       (is (= (count matches) 1)))
     (is (= (envs-to-trees
-            (query-matches (make-and-query `(nil (~(variable "v") 4))
-                                           `(1 (~(variable "v" nil true) 3)))
+            (query-matches (make-and-query
+                            `(nil (~(object-variable "v") 4))
+                            `(1 (~(object-variable "v" nil true) 3)))
                            s2))
            nil))
     ;; and
     (is (= (envs-to-trees
-            (query-matches (make-and-query `(1 (~(variable "v") 3))
-                                           `(nil (~(variable "v") 4)))
+            (query-matches (make-and-query `(1 (~(object-variable "v") 3))
+                                           `(nil (~(object-variable "v") 4)))
                            s2))
            [{"v" 2}]))
-    (is (= (query-matches (make-and-query `(1 (~(variable "v" nil true) 3))
-                                          `(nil (~(variable "v" nil true) 4)))
+    (is (= (query-matches (make-and-query
+                           `(1 (~(object-variable "v" nil true) 3))
+                           `(nil (~(object-variable "v" nil true) 4)))
                           s2)
            nil))
-    (is (= (query-matches (make-and-query `(1 (~(variable "v") 3))
-                                          `(nil (~(variable "v") 5)))
+    (is (= (query-matches (make-and-query `(1 (~(object-variable "v") 3))
+                                          `(nil (~(object-variable "v") 5)))
                           s2)
            nil))
     (is (= (envs-to-trees
             (query-matches (make-and-query
-                            `(~(variable "c") (~(variable "v") 3))
-                            `(~(variable "c") (~(variable "v") 4)))
+                            `(~(object-variable "c")
+                              (~(object-variable "v") 3))
+                            `(~(object-variable "c")
+                              (~(object-variable "v") 4)))
                            s2))
            [{"v" 2, "c" 1}]))
     (is (= (query-matches (make-and-query
-                           `(~(variable "v") (~(variable "c") 3))
-                           `(~(variable "c") (~(variable "v") 4)))
+                           `(~(object-variable "v") (~(object-variable "c") 3))
+                           `(~(object-variable "c") (~(object-variable "v") 4)))
                           s2)
            nil))
     (is (= (set (envs-to-trees
@@ -795,7 +809,7 @@
            #{{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)} {"v" '(4)} {"v" '(4 5)}
              {"v" '(5)}}))
     (is (= (set (envs-to-trees
-                 (query-matches (make-and-query `(nil (~(variable "v")))
+                 (query-matches (make-and-query `(nil (~(object-variable "v")))
                                                 `(nil (nil ~(variable "v"))))
                                 s2)))
            #{{"v" 3} {"v" 4} {"v" 5}}))
@@ -807,17 +821,18 @@
            nil)) 
     (is (= (query-matches (make-exists-query "v" nil
                                              `(nil (1 (2 ~(variable "v")))
-                                                   (~(variable "v"))))
+                                                   (~(object-variable "v"))))
                           s2)
            [{}]))
     (is (= (envs-to-trees
             (query-matches (make-exists-query "c" nil
                                               `(nil (1 (2 ~(variable "v")))
-                                                    (~(variable "v"))))
+                                                    (~(object-variable "v"))))
                            s2))
            [{"v" '(3)}]))
-    (is (= (query-matches (make-exists-query  "v"  `(1 (~(variable "v") 3))
-                                              `(nil (~(variable "v") 4)))
+    (is (= (query-matches (make-exists-query
+                           "v" `(1 (~(object-variable "v") 3))
+                           `(nil (~(object-variable "v") 4)))
                           s2)
            [{}]))
     (is (= (query-matches (make-exists-query  "v" `(1 ~(variable "v"))
@@ -825,11 +840,11 @@
                           s2)
            nil))
     ;; forall
-    (is (= (query-matches (make-forall-query "v" `(1 (~(variable "v") 3))
-                                             `(1 (~(variable "v") 4)))
+    (is (= (query-matches (make-forall-query "v" `(1 (~(object-variable "v") 3))
+                                             `(1 (~(object-variable "v") 4)))
                           s2)
            [{}]))
-    (is (= (query-matches (make-forall-query "v" `(1 (~(variable "v") 3))
+    (is (= (query-matches (make-forall-query "v" `(1 (~(object-variable "v") 3))
                                              `(1 (2 ~(variable "v"))))
                           s2)
            nil))

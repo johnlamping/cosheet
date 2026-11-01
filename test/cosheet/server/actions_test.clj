@@ -56,7 +56,7 @@
                                   replace-anythings-with-empty
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral]]
-             [session-state :refer [update-add-session-ephemeral-element]]
+             [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])
             ; :reload
@@ -120,7 +120,7 @@
 (def joe-id (second t1))
 (def t2 (add-object (first t1) jane-object-list))
 (def jane-id (second t2))
-(def t3 (update-add-session-ephemeral-element (first t2)))
+(def t3 (update-add-session-ephemeral-object (first t2)))
 (def ephemeral-id (second t3))
 (def store (first t3))
 (def headers-id (first (target-label->ids

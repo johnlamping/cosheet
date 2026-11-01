@@ -8,10 +8,11 @@
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data
                    store-update-control-return! declare-ephemeral-id
-                   store-update! id-valid-link? update-equivalent-undo-point
+                   store-update! id-known-object? update-equivalent-undo-point
                    string->id]]
     mutable-store-impl
-    [store-utils :refer [add-element]]
+    [store-utils :refer [add-object]]
+    [entity :refer [make-tree-object]]
     [calculator :refer [compute propagate-calculator-data!]]
     [map-reporter :refer [make-map-reporter map-reporter-get-current
                        map-reporter-reset!]])
@@ -154,21 +155,22 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn update-add-session-ephemeral-element
+(defn update-add-session-ephemeral-object
   [immutable-store]
-  (add-element immutable-store nil
+  (add-object immutable-store
+              (make-tree-object
                '(:root-ephemeral
                  ;; These hold the data that control batch edit mode.
                  (anything :batch-query :selector)
-                 (anything :batch-stack :selector))))
+                 (anything :batch-stack :selector)))))
 
-(defn add-session-ephemeral-element!
-  "Add a session ephemeral element to the store, and return its id."
+(defn add-session-ephemeral-object!
+  "Add a session ephemeral object to the store, and return its id."
   [store]
   (store-update-control-return!
    store
    (fn [immutable-store]
-     (let [[store id] (update-add-session-ephemeral-element immutable-store)]
+     (let [[store id] (update-add-session-ephemeral-object immutable-store)]
        [(-> store
             (declare-ephemeral-id id)
             (update-equivalent-undo-point true))
@@ -429,7 +431,7 @@
   (println "Creating session with root id string" root-id-string)
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
-          session-ephemeral-id (add-session-ephemeral-element! store)
+          session-ephemeral-id (add-session-ephemeral-object! store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -479,7 +481,7 @@
              (let [session-ephemeral-id (:session-ephemeral-id state)]
                (store-update!
                 (:store state)
-                (fn [store] (if (id-valid-link? store session-ephemeral-id)
+                (fn [store] (if (id-known-object? store session-ephemeral-id)
                               (remove-entity-by-id store session-ephemeral-id)
                               store))))
              (assoc session-info :sessions

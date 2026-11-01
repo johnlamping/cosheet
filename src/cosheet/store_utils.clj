@@ -94,7 +94,7 @@
   Return [store object-id conflux-map]."
   [store conflux-map name template]
   (assert (tree-entity? template))
-  (assert object? template)
+  (assert (object? template) template)
   (if-let [object (let [object (find-object-by-name store name template)]
                     (when (extended-by? template object) object))]
     [store (:item-id object) conflux-map]
@@ -112,7 +112,7 @@
   Return [store object-id conflux-map]."
   [store conflux-map template]
   (assert (tree-entity? template))
-  (assert object? template)
+  (assert (object? template) template)
   (cond (id-identified-object? template)
         [store (:item-id template) conflux-map]
         ;; Accept references to uniquely identified ids that are
@@ -207,6 +207,13 @@
   (let [[store entity-link _] (internal-add-element
                                store {} container-id template)]
     [store entity-link]))
+
+(defn add-singleton-object
+  "Add a new object holding just the given element.
+  Return the updated store and the id of the element."
+  [store element]
+  (let [[store object-id] (add-object store (make-tree-object []))]
+    (add-element store object-id element)))
 
 (defn add-universal-objects
   "Add the 'name', 'link-type', and 'object-type' objects to the store.

@@ -1,7 +1,7 @@
 (ns cosheet.server.format-convert
   (:require (cosheet [entity :refer [to-tree label->elements content]]
                       [store :refer [update-source id-valid-link?]]
-                      [store-utils :refer [add-element]]
+                      [store-utils :refer [add-element add-singleton-object]]
                       [query :refer [matching-items]])
             (cosheet.server
              [model-utils :refer [remove-entity-by-id]])))
@@ -23,7 +23,7 @@
                                (:item-id condition)
                                (to-tree column))))
           store columns)))
-     (first (add-element store nil '(1 :format)))
+     (first (add-singleton-object store '(1 :format)))
      tables)))
 
 (defn convert-from-1-or-2-to-3

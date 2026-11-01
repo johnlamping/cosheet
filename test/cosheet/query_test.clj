@@ -89,27 +89,31 @@
     (is (extended-by? 3 element0))
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
-    (is (extended-by? `(1 ~(not-query :x))
+    (is (extended-by? `(1 ~(make-not-query :x))
                       1))
-    (is (extended-by? `(1 :a :b ~(not-query :x) ~(not-query :u))
+    (is (extended-by? `(1 :a :b ~(make-not-query :x) ~(make-not-query :u))
                       '(1 :a (:b :c))))
-    (is (not (extended-by? `(1 :a :b :c ~(not-query :x) ~(not-query :u))
-                           '(1 :a (:b :c)))))
     (is (not (extended-by?
-              `(1 :a ~(not-query :b))
+              `(1 :a :b :c ~(make-not-query :x) ~(make-not-query :u))
               '(1 :a (:b :c)))))
     (is (not (extended-by?
-              `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
+              `(1 :a ~(make-not-query :b))
+              '(1 :a (:b :c)))))
+    (is (not (extended-by?
+              `(1 :a :b ~(make-not-query :x) ~(make-not-query :u)
+                  ~(make-not-query :a))
               '(1 :a (:b :c)))))
     (is (extended-by?
-         `(1 :a (:b ~(not-query :x)) ~(not-query `(:b ~(not-query :c))))
+         `(1 :a (:b ~(make-not-query :x))
+           ~(make-not-query `(:b ~(make-not-query :c))))
          '(1 :a (:b :c))))
-    (is (not (extended-by? `(1 :a (:b ~(not-query :c)))
+    (is (not (extended-by? `(1 :a (:b ~(make-not-query :c)))
                            '(1 :a (:b :c)))))
-    (is (extended-by? `(1 :a (:b ~(not-query :d)))
+    (is (extended-by? `(1 :a (:b ~(make-not-query :d)))
                       '(1 :a (:b :c))))
-    (is (not (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
-                           '(1 :a (:b :c)))))
+    (is (not (extended-by?
+              `(1 :a :b ~(make-not-query `(:b ~(make-not-query :d))))
+              '(1 :a (:b :c)))))
     (is (extended-by? (make-tree-object '(1 2))
                       (make-tree-object '(1 2 3))))
     (is (extended-by? (make-tree-object '(1 2))
@@ -168,56 +172,56 @@
       (is (extended-by? (make-tree-object nil) anon-a)))))
 
 (defn variable
-  ([name] (variable-query name))
-  ([name qualifier] (variable-query name :qualifier qualifier))
+  "Make a variable. Without a qualifier, it is an element."
+  ([name] (variable name nil))
+  ([name qualifier] (variable name qualifier nil))
   ([name qualifier reference]
-   (variable-query name
-                   :qualifier qualifier
-                   :reference reference)))
+   (make-variable-query name
+                        :qualifier qualifier
+                        :reference reference
+                        :form (when (nil? qualifier) :element))))
 
 (deftest special-forms-test
-  (let [query (variable-query "foo" :qualifier '(1 2) :reference true)]
+  (let [query (make-variable-query "foo" :qualifier '(1 2) :reference true)]
     (is (special-form? query))
     (is (variable-query? query))
     (is (= (variable-name query) "foo"))
     (is (= (variable-qualifier query) '(1 2)))
     (is (= (variable-reference query) true)))
-  (let [query (variable-query
-             "foo" :qualifier (make-tree-element [:object 2] '(1) :reverse))]
+  (let [query (make-variable-query
+               "foo" :qualifier (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (variable-query? query))
     (is (= (variable-name query) "foo"))
     (is (= (variable-qualifier query)
            (make-tree-element [:object 2] '(1) :reverse)))
     (is (= (variable-reference query) nil)))
-  (let [query (not-query 1)]
+  (let [query (make-not-query 1)]
     (is (special-form? query))
     (is (= (special-form-type query) :not))
     (is (= (sub-query query) 1)))
-  (let [query (not-query (make-tree-element [:object 2] '(1) :reverse))]
+  (let [query (make-not-query (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :not))
     (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse))))
-  (let [query (and-query 1 (make-tree-element [:object 2] '(1) :reverse))]
+  (let [query (make-and-query 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :and))
     (is (= (sub-queries query)
            [1 (make-tree-element [:object 2] '(1) :reverse)])))
-  (let [query (forall-query
+  (let [query (make-forall-query
                "foo" 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :forall))
     (is (= (quantifier-variable query)
-           (add-elements-to-entity (variable-query "foo" :qualifier 1)
-                                   '(::query/variable))))
+           (make-variable-query "foo" :qualifier 1)))
     (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse))))
-  (let [query (exists-query
+  (let [query (make-exists-query
                "foo" 1 (make-tree-element [:object 2] '(1) :reverse))]
     (is (special-form? query))
     (is (= (special-form-type query) :exists))
     (is (= (quantifier-variable query)
-           (add-elements-to-entity (variable-query "foo" :qualifier 1)
-                                   '(::query/variable))))
+           (make-variable-query "foo" :qualifier 1)))
     (is (= (sub-query query) (make-tree-element [:object 2] '(1) :reverse)))))
 
 (deftest closest-template-test
@@ -227,7 +231,7 @@
   (is (= (closest-template '((:reverse [:object 1]) 2 (3 4))
                            {"bar" 7})
          ['((:reverse [:object 1]) 2 (3 4)) true]))
-  (is (= (closest-template `(nil (2 3 ~(not-query 5)))
+  (is (= (closest-template `(nil (2 3 ~(make-not-query 5)))
                            {"bar" '(7 6)})
          ['(nil (2 3)) false]))
   (is (= (closest-template `(1 2 (3 ~(variable "foo" 5)))
@@ -267,7 +271,7 @@
     (is (= (closest-template `(~(variable "foo" 5)
                                (~anonymous-object)
                                (:foo ~(variable "baz" (variable "bar")))
-                               ~(not-query 8))
+                               ~(make-not-query 8))
                              {"bar" 7})
            [`(5 (~anonymous-object) (:foo 7)) false]))
     (is (= (closest-template `(~(variable "foo" 5)
@@ -283,7 +287,7 @@
     (is (= (closest-template `(~(variable "foo" 5)
                                (~named-object)
                                (:foo ~(variable "baz" (variable "bar")))
-                               ~(not-query 8))
+                               ~(make-not-query 8))
                              {"bar" 7})
            [`(5 (~named-object) (:foo 7)) false]))
     (is (= (closest-template `(~(variable "foo" 5)
@@ -297,9 +301,9 @@
                              {"bar" 7})
            [`(5 (~named-object) (:foo nil)) false])))
   (is (thrown? java.lang.AssertionError
-               (closest-template `(~(and-query (variable "foo" 5)
-                                               (variable "bar" 6)))
-                                 {"bar" 7}))))
+               (closest-template
+                `(~(make-and-query (variable "foo" 5) (variable "bar" 6)))
+                {"bar" 7}))))
 
 (deftest minimal-label?-test
   (is (minimal-label? :foo))
@@ -534,33 +538,39 @@
                       {:a :b "foo" 4 "bar" 2}
                       {:a :b "foo" 4 "bar" 3}])))
   ;; not in elements
-  (is (= (matching-extensions `(1 ~(not-query :x)) 1)
+  (is (= (matching-extensions `(1 ~(make-not-query :x)) 1)
          [{}]))
-  (is (empty? (matching-extensions `(1 ~(not-query :a)) '(1 :a))))
-  (is (= (matching-extensions `(1 :a :b ~(not-query :x) ~(not-query :u))
-                              '(1 :a :b))
+  (is (empty? (matching-extensions `(1 ~(make-not-query :a)) '(1 :a))))
+  (is (= (matching-extensions
+          `(1 :a :b ~(make-not-query :x) ~(make-not-query :u))
+          '(1 :a :b))
          [{}]))
-  (is (empty? (matching-extensions `(1 :a :b :c ~(not-query :x)
-                                       ~(not-query :u))
-                                   '(1 :a :b))))
   (is (empty? (matching-extensions
-               `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
+               `(1 :a :b :c ~(make-not-query :x) ~(make-not-query :u))
                '(1 :a :b))))
-  (is (= (matching-extensions `(1 :a (:b ~(not-query :x))
-                                  ~(not-query `(:b ~(not-query :c))))
+  (is (empty? (matching-extensions
+               `(1 :a :b
+                   ~(make-not-query :x) ~(make-not-query :u)
+                   ~(make-not-query :a))
+               '(1 :a :b))))
+  (is (= (matching-extensions `(1 :a
+                                  (:b ~(make-not-query :x))
+                                  ~(make-not-query `(:b ~(make-not-query :c))))
                               '(1 :a (:b :c)))
          [{}]))
-  (is (empty? (matching-extensions `(1 :a (:b ~(not-query :c)))
+  (is (empty? (matching-extensions `(1 :a (:b ~(make-not-query :c)))
                                    '(1 :a (:b :c)))))
-  (is (empty? (matching-extensions `(1 :a :b ~(not-query `(:b ~(not-query :d))))
-                                   '(1 :a (:b :c)))))
+  (is (empty? (matching-extensions
+               `(1 :a :b ~(make-not-query `(:b ~(make-not-query :d))))
+               '(1 :a (:b :c)))))
   (is (= (matching-extensions `(1 (:a ~(variable "foo" nil))
-                                  ~(not-query `(:c ~(variable "foo" nil))))
+                                  ~(make-not-query `(:c ~(variable "foo" nil))))
                               '(1 (:a :b) (:c :d)))
          [{"foo" :b}]))
-  (is (empty? (matching-extensions `(1 (:a ~(variable "foo" nil))
-                                       ~(not-query `(:c ~(variable "foo" nil))))
-                                   '(1 (:a :b) (:c :b))))))
+  (is (empty? (matching-extensions
+               `(1 (:a ~(variable "foo" nil))
+                   ~(make-not-query `(:c ~(variable "foo" nil))))
+               '(1 (:a :b) (:c :b))))))
 
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
@@ -713,8 +723,8 @@
                   (variable "v" (make-tree-object '((:d)))) s2)))
            #{}))
     (is (= (set (envs-to-trees
-                 (query-matches (and-query `(1 ~(variable "v"))
-                                           (variable "v"))
+                 (query-matches (make-and-query `(1 ~(variable "v"))
+                                                (variable "v"))
                                 s2)))
            #{{"v" '(2 3)} {"v" '(2 4)}}))
     ;; variables inside entities
@@ -749,96 +759,98 @@
                    s2)]
       (is (= (count matches) 1)))
     (is (= (envs-to-trees
-            (query-matches (and-query `(nil (~(variable "v") 4))
-                                      `(1 (~(variable "v" nil true) 3)))
+            (query-matches (make-and-query `(nil (~(variable "v") 4))
+                                           `(1 (~(variable "v" nil true) 3)))
                            s2))
            nil))
     ;; and
     (is (= (envs-to-trees
-            (query-matches (and-query `(1 (~(variable "v") 3))
-                                      `(nil (~(variable "v") 4)))
+            (query-matches (make-and-query `(1 (~(variable "v") 3))
+                                           `(nil (~(variable "v") 4)))
                            s2))
            [{"v" 2}]))
-    (is (= (query-matches (and-query `(1 (~(variable "v" nil true) 3))
-                                     `(nil (~(variable "v" nil true) 4)))
+    (is (= (query-matches (make-and-query `(1 (~(variable "v" nil true) 3))
+                                          `(nil (~(variable "v" nil true) 4)))
                           s2)
            nil))
-    (is (= (query-matches (and-query `(1 (~(variable "v") 3))
-                                     `(nil (~(variable "v") 5)))
+    (is (= (query-matches (make-and-query `(1 (~(variable "v") 3))
+                                          `(nil (~(variable "v") 5)))
                           s2)
            nil))
     (is (= (envs-to-trees
-            (query-matches (and-query `(~(variable "c") (~(variable "v") 3))
-                                      `(~(variable "c") (~(variable "v") 4)))
+            (query-matches (make-and-query
+                            `(~(variable "c") (~(variable "v") 3))
+                            `(~(variable "c") (~(variable "v") 4)))
                            s2))
            [{"v" 2, "c" 1}]))
-    (is (= (query-matches (and-query `(~(variable "v") (~(variable "c") 3))
-                                     `(~(variable "c") (~(variable "v") 4)))
+    (is (= (query-matches (make-and-query
+                           `(~(variable "v") (~(variable "c") 3))
+                           `(~(variable "c") (~(variable "v") 4)))
                           s2)
            nil))
     (is (= (set (envs-to-trees
-                 (query-matches (and-query `(nil ~(variable "v"))
-                                           `(nil (nil ~(variable "v"))))
+                 (query-matches (make-and-query `(nil ~(variable "v"))
+                                                `(nil (nil ~(variable "v"))))
                                 s2)))
            #{{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)} {"v" '(4)} {"v" '(4 5)}
              {"v" '(5)}}))
     (is (= (set (envs-to-trees
-                 (query-matches (and-query `(nil (~(variable "v")))
-                                           `(nil (nil ~(variable "v"))))
+                 (query-matches (make-and-query `(nil (~(variable "v")))
+                                                `(nil (nil ~(variable "v"))))
                                 s2)))
            #{{"v" 3} {"v" 4} {"v" 5}}))
     ;; exists
-    (is (= (query-matches (exists-query "v" nil
-                                        `(nil (1 ~(variable "v"))
-                                              (3 ~(variable "v"))))
+    (is (= (query-matches (make-exists-query "v" nil
+                                             `(nil (1 ~(variable "v"))
+                                                   (3 ~(variable "v"))))
                           s2)
            nil)) 
-    (is (= (query-matches (exists-query "v" nil
-                                        `(nil (1 (2 ~(variable "v")))
-                                              (~(variable "v"))))
+    (is (= (query-matches (make-exists-query "v" nil
+                                             `(nil (1 (2 ~(variable "v")))
+                                                   (~(variable "v"))))
                           s2)
            [{}]))
     (is (= (envs-to-trees
-            (query-matches (exists-query "c" nil
-                                         `(nil (1 (2 ~(variable "v")))
-                                               (~(variable "v"))))
+            (query-matches (make-exists-query "c" nil
+                                              `(nil (1 (2 ~(variable "v")))
+                                                    (~(variable "v"))))
                            s2))
            [{"v" '(3)}]))
-    (is (= (query-matches (exists-query  "v"  `(1 (~(variable "v") 3))
-                                         `(nil (~(variable "v") 4)))
+    (is (= (query-matches (make-exists-query  "v"  `(1 (~(variable "v") 3))
+                                              `(nil (~(variable "v") 4)))
                           s2)
            [{}]))
-    (is (= (query-matches (exists-query  "v" `(1 ~(variable "v"))
-                                         `(3 ~(variable "v")))
+    (is (= (query-matches (make-exists-query  "v" `(1 ~(variable "v"))
+                                              `(3 ~(variable "v")))
                           s2)
            nil))
     ;; forall
-    (is (= (query-matches (forall-query "v" `(1 (~(variable "v") 3))
-                                        `(1 (~(variable "v") 4)))
+    (is (= (query-matches (make-forall-query "v" `(1 (~(variable "v") 3))
+                                             `(1 (~(variable "v") 4)))
                           s2)
            [{}]))
-    (is (= (query-matches (forall-query "v" `(1 (~(variable "v") 3))
-                                        `(1 (2 ~(variable "v"))))
+    (is (= (query-matches (make-forall-query "v" `(1 (~(variable "v") 3))
+                                             `(1 (2 ~(variable "v"))))
                           s2)
            nil))
-    (is (= (query-matches (forall-query "v"  `(1 ~(variable "v"))
-                                        (variable "v"))
+    (is (= (query-matches (make-forall-query "v"  `(1 ~(variable "v"))
+                                             (variable "v"))
                           s2)
            [{}]))
     ;; not inside
-    (is (= (query-matches `(2 ~(not-query 7))
+    (is (= (query-matches `(2 ~(make-not-query 7))
                           s2)
            [{}]))
     (is (= (map listify-map-values
-                (query-matches (variable "v" `(2 ~(not-query 3)))
+                (query-matches (variable "v" `(2 ~(make-not-query 3)))
                                s2))
            
            [{"v" '(2 4)}]))
-    (is (empty? (query-matches `(1 ~(not-query 2))
+    (is (empty? (query-matches `(1 ~(make-not-query 2))
                                s2)))
     (is (check (map listify-map-values
                     (query-matches `(nil (1 ~(variable "v"))
-                                         ~(not-query (variable "v")))
+                                         ~(make-not-query (variable "v")))
                                    s-more))
                ;; Shouldn't have {"v" '(1 2)}, because of the not.
                (as-set [{"v" '(2 3)} {"v" '(2 4)} {"v" '(3)}])))
@@ -862,7 +874,7 @@
       (is (= matches [(first (all-elements (id->element id1 s3)))])))
     (let [matches (matching-items '(nil (2 3)) s3)]
       (is (= (map :item-id matches) [id1])))
-    (let [matches (matching-items `(nil (2 ~(not-query 3))) s3)]
+    (let [matches (matching-items `(nil (2 ~(make-not-query 3))) s3)]
       (is (= (map :item-id matches) [id3])))
     ;; objects
     (let [matches (matching-items (make-tree-object ['(nil (2))]) s3)]
@@ -872,7 +884,7 @@
     (let [matches (matching-items (make-tree-object ['(nil (nil (3)))]) s3)]
       (is (= (map :item-id matches) [ia])))
     (let [matches (matching-items
-                   (make-tree-object [`(nil (2 ~(not-query 3)))]) s3)]
+                   (make-tree-object [`(nil (2 ~(make-not-query 3)))]) s3)]
       (is (= (map :item-id matches) [ib])))))
 
 (deftest reference-variable-test
@@ -883,9 +895,9 @@
         x-obj (id->object x-id s1)
         [x-obj-store _] (add-object
                          s1 (make-tree-object [`(1 (~x-obj)) `(1 (~x-obj))]))
-        v-query (variable-query "v")
-        v-ref-query (variable-query "v" :reference true)
-        u-ref-query (variable-query "u" :reference true)]
+        v-query (make-variable-query "v" :form :element)
+        v-ref-query (make-variable-query "v" :reference true :form :element)
+        u-ref-query (make-variable-query "u" :reference true :form :element)]
     
     ;; Two ways to match the two objects.
     (is (= (count (query-matches
@@ -920,8 +932,8 @@
   ;; reference variable to the entity before processing its qualifier.
   (let [{:keys [cyclic-shared-store a-id]} (cyclic-and-shared-a-b-stores)
         item-a (id->object a-id cyclic-shared-store)
-        inner-var (variable-query "v" :reference true)
-        query (variable-query
+        inner-var (make-variable-query "v" :reference true :form :object)
+        query (make-variable-query
                "v"
                :qualifier (make-tree-object
                            [(make-tree-element

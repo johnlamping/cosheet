@@ -10,7 +10,7 @@
                                   add-link-type-object
                                   find-object-by-name
                                   link-type-object]]
-             [query :refer [matching-items matching-elements not-query]]
+             [query :refer [matching-items matching-elements]]
              [entity :as entity  :refer [id->element id->object
                                          label->elements to-tree
                                          make-tree-object

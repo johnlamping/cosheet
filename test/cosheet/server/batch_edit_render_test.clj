@@ -15,7 +15,7 @@
                                   add-link-type-object
                                   find-object-by-name
                                   link-type-object]]
-             [query :refer [matching-items matching-elements not-query
+             [query :refer [matching-items matching-elements
                             extended-by?]]
              [entity :as entity  :refer [id->entity in-different-store
                                          label->elements

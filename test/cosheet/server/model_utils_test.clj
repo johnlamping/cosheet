@@ -26,7 +26,8 @@
                                            object-type-object
                                            link-type-object]]
                       [query :refer [matching-items matching-elements
-                                     not-query variable-query variable-name]]
+                                     make-not-query make-variable-query
+                                     variable-name]]
                       entity-impl
                       [reporter :refer [reporter-value-or-invalid]]
                       [calculator :refer [request compute make-calculator-data]]
@@ -96,26 +97,26 @@
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true})
                (make-tree-element
-                 (make-tree-object `(~(not-query `(~link-type))
-                                     ~(not-query `(~object-type))))
+                 (make-tree-object `(~(make-not-query `(~link-type))
+                                     ~(make-not-query `(~object-type))))
                  [nil
                   `(~(make-tree-object `((~link-type))))
                   `(~(make-tree-object `("a"
-                                         ~(not-query `(~link-type))
-                                         ~(not-query `(~object-type)))))]
+                                         ~(make-not-query `(~link-type))
+                                         ~(make-not-query `(~object-type)))))]
                  :reverse)))
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true
                          :require-orders true})
                (make-tree-element
-                 (make-tree-object `(~(not-query `(~link-type))
-                                     ~(not-query `(~object-type))
+                 (make-tree-object `(~(make-not-query `(~link-type))
+                                     ~(make-not-query `(~object-type))
                                      (nil :order)))
                  ['(nil (nil :order))
                   `(~(make-tree-object `((~link-type) (nil :order))))
                   `(~(make-tree-object `("a"
-                                         ~(not-query `(~link-type))
-                                         ~(not-query `(~object-type))
+                                         ~(make-not-query `(~link-type))
+                                         ~(make-not-query `(~object-type))
                                          (nil :order))))]
                  :reverse)))
   ;; In cyclic-shared-store, a is reachable via two paths (the back-
@@ -130,12 +131,12 @@
         pattern (to-tree item-a)
         fixed-term (transform-pattern-toward-fixed-term pattern {})
         v-name (label->content fixed-term :cosheet.query/name)
-        inner-var (variable-query v-name :reference true)]
+        inner-var (make-variable-query v-name :reference true :form :object)]
     ;; The element order of the stored object is incidental, so
     ;; compare canonical forms.
     (is (= (canonicalize fixed-term)
            (canonicalize
-            (variable-query
+            (make-variable-query
              v-name
              :qualifier (make-tree-object
                          [(make-tree-element
@@ -157,9 +158,9 @@
                   `(~(make-conflux-tree-object (make-tree-id 1) []))])
         fixed-term (transform-pattern-toward-fixed-term pattern {})
         v-name (variable-name fixed-term)
-        inner-var (variable-query v-name :reference true)]
+        inner-var (make-variable-query v-name :reference true :form :object)]
     (is (= fixed-term
-           (variable-query
+           (make-variable-query
             v-name
             :qualifier (make-tree-object
                         ["x" (make-tree-element inner-var [])])
@@ -172,7 +173,7 @@
         fixed-term (transform-pattern-toward-fixed-term pattern {})
         variable (content (first (all-elements fixed-term)))]
     (is (check variable
-               (variable-query
+               (make-variable-query
                 (variable-name variable)
                 :qualifier (make-tree-object ["x"])
                 :reference true)))
@@ -186,7 +187,7 @@
                     pattern {:require-orders true})
         v-name (label->content fixed-term :cosheet.query/name)]
     (is (= fixed-term
-           (variable-query
+           (make-variable-query
             v-name
             :qualifier (make-tree-object ['(nil (nil :order)) "x"])
             :reference true))))))
@@ -195,10 +196,10 @@
   ;; nil becomes the replacement, (nil :order) elements and negations
   ;; are removed.
   (is (= (fixed-term-to-template
-          `(nil "x" (nil :order) ~(not-query 5)))
+          `(nil "x" (nil :order) ~(make-not-query 5)))
          '("" "x")))
   (is (= (fixed-term-to-template
-          `(nil "x" (nil :order) ~(not-query 5)) 'anything)
+          `(nil "x" (nil :order) ~(make-not-query 5)) 'anything)
          '(anything "x")))
   ;; A reference variable becomes a conflux tree object whose elements
   ;; match the variable's qualifier. This round-trips a conflux with a
@@ -218,23 +219,26 @@
                (canonicalize pattern))))
   ;; A non-reference variable is replaced by its qualifier, or by the
   ;; replacement if it has none.
-  (is (= (fixed-term-to-template (variable-query "v" :qualifier '(2 3)))
+  (is (= (fixed-term-to-template (make-variable-query "v" :qualifier '(2 3)))
          '(2 3)))
-  (is (= (fixed-term-to-template (variable-query "v")) '("")))
-  (is (= (fixed-term-to-template (variable-query "v") 'anything)
+  (is (= (fixed-term-to-template (make-variable-query "v" :form :element))
+         '("")))
+  (is (= (fixed-term-to-template (make-variable-query "v" :form :element)
+                                 'anything)
          '(anything)))
-  (is (= (fixed-term-to-template `(1 ~(variable-query "v" :qualifier '(2 3))))
+  (is (= (fixed-term-to-template
+          `(1 ~(make-variable-query "v" :qualifier '(2 3))))
          '(1 (2 3)))))
 
 (deftest add-non-selector-to-fixed-term-test
   (is (check (add-non-selector-to-fixed-term
               (make-tree-object [`(~(link-type-object "hi"))]))
              (make-tree-object [`(~(link-type-object "hi"))
-                                (not-query '(:selector))])))
+                                (make-not-query '(:selector))])))
   (is (check (add-non-selector-to-fixed-term
               `(nil (~(link-type-object "hi"))))
              `(nil (~(link-type-object "hi"))
-                   ~(not-query '(:selector))))))
+                   ~(make-not-query '(:selector))))))
 
 (deftest specialize-generic-test
   (let [[c1 s1] (specialize-generic '("x" (??? :a) (??? 22))

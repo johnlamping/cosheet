@@ -4,7 +4,7 @@
                                      label->elements label->content
                                      object? primitive?
                                      tree-entity? 
-                                     make-tree-element
+                                     make-tree-element make-tree-object
                                      add-elements-to-entity]])))
 
 ;;; Querying involves looking for entities that are extensions of a
@@ -31,47 +31,60 @@
 ;;;        query  May also have quantifiers and conjunctions.
 
 ;;; Internally, the elaborations are indicated with special forms,
-;;; which are elements whose content is ::special-form and that have
-;;; an element (<special-form> :type) Client code should never have to
-;;; know these details, as there are functions to construct each of
-;;; the special forms.
+;;; which are entities marked by having an element of the form (<type>
+;;; ::special-form-type). A special form that matches primitives or
+;;; objects will be an object, while one that matches elements will be
+;;; an element. (Its content it will be ::special-form, but it is
+;;; never used.)
 
-;;; All special forms can have sub-queries. These are encoded by
-;;; elements with a label of ::sub-query. But they need to be able to
-;;; encode primitives, objects, or elements. And for elements, they
-;;; need to be able to encode either direction. These cases are
-;;; indicated by a few additional labels on the sub-query.
-;;;   * If the sub-query is a primitive or an object, it is
-;;;     represented by an element with the sub-query as its content
-;;;     and with the ::content and :sub-query keywords.
+;;; Many special forms can have subsidiary queries. These include, for
+;;; example, the sub-queries of a conjunction, and the variable and
+;;; contained query of a quantifier.
+
+;;; Each special term constructor takes an optional form argument,
+;;; which must have value :element or :object, and says which to
+;;; make. Without it, the form follows the constructor's sub-query: an
+;;; object sub-query gives an object, while an element or primitive
+;;; sub-query gives an element. (A primitive sub-query typically
+;;; stands for an element.)
+
+;;; Subqueries are encoded by elements with a label of ::sub-query or
+;;; ::variable.  But they need to be able to encode primitives,
+;;; objects, or elements. And for elements, they need to be able to
+;;; encode either direction. The different cases are indicated by a
+;;; possible additional labels on the subquery.
+;;;   * If the subquery is a primitive or an object, it is represented
+;;;     by an element with with an additional ::content keyword and
+;;;     with the subquery as its content.
 ;;;   * Otherwise, the sub-query is an element.
-;;;       * If it is a forward element, it is represented by
-;;;         itself, plus the ::sub-query keyword.
+;;;       * If it is a forward element, it is represented by itself
+;;;         (plus the label that tags it as a subquery).
 ;;;       * if it is a reverse element, it is represented by the
-;;;         equivalent forward element, plus the keywords
-;;;         ::flipped and ::sub-query.
+;;;         equivalent forward element, plus the additional label
+;;;         ::flipped.
 
-;;; A variable can match anything, and the entity it matches is recorded.
-;;;   (::special-form (:variable ::type)
-;;;                   (<name> ::name)
-;;;                   <qualifier> encoded as a sub-query
-;;;                   (true ::reference))
-;;;
-;;; The qualifier and ::reference are optional
+;;; Client code should never have to know these details, as there are
+;;; functions to construct each of the special forms.
 
+;;; A variable can match anything, and the entity it matches is
+;;; recorded. Its possible elements are:
+;;;    (:variable ::special-form-type)
+;;;    (<name> ::name)
+;;;    (<qualifier> ::sub-query) - with subquery encoding
+;;;    (true ::reference))
+;;; The qualifier and ::reference are optional.
+;;; Here are the rules for variable matching:
 ;;;   * If a term contains several variables with the same name, each
 ;;;     occurrence must match equivalent entities (entities that
 ;;;     canonicalize the same). What is recorded is the entity matched
 ;;;     by the first variable occurrence the query processing
 ;;;     encounters.
-
 ;;;   * Further, if the variables with the same name are marked
 ;;;     ::reference, all their occurrences must match the exact same
 ;;;     entity. (If there is more than one instance of the variable,
 ;;;     this means it can only match named objects or constants, since
 ;;;     those are the only things that can be identical at different
 ;;;     sites.)
-
 ;;;   * A variable with a qualifier can only match entities satisfying
 ;;;     the qualifier. If a term has several variables with the same
 ;;;     name, they should each have the same qualifier, with one
@@ -86,30 +99,33 @@
 ;;;     encounter a variable before it encounters any variable in its
 ;;;     qualifier.)
 
-;;; A not matches if its sub-query does not match.
-;;;   (::special-form (:not ::type) <sub-query>)
+;;; A not matches if its sub-query does not match. It has only two
+;;; elements:
+;;;   (:not ::special-form-type)
+;;;   (<sub-query> ::sub-query)  - with subquery encoding
 
 ;;; An and matches if both its sub-queries match, with consistent
-;;; variable bidings.
-;;;   (::special-form (:and ::type)
-;;;                   <sub-query> also tagged with ::first
-;;;                   <sub-query> also tagged with ::second)
+;;; variable bidings. Without a form argument, its sub-queries must
+;;; call for the same form. It's elements are:
+;;;   (:and ::special-form-type)
+;;;   (<sub-query> ::sub-query ::first) - with subquery encoding
+;;;   (<sub-query> ::sub-query ::second) - with subquery encoding
 
 ;;; A forall matches if its query matches for every way its variable
-;;; can be bound.
-;;;   (::special-form (:forall ::type)
-;;;                   Note: appends ::variable as an element of the variable.
-;;;                   <variable ::variable>
-;;;                   <sub-query>)
+;;; can be bound. Its variable will be an object iff the quantifier is.
+;;; Its elements are:
+;;;   (:forall ::special-form-type)
+;;;   (<variable> ::variable) - with subquery encoding
+;;;   (<sub-query> ::sub-query) - with subquery encoding
 
 ;;; An exists matches if its query matches for some way its variable
-;;; can be bound.
-;;;   (::special-form (:exists ::type)
-;;;                   Note: appends ::variable as an element of the variable.
-;;;                   <variable ::variable>
-;;;                   <sub-query>)
+;;; can be bound. Its variable will be an object iff the quantifier is.
+;;; Its elements are:
+;;;   (:exists ::special-form-type)
+;;;   (<variable> ::variable) - with subquery encodingg
+;;;   (<sub-query> ::sub-query) - with subquery encoding
 
-;;; There are several querying operations, that differ in how
+;;; There are several querying operations. They differ in how
 ;;; elaborate a kind of query they take and in whether they operate on
 ;;; a single entity or on the whole store. All only take immutable
 ;;; arguments. Where an environment is mentioned, it means a binding
@@ -135,83 +151,125 @@
 ;;; that return whether an item matches a query. Change
 ;;; query-calculator to use them, rather than requiring terms.
 
-(defn encode-sub-query
-  "Encode a sub-query as an element, as described above."
-  [sub-query]
-  (concat (if (or (primitive? sub-query) (object? sub-query))
-            (make-tree-element sub-query '(::content))
-            (if (reverse? sub-query)
-              (make-tree-element (content sub-query)
-                                 (concat (all-elements sub-query)
-                                         '(::flipped)))
-              sub-query))
-          '(::sub-query)))
+(defn- encode-subquery
+  "Encode a query as an element with the given tag, which defaults to
+  ::sub-query, as described above for sub-queries."
+  ([query] (encode-subquery query ::sub-query))
+  ([query tag]
+   (concat (if (or (primitive? query) (object? query))
+             (make-tree-element query '(::content))
+             (if (reverse? query)
+               (make-tree-element (content query)
+                                  (concat (all-elements query)
+                                          '(::flipped)))
+               query))
+           (list tag))))
 
 (defn decode-sub-query
   [encoded]
-  "Decode a sub-query that was encoded as an element, as described above."
+  "Decode a sub-query, or a quantifier's variable, that was encoded as
+  an element, as described above."
   (when encoded
     (if (some #(= ::content %) (forward-elements encoded))
       (content encoded)
-      (let [cleaned (remove #{::sub-query ::first ::second ::flipped}
+      (let [cleaned (remove #{::sub-query ::first ::second ::flipped
+                              ::variable}
                             encoded)]
         (if (some #(= ::flipped %) (forward-elements encoded))
           (make-tree-element
            (content cleaned) (forward-elements cleaned) :reverse)
           cleaned)))))
 
-(defn variable-query
-  [name & {:keys [qualifier reference]
+(defn- make-special-form
+  "Make a special form of the given type with the given elements, as
+  an element or an object according to entity-type."
+  [entity-type special-form-type elements]
+  (assert (#{:element :object} entity-type) entity-type)
+  (let [elements-with-type (cons `(~special-form-type ::special-form-type)
+                                 elements)]
+    (case entity-type
+      :element (make-tree-element ::special-form elements-with-type)
+      :object (make-tree-object elements-with-type))))
+
+(defn- form-for-sub-query
+  "Return the form for a special form with the given sub-query: an
+  object if the sub-query is an object, otherwise an element."
+  [sub-query]
+  (if (object? sub-query) :object :element))
+
+(defn make-variable-query
+  [name & {:keys [qualifier reference form]
            :as keywords}]
   (assert (or (symbol? name) (string? name)) name)
-  (assert (every? #{:qualifier :reference} (keys keywords)))
+  (assert (every? #{:qualifier :reference :form} (keys keywords)))
   (when reference (assert (= reference true)))
-  (apply list
-         (cond-> [::special-form '(:variable ::type)]
-           name (conj `(~name ::name))
-           qualifier (conj (encode-sub-query qualifier))
-           reference (conj '(true ::reference)))))
+  (assert (or form qualifier) "A variable without a qualifier needs a form.")
+  (make-special-form (or form (form-for-sub-query qualifier))
+                     :variable
+                     (cond-> []
+                       name (conj `(~name ::name))
+                       qualifier (conj (encode-subquery qualifier))
+                       reference (conj '(true ::reference)))))
 
-(defn not-query
-  [query]
-  `(::special-form
-    (:not ::type)
-    ~(encode-sub-query query)))
+(defn make-not-query
+  ([query]
+   (make-not-query query (form-for-sub-query query)))
+  ([query form]
+   (make-special-form form :not [(encode-subquery query)])))
 
-(defn and-query
-  [query1 query2]
-  `(::special-form
-    (:and ::type)
-    ~(add-elements-to-entity (encode-sub-query query1) '(::first))
-    ~(add-elements-to-entity (encode-sub-query query2) '(::second))))
+(defn make-and-query
+  ([query1 query2]
+   (let [form (form-for-sub-query query1)]
+     (assert (= form (form-for-sub-query query2)) [query1 query2])
+     (make-and-query query1 query2 form)))
+  ([query1 query2 form]
+   (make-special-form
+    form :and
+    [(add-elements-to-entity (encode-subquery query1) '(::first))
+     (add-elements-to-entity (encode-subquery query2) '(::second))])))
 
-(defn forall-query
-  [variable-name variable-qualifier query]
-  `(::special-form
-    (:forall ::type)
-    ~(add-elements-to-entity
-      (variable-query variable-name :qualifier variable-qualifier) [::variable])
-    ~(encode-sub-query query)))
+(defn- quantifier-elements
+  "Return the elements of a quantifier of the given form over the
+  named variable, with the given qualifier, and with the given query
+  as its body."
+  [variable-name variable-qualifier query form]
+  [(encode-subquery
+    (make-variable-query
+     variable-name :qualifier variable-qualifier :form form)
+    ::variable)
+   (encode-subquery query)])
 
-(defn exists-query
-  [variable-name variable-qualifier query]
-  `(::special-form
-    (:exists ::type)
-    ~(add-elements-to-entity
-      (variable-query variable-name :qualifier variable-qualifier) [::variable])
-    ~(encode-sub-query query)))
+(defn make-forall-query
+  ([variable-name variable-qualifier query]
+   (make-forall-query variable-name variable-qualifier query
+                      (form-for-sub-query query)))
+  ([variable-name variable-qualifier query form]
+   (make-special-form form :forall
+                      (quantifier-elements
+                       variable-name variable-qualifier query form))))
+
+(defn make-exists-query
+  ([variable-name variable-qualifier query]
+   (make-exists-query variable-name variable-qualifier query
+                      (form-for-sub-query query)))
+  ([variable-name variable-qualifier query form]
+   (make-special-form form :exists
+                      (quantifier-elements
+                       variable-name variable-qualifier query form))))
 
 (defn special-form?
+  "Return true if the query is a special form: an entity with an
+  element labeled ::special-form-type."
   [query]
-  (and (seq? query) (= (first query) ::special-form)))
+  (boolean (seq (label->elements query ::special-form-type))))
 
 (defn special-form-type
   [query]
-  (label->content query ::type))
+  (label->content query ::special-form-type))
 
 (defn variable-query? [query]
-  (and (= (content query) ::special-form)
-       (= (label->content query ::type) :variable)))
+  (and (special-form? query)
+       (= (special-form-type query) :variable)))
 
 (defn variable-name [variable]
   (label->content variable ::name))
@@ -240,7 +298,7 @@
 (defn quantifier-variable
   "Return the variable that a quantifier quantifies over."
   [quantifier-query]
-  (first (label->elements quantifier-query ::variable)))
+  (decode-sub-query (first (label->elements quantifier-query ::variable))))
 
 ;;; We want to declare functions here, and implement them in
 ;;; query-impl.  But there doesn't seem to be a way to declare a

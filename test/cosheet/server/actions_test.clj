@@ -19,7 +19,8 @@
              [calculator :refer [make-calculator-data compute]]
              [debug :refer [store-as-list simplify-for-print]]
              entity-impl
-             [query :refer [matching-elements matching-items variable-query]]
+             [query :refer [matching-elements matching-items
+                            make-variable-query]]
              [store :refer [new-element-store new-mutable-store
                             name-label-id target->ids id->source
                             target-label->ids

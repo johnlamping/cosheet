@@ -42,9 +42,9 @@
                          find-object-by-name add-universal-objects
                          link-type-object object-type-object]]
     [query :refer [matching-items
-                   not-query special-form? variable-query?
+                   make-not-query special-form? variable-query?
                    variable-name variable-qualifier variable-reference
-                   variable-query
+                   make-variable-query
                    extended-by?]]
     [query-calculator :refer [matching-item-ids-R]])
    (cosheet.server
@@ -433,7 +433,7 @@
   callers to this should generally filter the results to make sure
   they are not selectors."
   [pattern]
-  (add-elements-to-entity pattern [(not-query '(:selector))]))
+  (add-elements-to-entity pattern [(make-not-query '(:selector))]))
 
 ;;; We have various list forms of entities for different purposes:
 ;;;      query: a form suitable for use as a query. It can have nils,
@@ -476,8 +476,9 @@
               (let [id (conflux-tree-object-id entity)]
                 (if-let [cached-var (get conflux-map id)]
                   ;; Already encountered: substitute with the cached
-                  ;; reference variable.
-                  [cached-var conflux-map]
+                  ;; reference variable, which needs no further
+                  ;; processing.
+                  [[:entity/do-not-process cached-var] conflux-map]
                   ;; First encounter: store a qualifier-less reference
                   ;; variable in the map, to use when recursing into
                   ;; the conflux's elements, which might mention the
@@ -487,7 +488,8 @@
                   ;; have to repeat the qualifier.
                   [entity
                    (assoc conflux-map id
-                          (variable-query (gensym "v") :reference true))]))
+                          (make-variable-query (gensym "v") :reference true
+                                               :form :object))]))
 
               :else
               [entity conflux-map]))
@@ -507,35 +509,28 @@
               [original conflux-map]
 
               (conflux-tree-object? original)
-              (if (conflux-tree-object? assembled)
-                ;; First encounter: assembled is the rebuilt conflux
-                ;; with post-recursion elements. Build the qualifier
-                ;; from them, produce a reference variable carrying
-                ;; that qualifier, and record it in the map, to use
-                ;; for all occurrences of the same conflux-id
-                ;; elsewhere.
-                (let [id (conflux-tree-object-id original)
-                      v-name (label->content (get conflux-map id)
-                                             :cosheet.query/name)
-                      qualifier (make-tree-object (all-elements assembled))
-                      qualified-var (variable-query v-name
-                                                    :qualifier qualifier
-                                                    :reference true)]
-                  [qualified-var (assoc conflux-map id qualified-var)])
-                ;; Back-reference: pre-fn substituted the cached
-                ;; reference variable, which is already in assembled
-                ;; (after the natural element-case rebuild). Pass it
-                ;; through.
-                (do (assert (variable-query? assembled))
-                    [assembled conflux-map]))
+              ;; First encounter (back-references don't reach here):
+              ;; assembled is the rebuilt conflux with post-recursion
+              ;; elements. Build the qualifier from them, produce a
+              ;; reference variable carrying that qualifier, and
+              ;; record it in the map, to use for all occurrences of
+              ;; the same conflux-id elsewhere.
+              (let [id (conflux-tree-object-id original)
+                    v-name (label->content (get conflux-map id)
+                                           :cosheet.query/name)
+                    qualifier (make-tree-object (all-elements assembled))
+                    qualified-var (make-variable-query v-name
+                                                  :qualifier qualifier
+                                                  :reference true)]
+                [qualified-var (assoc conflux-map id qualified-var)])
 
               (object? original)
               [(make-tree-object-copying-id
                 original
                 (cond-> (or (all-elements assembled) [])
                   (and require-not-type (non-type-object? original))
-                  (concat [(not-query `(~link-type))
-                           (not-query `(~object-type))])
+                  (concat [(make-not-query `(~link-type))
+                           (make-not-query `(~object-type))])
                   require-orders
                   (concat ['(nil :order)])))
                conflux-map]

@@ -13,7 +13,7 @@
                                         set-attendee-and-call!
                                         reporter-value-or-invalid reporter-valid?]]
                       [calculator :refer [make-calculator-data compute]]
-                      [query :refer [variable-query]]
+                      [query :refer [make-variable-query]]
                       [query-calculator :refer [matching-item-ids-R]]
                       [test-utils :refer [check]]
                      )
@@ -23,10 +23,10 @@
             ))
 
 (defn variable
-  ([name] (variable-query name))
-  ([name qualifier] (variable-query name :qualifier qualifier))
+  ([name] (make-variable-query name :form :element))
+  ([name qualifier] (make-variable-query name :qualifier qualifier))
   ([name qualifier reference]
-   (variable-query name
+   (make-variable-query name
                    :qualifier qualifier
                    :reference reference)))
 

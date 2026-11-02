@@ -224,7 +224,8 @@
 ;;;    :target-item-id If this is present, it gives the id of the item
 ;;;        the dom is about, and :relative-id must not hold an id. (In
 ;;;        the case of a virtual dom, this can be the id of the item
-;;;        that the new object should be adjacent to.)
+;;;        that the new object should be adjacent to or a child of, not
+;;;        what the dom is about.)
 
 ;;;    :element-ids-to-exclude
 ;;;        If present, this is a set of DirectedItemIds of elements of

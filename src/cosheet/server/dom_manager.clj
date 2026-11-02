@@ -1194,11 +1194,14 @@
   targets one of the monitored ids or shows the content of one of them."
   [component-atom monitored-ids]
   (some (fn [c]
-          (let [{:keys [target-item-id relative-id]}
+          (let [{:keys [target-item-id relative-id virtual]}
                 (:dom-specification @c)]
             ;; We check for target-item-id first, because relative-id can
             ;; be :content, or other markers that don't indicate an item.
-            (when-let [target (or target-item-id relative-id)]
+            ;; But a virtual component is not "about" its target-item-id;
+            ;; that only says where to put the item it would create.
+            (when-let [target (or (when (not virtual) target-item-id)
+                                  relative-id)]
               (assert (not= :content target)
                       (:dom-specification @c))
               (some #{target} monitored-ids))))

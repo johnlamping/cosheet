@@ -250,28 +250,24 @@
                            {"bar" '(7 6)})
          ['(1 2 (3 (7 6))) true]))
   (let [reversed (fn [content elements]
-                   (make-tree-element content elements :reverse))]
-    ;; TODO: !!! Commented out for now: these use a variable (or
-    ;; primitive) as a reversed element's content, which
-    ;; make-tree-element's assert forbids. Once variables are
-    ;; represented by objects they will be valid reversed targets, and
-    ;; these can be restored.
-    (comment
-      (is (= (closest-template (make-tree-object
-                                `(2 ~(reversed (variable "bar") '(3))))
-                               {"bar" 7})
-             [(make-tree-object `(2 ~(reversed 7 '(3)))) true]))
-      (is (= (closest-template
-              (make-tree-object
-               `(2 (3 (~(make-tree-object [(variable "bar")
-                                           (reversed 7 nil)])))))
-              {})
-             [(make-tree-object
-               `(2 (3 (~(make-tree-object [nil (reversed 7 nil)])))))
-              #{"bar"}])))
-    (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
-                             {"bar" '(7 6)})
-           ['(1 2 (3 (7 6))) false])))
+                   (make-tree-element content elements :reverse))
+        obj-7 (make-tree-object [7])]
+    (is (= (closest-template (make-tree-object
+                              `(2 ~(reversed (object-variable "bar") '(3))))
+                             {"bar" obj-7})
+           [(make-tree-object `(2 ~(reversed obj-7 '(3))))
+            true]))
+    (is (= (closest-template
+            (make-tree-object
+             `(2 (3 (~(make-tree-object [(variable "bar")
+                                         (reversed obj-7 nil)])))))
+            {})
+           [(make-tree-object
+             `(2 (3 (~(make-tree-object [nil (reversed obj-7 nil)])))))
+            #{"bar"}])))
+  (is (= (closest-template `(1 2 (3 ~(variable "bar" 7 true)))
+                           {"bar" '(7 6)})
+         ['(1 2 (3 (7 6))) false]))
   (let [named-object (id->object
                       (make-item-id "test")
                       (new-element-store))

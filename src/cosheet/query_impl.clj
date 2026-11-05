@@ -6,7 +6,7 @@
                                       id->entity entity-key
                                       content-endpoint reverse?
                                       entity-direction
-                                      content all-elements
+                                      content all-elements forward-elements
                                       make-tree-element make-tree-object
                                       label->elements
                                       to-tree
@@ -160,7 +160,7 @@
   (let [[contextualized contextualized-exact] (contextualize-variable
                                                element env)
         elems (map #(first (contextualize-variable % env))
-                   (all-elements contextualized))
+                   (forward-elements contextualized))
         [positive negative] (separate-negations elems)
         candidates (filter label-element? positive)]
     ;; Test for the special case of looking for nothing but an element

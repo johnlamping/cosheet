@@ -53,14 +53,10 @@
 (defn canonical-primitive-form
   "Convert a primitive value to its canonical form, so that equivalent
   primitives will have equal canonical forms. The only transformation
-  we do is for strings, which we trim and lower case. Our trimming includes
-  removing leading non-breaking spaces, which generated names have."
+  we do is for strings, which we trim and lower case."
   [value]
   (if (string? value)
-    (loop [result (clojure.string/trim (clojure.string/lower-case value))]
-      (if (and (not= result "") (= (nth result 0) \u00A0))
-        (recur (subs result 1))
-        result))
+    (clojure.string/trim (clojure.string/lower-case value))
     value))
 
 (defn equivalent-primitives?

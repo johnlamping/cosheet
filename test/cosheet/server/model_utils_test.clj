@@ -246,8 +246,8 @@
                                      (new-element-store))
         [c2 s2] (specialize-generic '("x" (??? "y") (??? "22"))
                                      s1)]
-    (is (= c1  '("x" ("\u00A0A" :a) ("\u00A0B" 22))))
-    (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
+    (is (= c1  '("x" ("A" :a) ("B" 22))))
+    (is (= c2  '("x" ("C" "y") ("D" "22"))))))
 
 (deftest semantic-test
   (let [age-label-obj (find-object-by-name

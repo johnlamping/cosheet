@@ -14,10 +14,7 @@
   (when (not= target @edit-field-open-on)
     (let [select-holder (js/document.getElementById "select-holder")
           edit-input (js/document.getElementById "edit-input")]
-      (set! (.-value edit-input) (if (= (first initial-content) \u00A0)
-                                   "" ;; System provided name; clear it
-                                      ;; so options appear.
-                                   initial-content))
+      (set! (.-value edit-input) initial-content)
       (.add (.-classList select-holder) "active")
       (scroll-to-be-visible select-holder)
       (.focus edit-input)

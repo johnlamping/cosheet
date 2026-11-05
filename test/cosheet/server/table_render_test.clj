@@ -115,7 +115,7 @@
         new-store (:store data)
         new-id (first (:subject-ids data))]
     (is (= (semantic-to-tree (id->element new-id new-store))
-           `("" (~(find-object-by-name new-store " A"
+           `("" (~(find-object-by-name new-store "A"
                                        (link-type-object 'anything))))))))
 
 (deftest table-DOM-test

@@ -1032,14 +1032,14 @@
 
 (defn specialize-generic
   "Adjust a generic to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique string
-  with a leading non-breaking space. Allocating new strings will require
-  updating the store. Return the specialized template and the new store."
+  element. Specifically, replace each '??? with a new unique string.
+  Allocating new strings will require updating the store. Return the
+  specialized template and the new store."
   [generic store]
   (letfn [(pre-fn [_ e _ store]
             (if (= e '???)
               (let [[s new-store] (get-new-string store)]
-                [(str "\u00A0" s) new-store])
+                [s new-store])
               [e store]))]
     (repetition-avoiding-threaded-traverse
        generic pre-fn identity-post-fn store)))

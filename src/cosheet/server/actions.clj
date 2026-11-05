@@ -27,6 +27,7 @@
                     all-elements forward-elements content content->elements
                     label->element label->elements
                     name-label object? element? name-element? label-element?
+                    label-object?
                     interned-object? named-object? universal-object?
                     uniquely-identified-object?]]
     mutable-store-impl
@@ -80,10 +81,10 @@
 
 (defn current-content-matches-from?
   "Return true if the store's content for the id matches the from value
-  that the client reported, in the context of changing from to to.
-  We use this to make sure the store we are about to change looks like
-  what the user saw when they asked for a change."
-  [store id from to]
+  that the client reported. We use this to make sure the store we are
+  about to change looks like what the user saw when they asked for a
+  change."
+  [store id from]
   ;; There are several special cases for what counts as match:
   ;;   * If the store has a number, the client's from will be a
   ;;     string.
@@ -103,16 +104,7 @@
      (and ; The nots here avoid a crash in equivalent-primitives?
       (not (item-id? current-content))
       (not (item-id? from))
-      (equivalent-primitives? from current-content)
-      ;; When the user edits a heading whose value was filled in
-      ;; automatically, the UI clears the text to blank. Don't
-      ;; match in that case, if to is "", as we don't want to
-      ;; remove the original heading if the user didn't type
-      ;; anything.
-      (not (and (string? from)
-                (= (first from) \u00A0)
-                (not= from "\u00A0...")
-                (= to ""))))
+      (equivalent-primitives? from current-content))
      ;; Had an object, which the client described with a primitive
      (and (item-id? current-content)
           (not (item-id? from))
@@ -130,25 +122,19 @@
      (and (= from "") (= current-content 'anything)))))
 
 (defn update-change-content
-  "Set the content to to, provided it previously matched from. For a
-  selector, an empty string becomes 'anything; to actually set the empty
-  string, the user types two quotation marks."
-  [store id from to]
+  "Set the content to to. For a selector, an empty string becomes
+  'anything; to actually set the empty string, the user types two
+  quotation marks."
+  [store id to]
   (let [to (cond (and (= to "") (selector? (id->entity id store))) 'anything
                  (= to "\"\"") ""
                  :else to)]
-    (cond
-      (and (reverse-id? id) (not (or (object-id? to) (= to 'anything))))
+    (if (and (reverse-id? id) (not (or (object-id? to) (= to 'anything))))
       (do (println "Reverse elements may only hold objects or 'anything.")
           store)
-      (current-content-matches-from? store id from to)
       (let [modified (update-directed-id-content-value
                       store id (parse-string-as-number to))]
-        (abandon-problem-changes store modified id))
-      :else
-      (do (println "Old content doesn't match" from
-                   (directed-id->content-value store id))
-          store))))
+        (abandon-problem-changes store modified id)))))
 
 (defn object-to-merge-into-renamed
   "When an object is given the given name, the store may already hold a
@@ -173,28 +159,24 @@
       (modify-to-non-selector object-id))))
 
 (defn- change-object-references-to-new-objects
-  "For each subject whose content still matches from, make a new object
-  matching the template, marked as a selector when the subject is, and
-  make it the subject's content. The template must not describe a
-  uniquely named object.
+  "For each subject, make a new object matching the template, marked as
+  a selector when the subject is, and make it the subject's content.
+  The template must not describe a uniquely named object.
   Return the store and the new object ids."
-  [store subject-ids from template]
+  [store subject-ids template]
   (assert (not (uniquely-identified-object? template)))
   (reduce (fn [[store object-ids] subject-id]
-            (if (current-content-matches-from? store subject-id from "")
-              (let [[store object-id] (create-possible-selector-entity
-                                       template subject-id subject-id
-                                       :after false store)]
-                [store (conj object-ids object-id)])
-              [store object-ids]))
+            (let [[store object-id] (create-possible-selector-entity
+                                     template subject-id subject-id
+                                     :after false store)]
+              [store (conj object-ids object-id)]))
           [store []] subject-ids))
 
 (defn- change-object-references-to-named-object
   "Get or make an object with the name, satisfying the template, and
-  make it the content of each subject whose content still matches
-  from. Return the store and the object id, or the original store and
-  no ids if no subject was changed."
-  [store subject-ids from name template]
+  make it the content of each subject. Return the store and the object
+  id."
+  [store subject-ids name template]
   (assert (not (generic-name? name)) name)
   (let [order-element (order-element-for-item
                        (id->element (first subject-ids) store) store)
@@ -206,15 +188,9 @@
         store-with-replacements (reduce
                                  (fn [store subject-id]
                                    (update-change-content
-                                    store subject-id from object-id))
+                                    store subject-id object-id))
                                  store-with-object subject-ids)]
-    ;; It is possible that we didn't make any replacements, because
-    ;; the from value we got from the client didn't match what we
-    ;; are seeing in the store. In that case, throw away our addition
-    ;; of the named object to the store.
-    (if (= store-with-replacements store-with-object)
-      [store []]
-      [store-with-replacements [object-id]])))
+    [store-with-replacements [object-id]]))
 
 (defn change-object-reference-by-name
   "Set the content of a place that holds a named object so it holds an
@@ -223,7 +199,7 @@
   subject is. Otherwise, get or make an object with the name, and swap
   it in. Return nil if no subject was changed."
   [store {:keys [subject-ids template virtual-object-reference-template
-                 client-id from to]}]
+                 client-id to]}]
   (let [object-template (or
                          ;; A virtual object reference.
                          virtual-object-reference-template
@@ -240,10 +216,10 @@
         [new-store object-ids]
         (if (generic-name? name)
           (change-object-references-to-new-objects
-           store subject-ids from
+           store subject-ids
            (make-tree-object (conj elements `(~name (~name-label)))))
           (change-object-references-to-named-object
-           store subject-ids from name (make-tree-object elements)))]
+           store subject-ids name (make-tree-object elements)))]
     (when (seq object-ids)
       (add-following-selection-by-ids
        new-store client-id
@@ -261,14 +237,29 @@
             (and (element? template)
                  (named-object? (content template)))))))
 
+(declare do-delete)
+
 (defn do-set-content
   [store {:keys [subject-ids client-id from to]
           :as arguments}]
   (when (and from to (seq subject-ids)
              (every? (fn [id] (link-id? (store-item-id id))) subject-ids)
-             (not (equivalent-primitives? from to)))
-    (if (named-object-expected? arguments)
+             (not (equivalent-primitives? from to))
+             (every? #(current-content-matches-from? store % from)
+                     subject-ids))
+    (cond
+      ;; Blanking a non-selector that holds a label object means the
+      ;; same thing as deleting it.
+      (and (= (clojure.string/trim to) "")
+           (every? (fn [id]
+                     (let [subject (id->entity id store)]
+                       (and (not (selector? subject))
+                            (label-object? (content subject)))))
+                   subject-ids))
+      (do-delete store arguments)
+      (named-object-expected? arguments)
       (change-object-reference-by-name store arguments)
+      :else
       (let [to (parse-string-as-number (clojure.string/trim to))
             ;; If we are changing the name of a single object, find
             ;; any existing object that already has that name, to
@@ -290,7 +281,7 @@
                          to))
             store (reduce
                    (fn [store id]
-                     (update-change-content store id from to))
+                     (update-change-content store id to))
                    store subject-ids)
             ;; Merge the renamed object with the object that already had
             ;; its new name, if the rename took effect.
@@ -548,7 +539,7 @@
     (let [holder-ids (filter
                       (fn [id] (some #{(id->source store id)} subject-ids))
                       (first past-subject-ids))
-          store (reduce (fn [store id] (update-change-content store id nil ""))
+          store (reduce (fn [store id] (update-change-content store id ""))
                         store holder-ids)]
       (reduce (fn [store id]
                 (cond-> store
@@ -585,7 +576,7 @@
     ;; and we'll be in the first case.
     :else
     (reduce (fn [store id]
-              (update-change-content store id nil ""))
+              (update-change-content store id ""))
             store subject-ids)))
 
 (defn do-delete-row

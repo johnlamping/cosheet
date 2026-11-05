@@ -144,16 +144,16 @@
 (deftest current-content-matches-from?-test
   ;; Test numbers
   (let [[store five-id] (add-element store joe-id `(5 (~o5 :order)))]
-    (is (current-content-matches-from? store five-id "5" nil))
-    (is (not (current-content-matches-from? store five-id "6" nil)))
+    (is (current-content-matches-from? store five-id "5"))
+    (is (not (current-content-matches-from? store five-id "6")))
     ;; A nil from always matches.
-    (is (current-content-matches-from? store five-id nil nil)))
+    (is (current-content-matches-from? store five-id nil)))
   ;; Test a string matching the name of an interned object in the store.
   (let [[store friend-id] (add-element store jane-id
                                        `(~(id->object joe-id nil)
                                          (~o5 :order)))]
-    (is (current-content-matches-from? store friend-id "Joe" nil))
-    (is (not (current-content-matches-from? store friend-id "Jane" nil))))
+    (is (current-content-matches-from? store friend-id "Joe"))
+    (is (not (current-content-matches-from? store friend-id "Jane"))))
   ;; Test uninterned objects.
   (let [common-elements [`("" (~name-label)
                            `(~o5 :order))
@@ -170,12 +170,9 @@
     (let [[store anything-id] (add-element store joe-id 'anything)
           [store a-id] (add-element store joe-id "A")]
       ;; "" in place of 'anything
-      (is (current-content-matches-from? store anything-id "" nil))
+      (is (current-content-matches-from? store anything-id ""))
       ;; A universal header matching something random
-      (is (current-content-matches-from? store common-id1 "\u00A0..." nil))
-      ;; The special case where a universal header shouldn't match
-      (is (current-content-matches-from? store a-id "\u00A0A" "B"))
-      (is (not (current-content-matches-from? store a-id "\u00A0A" ""))))))
+      (is (current-content-matches-from? store common-id1 "\u00A0...")))))
 
 (deftest do-set-content-test
   ;; Joe is not a selector, so a blank becomes the empty string.
@@ -213,6 +210,14 @@
            ""))
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
+  ;; Blanking a non-selector that holds a label object is a delete.
+  (let [arguments {:subject-ids [(:item-id joe-age-label)]
+                   :from "age"
+                   :to ""
+                   :session-state session-state}
+        new-store (do-set-content store arguments)]
+    (is new-store)
+    (is (= new-store (do-delete store arguments))))
   ;; Test that setting a column to 'anything does nothing.
   (let [[store columns-id] (add-isolated-element
                             store
@@ -308,7 +313,7 @@
       (is (not (selector? label-object)))
       (is (= (content (first (label->elements label-object name-label))) "")))
     ;; Nothing is done when no subject's content matches from.
-    (is (nil? (change-object-reference-by-name
+    (is (nil? (do-set-content
                store {:subject-ids [header-id] :template bare-template
                       :from "wrong" :to ""})))))
 

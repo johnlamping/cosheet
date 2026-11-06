@@ -491,6 +491,10 @@ body {
     display: flex;
     flex-direction: row;
 
+    & > .horizontal-stack > * {
+        min-width: 35px;
+    }
+
     &.narrow > * {
         border-width: var(--bw);
         margin-right: var(--nbw);

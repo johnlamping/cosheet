@@ -15,6 +15,7 @@
    [cosheet.interaction-state :refer [edit-field-open-on
                                        open-edit-field
                                        open-context-menu
+                                       close-context-menu
                                        close-popups
                                        selected deselect
                                        select-and-clear-pending]]
@@ -181,6 +182,13 @@
           (open-context-menu editable))
       (deselect))))
 
+(defn document-click-handler
+  "Close the context menu if there is a click anywhere outside it."
+  [event]
+  (let [context-menu (js/document.getElementById "context-menu")]
+    (when (not (.contains context-menu (.-target event)))
+      (close-context-menu))))
+
 (defn keydown-handler
   [event]
   (let [ctrl (.-ctrlKey event)
@@ -282,6 +290,7 @@
     (.addEventListener app "dblclick" double-click-handler)
     (.addEventListener app "contextmenu" contextmenu-handler)
     (.addEventListener js/document "keydown" keydown-handler)
+    (.addEventListener js/document "click" document-click-handler)
     (.addEventListener toolbar "click" toolbar-click-handler)
     (.addEventListener context-menu "click" context-menu-click-handler)
     (.addEventListener js/window "unload" unload-handler))

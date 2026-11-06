@@ -12,6 +12,9 @@
 
    From item-render (items, elements, objects, and their labels):
      element                 Overall DOM of an element.
+                             The element class shows up on the
+                             content-and-labels of elements in a label
+                             hierarchy, even if there is only one element.
      object                  Overall DOM of an object that is expanded out.
      object-reference        Overall DOM of an object shown as just its name(s).
      name                    A name being shown. When the named thing is
@@ -382,8 +385,8 @@ body {
                     0px 2px hsl(0, 0%, 100%);
         border-bottom: 0px;
 
-         /* Put the selected box shadow on the select holder, because the :left and
-            :right of the tab can overlap its contents. */
+        /* Put the selected box shadow on the select holder, because the
+           ::before and ::after of the tab can overlap its contents. */
         & > .select_holder {
             box-shadow: inset 0 0 5px 3px var(--selection-color);
         }
@@ -404,6 +407,16 @@ body {
 
 .tab.chosen, .tab-tree.chosen {
     z-index: 2;
+}
+
+/* If a tab is selected give it a selection border, because it might
+   not have a content, or it's content might not have a big box. */
+.tab.chosen.selected {
+    border-color: var(--selection-color);
+
+    &::before, &::after {
+	border-color: var(--selection-color);
+    }
 }
 
 /* batch editing */

@@ -518,21 +518,27 @@
 
 (defn do-delete
   [store {:keys [subject-ids past-subject-ids template complete-entity
-                 virtual]}]
+                 virtual tab-id]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
           subject-ids)
   (cond
-    ;; A delete on a virtual item deletes the item for the containing
-    ;; dom, because the virtual isn't created when the action data is
-    ;; made. Don't delete if that item has anything being displayed.
-    (and virtual
-         (some (fn [id] (has-displayed-elements? (id->entity id store)))
-               subject-ids))
+    (if (every? #(= % tab-id) subject-ids)
+      ;; We are trying to delete a tab. Disallow it if this is the
+      ;; only one.
+      (let [tabs-entity (id->entity (first (first past-subject-ids)) store)]
+        (println "Total tabs" (count (label->elements tabs-entity :tab)))
+        (= (count (label->elements tabs-entity :tab)) 1))
+      ;; A delete on a virtual item deletes the item for the containing
+      ;; dom, because the virtual isn't created when the action data is
+      ;; made. Don't delete if that item has elements being displayed.
+      (and virtual
+           (some (fn [id] (has-displayed-elements? (id->entity id store)))
+                 subject-ids)))
     nil
-    ;; The subjects are anonymous objects, and the template doesn't
+    ;; If the subjects are anonymous objects, and the template doesn't
     ;; call for an object. Remove the objects, while leaving the
-    ;; forward elements that hold them intact, with empty content.
-    ;; An object that is still held somewhere else is kept.
+    ;; forward elements that hold them intact, with empty content.  An
+    ;; object that is still held somewhere else is kept.
     (and (anonymous-objects? store subject-ids)
          (not (object? template))
          (not (and (element? template) (object? (content template)))))

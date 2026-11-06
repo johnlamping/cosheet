@@ -7,6 +7,8 @@
                     interned-object? universal-object?
                     label-object? name-element? target-entity
                     label->elements content->elements
+                    forward-elements reverse-elements
+                    reverse? containing-elements
                     name-label link-type object-type
                     all-presumed-interned-in-different-store
                     add-elements-to-entity]]
@@ -18,7 +20,7 @@
                           merge-classes]]
     [reporter-macros :refer [let-R]])
    (cosheet.server
-    [model-utils :refer [semantic-elements
+    [model-utils :refer [semantic-elements selector-semantic-elements
                          semantic-label-elements
                          semantic-to-tree semantic-to-tree-excluding-elements
                          entity->canonical-semantic selector?]]
@@ -749,7 +751,21 @@
                (-> specification
                    (assoc :template (content template)
                           :element-ids-to-exclude
-                          #{(flip-id-direction (:item-id element))})
+                          ;; Show none of the content's elements if the
+                          ;; element and its content differ in being
+                          ;; selectors, or if a non-selector element is
+                          ;; reversed or its content is also the content
+                          ;; of another element.
+                          (if (if (selector? element)
+                                (not (selector? contents))
+                                (or (selector? contents)
+                                    (reverse? element)
+                                    (> (count (containing-elements contents))
+                                       1)))
+                            (set (map :item-id
+                                      (concat (forward-elements contents)
+                                              (reverse-elements contents))))
+                            #{(flip-id-direction (:item-id element))}))
                    (into-attributes {:class "object"})))))))
 
 (defn render-element-content-DOM-R
@@ -821,11 +837,20 @@
              inner-dom labels specification)))
         (add-attributes {:class "element"}))))
 
+(defn displayed-semantic-elements
+  "Return the semantic elements of the entity that should be displayed.
+  For a selector, those are only the elements that are also selectors,
+  with a direction matching the one recorded in their :selector."
+  [entity]
+  (if (selector? entity)
+    (selector-semantic-elements entity)
+    (semantic-elements entity)))
+
 (defn element-DOM
   "Render a dom spec given the immutable entity for an item (which may
   be an exemplar of a group of items)."
   [entity {:keys [element-ids-to-exclude] :as specification}]
-  (let [elements (cond->> (semantic-elements entity)
+  (let [elements (cond->> (displayed-semantic-elements entity)
                    element-ids-to-exclude
                    (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)
@@ -844,7 +869,7 @@
            :as specification}]
   (let [entity-id (:item-id entity)
         contract (contains? object-ids-to-contract entity-id)
-        elements (cond->> (semantic-elements entity)
+        elements (cond->> (displayed-semantic-elements entity)
                    element-ids-to-exclude
                    (remove #(element-ids-to-exclude (:item-id %))))
         [labels non-labels] (separate-by label-element? elements)

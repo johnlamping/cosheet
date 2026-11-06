@@ -521,20 +521,33 @@
   ;; full (by object-DOM). Even though the content is not immutable, the
   ;; resulting component gets class "object" but not "editable", since
   ;; the object itself is not directly-editable text.
+  ;; But if the object is also the content of another element, none of
+  ;; its elements are shown.
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-content-id] (get-new-object-id s0)
-        [s2 _] (add-element s1 obj-content-id "x")
+        [s2 x-id] (add-element s1 obj-content-id "x")
         [store elem-id] (add-isolated-element s2
                                               `(~(id->object obj-content-id s2)))
-        element (id->element elem-id store)]
-    (is (check (element-content-DOM element
-                                    {:width 1.5
-                                     :template `(~'anything (~name-label))})
+        element (id->element elem-id store)
+        spec {:width 1.5 :template `(~'anything (~name-label))}
+        [shared-store other-id] (add-isolated-element
+                                 store `(~(id->object obj-content-id store)))]
+    (is (check (element-content-DOM element spec)
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id
                             :element-ids-to-exclude
                             #{(flip-id-direction elem-id)}
+                            :class "object"
+                            :render-dom render-item-DOM-R
+                            :get-action-data (default-AD)}]))
+    (is (check (element-content-DOM (id->element elem-id shared-store) spec)
+               [:component {:width 1.5
+                            :template 'anything
+                            :relative-id obj-content-id
+                            :element-ids-to-exclude
+                            #{x-id (flip-id-direction elem-id)
+                              (flip-id-direction other-id)}
                             :class "object"
                             :render-dom render-item-DOM-R
                             :get-action-data (default-AD)}]))))

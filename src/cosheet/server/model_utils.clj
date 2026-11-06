@@ -202,6 +202,9 @@
   [entity elements-fn]
   (letfn [(pre-fn [_ e _ conflux-seen]
             (cond (conflux-tree-object? e)
+                  ;; We rely on the the non-repetition wrapper of our
+                  ;; pre-fun to turn non-interned objects into
+                  ;; tree-objects.
                   [(make-conflux-tree-object
                     (conflux-tree-object-id e) (elements-fn e))
                    true]

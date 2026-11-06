@@ -805,7 +805,7 @@
                             elements nil
                             (or (:must-show-label specification) true)
                             nil :vertical elements-spec)]
-          [:div {:class (cond-> "with-elements"
+          [:div {:class (cond-> "content-plus-elements"
                           (label-element? element)
                           (merge-classes "link-type"))}
            content-dom elements-dom]))))

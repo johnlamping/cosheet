@@ -24,7 +24,7 @@
                              virtual for a virtual such spot).
      virtual                 A placeholder where an entity could be, offered for
                              adding one.
-     with-elements           A DOM that shows an element's content together
+     content-plus-elements   A DOM that shows an element's content together
                              with its non-label elements.
      link-type               A link-type label or wrapper, or the name of
                              a link type label.
@@ -172,11 +172,11 @@ body {
 
 /* --- Basic items and stacks of items --- */
 
-.element.editable, .element > .editable {
+.element.editable, .content-plus-elements > .editable {
     padding: 3px;
 }
 
-.element.with-elements > :last-child {
+.content-plus-elements > :last-child {
     margin: 0px 5px 5px 6px;
 }
 
@@ -213,7 +213,7 @@ body {
     }
 }
 
-.vertical-stack > .element.with-elements > :last-child {
+.vertical-stack > .element.content-plus-elements > :last-child {
     margin: 0px 2px 5px 3px;
 }
 
@@ -245,7 +245,7 @@ body {
     vertical-align: top;
 }
 
-.with-elements {
+.content-plus-elements {
     text-align: left;
 }
 
@@ -372,7 +372,7 @@ body {
 
     /* Keep the content of a tab from hiding the inset box-shadow if it
        gets chosen */
-    &.with-elements > :first-child.content-text {
+    &.content-plus-elements > :first-child.content-text {
         padding-top: 0px;
         margin-top: 3px;
     }

@@ -1005,7 +1005,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements element"}
+               [:div {:class "content-plus-elements element"}
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
@@ -1064,7 +1064,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements element"}
+               [:div {:class "content-plus-elements element"}
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
@@ -1115,7 +1115,7 @@
                                     :width 0.9)
                              store)]
     (is (check dom
-               [:div {:class "with-elements element"}
+               [:div {:class "content-plus-elements element"}
                 [:component {:template '("")
                              :width 0.9
                              :relative-id :content
@@ -1243,7 +1243,7 @@
             :virtual true
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]
-          [:div {:class "with-elements"}
+          [:div {:class "content-plus-elements"}
            [:component {:template '("")
                         :width 1.5
                         :relative-id :content
@@ -1301,7 +1301,7 @@
                              store)]
     (is (check
          dom
-         [:div {:class "with-elements element"}
+         [:div {:class "content-plus-elements element"}
           [:component {:template '("")
                        :width 1.5
                        :relative-id :content
@@ -1353,7 +1353,7 @@
                              store)]
     (is (check
          dom
-         [:div {:class "with-elements element"}
+         [:div {:class "content-plus-elements element"}
           [:component {:template '("")
                        :width 1.5
                        :relative-id :content

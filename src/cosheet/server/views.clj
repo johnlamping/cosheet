@@ -170,9 +170,9 @@
     [:img {:src "../icons/redo.gif"}]
     [:div.tooltip "redo (C-Y)"]]
    [:div.toolgap]
-   [:div#expand-tool.tool
-    [:img {:src "../icons/expand.gif"}]
-    [:div.tooltip "expand (C-E)"]]
+   [:div#examine-tool.tool
+    [:img {:src "../icons/examine.gif"}]
+    [:div.tooltip "examine (C-E)"]]
    [:div.toolgap]
    [:div#add-twin-tool.tool
     [:img {:src "../icons/add_twin.gif"}]

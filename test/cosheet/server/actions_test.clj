@@ -714,12 +714,12 @@
     (is (not (id-valid-link? new-store holder-id)))
     (is (id-known-object? new-store joe-id))))
 
-(deftest do-expand-test
+(deftest do-examine-test
   ;; When the subject's target is a symbol, the subject itself is opened.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
         session-state {:client-state (make-map-reporter {:root-id nil})}]
-    (is (check (do-expand s {:subject-ids [holder-id]
-                             :session-state session-state})
+    (is (check (do-examine s {:subject-ids [holder-id]
+                              :session-state session-state})
                {:store s
                 :open (str "?root=" (id->string holder-id))}))))
 
@@ -1009,11 +1009,11 @@
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
-  (deftest do-expand-test
-    (is (check (do-expand store
-                          {:referent (item-referent joe)
-                           :target-key "joe"
-                           :session-state {:url-path "foo"}})
+  (deftest do-examine-test
+    (is (check (do-examine store
+                           {:referent (item-referent joe)
+                            :target-key "joe"
+                            :session-state {:url-path "foo"}})
                {:store store
                 :open (str "foo?referent="
                            (referent->string (item-referent joe)))})))

@@ -45,14 +45,14 @@
 (defn target-in-select-holder? [target]
   (find-ancestor-with-class target "select_holder" 4))
 
-(defn open-expand-popup
-  "Open the expand popup window.
+(defn open-examine-popup
+  "Open the examine popup window.
   This should be called while in any event handler that will end up opening
   up the window, so we are less likely to be stopped by a popup blocker
   and more likely to get a popup, rather than a new tab."
   []
   (.open
-   js/window "" "CosheetExpandPopup",
+   js/window "" "CosheetExaminePopup",
    (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
 (defn request-command-action
@@ -68,7 +68,7 @@
                   "quit-batch-edit" :quit-batch-edit
                   nil)
         contextual-keyword (case command-name
-                             "expand" :expand
+                             "examine" :examine
                              "add-twin" :add-twin
                              "add-element" :add-element
                              "add-label" :add-label
@@ -87,7 +87,7 @@
           (request-action [keyword])
           (and contextual-keyword
                (or selection (= contextual-keyword :batch-edit)))
-          (do (when (= contextual-keyword :expand) (open-expand-popup))
+          (do (when (= contextual-keyword :examine) (open-examine-popup))
               (request-action [contextual-keyword
                                (when selection (.-id selection))])))))
 
@@ -231,14 +231,14 @@
                       ("s" "#") [:add-sibling]
                       ("-" "_" "r") [:add-row]
                       ("\\" "|" "c") [:add-column]
-                      "e" [:expand]
+                      "e" [:examine]
                       "b" [:batch-edit]
                       nil)
             id (when @selected (.-id @selected))]
         (when (and command (not @edit-field-open-on)
                    (or id (#{:batch-edit :quit-batch-edit} (first command))))
           (.log js/console (str command))
-          (when (= (first command) :expand) (open-expand-popup))
+          (when (= (first command) :examine) (open-examine-popup))
           (request-action
            (apply vector (first command) id (rest command))))))
     (when (= total-shift 0)

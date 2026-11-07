@@ -603,7 +603,7 @@
         (remove-entity-by-id store (first column-ids))))))
 
 ;;; TODO: This needs to handle reversed links.
-(defn do-expand
+(defn do-examine
     [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
     (let [root-id (map-reporter-get-current (:client-state session-state)
@@ -732,7 +732,7 @@
     :delete-row do-delete-row
     :delete-column do-delete-column
     :set-content do-set-content
-    :expand do-expand
+    :examine do-examine
     :batch-edit do-batch-edit}
    action))
 

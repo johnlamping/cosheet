@@ -51,7 +51,8 @@
                          create-possible-selector-entity
                          merge-objects selector? modify-to-non-selector
                          remove-entity-by-id
-                         object-semantic-to-tree]]
+                         object-semantic-to-tree add-examine-tab
+                         tabs-cleanup]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item semantic-element?]])))
 
@@ -603,26 +604,43 @@
         (remove-entity-by-id store (first column-ids))))))
 
 ;;; TODO: This needs to handle reversed links.
-(defn do-examine
-    [store {:keys [subject-ids session-state]}]
+(defn id-to-examine
+  "Return the id of the item to examine, given the id of the subject.
+  In two cases we want to show the target of the subject, rather than
+  the subject, itself:
+     * The subject is an element with nothing but a label.
+     * The subject is the current root."
+  [store subject-id session-state]
+  (let [root-id (map-reporter-get-current (:client-state session-state)
+                                          :root-id)
+        target (id->target store subject-id)
+        show-target (when (item-id? target)
+                      (or (let [entity (id->entity subject-id store)
+                                displayed-elements (semantic-elements entity)]
+                            (and (<= (count displayed-elements) 1)
+                                 (every? label-element?
+                                         displayed-elements)))
+                          (= subject-id root-id)))]
+    (if show-target target subject-id)))
+
+(defn do-open-in-new-tab
+  "Add a tab that examines the subject, and make it the current tab."
+  [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
-    (let [root-id (map-reporter-get-current (:client-state session-state)
-                                            :root-id)
-          target (id->target store subject-id)
-          ;; In two cases we want to show the target of the
-          ;; subject, rather than the subject, itself:
-          ;;    * The subject is an element with nothing but a label.
-          ;;    * The subject is the current root.
-          show-target (when (item-id? target)
-                        (or (let [entity (id->entity subject-id store)
-                                  displayed-elements (semantic-elements entity)]
-                              (and (<= (count displayed-elements) 1)
-                                   (every? label-element?
-                                           displayed-elements)))
-                            (= subject-id root-id)))
-          id-to-open (if show-target target subject-id)]
+    (let [[store tab-id] (add-examine-tab
+                          store (id-to-examine store subject-id session-state))]
       {:store store
-       :open (str "?root=" (id->string id-to-open))})))
+       :root-id tab-id
+       :set-url (str (:url-path session-state)
+                     "?root=" (id->string tab-id))})))
+
+(defn do-quick-look
+  "Open a new window that examines the subject."
+  [store {:keys [subject-ids session-state]}]
+  (when-let [subject-id (first subject-ids)]
+    {:store store
+     :open (str "?root=" (id->string
+                          (id-to-examine store subject-id session-state)))}))
 
 (defn matching-element-ids
   "Given an id and an id that is a template for one of its elements,
@@ -732,7 +750,8 @@
     :delete-row do-delete-row
     :delete-column do-delete-column
     :set-content do-set-content
-    :examine do-examine
+    :open-in-new-tab do-open-in-new-tab
+    :quick-look do-quick-look
     :batch-edit do-batch-edit}
    action))
 
@@ -746,7 +765,7 @@
   plus :client-id, :session-state, and any other arguments the client
   provided. In addition to information
   for the client, the handler can also specify whether we
-  are :batch-editing."
+  are :batch-editing, and a new :root-id."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [handler (get-contextual-handler action-type) 
         manager (:dom-manager session-state)
@@ -796,6 +815,7 @@
                                      arguments))
                          [updated-store client-info]
                          (normalize-handler-response response store)
+                         updated-store (tabs-cleanup updated-store)
                          {:keys [following-selection
                                  following-selection-by-ids]}
                          (when response (:ephemeral-data updated-store))
@@ -820,7 +840,10 @@
             (when (contains? result :batch-editing)
               (map-reporter-reset! (:client-state session-state)
                                    {:batch-editing (:batch-editing result)}))
-            (dissoc result :batch-editing)))))
+            (when (contains? result :root-id)
+              (map-reporter-reset! (:client-state session-state)
+                                   {:root-id (:root-id result)}))
+            (dissoc result :batch-editing :root-id)))))
 
 ;;; While do-selected takes a client id, like a contextual action
 ;;; does, it doesn't rely on what that client id references. In

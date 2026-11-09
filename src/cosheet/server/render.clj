@@ -11,7 +11,7 @@
                       [hiccup-utils :refer [add-attributes]])
             (cosheet.server
              [order-utils :refer [semantic-element?]]
-             [model-utils :refer [ordered-tabs-ids-R
+             [model-utils :refer [ordered-tabs-ids-R examined-id
                                   semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
@@ -537,6 +537,18 @@
                      :render-dom render-batch-edit-DOM
                      :get-action-data get-empty-action-data})))
 
+(defn top-level-item-component
+  "Make the component that shows the item with the given id as the
+  whole top level."
+  [id]
+  (make-component
+   (assoc basic-dom-specification
+          :relative-id id
+          :render-dom render-item-DOM-R
+          :must-show-label true
+          :width 3.0
+          :get-action-data [get-id-action-data id])))
+
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   "Return a reporter whose value is the DOM for tabs and the top level
@@ -562,21 +574,18 @@
                     :chosen-tab-id id
                     :render-dom render-tabs-DOM
                     :get-action-data [get-id-action-data (:item-id target)]})
-                  (make-component
-                   {:relative-id (:item-id topic)
-                    :table-id (:item-id topic)
-                    :render-dom render-table-DOM-R
-                    :get-action-data default-get-action-data})])
+                  (if (seq (matching-elements :table topic))
+                    (make-component
+                     {:relative-id (:item-id topic)
+                      :table-id (:item-id topic)
+                      :render-dom render-table-DOM-R
+                      :get-action-data default-get-action-data})
+                    ;; An examine tab shows the item it examines.
+                    (when-let [id (examined-id immutable-store
+                                               (:item-id topic))]
+                      (top-level-item-component id)))])
                ;; No tab is selected. Show just the item.
-               (make-component
-                (assoc basic-dom-specification        
-                       :relative-id (:item-id immutable-item)
-                       :render-dom render-item-DOM-R
-                       :get-action-data default-get-action-data
-                       :must-show-label true
-                       :width 3.0
-                       :get-action-data [get-id-action-data
-                                         (:item-id immutable-item)])))]))))))
+               (top-level-item-component (:item-id immutable-item)))]))))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"

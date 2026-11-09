@@ -55,7 +55,8 @@
                                   mark-template-as-selector selector?
                                   replace-anythings-with-empty
                                   update-add-object-with-order
-                                  update-add-element-with-order-and-ephemeral]]
+                                  update-add-element-with-order-and-ephemeral
+                                  examined-id]]
              [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])
@@ -714,14 +715,33 @@
     (is (not (id-valid-link? new-store holder-id)))
     (is (id-known-object? new-store joe-id))))
 
-(deftest do-examine-test
+(deftest do-quick-look-test
   ;; When the subject's target is a symbol, the subject itself is opened.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
         session-state {:client-state (make-map-reporter {:root-id nil})}]
-    (is (check (do-examine s {:subject-ids [holder-id]
-                              :session-state session-state})
+    (is (check (do-quick-look s {:subject-ids [holder-id]
+                                 :session-state session-state})
                {:store s
                 :open (str "?root=" (id->string holder-id))}))))
+
+(deftest do-open-in-new-tab-test
+  ;; When the subject's target is a symbol, the subject itself is
+  ;; examined, in a new tab that becomes the root.
+  (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
+        [s _] (add-isolated-element s (list unused-orderable :unused-orderable))
+        [s tabs-holder-id] (add-isolated-element s '("tabs" :tabs))
+        session-state {:client-state (make-map-reporter {:root-id nil})
+                       :url-path "foo"}
+        {new-store :store :keys [root-id set-url]}
+        (do-open-in-new-tab s {:subject-ids [holder-id]
+                               :session-state session-state})
+        tab (first (label->elements (id->entity tabs-holder-id new-store)
+                                    :tab))
+        topic (label->element tab :tab-topic)]
+    (is (= root-id (:item-id tab)))
+    (is (= set-url (str "foo?root=" (id->string (:item-id tab)))))
+    (is (seq (matching-elements :examine topic)))
+    (is (= (examined-id new-store (:item-id topic)) holder-id))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)
@@ -1009,11 +1029,11 @@
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
-  (deftest do-examine-test
-    (is (check (do-examine store
-                           {:referent (item-referent joe)
-                            :target-key "joe"
-                            :session-state {:url-path "foo"}})
+  (deftest do-quick-look-test
+    (is (check (do-quick-look store
+                              {:referent (item-referent joe)
+                               :target-key "joe"
+                               :session-state {:url-path "foo"}})
                {:store store
                 :open (str "foo?referent="
                            (referent->string (item-referent joe)))})))

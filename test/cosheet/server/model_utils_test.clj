@@ -8,8 +8,8 @@
                                       object? interned-object?
                                       all-presumed-interned-in-different-store
                                       id->object id->entity id->element
-                                      label->elements label->content
-                                      content->elements
+                                      label->elements label->element
+                                      label->content content->elements
                                       content all-elements
                                       to-tree make-reverse-item-id]]
                       [orderable :as orderable]
@@ -18,7 +18,7 @@
                                      target->ids source->ids
                                      target-source->ids
                                      get-new-object-id add-link
-                                     name-label-id]]
+                                     name-label-id id-known-object?]]
                       [store-utils :refer [add-element add-object
                                            add-isolated-element
                                            add-universal-objects
@@ -1219,6 +1219,67 @@
                                       (semantic-elements column-headers)))
                [`(~'anything (~a-label-obj))
                 `(~'anything (~b-label-obj)) ]))))
+
+(deftest add-examine-tab-test
+  (let [s (starting-store "hi")
+        [s1 joe-id] (add-object s (make-tree-object [`("Joe" (~name-label))]))
+        [s2 tab-id] (add-examine-tab s1 joe-id)
+        tabs (ordered-entities
+              (label->elements (id->entity (tabs-holder-id-R s2) s2) :tab))
+        tab (id->entity tab-id s2)
+        topic (label->element tab :tab-topic)]
+    ;; The new tab is last, is named for the object, and examines it.
+    (is (= (count tabs) 2))
+    (is (= (:item-id (last tabs)) tab-id))
+    (is (seq (matching-elements "Joe" tab)))
+    (is (seq (matching-elements :examine topic)))
+    (is (object? (content topic)))
+    (is (= (examined-id s2 (:item-id topic)) joe-id))
+    ;; The object's semantic information is unchanged.
+    (is (check (entity->canonical-semantic (id->entity joe-id s2))
+               (entity->canonical-semantic (id->entity joe-id s1))))))
+
+(deftest tabs-cleanup-test
+  (let [s (starting-store "hi")
+        [s1 joe-id] (add-object s (make-tree-object [`("Joe" (~name-label))]))
+        [s2 x-id] (add-element s1 joe-id "x")
+        [s3 joe-tab-id] (add-examine-tab s2 joe-id)
+        [s4 x-tab-id] (add-examine-tab s3 x-id)
+        tab-ids (fn [store]
+                  (set (map :item-id
+                            (label->elements
+                             (id->entity (tabs-holder-id-R store) store)
+                             :tab))))
+        hidden-object-id (fn [store tab-id]
+                           (:item-id (content (label->element
+                                               (id->entity tab-id store)
+                                               :tab-topic))))
+        joe-hidden-id (hidden-object-id s4 joe-tab-id)]
+    ;; A consistent store is unchanged.
+    (is (= (tabs-cleanup s4) s4))
+    ;; Deleting a tab removes its hidden object and back link.
+    (let [cleaned (tabs-cleanup (remove-entity-by-id s4 joe-tab-id))]
+      (is (not (id-known-object? cleaned joe-hidden-id)))
+      (is (empty? (source->ids cleaned joe-hidden-id)))
+      (is (= (count (source->ids cleaned :examined)) 1))
+      (is (= (examined-id cleaned (:item-id (label->element
+                                             (id->entity x-tab-id cleaned)
+                                             :tab-topic)))
+             x-id)))
+    ;; Deleting an examined element removes its tab.
+    (let [cleaned (tabs-cleanup (remove-entity-by-id s4 x-id))]
+      (is (= (tab-ids cleaned) (disj (tab-ids s4) x-tab-id)))
+      (is (= (count (source->ids cleaned :examined)) 1)))
+    ;; Deleting an examined object removes its tab, and the tab of its
+    ;; element.
+    (let [cleaned (tabs-cleanup (remove-entity-by-id s4 joe-id))]
+      (is (= (tab-ids cleaned) (disj (tab-ids s4) joe-tab-id x-tab-id)))
+      (is (empty? (source->ids cleaned :examined))))
+    ;; An examined object about which nothing else is known loses its
+    ;; tab.
+    (let [cleaned (tabs-cleanup (remove-semantic-elements s4 joe-id))]
+      (is (= (tab-ids cleaned) (disj (tab-ids s4) joe-tab-id x-tab-id)))
+      (is (not (id-known-object? cleaned joe-id))))))
 
 (deftest avoid-problems-test
   (let [store (starting-store "test")

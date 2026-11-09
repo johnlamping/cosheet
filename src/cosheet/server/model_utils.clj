@@ -9,7 +9,7 @@
     [store :refer [new-element-store
                    update-source update-target id->source id->target
                    add-link remove-link declare-ephemeral-id
-                   target->ids source->ids
+                   target->ids source->ids id-valid-link?
                    item-id? link-id? object-id? interned-object-id?
                    generic-name?
                    target-label->ids get-new-object-id]]
@@ -50,7 +50,7 @@
    (cosheet.server
     [order-utils :refer [semantic-element? orderable-entity?
                          ordered-ids-R ordered-entities
-                         order-element-for-item]])))
+                         order-element-for-item furthest-item]])))
 
 ;;; Utilities that know about how information is encoded in terms of the store.
 
@@ -1331,6 +1331,108 @@
                                   headers)))
                          last-tab :after true)]
     store))
+
+(defn examined-item-name
+  "Return a name to use for the tab title for an item to be examined."
+  [item]
+  (let [item-content (if (object? item) item (content item))]
+    (cond (or (string? item-content) (number? item-content))
+          item-content
+          (object? item-content)
+          (content (first (label->elements item-content name-label))))))
+
+(defn add-examine-tab
+  "Add a tab, after the last tab, that examines the item with the given
+  id. The tab's topic is a fresh object marked :examine, and the item
+  gets a non-semantic :examined element whose sub-element refers to
+  that object, so the topic can find the item through the store's
+  source index. Return the updated store and the id of the new tab."
+  ;; TODO: Rename :examine to :item.
+  [store id]
+  (let [tabs-holder-id (tabs-holder-id-R store) ;; Won't be a reporter.
+        tabs-holder (id->entity tabs-holder-id store)
+        last-tab (or (furthest-item (label->elements tabs-holder :tab) :after)
+                     tabs-holder)
+        tab-name (examined-item-name (id->entity id store))
+        [store tab-id] (update-add-element-adjacent-to
+                        store tabs-holder-id
+                        `(""
+                          :tab
+                          ~@(when tab-name [tab-name])
+                          (~(make-tree-object []) :tab-topic :examine))
+                        last-tab :after true)
+        topic-object (content (label->element (id->entity tab-id store)
+                                              :tab-topic))
+        ;; TODO: !!! The topic-object should be the content of this
+        ;; element, not a qualifier.
+        [store _] (add-element store id `(:examined (~topic-object)))]
+    [store tab-id]))
+
+(defn examined-id
+  "Return the id of the item examined by an examine tab whose topic is
+  the given id. Return nil if there is none."
+  [immutable-store topic-id]
+  (let [object-id (:item-id (content (id->entity topic-id immutable-store)))
+        reference-ids (remove #(= % topic-id)
+                              (source->ids immutable-store object-id))]
+    (when-let [reference-id (first reference-ids)]
+      (id->target immutable-store
+                  (id->target immutable-store reference-id)))))
+
+(defn- examined-item-known?
+  "Return whether anything is known about the item with the given id,
+  which may be nil, besides the :examined back link to it."
+  [store id]
+  (cond (nil? id) false
+        (link-id? id) (id-valid-link? store id)
+        ;; TODO: !!! This should probably make the object entity. That
+        ;; way, it can check for reverse elements in the first half of
+        ;; the or, which is what we want.
+        :else (or (seq (source->ids store id))
+                  (some #(not= (id->source store %) :examined)
+                        (target->ids store id)))))
+
+(defn- examine-topic-ids
+  "Return the ids of the :tab-topic elements of all the examine tabs."
+  [store]
+  (map #(id->target store %) (source->ids store :examine)))
+
+(defn- remove-orphaned-examine-tabs
+  "Return the store with every examine tab removed whose examined item
+  is no longer known."
+  [store]
+  (reduce (fn [store topic-id]
+            (if (examined-item-known? store (examined-id store topic-id))
+              store
+              (remove-entity-by-id store (id->target store topic-id))))
+          store
+          (examine-topic-ids store)))
+
+(defn- remove-orphaned-examined-links
+  "Return the store with every :examined back link removed if its hidden
+  object is no longer the topic of an examine tab. Because then,
+  nothing is then known about the hidden object."
+  [store]
+  (let [topic-objects (set (map #(:item-id (content (id->entity % store)))
+                                (examine-topic-ids store)))]
+    (reduce (fn [store link-id]
+              (let [hidden-object (some->> (first (target->ids store link-id))
+                                           (id->source store))]
+                (cond-> store
+                  (not (topic-objects hidden-object))
+                  (remove-entity-by-id link-id))))
+            store
+            (source->ids store :examined))))
+
+(defn tabs-cleanup
+  "Return the store with the examine tabs made consistent: remove every
+  tab whose examined item no longer exists or is an object about which
+  nothing else is known, and remove the hidden object and back link of
+  every examine tab that has been deleted."
+  [store]
+  (-> store
+      remove-orphaned-examine-tabs
+      remove-orphaned-examined-links))
 
 (defn add-table
   "Given a sequence of rows, each a sequence of values,

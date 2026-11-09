@@ -170,9 +170,12 @@
     [:img {:src "../icons/redo.gif"}]
     [:div.tooltip "redo (C-Y)"]]
    [:div.toolgap]
-   [:div#examine-tool.tool
-    [:img {:src "../icons/examine.gif"}]
-    [:div.tooltip "examine (C-E)"]]
+   [:div#open-in-new-tab-tool.tool
+    [:img {:src "../icons/select.gif"}]
+    [:div.tooltip "open in new tab (C-E)"]]
+   [:div#quick-look-tool.tool
+    [:img {:src "../icons/quick_look.gif"}]
+    [:div.tooltip "quick look (C-K)"]]
    [:div.toolgap]
    [:div#add-twin-tool.tool
     [:img {:src "../icons/add_twin.gif"}]

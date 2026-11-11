@@ -53,7 +53,7 @@
   []
   (.open
    js/window "" "CosheetQuickLookPopup",
-   (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
+   (str "width=640,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
 (defn request-command-action
   [logical-target]

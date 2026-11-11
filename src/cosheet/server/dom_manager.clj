@@ -8,7 +8,8 @@
                       [calculator :refer [propagate-calculator-data!]]
                       [store :refer [item-id? id->string string->id
                                      mutable-store?]]
-                      [entity :refer [DirectedItemId store-item-id]]
+                      [entity :refer [DirectedItemId store-item-id
+                                      reverse-id? make-reverse-item-id]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
                                      with-latest-value
@@ -398,6 +399,7 @@
 ;;; of keywords with "K"), concatenate the subparts of any
 ;;; sub-sequences with ".", then concatenate the overall sequence with
 ;;; "_".  For example, the sequence [:a [<id 2> :b]] becomes "Ka_2.Kb"
+;;; A reversed item id is prefixed with "R".
 
 (defn valid-id-subpart?
   [id]
@@ -408,7 +410,7 @@
      (re-matches #"^[a-zA-Z0-9\-]*$" (name id))
      ;; Not a character that an item id's representation
      ;; could start with.
-     (not (re-matches #"^[0-9IM].*" (name id))))
+     (not (re-matches #"^[0-9IMR].*" (name id))))
     (item-id? id)))
 
 (defn valid-relative-id? [id]
@@ -430,17 +432,23 @@
   "Turn a subpart of a :relative-id to its client form."
   [id]
   (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
-        (satisfies? DirectedItemId id) (id->string (store-item-id id))
+        (satisfies? DirectedItemId id) (cond->> (id->string (store-item-id id))
+                                         (reverse-id? id) (str "R"))
         true (assert false (str "unknown relative id subpart:"
                                 [(type id) id]))))
 
 (defn client-id-subpart->id-subpart
   "Turn a subpart of a client id into a :relative-id"
   [client-id-subpart]
-  (if (and (string? client-id-subpart)
-           ;; Item id numbers can start with any of these letters.
-           (re-matches #"^[0-9IM].*" client-id-subpart))
-    (string->id client-id-subpart)
+  (if (string? client-id-subpart)
+    (cond
+      ;; Item id numbers can start with any of these letters.
+      (re-matches #"^[0-9IM].*" client-id-subpart)
+      (string->id client-id-subpart)
+      ;; A reversed item id is prefixed with R.
+      (re-matches #"^R.*" client-id-subpart)
+      (make-reverse-item-id (string->id (subs client-id-subpart 1)))
+      :else (keyword client-id-subpart))
     (keyword client-id-subpart)))
 
 (defn relative-id->client-id-part

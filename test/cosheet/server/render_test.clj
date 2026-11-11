@@ -92,7 +92,8 @@
                         :width 3.0
                         :template ""
                         :must-show-label true
+                        :class "top-level-entity"
                         :render-dom render-item-DOM-R
                         :get-action-data [get-id-action-data joe-id]}]]]))
-    (is (check (render-component item-component mutable-store)
-               [:div (any) (any) (any)]))))
+    (let [[_ attributes & _] (render-component item-component mutable-store)]
+      (is (re-find #"top-level-entity" (:class attributes))))))

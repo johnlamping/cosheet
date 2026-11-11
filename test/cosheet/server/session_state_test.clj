@@ -150,6 +150,7 @@
                                  :template ""
                                  :relative-id (:item-id row1)
                                  :must-show-label true
+                                 :class "top-level-entity"
                                  :render-dom render-item-DOM-R
                                  :get-action-data [get-id-action-data
                                                    (:item-id row1)]}]])))      

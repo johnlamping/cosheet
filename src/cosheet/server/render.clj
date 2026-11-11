@@ -547,6 +547,7 @@
           :render-dom render-item-DOM-R
           :must-show-label true
           :width 3.0
+          :class "top-level-entity"
           :get-action-data [get-id-action-data id])))
 
 ;;; TODO: Add a unit test for this.

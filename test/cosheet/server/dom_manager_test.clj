@@ -21,6 +21,7 @@
              [map-reporter :refer [make-map-reporter map-reporter-get
                                    map-reporter-set-value!]]
              entity-impl
+             [entity :refer [make-reverse-item-id]]
              [store :refer [new-element-store new-mutable-store make-item-id
                             string->id]]
              mutable-store-impl
@@ -58,6 +59,7 @@
   (is (not (valid-relative-id? :i1_32B)))
   (is (not (valid-relative-id? :i1.32B)))
   (is (not (valid-relative-id? :I1-32B)))
+  (is (not (valid-relative-id? :R1-32B)))
   (is (not (valid-relative-id? :1-32B)))
   (is (not (valid-relative-id? :i1-32B!))))
 
@@ -66,6 +68,13 @@
         relative-ids (client-id->relative-ids client-id)]
     (is (check relative-ids
                [:root [(string->id "1") :b]]))
+    (is (check (relative-ids->client-id relative-ids)
+               client-id)))
+  ;; A reversed item id keeps its direction.
+  (let [client-id "root_R1.b"
+        relative-ids (client-id->relative-ids client-id)]
+    (is (check relative-ids
+               [:root [(make-reverse-item-id (string->id "1")) :b]]))
     (is (check (relative-ids->client-id relative-ids)
                client-id))))
 

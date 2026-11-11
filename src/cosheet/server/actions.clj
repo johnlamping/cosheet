@@ -31,7 +31,7 @@
                     interned-object? named-object? universal-object?
                     uniquely-identified-object?]]
     mutable-store-impl
-    [query :refer [matching-elements]]
+    [query :refer [matching-elements matching-items]]
     query-impl
     [orderable :refer [initial]])
    (cosheet.server
@@ -51,8 +51,8 @@
                          create-possible-selector-entity
                          merge-objects selector? modify-to-non-selector
                          remove-entity-by-id
-                         object-semantic-to-tree add-examine-tab
-                         tabs-cleanup]]
+                         object-semantic-to-tree add-item-tab
+                         tabs-cleanup tab-query]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item semantic-element?]])))
 
@@ -526,9 +526,9 @@
     (if (every? #(= % tab-id) subject-ids)
       ;; We are trying to delete a tab. Disallow it if this is the
       ;; only one.
-      (let [tabs-entity (id->entity (first (first past-subject-ids)) store)]
-        (println "Total tabs" (count (label->elements tabs-entity :tab)))
-        (= (count (label->elements tabs-entity :tab)) 1))
+      (let [tabs (matching-items tab-query store)]
+        (println "Total tabs" (count tabs))
+        (= (count tabs) 1))
       ;; A delete on a virtual item deletes the item for the containing
       ;; dom, because the virtual isn't created when the action data is
       ;; made. Don't delete if that item has elements being displayed.
@@ -627,7 +627,7 @@
   "Add a tab that examines the subject, and make it the current tab."
   [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
-    (let [[store tab-id] (add-examine-tab
+    (let [[store tab-id] (add-item-tab
                           store (id-to-examine store subject-id session-state))]
       {:store store
        :root-id tab-id

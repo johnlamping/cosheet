@@ -11,8 +11,8 @@
                       [hiccup-utils :refer [add-attributes]])
             (cosheet.server
              [order-utils :refer [semantic-element?]]
-             [model-utils :refer [ordered-tabs-ids-R examined-id
-                                  semantic-to-tree]]
+             [model-utils :refer [ordered-tabs-ids-R tab-item-topic
+                                  tab-table-topic semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
              [table-render :refer [render-table-DOM-R]]
@@ -566,24 +566,21 @@
             [:div {}
              (if is-tab
                ;; Show the tabs, plus the topic of the selected tab
-               (let [topic (first (label->elements immutable-item :tab-topic))
-                     target (target-entity immutable-item)]
-                 [:div {:class "tabbed"}
+               [:div {:class "tabbed"}
+                (make-component
+                 {:relative-id :tabs
+                  :chosen-tab-id id
+                  :render-dom render-tabs-DOM
+                  :get-action-data get-empty-action-data})
+                (if-let [table (tab-table-topic immutable-item)]
                   (make-component
-                   {:relative-id (:item-id target)
-                    :chosen-tab-id id
-                    :render-dom render-tabs-DOM
-                    :get-action-data [get-id-action-data (:item-id target)]})
-                  (if (seq (matching-elements :table topic))
-                    (make-component
-                     {:relative-id (:item-id topic)
-                      :table-id (:item-id topic)
-                      :render-dom render-table-DOM-R
-                      :get-action-data default-get-action-data})
-                    ;; An examine tab shows the item it examines.
-                    (when-let [id (examined-id immutable-store
-                                               (:item-id topic))]
-                      (top-level-item-component id)))])
+                   {:relative-id (:item-id table)
+                    :table-id (:item-id table)
+                    :render-dom render-table-DOM-R
+                    :get-action-data default-get-action-data})
+                  ;; The topic is an item. Show it.
+                  (when-let [item (tab-item-topic immutable-item)]
+                    (top-level-item-component (:item-id item))))]
                ;; No tab is selected. Show just the item.
                (top-level-item-component (:item-id immutable-item)))]))))))
 
@@ -618,53 +615,8 @@
            :get-action-data top-level-get-action-data
            :render-dom reporter-specification-render-dom)))
 
-(comment ;; Copy stuff out of here as we support more kinds of top levels.
-  ;; NOTE: subject-referent in here is obsolete.
-  (defn top-level-DOM-R
-    [store session-ephemeral-id client-state]
-    (let-R [batch-editing-items (batch-editing-selector-items
-                                store session-ephemeral-id client-state)]
-      (if (seq batch-editing-items)
-        (batch-edit-DOM-R batch-editing-items store starting-inherited)
-        (let-R [referent (state-map-get client-state :referent)
-                subject-referent (state-map-get client-state
-                                                :subject-referent)
-                immutable-item (call-dependent-on-id
-                                store nil
-                                (fn [immutable-store]
-                                  (or (when referent
-                                        (first (instantiate-referent
-                                                referent immutable-store)))
-                                      (first-tab-R immutable-store))))]
-          (if immutable-item
-            (let [item (id->entity (:item-id immutable-item) store)
-                  inherited (cond-> starting-inherited
-                              subject-referent
-                              (assoc :subject-referent subject-referent))]
-              (let-R [tab-tags (matching-elements :tab item)
-                      content (content item)]
-                (if (empty? tab-tags)
-                  ;; Show just the item.
-                  (top-level-item-DOM-R item referent inherited)
-                  ;; Show a selection of tabs.
-                  (let-R [topic (app-R first (label->elements item :tab-topic))
-                          target (target-entity item)]
-                    [:div {:class "tabbed"}
-                     (make-component {:key [:tabs]}
-                                     [tabs-DOM-R target item inherited])
-                     (make-component
-                      {:key [:tab (:item-id topic)]}
-                      [top-level-item-DOM-R topic nil
-                       (assoc inherited :key-prefix [:tab])])]))))
-            ;; Show a virtual tab.
-            (do (println "showing virtual")
-                (let-R [holder (tabs-holder-item-R store)]
-                  [:div {:class "tabbed"}
-                   (make-component
-                    {:key [:tabs]}
-                    [tabs-DOM-R holder nil
-                     (assoc starting-inherited :key-prefix [:tab])])]))))))))
-
+;;; TODO: Use this to make a pulldown menu for label names.
+;;;       It will need to take the kind of label, as well.
 (comment
   (defn label-datalist-DOM-R
     "Return dom for a datalist of the content of all labels."

@@ -1093,20 +1093,45 @@
                      store)]
     [store ids]))
 
-;;; Creating new tabs and tables.
+;;; Tabs
 
-(defn tabs-holder-id-R
-  "Return the entity that holds all the tabs."
-  [store]
-  (let-R [holders (matching-item-ids-R '(nil :tabs) store)]
-    (first holders)))
+;;; A tab is an object marked with :tab and :non-semantic elements.
+;;; Its names are its semantic elements, and its :order element gives
+;;; its position among the tabs.
+;;; A tab whose topic is a table has an element marked :tab-topic that
+;;; describes the table. A tab whose topic is an item is instead the
+;;; source of a link, marked :tab-topic and :non-semantic, whose
+;;; target is the item.
+;;; This way, the topic can be an element, as well as an object. But
+;;; if it's an element, the link does not make an element of the tab
+;;; object, so it has to be found by looking through the elements
+;;; containing the tab object.
+
+;;; This the matching items of this query will be all tabs.
+(def tab-query (make-tree-object [:tab]))
 
 (defn ordered-tabs-ids-R
   "Return the ids of the tabs, in order."
   [store]
-  (let-R [holder-id (tabs-holder-id-R store)]
-    (ordered-ids-R (target-label->ids store holder-id :tab)
-                   store)))
+  (let-R [tab-ids (matching-item-ids-R tab-query store)]
+    (ordered-ids-R tab-ids store)))
+
+(defn tab-table-topic
+  "Return the element of the tab that describes its table, or nil if
+  the topic of the tab is not a table. The element must be forward,
+  because a link that makes an item the topic shows up as a reverse
+  element of the tab when the item is an object."
+  [tab]
+  (first (remove reverse? (label->elements tab :tab-topic))))
+
+(defn tab-item-topic
+  "Return the item that is the topic of the tab, found through the
+  element of the item, marked :tab-topic, whose content is the tab.
+  Return nil if the topic of the tab is not an item."
+  [tab]
+  (when-let [link (first (filter #(seq (content->elements % :tab-topic))
+                                 (containing-elements tab)))]
+    (target-entity link)))
 
 (def label-object-template
   (make-tree-object [`(~'anything (~name-label)) `(~link-type)]))
@@ -1194,6 +1219,13 @@
   (tab-table-element [`(~(object-type-object '???))]
                      [`(~'anything (~(link-type-object '???)))]))
 
+(defn tab-object-template
+  "Return the template for a tab with the given names, and with the
+  given topic element, if there is one."
+  [names topic]
+  (make-tree-object (cond-> (into [:tab :non-semantic] names)
+                      topic (conj topic))))
+
 (def column-header-template
   ;; The minimum content for a column header.
   ;; In addition, a column header must be stored as an element
@@ -1211,6 +1243,17 @@
    column-header-template [(mark-template-as-selector
                             `(~(link-type-object '???)))]))
 
+(defn add-at-end-of-tabs
+  "Add a tab matching the template after the last tab, or after the
+  unused order if there are no tabs. Return the updated store and the
+  id of the new tab."
+  [store tab-template]
+  (let [tabs (ordered-entities (matching-items tab-query store))
+        adjacent (if (seq tabs)
+                   (last tabs)
+                   (first (matching-items '(nil :unused-orderable) store)))]
+    (update-add-object-adjacent-to store tab-template adjacent :after true)))
+
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store
   will have a single tab with that name and a table with that name."
@@ -1219,20 +1262,16 @@
         [store _] (add-isolated-element store
                                         (list current-format :format))
         [store orderable-id] (add-isolated-element
-                              store (list initial :unused-orderable))
-        [store tabs-holder-id] (add-isolated-element store '("tabs" :tabs))]
+                              store (list initial :unused-orderable))]
     (if tab-name
       (let [[tab store] (specialize-generic
-                         `(""
-                           ~tab-name
-                           :tab
-                           ~(tab-table-element
-                             [`(~(object-type-object tab-name))]
-                             [`(~'anything (~(link-type-object '???)))]))
+                         (tab-object-template
+                          [tab-name]
+                          (tab-table-element
+                           [`(~(object-type-object tab-name))]
+                           [`(~'anything (~(link-type-object '???)))]))
                          store)]
-        (first (update-add-element-adjacent-to
-                store tabs-holder-id tab                   
-                (id->entity orderable-id store) :after false)))
+        (first (add-at-end-of-tabs store tab)))
       store)))
 
 ;;; Consistency checks
@@ -1317,122 +1356,66 @@
   "Given a sequence of header names, add a tab with a table consisting of those
   headers."
   [store table-name headers]
-  (let [tabs-holder-id (tabs-holder-id-R store) ;; Won't be a reporter.
-        last-tab (last (matching-items '(nil :tabs) store))
-        [store new-tab] (update-add-element-adjacent-to
-                         store tabs-holder-id
-                         `(""
-                           :tab
-                           ~table-name
-                           ~(tab-table-element
-                             [`(~(object-type-object table-name))]
-                             (map (fn [header]
-                                    `(~'anything (~(link-type-object header))))
-                                  headers)))
-                         last-tab :after true)]
-    store))
+  (first (add-at-end-of-tabs
+          store
+          (tab-object-template
+           [table-name]
+           (tab-table-element
+            [`(~(object-type-object table-name))]
+            (map (fn [header]
+                   `(~'anything (~(link-type-object header))))
+                 headers))))))
 
-(defn examined-item-name
-  "Return a name to use for the tab title for an item to be examined."
+(defn item-tab-name
+  "Return a name to use for the tab title for an item to be examined.
+  A string name longer than 12 characters is truncated to 10."
   [item]
-  (let [item-content (if (object? item) item (content item))]
-    (cond (or (string? item-content) (number? item-content))
-          item-content
-          (object? item-content)
-          (content (first (label->elements item-content name-label))))))
+  (let [item-content (if (object? item) item (content item))
+        tab-name (cond (or (string? item-content) (number? item-content))
+                       item-content
+                       (object? item-content)
+                       (content (first (label->elements item-content
+                                                        name-label))))]
+    (cond-> tab-name
+      (and (string? tab-name) (> (count tab-name) 12)) (subs 0 10))))
 
-(defn add-examine-tab
-  "Add a tab, after the last tab, that examines the item with the given
-  id. The tab's topic is a fresh object marked :examine, and the item
-  gets a non-semantic :examined element whose sub-element refers to
-  that object, so the topic can find the item through the store's
-  source index. Return the updated store and the id of the new tab."
-  ;; TODO: Rename :examine to :item.
+(defn add-item-tab
+  "Add a tab, after the last tab, whose topic is the item with the given
+  id. The item gets a non-semantic element, marked :tab-topic, whose
+  content is the tab. Return the updated store and the id of the new
+  tab."
   [store id]
-  (let [tabs-holder-id (tabs-holder-id-R store) ;; Won't be a reporter.
-        tabs-holder (id->entity tabs-holder-id store)
-        last-tab (or (furthest-item (label->elements tabs-holder :tab) :after)
-                     tabs-holder)
-        tab-name (examined-item-name (id->entity id store))
-        [store tab-id] (update-add-element-adjacent-to
-                        store tabs-holder-id
-                        `(""
-                          :tab
-                          ~@(when tab-name [tab-name])
-                          (~(make-tree-object []) :tab-topic :examine))
-                        last-tab :after true)
-        topic-object (content (label->element (id->entity tab-id store)
-                                              :tab-topic))
-        ;; TODO: !!! The topic-object should be the content of this
-        ;; element, not a qualifier.
-        [store _] (add-element store id `(:examined (~topic-object)))]
+  (let [tab-name (item-tab-name (id->entity id store))
+        [store tab-id] (add-at-end-of-tabs
+                        store
+                        (tab-object-template (when tab-name [tab-name]) nil))
+        [store _] (add-element store id `(~(id->entity tab-id store)
+                                          :tab-topic :non-semantic))]
     [store tab-id]))
 
-(defn examined-id
-  "Return the id of the item examined by an examine tab whose topic is
-  the given id. Return nil if there is none."
-  [immutable-store topic-id]
-  (let [object-id (:item-id (content (id->entity topic-id immutable-store)))
-        reference-ids (remove #(= % topic-id)
-                              (source->ids immutable-store object-id))]
-    (when-let [reference-id (first reference-ids)]
-      (id->target immutable-store
-                  (id->target immutable-store reference-id)))))
-
-(defn- examined-item-known?
-  "Return whether anything is known about the item with the given id,
-  which may be nil, besides the :examined back link to it."
-  [store id]
-  (cond (nil? id) false
-        (link-id? id) (id-valid-link? store id)
-        ;; TODO: !!! This should probably make the object entity. That
-        ;; way, it can check for reverse elements in the first half of
-        ;; the or, which is what we want.
-        :else (or (seq (source->ids store id))
-                  (some #(not= (id->source store %) :examined)
-                        (target->ids store id)))))
-
-(defn- examine-topic-ids
-  "Return the ids of the :tab-topic elements of all the examine tabs."
-  [store]
-  (map #(id->target store %) (source->ids store :examine)))
-
-(defn- remove-orphaned-examine-tabs
-  "Return the store with every examine tab removed whose examined item
-  is no longer known."
-  [store]
-  (reduce (fn [store topic-id]
-            (if (examined-item-known? store (examined-id store topic-id))
-              store
-              (remove-entity-by-id store (id->target store topic-id))))
-          store
-          (examine-topic-ids store)))
-
-(defn- remove-orphaned-examined-links
-  "Return the store with every :examined back link removed if its hidden
-  object is no longer the topic of an examine tab. Because then,
-  nothing is then known about the hidden object."
-  [store]
-  (let [topic-objects (set (map #(:item-id (content (id->entity % store)))
-                                (examine-topic-ids store)))]
-    (reduce (fn [store link-id]
-              (let [hidden-object (some->> (first (target->ids store link-id))
-                                           (id->source store))]
-                (cond-> store
-                  (not (topic-objects hidden-object))
-                  (remove-entity-by-id link-id))))
-            store
-            (source->ids store :examined))))
+(defn- tab-topic-known?
+  "Return whether the topic of the tab still exists: a table, or an
+  item about which something is known besides the link that makes it
+  the topic."
+  [tab]
+  (or (tab-table-topic tab)
+      (when-let [item (tab-item-topic tab)]
+        (or (element? item)
+            (seq (containing-elements item))
+            (seq (remove #(seq (content->elements % :tab-topic))
+                         (forward-elements item)))))))
 
 (defn tabs-cleanup
-  "Return the store with the examine tabs made consistent: remove every
-  tab whose examined item no longer exists or is an object about which
-  nothing else is known, and remove the hidden object and back link of
-  every examine tab that has been deleted."
+  "Return the store with every tab removed whose topic is an item that
+  no longer exists or is an object about which nothing else is known.
+  Removing the tab also removes the link that made the item its topic."
   [store]
-  (-> store
-      remove-orphaned-examine-tabs
-      remove-orphaned-examined-links))
+  (reduce (fn [store tab]
+            (cond-> store
+              (not (tab-topic-known? (id->entity (:item-id tab) store)))
+              (remove-entity-by-id (:item-id tab))))
+          store
+          (matching-items tab-query store)))
 
 (defn add-table
   "Given a sequence of rows, each a sequence of values,

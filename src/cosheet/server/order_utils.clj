@@ -10,7 +10,7 @@
                         update-to-invalid]]
     [store :refer [target-label->ids id->source ImmutableStore]]
     [entity :refer [content all-elements forward-elements entity-direction
-                    label->elements label->content
+                    label->elements label->content content->elements
                     id->entity object? element? tree-object?
                     make-tree-element make-tree-object-copying-id
                     identity-pre-fn
@@ -26,6 +26,22 @@
 ;;; about how to display the elements, is considered irrelevant for
 ;;; matching a condition. We call the elements that do matter the
 ;;; semantic elements.
+;;; Specifically, a semantic element is one whose content is something
+;;; the user can enter, and that is not explicitly marked
+;;; :non-semantic.
+
+;;; Once an element is put in the store, if will have an :order
+;;; element if it is semantic. User queries against the store will
+;;; typically include that requirement, to make sure they only return
+;;; semantic elements.
+
+;;; It is possible for an object to be marked :non-semantic, even
+;;; though it getsan :order element, and even though its elements are
+;;; semantic. This currently only happens for objects that represent
+;;; tabs. Searches for user objects should do acheck that the object
+;;; does not have :non-semantic, as well as checking that it has an
+;;; :order.
+
 ;;; Note: Logically, semantic-element? would make more sense in
 ;;; model-utils, but our orderable-entity? needs semantic-element?, to
 ;;; know what parts need order information. And model-utils imports
@@ -35,10 +51,11 @@
   "Return true if an item counts as semantic information."
   [immutable-entity]
    (let [cont (content immutable-entity)]
-     (or (string? cont)
-         (number? cont)
-         (object? cont)
-         (= cont 'anything))))
+     (and (or (string? cont)
+              (number? cont)
+              (object? cont)
+              (= cont 'anything))
+          (empty? (content->elements immutable-entity :non-semantic)))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."

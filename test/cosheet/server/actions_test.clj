@@ -56,7 +56,8 @@
                                   replace-anythings-with-empty
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral
-                                  examined-id]]
+                                  tab-query tab-item-topic
+                                  add-at-end-of-tabs tab-object-template]]
              [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])
@@ -715,6 +716,20 @@
     (is (not (id-valid-link? new-store holder-id)))
     (is (id-known-object? new-store joe-id))))
 
+(deftest do-delete-tab-test
+  (let [[s _] (add-isolated-element
+               store (list unused-orderable :unused-orderable))
+        [s tab1-id] (add-at-end-of-tabs s (tab-object-template nil nil))
+        [s tab2-id] (add-at-end-of-tabs s (tab-object-template nil nil))
+        ;; Deleting an unnamed tab targets the tab itself.
+        new-store (do-delete s {:subject-ids [tab2-id] :tab-id tab2-id
+                                :virtual true})]
+    (is (not (id-known-object? new-store tab2-id)))
+    (is (= (map :item-id (matching-items tab-query new-store)) [tab1-id]))
+    ;; The only tab can't be deleted.
+    (is (nil? (do-delete new-store {:subject-ids [tab1-id] :tab-id tab1-id
+                                    :virtual true})))))
+
 (deftest do-quick-look-test
   ;; When the subject's target is a symbol, the subject itself is opened.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
@@ -725,23 +740,19 @@
                 :open (str "?root=" (id->string holder-id))}))))
 
 (deftest do-open-in-new-tab-test
-  ;; When the subject's target is a symbol, the subject itself is
-  ;; examined, in a new tab that becomes the root.
+  ;; When the subject's target is a symbol, the subject itself becomes
+  ;; the topic of a new tab, which becomes the root.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
         [s _] (add-isolated-element s (list unused-orderable :unused-orderable))
-        [s tabs-holder-id] (add-isolated-element s '("tabs" :tabs))
         session-state {:client-state (make-map-reporter {:root-id nil})
                        :url-path "foo"}
         {new-store :store :keys [root-id set-url]}
         (do-open-in-new-tab s {:subject-ids [holder-id]
                                :session-state session-state})
-        tab (first (label->elements (id->entity tabs-holder-id new-store)
-                                    :tab))
-        topic (label->element tab :tab-topic)]
+        tab (first (matching-items tab-query new-store))]
     (is (= root-id (:item-id tab)))
     (is (= set-url (str "foo?root=" (id->string (:item-id tab)))))
-    (is (seq (matching-elements :examine topic)))
-    (is (= (examined-id new-store (:item-id topic)) holder-id))))
+    (is (= (:item-id (tab-item-topic tab)) holder-id))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

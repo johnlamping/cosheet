@@ -1,9 +1,10 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :refer [id->updating-entity-R
-                                      label->elements content all-elements]]
+                                      content->elements]]
                       [hiccup-utils :refer [into-attributes add-attributes]]
                       [reporter-macros :refer [let-R seq-R]]
-                      [canonical :refer [canonical-set-to-list]])
+                      [canonical :refer [canonical-set-to-list]]
+                      [query-calculator :refer [matching-item-ids-R]])
             (cosheet.server
              [hierarchy :refer [hierarchy-by-selected-elements
                                 hierarchy-node-descendants
@@ -11,7 +12,8 @@
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
-                                  new-tab-table-element]]
+                                  new-tab-table-element tab-query
+                                  tab-object-template]]
              [render-utils :refer [hierarchy-node-DOM make-component
                                    make-sequential-template]]
              [item-render :refer [virtual-DOM-component
@@ -85,7 +87,7 @@
   [node specification]
   (-> specification
       (update :template
-              #(list* (concat % (canonical-set-to-list (:properties node)))))
+              #(into % (canonical-set-to-list (:properties node))))
       ;; The same tab item is the basis for the relative id of a node
       ;; and all its "first born" descendants. And all those nodes
       ;; are logically inside the same overall component. We add a
@@ -108,32 +110,36 @@
     dom))
 
 (defn virtual-tab-DOM
+  "Make the component for adding a tab after the tab with the given id.
+  The new tab is made in two steps: the tab with its table, then the
+  name the user types."
   [{:keys [last-tab-id]}]
   (virtual-DOM-component
    {:relative-id :virtual-tab
     :target-item-id last-tab-id
     :class "tab virtualTab"
-    :template (make-sequential-template `("" :tab ~new-tab-table-element)
-                                        'anything)
-    :incoming-subject-is :sibling
+    :template (make-sequential-template
+               (tab-object-template nil new-tab-table-element)
+               'anything)
+    :incoming-subject-is :adjacent
     :get-action-data get-item-or-exemplar-action-data
     :use-bigger true}))
 
 (defn render-tabs-DOM
-  "Return a reporter giving the DOM for the elements of the given
-  item as tabs."
-  [{:keys [relative-id chosen-tab-id] :as specification} store]
-  (let-R [tabs-entity (id->updating-entity-R
-                      relative-id store)]
-    (let [;; The template starts out with an empty name
-          tabs-spec {:template `("" :tab)
+  "Return a reporter giving the DOM for the tabs."
+  [{:keys [chosen-tab-id]} store]
+  (let-R [tab-ids (matching-item-ids-R tab-query store)
+          tabs (seq-R (map #(id->updating-entity-R % store) tab-ids))]
+    (let [tabs-spec {:template (tab-object-template nil nil)
                      :nesting-depth 0
                      :chosen-tab-id chosen-tab-id}
-          tabs (ordered-entities (label->elements tabs-entity :tab))
+          tabs (ordered-entities tabs)
+          ;; The names of a tab are its semantic elements other than
+          ;; the topic.
           hierarchy (hierarchy-by-selected-elements
                      tabs
-                     (fn [item] (not (some #(= (content %) :tab-topic)
-                                           (all-elements item)))))
+                     (fn [element]
+                       (empty? (content->elements element :tab-topic))))
           hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
           tab-doms (map (fn [node]
                           (hierarchy-node-DOM

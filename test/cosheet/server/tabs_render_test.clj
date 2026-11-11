@@ -7,7 +7,7 @@
              store-impl
              [store-utils :refer [add-element add-isolated-element
                                   link-type-object object-type-object]]
-             [entity :refer [id->element]]
+             [entity :refer [id->element id->object]]
              [query :refer [matching-elements]]
              [debug :refer [simplify-for-print]]
              entity-impl
@@ -17,7 +17,8 @@
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [render-utils :refer [make-sequential-template]]
-             [model-utils :refer [mark-template-as-selector]]
+             [model-utils :refer [starting-store add-at-end-of-tabs
+                                  tab-object-template new-tab-table-element]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
@@ -56,32 +57,21 @@
 (deftest tabs-DOM-test
   (let [specification {:priority 1
                        :width 3.0}
-        ;; TODO: !!! Figure out why the :blank keywords below can be "".
-        tabs-list `(""
-                    ("" "foo"
-                     :tab
-                     (:blank :table)
-                     (~o1 :order))
-                    ("" "foo" "bar"
-                     :tab 
-                     (:blank :table)
-                     (~o2 :order))
-                    ("" "baz" "bletch"
-                     :tab
-                     (:blank :table)
-                     (~o3 :order)))
-        [store tabs-id] (add-isolated-element (new-element-store) tabs-list)
-        tabs (id->element tabs-id store)
-        t1 (first (matching-elements `(nil ~o1) tabs))
-        t2 (first (matching-elements `(nil ~o2) tabs))
-        t3 (first (matching-elements `(nil ~o3) tabs))
+        tab-template (fn [names]
+                       (tab-object-template names '("" :tab-topic :table)))
+        [s1 t1-id] (add-at-end-of-tabs (starting-store nil)
+                                       (tab-template ["foo"]))
+        [s2 t2-id] (add-at-end-of-tabs s1 (tab-template ["foo" "bar"]))
+        [store t3-id] (add-at-end-of-tabs s2 (tab-template ["baz" "bletch"]))
+        t1 (id->object t1-id store)
+        t2 (id->object t2-id store)
+        t3 (id->object t3-id store)
         t1-foo  (first (matching-elements "foo" t1))
         t2-foo (first (matching-elements "foo" t2))
         t2-bar (first (matching-elements "bar" t2))
         t3-baz (first (matching-elements "baz" t3))
         t3-bletch (first (matching-elements "bletch" t3))
-        spec {:relative-id tabs-id
-              :chosen-tab-id (:item-id t1)}
+        spec {:chosen-tab-id (:item-id t1)}
         dom (render-tabs-DOM spec store)
         tabs-dom (nth dom 4)
         virt-tab-dom (nth tabs-dom 3)
@@ -103,20 +93,9 @@
              :target-item-id (:item-id t3)
              :class "tab virtualTab"
              :template (make-sequential-template
-                        `(""
-                          :tab
-                          ("" :tab-topic :table
-                           (~(make-tree-object
-                              [:selector
-                               (mark-template-as-selector
-                                `(~(object-type-object '???)))])
-                            :row-condition)
-                           ~(concat
-                             '(anything :column-headers :selector)
-                             [(mark-template-as-selector
-                               `(~'anything (~(link-type-object '???))))])))
+                        (tab-object-template nil new-tab-table-element)
                         'anything)
-             :incoming-subject-is :sibling
+             :incoming-subject-is :adjacent
              :use-bigger true
              :virtual true
              :render-dom (virt-DOM)
@@ -124,7 +103,7 @@
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
-             :template `("" :tab)
+             :template (tab-object-template nil nil)
              :render-dom (tab-DOM)
              :get-action-data (item-AD)
              :example-element-ids (as-set [(:item-id t3-baz)
@@ -135,7 +114,7 @@
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
-              :template `("" :tab)
+              :template (tab-object-template nil nil)
               :render-dom (tab-DOM)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
@@ -147,8 +126,7 @@
              [:component
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
-               :template `("" :tab
-                           "foo")
+               :template (make-tree-object [:tab :non-semantic "foo"])
                :render-dom (tab-DOM)
                :example-element-ids [(:item-id t2-bar)]
                :parallel-ids [(:item-id t2)]

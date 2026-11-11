@@ -19,8 +19,8 @@
              [table-render :refer [render-table-DOM-R get-table-rendering-data]]
              [item-render :refer [render-item-DOM-R]]
              [action-data :refer [default-get-action-data
-                                  get-id-action-data]]
-             [model-utils :refer [starting-store add-examine-tab]]
+                                  get-id-action-data get-empty-action-data]]
+             [model-utils :refer [starting-store add-item-tab]]
              [session-state :refer [update-add-session-ephemeral-object
                                     create-client-state]])
             ; :reload
@@ -54,23 +54,23 @@
          dom
          [:div {}
           [:div {:class "tabbed"}
-	   [:component {:relative-id (any)
+	   [:component {:relative-id :tabs
 		 	 :chosen-tab-id (any)
 			 :render-dom render-tabs-DOM
-			 :get-action-data [get-id-action-data (any)]}]
+			 :get-action-data get-empty-action-data}]
 	   [:component {:relative-id (any)
                         :table-id (any)
 			:render-dom render-table-DOM-R
                         :get-action-data default-get-action-data}]]]))))
 
-(deftest examine-tab-top-level-DOM-R-test
-  ;; With an examine tab chosen, the top level shows the tabs and the
-  ;; examined item.
+(deftest item-tab-top-level-DOM-R-test
+  ;; With a tab chosen whose topic is an item, the top level shows the
+  ;; tabs and the item.
   (let [store (starting-store "Tab")
         [store ephemeral-id] (update-add-session-ephemeral-object store)
         [store joe-id] (add-object store
                                    (make-tree-object [`("Joe" (~name-label))]))
-        [store tab-id] (add-examine-tab store joe-id)
+        [store tab-id] (add-item-tab store joe-id)
         mutable-store (new-mutable-store store)
         client-state (create-client-state mutable-store tab-id)
         top-level-id (top-level-id-R mutable-store client-state)
@@ -84,10 +84,10 @@
          dom
          [:div {}
           [:div {:class "tabbed"}
-           [:component {:relative-id (any)
+           [:component {:relative-id :tabs
                         :chosen-tab-id tab-id
                         :render-dom render-tabs-DOM
-                        :get-action-data [get-id-action-data (any)]}]
+                        :get-action-data get-empty-action-data}]
            [:component {:relative-id joe-id
                         :width 3.0
                         :template ""

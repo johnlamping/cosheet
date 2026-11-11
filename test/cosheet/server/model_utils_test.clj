@@ -10,7 +10,8 @@
                                       id->object id->entity id->element
                                       label->elements label->element
                                       label->content content->elements
-                                      content all-elements
+                                      content all-elements forward-elements
+                                      containing-elements
                                       to-tree make-reverse-item-id]]
                       [orderable :as orderable]
                       [store :refer [new-element-store update-source
@@ -40,7 +41,7 @@
              [test-setup :refer [cyclic-and-shared-a-b-stores]])
             (cosheet.server
              [model-utils :refer :all]
-             [order-utils :refer [ordered-entities]])
+             [order-utils :refer [ordered-entities semantic-element?]])
             ; :reload
             ))
 
@@ -1094,9 +1095,7 @@
   (let [s (starting-store "hi")
         hi-label-obj (find-object-by-name
                       s "hi" (object-type-object ""))
-        tabs (matching-items '(nil "hi" :tab
-                               (nil :tab-topic :table))
-                             s)
+        tabs (matching-items tab-query s)
         tab (first tabs)
         rows (matching-items
               (add-non-selector-to-fixed-term
@@ -1111,35 +1110,36 @@
     (is (= (count column-headers-list) 1))
     (is (check (to-tree tab)
                (as-set
-                `(""
-                  :tab
-                  ("hi" (~(any) :order))
-                  (~(any) :order)
-                  ~(as-set
-                    `(""
-                      ~(as-set
-                        `(~(as-set (make-tree-object
-                                    [(as-set
-                                      `(~hi-label-obj :selector
+                (make-tree-object
+                 [:tab
+                  :non-semantic
+                  `(~(any) :order)
+                  `("hi" (~(any) :order))
+                  (as-set
+                   `(""
+                     ~(as-set
+                       `(~(as-set (make-tree-object
+                                   [(as-set
+                                     `(~hi-label-obj :selector
+                                       (~(any) :order)))
+                                    `(~(any) :order)
+                                    :selector]))
+                         :row-condition
+                         (~(any) :order)))
+                     (~(any) :order)
+                     ~(as-set
+                       `(~'anything
+                         (~(any) :order)
+                         :selector
+                         ~(as-set
+                           `(~'anything
+                             (~(any) :order)
+                             ~(as-set `(~(any stored-entity?) :selector
                                         (~(any) :order)))
-                                     `(~(any) :order)
-                                     :selector]))
-                          :row-condition
-                          (~(any) :order)))
-                      (~(any) :order)
-                      ~(as-set
-                        `(~'anything
-                          (~(any) :order)
-                          :selector
-                          ~(as-set
-                            `(~'anything
-                              (~(any) :order)
-                              ~(as-set `(~(any stored-entity?) :selector
-                                         (~(any) :order)))
-                              :selector))
-                          :column-headers))
-                      :tab-topic
-                      :table))))))
+                             :selector))
+                         :column-headers))
+                     :tab-topic
+                     :table))]))))
     (is (= rows []))
     (is (check (object-semantic-to-tree (content (first row-conditions)))
                (make-tree-object [`(~hi-label-obj)])))
@@ -1157,10 +1157,8 @@
                      s1 "a" (link-type-object ""))
         b-label-obj (find-object-by-name
                      s1 "b" (link-type-object ""))
-        tabs (matching-items '(nil "there" :tab
-                               (nil :tab-topic :table))
-                             s1)
-        tab (first tabs)
+        tabs (ordered-entities (matching-items tab-query s1))
+        tab (last tabs)
         rows (matching-items
               (add-non-selector-to-fixed-term
                (pattern->fixed-term-query
@@ -1169,41 +1167,41 @@
         table (first (matching-elements '(nil :table) tab))
         row-condition (first (matching-elements '(nil :row-condition) table))
         column-headers (first (matching-elements '(nil :column-headers) table))]
-    (is (= (count tabs) 1))
+    (is (= (count tabs) 2))
     (is (check (to-tree tab)
                (as-set
-                `(""
-                  (~(any) :order)
-                  :tab
-                  ("there" (~(any) :order))
-                  ~(as-set
-                    `(""
-                      ~(as-set
-                        `(~(as-set (make-tree-object
-                                    [(as-set `(~there-label-obj
+                (make-tree-object
+                 [:tab
+                  :non-semantic
+                  `(~(any) :order)
+                  `("there" (~(any) :order))
+                  (as-set
+                   `(""
+                     ~(as-set
+                       `(~(as-set (make-tree-object
+                                   [(as-set `(~there-label-obj
+                                              (~(any) :order) :selector))
+                                    `(~(any) :order)
+                                    :selector]))
+                         (~(any) :order)
+                         :row-condition))
+                     ~(as-set
+                       `(~'anything
+                         ~(as-set `(~'anything
+                                    (~(any) :order)
+                                    ~(as-set `(~a-label-obj
                                                (~(any) :order) :selector))
-                                     `(~(any) :order)
-                                     :selector]))
-                          (~(any) :order)
-                          :row-condition))
-                      ~(as-set
-                        `(~'anything
-                          ~(as-set `(~'anything
-                                     (~(any) :order)
-                                     ~(as-set `(~a-label-obj
-                                                (~(any) :order) :selector))
-                                     :selector))
-                          ~(as-set `(~'anything
-                                     (~(any) :order)
-                                     ~(as-set `(~b-label-obj
-                                                (~(any) :order) :selector))
-                                     :selector))
-                          :selector :column-headers
-                          (~(any) :order)))
-                      :table
-                      :tab-topic
-                      (~(any) :order)))
-                 ))))
+                                    :selector))
+                         ~(as-set `(~'anything
+                                    (~(any) :order)
+                                    ~(as-set `(~b-label-obj
+                                               (~(any) :order) :selector))
+                                    :selector))
+                         :selector :column-headers
+                         (~(any) :order)))
+                     :table
+                     :tab-topic
+                     (~(any) :order)))]))))
     (is (check (map semantic-to-tree
                     (ordered-entities rows))
                [(as-set (make-tree-object
@@ -1220,22 +1218,30 @@
                [`(~'anything (~a-label-obj))
                 `(~'anything (~b-label-obj)) ]))))
 
-(deftest add-examine-tab-test
+(deftest item-tab-name-test
+  (let [[s joe-id] (add-object (starting-store "hi")
+                               (make-tree-object [`("Joe" (~name-label))]))
+        [s long-id] (add-object s (make-tree-object
+                                   [`("Joseph Jonathan" (~name-label))]))]
+    (is (= (item-tab-name (id->entity joe-id s)) "Joe"))
+    (is (= (item-tab-name (id->entity long-id s)) "Joseph Jon"))))
+
+(deftest add-item-tab-test
   (let [s (starting-store "hi")
         [s1 joe-id] (add-object s (make-tree-object [`("Joe" (~name-label))]))
-        [s2 tab-id] (add-examine-tab s1 joe-id)
-        tabs (ordered-entities
-              (label->elements (id->entity (tabs-holder-id-R s2) s2) :tab))
+        [s2 tab-id] (add-item-tab s1 joe-id)
+        tabs (ordered-entities (matching-items tab-query s2))
         tab (id->entity tab-id s2)
-        topic (label->element tab :tab-topic)]
-    ;; The new tab is last, is named for the object, and examines it.
+        link (first (label->elements (id->entity joe-id s2) :tab-topic))]
+    ;; The new tab is last, is named for the object, and has it as its
+    ;; topic.
     (is (= (count tabs) 2))
     (is (= (:item-id (last tabs)) tab-id))
     (is (seq (matching-elements "Joe" tab)))
-    (is (seq (matching-elements :examine topic)))
-    (is (object? (content topic)))
-    (is (= (examined-id s2 (:item-id topic)) joe-id))
-    ;; The object's semantic information is unchanged.
+    (is (= (:item-id (tab-item-topic tab)) joe-id))
+    ;; The link is a non-semantic element of the object, so the
+    ;; object's semantic information is unchanged.
+    (is (not (semantic-element? link)))
     (is (check (entity->canonical-semantic (id->entity joe-id s2))
                (entity->canonical-semantic (id->entity joe-id s1))))))
 
@@ -1243,40 +1249,28 @@
   (let [s (starting-store "hi")
         [s1 joe-id] (add-object s (make-tree-object [`("Joe" (~name-label))]))
         [s2 x-id] (add-element s1 joe-id "x")
-        [s3 joe-tab-id] (add-examine-tab s2 joe-id)
-        [s4 x-tab-id] (add-examine-tab s3 x-id)
+        [s3 joe-tab-id] (add-item-tab s2 joe-id)
+        [s4 x-tab-id] (add-item-tab s3 x-id)
         tab-ids (fn [store]
-                  (set (map :item-id
-                            (label->elements
-                             (id->entity (tabs-holder-id-R store) store)
-                             :tab))))
-        hidden-object-id (fn [store tab-id]
-                           (:item-id (content (label->element
-                                               (id->entity tab-id store)
-                                               :tab-topic))))
-        joe-hidden-id (hidden-object-id s4 joe-tab-id)]
+                  (set (map :item-id (matching-items tab-query store))))]
     ;; A consistent store is unchanged.
     (is (= (tabs-cleanup s4) s4))
-    ;; Deleting a tab removes its hidden object and back link.
-    (let [cleaned (tabs-cleanup (remove-entity-by-id s4 joe-tab-id))]
-      (is (not (id-known-object? cleaned joe-hidden-id)))
-      (is (empty? (source->ids cleaned joe-hidden-id)))
-      (is (= (count (source->ids cleaned :examined)) 1))
-      (is (= (examined-id cleaned (:item-id (label->element
-                                             (id->entity x-tab-id cleaned)
-                                             :tab-topic)))
-             x-id)))
-    ;; Deleting an examined element removes its tab.
+    ;; Deleting a tab removes the link that made the item its topic,
+    ;; leaving nothing to clean up.
+    (let [deleted (remove-entity-by-id s4 joe-tab-id)]
+      (is (= (tab-ids deleted) (disj (tab-ids s4) joe-tab-id)))
+      (is (= (count (forward-elements (id->entity joe-id deleted)))
+             (count (forward-elements (id->entity joe-id s2)))))
+      (is (= (tabs-cleanup deleted) deleted)))
+    ;; Deleting an element that is a topic removes its tab.
     (let [cleaned (tabs-cleanup (remove-entity-by-id s4 x-id))]
-      (is (= (tab-ids cleaned) (disj (tab-ids s4) x-tab-id)))
-      (is (= (count (source->ids cleaned :examined)) 1)))
-    ;; Deleting an examined object removes its tab, and the tab of its
-    ;; element.
+      (is (= (tab-ids cleaned) (disj (tab-ids s4) x-tab-id))))
+    ;; Deleting an object that is a topic removes its tab, and the tab
+    ;; of its element.
     (let [cleaned (tabs-cleanup (remove-entity-by-id s4 joe-id))]
-      (is (= (tab-ids cleaned) (disj (tab-ids s4) joe-tab-id x-tab-id)))
-      (is (empty? (source->ids cleaned :examined))))
-    ;; An examined object about which nothing else is known loses its
-    ;; tab.
+      (is (= (tab-ids cleaned) (disj (tab-ids s4) joe-tab-id x-tab-id))))
+    ;; An object that is a topic, and about which nothing else is
+    ;; known, loses its tab.
     (let [cleaned (tabs-cleanup (remove-semantic-elements s4 joe-id))]
       (is (= (tab-ids cleaned) (disj (tab-ids s4) joe-tab-id x-tab-id)))
       (is (not (id-known-object? cleaned joe-id))))))

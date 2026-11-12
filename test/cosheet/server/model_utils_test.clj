@@ -109,17 +109,21 @@
                  :reverse)))
     (is (check (transform-pattern-toward-fixed-term
                 pattern {:require-not-type true
-                         :require-orders true})
+                         :require-semantic true})
                (make-tree-element
                  (make-tree-object `(~(make-not-query `(~link-type))
                                      ~(make-not-query `(~object-type))
-                                     (nil :order)))
+                                     (nil :order)
+                                     ~(make-not-query '(:non-semantic))))
                  ['(nil (nil :order))
-                  `(~(make-tree-object `((~link-type) (nil :order))))
+                  `(~(make-tree-object
+                      `((~link-type) (nil :order)
+                        ~(make-not-query '(:non-semantic)))))
                   `(~(make-tree-object `("a"
                                          ~(make-not-query `(~link-type))
                                          ~(make-not-query `(~object-type))
-                                         (nil :order))))]
+                                         (nil :order)
+                                         ~(make-not-query '(:non-semantic)))))]
                  :reverse)))
   ;; In cyclic-shared-store, a is reachable via two paths (the back-
   ;; link from b and z-link's sub-element), so to-tree preserves a as
@@ -186,7 +190,7 @@
   ;; All changes should apply to the qualifier elements.
   (let [pattern (make-conflux-tree-object (make-tree-id 1) ['anything "x"])
         fixed-term (transform-pattern-toward-fixed-term
-                    pattern {:require-orders true})
+                    pattern {:require-semantic true})
         v-name (label->content fixed-term :cosheet.query/name)]
     (is (= fixed-term
            (make-variable-query

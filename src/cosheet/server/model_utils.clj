@@ -466,10 +466,15 @@
     * If require-not-type is true and an object is not a type, then
       require it not to have a link-type or object-type element, so it
       won't match those.
-    * If require-orders is true and an element has nil content, or the
-      pattern is an object, add a '(nil :order) element to make it only
-      match user editable items."
-  [pattern {:keys [require-not-type require-orders] :as options}]
+    * If require-semantic is true, make the pattern only match semantic
+      items. There are two cases where a match could be non-semantic.
+      Here they are, and how they are resolved.
+         * An element with nil content: add a '(nil :order).
+         * A non-interned object: add a (not :non-semantic). This also
+           handles elements with content of a non-interned object.
+      In addition, in this case, we don't want to match the universal
+      objects. We add a '(nil :order) to avoid matching them."
+  [pattern {:keys [require-not-type require-semantic] :as options}]
   (assert (tree-entity? pattern))
   (letfn [(pre-fn [_ entity _ conflux-map]
             (cond
@@ -503,7 +508,7 @@
               (let [c (content assembled)
                     new-elements
                     (cond-> (or (forward-elements assembled) [])
-                      (and (nil? c) require-orders)
+                      (and (nil? c) require-semantic)
                       (concat ['(nil :order)]))]
                 [(make-tree-element
                   c new-elements (entity-direction original))
@@ -535,8 +540,9 @@
                   (and require-not-type (non-type-object? original))
                   (concat [(make-not-query `(~link-type))
                            (make-not-query `(~object-type))])
-                  require-orders
-                  (concat ['(nil :order)])))
+                  require-semantic
+                  (concat ['(nil :order)
+                           (make-not-query '(:non-semantic))])))
                conflux-map]
 
               :else  ; primitive
@@ -568,11 +574,12 @@
   "Given a pattern, alter it to work as a fixed-term query. Specifically:
     * Replace 'anything by nil.
     * If an element is not a label, require it not to not match labels.
-    * If an entity has nil content, add a '(nil :order) element to make
-      it only match user editable elements."
+    * Make it only match semantic items: add a '(nil :order) element to
+      an element with nil content and to an object, and require a
+      non-interned object not to have a :non-semantic element."
   [pattern]
   (transform-pattern-toward-fixed-term
-   pattern {:require-not-type true :require-orders true}))
+   pattern {:require-not-type true :require-semantic true}))
 
 (defn selector->fixed-term-query
   "Given an selector entity, turn it into a fixed-term query."
@@ -1100,8 +1107,9 @@
 ;;; its position among the tabs.
 ;;; A tab whose topic is a table has an element marked :tab-topic that
 ;;; describes the table. A tab whose topic is an item is instead the
-;;; source of a link, marked :tab-topic and :non-semantic, whose
-;;; target is the item.
+;;; source of a link, marked :tab-topic, whose target is the item. The
+;;; link is non-semantic, seen from the item, because its content is
+;;; the tab.
 ;;; This way, the topic can be an element, as well as an object. But
 ;;; if it's an element, the link does not make an element of the tab
 ;;; object, so it has to be found by looking through the elements
@@ -1390,7 +1398,7 @@
                         store
                         (tab-object-template (when tab-name [tab-name]) nil))
         [store _] (add-element store id `(~(id->entity tab-id store)
-                                          :tab-topic :non-semantic))]
+                                          :tab-topic))]
     [store tab-id]))
 
 (defn- tab-topic-known?

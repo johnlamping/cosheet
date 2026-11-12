@@ -26,36 +26,40 @@
 ;;; about how to display the elements, is considered irrelevant for
 ;;; matching a condition. We call the elements that do matter the
 ;;; semantic elements.
+
 ;;; Specifically, a semantic element is one whose content is something
-;;; the user can enter, and that is not explicitly marked
-;;; :non-semantic.
+;;; the user can enter, and is not an object marked :non-semantic.
+;;; Note that this test depends on direction: the content of a reverse
+;;; element is the link's target. So a link whose source is a
+;;; non-semantic object is non-semantic seen from its target, but seen
+;;; from its source it is a reverse element whose content is the
+;;; target, and so is semantic if the target is a semantic object.
 
 ;;; Once an element is put in the store, if will have an :order
-;;; element if it is semantic. User queries against the store will
-;;; typically include that requirement, to make sure they only return
-;;; semantic elements.
+;;; element if it is semantic. But is possible for a store object to
+;;; have an :order element even if it is non-semantic. (This happens
+;;; with tabs.)
 
-;;; It is possible for an object to be marked :non-semantic, even
-;;; though it getsan :order element, and even though its elements are
-;;; semantic. This currently only happens for objects that represent
-;;; tabs. Searches for user objects should do acheck that the object
-;;; does not have :non-semantic, as well as checking that it has an
-;;; :order.
+;;; Note: transform-pattern-toward-fixed-term's handling of
+;;; :require-semantic needs to be kept in synch with the definition of
+;;; a semantic element.
 
 ;;; Note: Logically, semantic-element? would make more sense in
 ;;; model-utils, but our orderable-entity? needs semantic-element?, to
 ;;; know what parts need order information. And model-utils imports
 ;;; orderable-entity?. So semantic-element? has to go here, or in what
 ;;; would be its own file, practically.
+
 (defn semantic-element?
-  "Return true if an item counts as semantic information."
+  "Return true if an item counts as semantic information. An element
+  whose content is an object marked :non-semantic does not."
   [immutable-entity]
    (let [cont (content immutable-entity)]
-     (and (or (string? cont)
-              (number? cont)
-              (object? cont)
-              (= cont 'anything))
-          (empty? (content->elements immutable-entity :non-semantic)))))
+     (or (string? cont)
+         (number? cont)
+         (= cont 'anything)
+         (and (object? cont)
+              (empty? (content->elements cont :non-semantic))))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."

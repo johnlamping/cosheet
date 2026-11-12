@@ -47,17 +47,19 @@
                                   update-action-data-for-component]]
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [add-order-elements]]
-             [model-utils :refer [entity->canonical-semantic
-                                  semantic-elements
-                                  semantic-to-tree object-semantic-to-tree
-                                  pattern->fixed-term-query
+             [model-utils :refer [object-semantic-to-tree
                                   label-object-template
-                                  mark-template-as-selector selector?
-                                  replace-anythings-with-empty
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral
                                   tab-query tab-item-topic
-                                  add-at-end-of-tabs tab-object-template]]
+                                  add-at-end-of-tabs
+                                  tab-object-template]]
+             [semantic :refer [entity->canonical-semantic semantic-elements
+                               semantic-to-tree
+                               pattern->fixed-term-query
+                               selector?
+                               mark-template-as-selector
+                               replace-anythings-with-empty]]
              [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])

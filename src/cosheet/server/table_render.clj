@@ -19,14 +19,13 @@
                                   table-column-headers-element
                                   table-row-condition-object
                                   selector-object-semantic-to-tree
-                                  semantic-to-tree
-                                  semantic-elements
-                                  pattern->fixed-term-query
-                                  fixed-term-to-template
-                                  add-non-selector-to-fixed-term
                                   column-header-template
-                                  unspecified-column-header-template
-                                  selector->fixed-term-query]]
+                                  unspecified-column-header-template]]
+             [semantic :refer [semantic-to-tree semantic-elements
+                               pattern->fixed-term-query
+                               selector->fixed-term-query
+                               fixed-term-to-template
+                               add-non-selector-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    condition-satisfiers

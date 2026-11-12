@@ -20,10 +20,10 @@
                           merge-classes]]
     [reporter-macros :refer [let-R]])
    (cosheet.server
-    [model-utils :refer [semantic-elements selector-semantic-elements
-                         semantic-label-elements
-                         semantic-to-tree semantic-to-tree-excluding-elements
-                         entity->canonical-semantic selector?]]
+    [semantic :refer [semantic-elements selector-semantic-elements
+                      semantic-label-elements semantic-to-tree
+                      semantic-to-tree-excluding-elements
+                      entity->canonical-semantic selector?]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves

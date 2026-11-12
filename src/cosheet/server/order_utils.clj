@@ -17,49 +17,11 @@
                     repetition-avoiding-threaded-traverse]]
     [query :refer [matching-items]]
     [utils :refer [with-latest-value update-new-further-action]]
-    [task-queue :refer [add-task-with-priority]])))
+    [task-queue :refer [add-task-with-priority]])
+   (cosheet.server
+    [semantic :refer [semantic-element?]])))
 
 ;;; Utilities for creating and using orders.
-
-;;; For purposes of comparing two entities, not all of their elements
-;;; matter. In particular, order information, or other information
-;;; about how to display the elements, is considered irrelevant for
-;;; matching a condition. We call the elements that do matter the
-;;; semantic elements.
-
-;;; Specifically, a semantic element is one whose content is something
-;;; the user can enter, and is not an object marked :non-semantic.
-;;; Note that this test depends on direction: the content of a reverse
-;;; element is the link's target. So a link whose source is a
-;;; non-semantic object is non-semantic seen from its target, but seen
-;;; from its source it is a reverse element whose content is the
-;;; target, and so is semantic if the target is a semantic object.
-
-;;; Once an element is put in the store, if will have an :order
-;;; element if it is semantic. But is possible for a store object to
-;;; have an :order element even if it is non-semantic. (This happens
-;;; with tabs.)
-
-;;; Note: transform-pattern-toward-fixed-term's handling of
-;;; :require-semantic needs to be kept in synch with the definition of
-;;; a semantic element.
-
-;;; Note: Logically, semantic-element? would make more sense in
-;;; model-utils, but our orderable-entity? needs semantic-element?, to
-;;; know what parts need order information. And model-utils imports
-;;; orderable-entity?. So semantic-element? has to go here, or in what
-;;; would be its own file, practically.
-
-(defn semantic-element?
-  "Return true if an item counts as semantic information. An element
-  whose content is an object marked :non-semantic does not."
-  [immutable-entity]
-   (let [cont (content immutable-entity)]
-     (or (string? cont)
-         (number? cont)
-         (= cont 'anything)
-         (and (object? cont)
-              (empty? (content->elements cont :non-semantic))))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."

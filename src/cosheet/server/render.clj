@@ -10,9 +10,9 @@
                       [map-reporter :refer [map-reporter-get]]
                       [hiccup-utils :refer [add-attributes]])
             (cosheet.server
-             [order-utils :refer [semantic-element?]]
              [model-utils :refer [ordered-tabs-ids-R tab-item-topic
-                                  tab-table-topic semantic-to-tree]]
+                                  tab-table-topic]]
+             [semantic :refer [semantic-element? semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
              [table-render :refer [render-table-DOM-R]]

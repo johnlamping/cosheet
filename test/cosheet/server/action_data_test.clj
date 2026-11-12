@@ -22,9 +22,9 @@
             (cosheet.server [action-data :refer :all]
                              [order-utils :refer [ordered-entities
                                                   order-recursively]]
+                             [semantic :refer [semantic-to-tree
+                                               semantic-elements]]
                              [server-test-setup :refer [add-order-elements]]
-                             [model-utils :refer [semantic-to-tree
-                                                  semantic-elements]]
                              [render-utils :refer [make-sequential-template]])
             ; :reload
             ))

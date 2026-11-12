@@ -39,22 +39,22 @@
     [dom-manager :refer [client-id->action-data
                          client-id->relative-ids
                          relative-ids->client-id]]
-    [model-utils :refer [semantic-elements abandon-problem-changes
-                         ordered-semantic-to-tree entity->canonical-semantic
+    [model-utils :refer [abandon-problem-changes ordered-semantic-to-tree
                          create-possible-selector-entities
-                         selector->fixed-term-query remove-semantic-elements
-                         label-object-template
+                         remove-semantic-elements label-object-template
                          table-row-template table-column-headers-id
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
-                         create-possible-selector-entity
-                         merge-objects selector? modify-to-non-selector
-                         remove-entity-by-id
-                         object-semantic-to-tree add-item-tab
-                         tabs-cleanup tab-query]]
+                         create-possible-selector-entity merge-objects
+                         modify-to-non-selector remove-entity-by-id
+                         object-semantic-to-tree add-item-tab tabs-cleanup
+                         tab-query]]
+    [semantic :refer [semantic-elements entity->canonical-semantic
+                      semantic-element? selector->fixed-term-query
+                      selector?]]
     [render-utils :refer [final-template]]
-    [order-utils :refer [order-element-for-item semantic-element?]])))
+    [order-utils :refer [order-element-for-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.

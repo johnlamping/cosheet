@@ -13,7 +13,7 @@
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [model-utils :refer [mark-template-as-selector semantic-to-tree]]
+             [semantic :refer [semantic-to-tree mark-template-as-selector]]
              [render-utils :refer :all])
             ; :reload
             ))

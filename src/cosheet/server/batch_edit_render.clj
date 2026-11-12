@@ -17,9 +17,8 @@
              [render-utils :refer [hierarchy-node-DOM make-component
                                    make-sequential-template
                                    ensure-label-object]]
-             [model-utils :refer [semantic-elements
-                                  semantic-to-tree
-                                  pattern->fixed-term-query]]
+             [semantic :refer [semantic-elements semantic-to-tree
+                               pattern->fixed-term-query]]
              [order-utils :refer [ordered-entities]]
              [item-render :refer [add-labels-DOM label-stack-DOM
                                   labels-and-elements-DOM

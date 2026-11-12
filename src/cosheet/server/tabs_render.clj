@@ -11,9 +11,9 @@
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [ordered-entities]]
-             [model-utils :refer [semantic-elements
-                                  new-tab-table-element tab-query
+             [model-utils :refer [new-tab-table-element tab-query
                                   tab-object-template]]
+             [semantic :refer [semantic-elements]]
              [render-utils :refer [hierarchy-node-DOM make-component
                                    make-sequential-template]]
              [item-render :refer [virtual-DOM-component

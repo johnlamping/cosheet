@@ -23,7 +23,8 @@
              [test-utils :refer [check]])
             (cosheet.server
              [order-utils :refer :all]
-             [model-utils :refer [semantic-to-tree remove-entity-by-id]])
+             [model-utils :refer [remove-entity-by-id]]
+             [semantic :refer [semantic-to-tree semantic-element?]])
             ; :reload
             ))
 
@@ -66,19 +67,6 @@
                              (~(link-type-object "age") (~o6 :order)))
                          ("married" (~o3 :order))
                          ("male" (~o2 :order))))
-
-(deftest semantic-element?-test
-  (is (semantic-element? (make-tree-element 1 [2])))
-  (is (semantic-element? (make-tree-element "1" [2])))
-  (is (semantic-element? (make-tree-element 'anything [2])))
-  (is (semantic-element? (make-tree-element
-                          (entity/id->object name-label-id nil)
-                          [2])))
-  (is (semantic-element? (make-tree-element
-                          (make-tree-object [3]) [2])))
-  (is (semantic-element? (make-tree-element
-                          (make-tree-object [3]) [2] :reverse)))
-  (is (not (semantic-element? (make-tree-element :foo [2])))))
 
 (deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.

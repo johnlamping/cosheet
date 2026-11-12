@@ -19,7 +19,7 @@
                                   add-link-type-object]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [model-utils :refer [semantic-label-elements]]
+             [semantic :refer [semantic-label-elements]]
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]

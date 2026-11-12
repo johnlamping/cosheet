@@ -40,9 +40,9 @@
                                    ensure-label-object]]
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [run-renderer add-order-elements]]
-             [model-utils :refer [semantic-to-tree semantic-elements
-                                  table-row-condition-object
-                                  mark-template-as-selector]]
+             [model-utils :refer [table-row-condition-object]]
+             [semantic :refer [semantic-to-tree semantic-elements
+                               mark-template-as-selector]]
              [table-render :refer :all])
              ; :reload
             ))

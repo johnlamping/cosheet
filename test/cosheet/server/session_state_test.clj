@@ -23,8 +23,8 @@
             (cosheet.server
              [session-state :refer :all]
              [item-render :refer [render-item-DOM-R]]
-             [model-utils :refer [semantic-to-tree
-                                  starting-store add-table]]
+             [model-utils :refer [starting-store add-table]]
+             [semantic :refer [semantic-to-tree]]
              [dom-manager :refer [relative-ids->client-id
                                   client-id->component]]
              [action-data :refer [get-id-action-data]])

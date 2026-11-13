@@ -186,7 +186,7 @@
   "Handle an open window request in an ajax response."
   [response]
   (when-let [path (:open response)]
-    (.open js/window path "CosheetQuickLookPopup")))
+    (.open js/window path "CosheetNewWindow")))
 
 (defn handle-ajax-set-url
   "Handle a request to set the url in an ajax response"

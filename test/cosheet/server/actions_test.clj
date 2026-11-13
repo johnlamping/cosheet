@@ -732,12 +732,12 @@
     (is (nil? (do-delete new-store {:subject-ids [tab1-id] :tab-id tab1-id
                                     :virtual true})))))
 
-(deftest do-quick-look-test
+(deftest do-open-in-new-window-test
   ;; When the subject's target is a symbol, the subject itself is opened.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
         session-state {:client-state (make-map-reporter {:root-id nil})}]
-    (is (check (do-quick-look s {:subject-ids [holder-id]
-                                 :session-state session-state})
+    (is (check (do-open-in-new-window s {:subject-ids [holder-id]
+                                         :session-state session-state})
                {:store s
                 :open (str "?root=" (id->string holder-id))}))))
 
@@ -1042,8 +1042,8 @@
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
-  (deftest do-quick-look-test
-    (is (check (do-quick-look store
+  (deftest do-open-in-new-window-test
+    (is (check (do-open-in-new-window store
                               {:referent (item-referent joe)
                                :target-key "joe"
                                :session-state {:url-path "foo"}})

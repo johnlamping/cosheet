@@ -45,14 +45,14 @@
 (defn target-in-select-holder? [target]
   (find-ancestor-with-class target "select_holder" 4))
 
-(defn open-quick-look-popup
-  "Open the quick look popup window.
+(defn open-new-window-popup
+  "Open the popup window for the open in new window command.
   This should be called while in any event handler that will end up opening
   up the window, so we are less likely to be stopped by a popup blocker
   and more likely to get a popup, rather than a new tab."
   []
   (.open
-   js/window "" "CosheetQuickLookPopup",
+   js/window "" "CosheetNewWindow",
    (str "width=640,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
 (defn request-command-action
@@ -69,7 +69,7 @@
                   nil)
         contextual-keyword (case command-name
                              "open-in-new-tab" :open-in-new-tab
-                             "quick-look" :quick-look
+                             "open-in-new-window" :open-in-new-window
                              "add-twin" :add-twin
                              "add-element" :add-element
                              "add-label" :add-label
@@ -88,7 +88,8 @@
           (request-action [keyword])
           (and contextual-keyword
                (or selection (= contextual-keyword :batch-edit)))
-          (do (when (= contextual-keyword :quick-look) (open-quick-look-popup))
+          (do (when (= contextual-keyword :open-in-new-window)
+                (open-new-window-popup))
               (request-action [contextual-keyword
                                (when selection (.-id selection))])))))
 
@@ -233,14 +234,15 @@
                       ("-" "_" "r") [:add-row]
                       ("\\" "|" "c") [:add-column]
                       "e" [:open-in-new-tab]
-                      "k" [:quick-look]
+                      "k" [:open-in-new-window]
                       "b" [:batch-edit]
                       nil)
             id (when @selected (.-id @selected))]
         (when (and command (not @edit-field-open-on)
                    (or id (#{:batch-edit :quit-batch-edit} (first command))))
           (.log js/console (str command))
-          (when (= (first command) :quick-look) (open-quick-look-popup))
+          (when (= (first command) :open-in-new-window)
+            (open-new-window-popup))
           (request-action
            (apply vector (first command) id (rest command))))))
     (when (= total-shift 0)

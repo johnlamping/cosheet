@@ -634,7 +634,7 @@
        :set-url (str (:url-path session-state)
                      "?root=" (id->string tab-id))})))
 
-(defn do-quick-look
+(defn do-open-in-new-window
   "Open a new window that examines the subject."
   [store {:keys [subject-ids session-state]}]
   (when-let [subject-id (first subject-ids)]
@@ -751,7 +751,7 @@
     :delete-column do-delete-column
     :set-content do-set-content
     :open-in-new-tab do-open-in-new-tab
-    :quick-look do-quick-look
+    :open-in-new-window do-open-in-new-window
     :batch-edit do-batch-edit}
    action))
 

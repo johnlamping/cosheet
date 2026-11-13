@@ -12,13 +12,13 @@
                    string->id]]
     mutable-store-impl
     [store-utils :refer [add-object]]
-    [entity :refer [make-tree-object]]
     [calculator :refer [compute propagate-calculator-data!]]
     [map-reporter :refer [make-map-reporter map-reporter-get-current
                        map-reporter-reset!]])
    (cosheet.server
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R
                          remove-entity-by-id]]
+    [semantic :refer [make-non-semantic-tree-object]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]
     [dom-manager :refer [make-dom-manager add-root-dom remove-all-doms]])))
@@ -158,7 +158,7 @@
 (defn update-add-session-ephemeral-object
   [immutable-store]
   (add-object immutable-store
-              (make-tree-object
+              (make-non-semantic-tree-object
                '(:root-ephemeral
                  ;; These hold the data that control batch edit mode.
                  (anything :batch-query :selector)

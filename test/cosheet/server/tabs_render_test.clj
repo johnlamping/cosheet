@@ -19,6 +19,7 @@
              [render-utils :refer [make-sequential-template]]
              [model-utils :refer [starting-store add-at-end-of-tabs
                                   tab-object-template new-tab-table-element]]
+             [semantic :refer [make-non-semantic-tree-object]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
@@ -126,7 +127,7 @@
              [:component
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
-               :template (make-tree-object [:tab :non-semantic "foo"])
+               :template (make-non-semantic-tree-object [:tab "foo"])
                :render-dom (tab-DOM)
                :example-element-ids [(:item-id t2-bar)]
                :parallel-ids [(:item-id t2)]

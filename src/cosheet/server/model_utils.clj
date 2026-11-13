@@ -55,7 +55,8 @@
                       selector-semantic-elements selector-semantic-to-tree
                       selector? mark-template-as-selector
                       replace-anythings-with-empty selector-marked-entities
-                      fixed-term-to-template]])))
+                      fixed-term-to-template
+                      make-non-semantic-tree-object]])))
 
 ;;; Utilities that know about how information is encoded in terms of the store.
 
@@ -89,8 +90,8 @@
            (if last-string-item
              (update-source
               store (:item-id last-string-item) next-new)
-             (first (add-isolated-element
-                     store `(~next-new :last-new-string))))])))))
+             (first (add-object store (make-non-semantic-tree-object
+                                       [`(~next-new :last-new-string)]))))])))))
 
 (defn get-n-new-strings
   "Get n new strings"
@@ -732,7 +733,7 @@
 
 ;;; Tabs
 
-;;; A tab is an object marked with :tab and :non-semantic elements.
+;;; A tab is a non-semantic object marked with a :tab element.
 ;;; Its names are its semantic elements, and its :order element gives
 ;;; its position among the tabs.
 ;;; A tab whose topic is a table has an element marked :tab-topic that
@@ -861,8 +862,8 @@
   "Return the template for a tab with the given names, and with the
   given topic element, if there is one."
   [names topic]
-  (make-tree-object (cond-> (into [:tab :non-semantic] names)
-                      topic (conj topic))))
+  (make-non-semantic-tree-object (cond-> (into [:tab] names)
+                                   topic (conj topic))))
 
 (def column-header-template
   ;; The minimum content for a column header.
@@ -897,10 +898,9 @@
   will have a single tab with that name and a table with that name."
   [tab-name]
   (let [store (add-universal-objects (new-element-store))
-        [store _] (add-isolated-element store
-                                        (list current-format :format))
-        [store orderable-id] (add-isolated-element
-                              store (list initial :unused-orderable))]
+        [store _] (add-object store (make-non-semantic-tree-object
+                                     [(list current-format :format)
+                                      (list initial :unused-orderable)]))]
     (if tab-name
       (let [[tab store] (specialize-generic
                          (tab-object-template

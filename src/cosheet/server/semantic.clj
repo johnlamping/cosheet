@@ -54,6 +54,12 @@
          (and (object? cont)
               (empty? (content->elements cont :non-semantic))))))
 
+(defn make-non-semantic-tree-object
+  "Make the tree representation of an object with the given elements
+  that is marked as non-semantic."
+  [elements]
+  (make-tree-object (cons :non-semantic elements)))
+
 (defn semantic-elements
   "Return the elements of an entity that are semantic."
   [immutable-entity]

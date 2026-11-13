@@ -11,7 +11,7 @@
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [ordered-entities]]
-             [model-utils :refer [new-tab-table-element tab-query
+             [model-utils :refer [new-table-object-template tab-query
                                   tab-object-template]]
              [semantic :refer [semantic-elements]]
              [render-utils :refer [hierarchy-node-DOM make-component
@@ -119,7 +119,7 @@
     :target-item-id last-tab-id
     :class "tab virtualTab"
     :template (make-sequential-template
-               (tab-object-template nil new-tab-table-element)
+               (tab-object-template nil new-table-object-template)
                'anything)
     :incoming-subject-is :adjacent
     :get-action-data get-item-or-exemplar-action-data

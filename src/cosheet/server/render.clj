@@ -10,8 +10,7 @@
                       [map-reporter :refer [map-reporter-get]]
                       [hiccup-utils :refer [add-attributes]])
             (cosheet.server
-             [model-utils :refer [ordered-tabs-ids-R tab-item-topic
-                                  tab-table-topic]]
+             [model-utils :refer [ordered-tabs-ids-R tab-topic table-item?]]
              [semantic :refer [semantic-element? semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
@@ -573,15 +572,15 @@
                   :chosen-tab-id id
                   :render-dom render-tabs-DOM
                   :get-action-data get-empty-action-data})
-                (if-let [table (tab-table-topic immutable-item)]
-                  (make-component
-                   {:relative-id (:item-id table)
-                    :table-id (:item-id table)
-                    :render-dom render-table-DOM-R
-                    :get-action-data default-get-action-data})
-                  ;; The topic is an item. Show it.
-                  (when-let [item (tab-item-topic immutable-item)]
-                    (top-level-item-component (:item-id item))))]
+                (when-let [topic (tab-topic immutable-item)]
+                  (if (table-item? topic)
+                    (make-component
+                     {:relative-id (:item-id topic)
+                      :table-id (:item-id topic)
+                      :render-dom render-table-DOM-R
+                      :get-action-data default-get-action-data})
+                    ;; The topic is an item. Show it.
+                    (top-level-item-component (:item-id topic))))]
                ;; No tab is selected. Show just the item.
                (top-level-item-component (:item-id immutable-item)))]))))))
 

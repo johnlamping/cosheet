@@ -51,7 +51,7 @@
                                   label-object-template
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral
-                                  tab-query tab-item-topic
+                                  tab-query tab-topic
                                   add-at-end-of-tabs
                                   tab-object-template]]
              [semantic :refer [entity->canonical-semantic semantic-elements
@@ -754,7 +754,7 @@
         tab (first (matching-items tab-query new-store))]
     (is (= root-id (:item-id tab)))
     (is (= set-url (str "foo?root=" (id->string (:item-id tab)))))
-    (is (= (:item-id (tab-item-topic tab)) holder-id))))
+    (is (= (:item-id (tab-topic tab)) holder-id))))
 
 (deftest do-add-row-test
   (let [first-header-id (first header-ids)

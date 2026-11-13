@@ -27,7 +27,8 @@
              [test-setup :refer [cyclic-and-shared-a-b-stores]])
             (cosheet.server
              [semantic :refer :all]
-             [model-utils :refer [starting-store ordered-tabs-ids-R]])
+             [model-utils :refer [starting-store ordered-tabs-ids-R
+                                  tab-topic]])
             ; :reload
             ))
 
@@ -333,10 +334,8 @@
     (compute cd)
     (let [first-tab (id->entity
                      (first (reporter-value-or-invalid ordered-tab-ids)) s)]
-      (is (selector? (content (first (label->elements
-                                      (first (label->elements first-tab
-                                                              :tab-topic))
-                                      :row-condition))))))
+      (is (selector? (content (first (label->elements (tab-topic first-tab)
+                                                      :row-condition))))))
     (is (selector? selector-root))
     (is (selector? selector-child))
     (is (selector? selector-grandchild))

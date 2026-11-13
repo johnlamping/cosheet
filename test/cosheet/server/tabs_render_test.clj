@@ -18,7 +18,8 @@
                                   get-virtual-DOM-rendering-data]]
              [render-utils :refer [make-sequential-template]]
              [model-utils :refer [starting-store add-at-end-of-tabs
-                                  tab-object-template new-tab-table-element]]
+                                  tab-object-template
+                                  new-table-object-template]]
              [semantic :refer [make-non-semantic-tree-object]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
@@ -59,7 +60,8 @@
   (let [specification {:priority 1
                        :width 3.0}
         tab-template (fn [names]
-                       (tab-object-template names '("" :tab-topic :table)))
+                       (tab-object-template
+                        names (make-non-semantic-tree-object [:table])))
         [s1 t1-id] (add-at-end-of-tabs (starting-store nil)
                                        (tab-template ["foo"]))
         [s2 t2-id] (add-at-end-of-tabs s1 (tab-template ["foo" "bar"]))
@@ -94,7 +96,7 @@
              :target-item-id (:item-id t3)
              :class "tab virtualTab"
              :template (make-sequential-template
-                        (tab-object-template nil new-tab-table-element)
+                        (tab-object-template nil new-table-object-template)
                         'anything)
              :incoming-subject-is :adjacent
              :use-bigger true

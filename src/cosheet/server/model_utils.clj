@@ -439,8 +439,22 @@
            (contains? seen (entity-key template-content)))
       [store nil order seen]
       (not (orderable-entity? template))
-      (let [[s id] (add-element store attachment-id template)]
-        [s id order seen])
+      (if (and (object? template-content)
+               (not (stored-entity? template-content)))
+        ;; The element is non-semantic, but the semantic parts of the
+        ;; new object it holds still need orders.
+        (let [[store object-id order seen]
+              (update-add-object-with-order-without-revisiting
+               store template-content order position false seen)
+              [store id] (if (reverse? template)
+                           (add-link store object-id attachment-id)
+                           (add-link store attachment-id object-id))
+              [store order seen]
+              (update-add-elements-with-order-without-revisiting
+               store id template-elements order position seen)]
+          [store id order seen])
+        (let [[s id] (add-element store attachment-id template)]
+          [s id order seen]))
       :else
       (let [[store value-to-store order seen]
             (if (object? template-content)
@@ -736,11 +750,9 @@
 ;;; A tab is a non-semantic object marked with a :tab element.
 ;;; Its names are its semantic elements, and its :order element gives
 ;;; its position among the tabs.
-;;; A tab whose topic is a table has an element marked :tab-topic that
-;;; describes the table. A tab whose topic is an item is instead the
-;;; source of a link, marked :tab-topic, whose target is the item. The
-;;; link is non-semantic, seen from the item, because its content is
-;;; the tab.
+;;; The topic of a tab, a table or an item, is the target of a link,
+;;; marked :tab-topic, whose source is the tab. The link is
+;;; non-semantic, seen from the topic, because its content is the tab.
 ;;; This way, the topic can be an element, as well as an object. But
 ;;; if it's an element, the link does not make an element of the tab
 ;;; object, so it has to be found by looking through the elements
@@ -755,18 +767,10 @@
   (let-R [tab-ids (matching-item-ids-R tab-query store)]
     (ordered-ids-R tab-ids store)))
 
-(defn tab-table-topic
-  "Return the element of the tab that describes its table, or nil if
-  the topic of the tab is not a table. The element must be forward,
-  because a link that makes an item the topic shows up as a reverse
-  element of the tab when the item is an object."
-  [tab]
-  (first (remove reverse? (label->elements tab :tab-topic))))
-
-(defn tab-item-topic
-  "Return the item that is the topic of the tab, found through the
-  element of the item, marked :tab-topic, whose content is the tab.
-  Return nil if the topic of the tab is not an item."
+(defn tab-topic
+  "Return the topic of the tab, found through the element of the topic,
+  marked :tab-topic, whose content is the tab. Return nil if the tab
+  has no topic."
   [tab]
   (when-let [link (first (filter #(seq (content->elements % :tab-topic))
                                  (containing-elements tab)))]
@@ -775,8 +779,8 @@
 (def label-object-template
   (make-tree-object [`(~'anything (~name-label)) `(~link-type)]))
 
-;;; A table item has a :table element, and has the following elements
-;;; that describe the table:
+;;; A table is a non-semantic object with a :table element, and with
+;;; the following elements that describe the table:
 ;;;   :row-condition  The content is an item whose list form gives the
 ;;;                   requirements for an item to appear as a row.
 ;;;                   It is marked as :selector.
@@ -838,32 +842,39 @@
   (selector-object-semantic-to-tree
    (table-row-condition-object table-item)))
 
-(defn tab-table-element
-  "Return the element that gives the information for a table in a new
-  tab with the given row condition elements and header elements. One
-  of the row condition elements should be an object type, which will
-  give the kind of object the rows should contain"
-  [row-condition-elements header-elements]
-  `("" ; a keyword here would make this non-semantic and so not orderable.
-    :tab-topic
-    :table
-    (~(make-tree-object
-       (conj (map mark-template-as-selector row-condition-elements)
-             :selector))
-     :row-condition)
-    ~(concat '(anything :column-headers :selector)
-             (map mark-template-as-selector header-elements))))
+(defn table-item?
+  "Return whether the item is a table."
+  [item]
+  (seq (content->elements item :table)))
 
-(def new-tab-table-element
-  (tab-table-element [`(~(object-type-object '???))]
-                     [`(~'anything (~(link-type-object '???)))]))
+(defn table-object-template
+  "Return the template for a table with the given row condition
+  elements and header elements. One of the row condition elements
+  should be an object type, which will give the kind of object the
+  rows should contain"
+  [row-condition-elements header-elements]
+  (make-non-semantic-tree-object
+   [:table
+    `(~(make-tree-object
+        (conj (map mark-template-as-selector row-condition-elements)
+              :selector))
+      :row-condition)
+    (concat '(anything :column-headers :selector)
+            (map mark-template-as-selector header-elements))]))
+
+(def new-table-object-template
+  (table-object-template [`(~(object-type-object '???))]
+                         [`(~'anything (~(link-type-object '???)))]))
 
 (defn tab-object-template
   "Return the template for a tab with the given names, and with the
-  given topic element, if there is one."
+  given topic object, if there is one. The topic is held by a reverse
+  element, marked :tab-topic, so it becomes an element of the topic
+  whose content is the tab."
   [names topic]
-  (make-non-semantic-tree-object (cond-> (into [:tab] names)
-                                   topic (conj topic))))
+  (make-non-semantic-tree-object
+   (cond-> (into [:tab] names)
+     topic (conj (make-tree-element topic [:tab-topic] :reverse)))))
 
 (def column-header-template
   ;; The minimum content for a column header.
@@ -905,7 +916,7 @@
       (let [[tab store] (specialize-generic
                          (tab-object-template
                           [tab-name]
-                          (tab-table-element
+                          (table-object-template
                            [`(~(object-type-object tab-name))]
                            [`(~'anything (~(link-type-object '???)))]))
                          store)]
@@ -998,7 +1009,7 @@
           store
           (tab-object-template
            [table-name]
-           (tab-table-element
+           (table-object-template
             [`(~(object-type-object table-name))]
             (map (fn [header]
                    `(~'anything (~(link-type-object header))))
@@ -1032,28 +1043,39 @@
     [store tab-id]))
 
 (defn- tab-topic-known?
-  "Return whether the topic of the tab still exists: a table, or an
-  item about which something is known besides the link that makes it
-  the topic."
+  "Return whether the topic of the tab still exists, and something is
+  known about it besides the link that makes it the topic."
   [tab]
-  (or (tab-table-topic tab)
-      (when-let [item (tab-item-topic tab)]
-        (or (element? item)
-            (seq (containing-elements item))
-            (seq (remove #(seq (content->elements % :tab-topic))
-                         (forward-elements item)))))))
+  (when-let [topic (tab-topic tab)]
+    (or (element? topic)
+        (seq (containing-elements topic))
+        (seq (remove #(seq (content->elements % :tab-topic))
+                     (forward-elements topic))))))
+
+(defn- table-has-tab?
+  "Return whether the table is the topic of some tab."
+  [table]
+  (some #(seq (content->elements % :tab-topic)) (forward-elements table)))
 
 (defn tabs-cleanup
   "Return the store with every tab removed whose topic is an item that
-  no longer exists or is an object about which nothing else is known.
+  no longer exists or is an object about which nothing else is known,
+  and with every table removed that is no longer the topic of a tab.
   Removing the tab also removes the link that made the item its topic."
   [store]
-  (reduce (fn [store tab]
-            (cond-> store
-              (not (tab-topic-known? (id->entity (:item-id tab) store)))
-              (remove-entity-by-id (:item-id tab))))
-          store
-          (matching-items tab-query store)))
+  (as-> store store
+    (reduce (fn [store tab]
+              (cond-> store
+                (not (tab-topic-known? (id->entity (:item-id tab) store)))
+                (remove-entity-by-id (:item-id tab))))
+            store
+            (matching-items tab-query store))
+    (reduce (fn [store table]
+              (cond-> store
+                (not (table-has-tab? (id->entity (:item-id table) store)))
+                (remove-entity-by-id (:item-id table))))
+            store
+            (matching-items (make-tree-object [:table]) store))))
 
 (defn add-table
   "Given a sequence of rows, each a sequence of values,

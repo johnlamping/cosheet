@@ -781,19 +781,19 @@
 
 ;;; A table is a non-semantic object with a :table element, and with
 ;;; the following elements that describe the table:
-;;;   :row-condition  The content is an item whose list form gives the
+;;;   :row-condition  The content is an object that gives the
 ;;;                   requirements for an item to appear as a row.
 ;;;                   It is marked as :selector.
-;;;  :column-headers  The content is an item whose list form gives the
-;;;                   conditions for the column headers. Generally, the
-;;;                   content will be the keyword 'anything, to
-;;;                   indicate no constraint on the content of an
-;;;                   element in the row, without breaking the rule
-;;;                   that the database doesn't contain nil. The
-;;;                   exception is the special content :other, which
-;;;                   means to show everything not shown in any other
-;;;                   column. (:other not yet implemented.)
-;;;                   It is marked as :selector.
+;;;  :column-headers  An element, each of whose sub-elements is
+;;;                   the condition for a column header. Generally,
+;;;                   the sub-elements' content will be the keyword
+;;;                   'anything, to indicate no constraint on the
+;;;                   content of an element in the row, without
+;;;                   breaking the rule that the database doesn't
+;;;                   contain nil. The exception is the special
+;;;                   content :other, which means to show everything
+;;;                   not shown in any other column. (:other not yet
+;;;                   implemented.) It is marked as :selector.
 
 ;;; For doing matches for batch edits, it is sort of like each header
 ;;; is part of the row condition, but only aone header at a time. That
@@ -868,9 +868,7 @@
 
 (defn tab-object-template
   "Return the template for a tab with the given names, and with the
-  given topic object, if there is one. The topic is held by a reverse
-  element, marked :tab-topic, so it becomes an element of the topic
-  whose content is the tab."
+  given topic object, if there is one."
   [names topic]
   (make-non-semantic-tree-object
    (cond-> (into [:tab] names)

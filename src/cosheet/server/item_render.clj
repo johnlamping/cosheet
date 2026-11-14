@@ -561,6 +561,8 @@
   but with css class \"name\". The name and non-name elements and the
   virtual-dom all go in a single stack, so the virtual-dom can expand to
   fill the available area.
+  The non-name elements keep their order, but each maximal run of them
+  with the same direction is grouped by label separately.
   If implied-template is non-nil, don't show the elements' labels implied
   by it.  If must-show-label is true, show a virtual dom for labels where
   there are none. If, additionally, it is :wide, show them with
@@ -573,10 +575,12 @@
                      (non-label-element-group-doms
                       names implied-template must-show-label orientation
                       (into-attributes specification {:class "name"})))
-        non-names-doms (when (seq non-names)
-                         (non-label-element-group-doms
-                          non-names implied-template must-show-label
-                          orientation specification))]
+        non-names-doms (mapcat (fn [run]
+                                 (non-label-element-group-doms
+                                  run implied-template must-show-label
+                                  orientation specification))
+                               (partition-by reverse?
+                                             (ordered-entities non-names)))]
     (nest-if-multiple-DOM
      (concat names-doms non-names-doms (when virtual-dom [virtual-dom]))
      orientation)))

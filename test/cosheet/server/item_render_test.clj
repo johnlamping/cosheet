@@ -7,8 +7,9 @@
              [debug :refer [envs-to-trees simplify-for-print]]
              [entity :refer [id->element id->object flip-id-direction
                              name-label link-type object-type
-                             make-tree-object uniquely-identified-object?
-                             to-tree]]
+                             make-tree-object make-tree-element
+                             uniquely-identified-object?
+                             to-tree reverse?]]
              entity-impl
              [store :refer [new-element-store get-new-object-id
                             ->ItemId]]
@@ -16,10 +17,12 @@
              mutable-store-impl
              [store-utils :refer [add-isolated-element add-element add-object
                                   add-universal-objects
-                                  add-link-type-object]]
+                                  add-link-type-object link-type-object
+                                  find-object-by-name]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [semantic :refer [semantic-label-elements]]
+             [semantic :refer [semantic-label-elements
+                               semantic-non-label-elements]]
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
@@ -1461,3 +1464,97 @@
 (deftest render-virtual-DOM-test
   (is (check (render-virtual-DOM {:class "foo"} new-element-store)
              [:div {:class "foo editable virtual"}])))
+
+(defn label-header-DOM
+  "The header dom showing the shared label of the given elements, which
+  all have one label."
+  [elements]
+  [:div {:class "link-type horizontal-header top-border bottom-border"}
+   [:component {:width 0.75
+                :template label-template
+                :parallel-ids (map :item-id elements)
+                :complete-entity true
+                :class "link-type"
+                :relative-id (:item-id (first (semantic-label-elements
+                                               (first elements))))
+                :render-dom render-item-DOM-R
+                :get-action-data (default-AD)}]])
+
+(defn labeled-element-component
+  "The component for an element whose one label is the label object l,
+  shown under a header for the label."
+  [element l complete-entity]
+  [:component (cond-> {:template `(~'anything (~l))
+                       :width 2.0625
+                       :element-ids-to-exclude
+                       #{(:item-id (first (semantic-label-elements element)))}
+                       :relative-id (:item-id element)
+                       :render-dom render-item-DOM-R
+                       :get-action-data (default-AD)}
+                complete-entity (assoc :complete-entity true))])
+
+(deftest non-label-elements-DOM-directions-test
+  ;; Elements keep their order, but each run of elements with the same
+  ;; direction is grouped by label separately: here a forward element,
+  ;; a reverse one, and a forward one, all sharing a label, make three
+  ;; groups.
+  (let [s (add-universal-objects (new-element-store))
+        [s b-id] (add-object s (make-tree-object []))
+        [s a-id] (add-object s (make-tree-object
+                                [`("x" (~(link-type-object "L"))
+                                   (~o1 :order))
+                                 (make-tree-element
+                                  (id->object b-id s)
+                                  [`(~(link-type-object "L")) `(~o2 :order)]
+                                  :reverse)
+                                 `("z" (~(link-type-object "L"))
+                                   (~o3 :order))]))
+        a (id->object a-id s)
+        x (first (matching-elements "x" a))
+        z (first (matching-elements "z" a))
+        back (first (filter reverse? (semantic-non-label-elements a)))
+        l (id->object (:item-id (find-object-by-name
+                                 s "L" (link-type-object "")))
+                      nil)
+        labeled-element
+        (fn [element]
+          [:div {:class "horizontal-labels-element link-type wide"}
+           (label-header-DOM [element])
+           (labeled-element-component element l false)])]
+    (is (check (non-label-elements-DOM [x back z] nil false nil :vertical
+                                       {:template 'anything :width 3.0})
+               [:div {:class "vertical-stack"}
+                (labeled-element x)
+                (labeled-element back)
+                (labeled-element z)])))
+  ;; Two forward elements followed by a reverse one make two groups,
+  ;; with the forward elements sharing their label.
+  (let [s (add-universal-objects (new-element-store))
+        [s b-id] (add-object s (make-tree-object []))
+        [s a-id] (add-object s (make-tree-object
+                                [`("x" (~(link-type-object "L"))
+                                   (~o1 :order))
+                                 `("z" (~(link-type-object "L"))
+                                   (~o2 :order))
+                                 (make-tree-element
+                                  (id->object b-id s)
+                                  [`(~(link-type-object "L")) `(~o3 :order)]
+                                  :reverse)]))
+        a (id->object a-id s)
+        x (first (matching-elements "x" a))
+        z (first (matching-elements "z" a))
+        back (first (filter reverse? (semantic-non-label-elements a)))
+        l (id->object (:item-id (find-object-by-name
+                                 s "L" (link-type-object "")))
+                      nil)]
+    (is (check (non-label-elements-DOM [x z back] nil false nil :vertical
+                                       {:template 'anything :width 3.0})
+               [:div {:class "vertical-stack"}
+                [:div {:class "horizontal-labels-element link-type wide"}
+                 (label-header-DOM [x z])
+                 [:div {:class "vertical-stack"}
+                  (labeled-element-component x l true)
+                  (labeled-element-component z l true)]]
+                [:div {:class "horizontal-labels-element link-type wide"}
+                 (label-header-DOM [back])
+                 (labeled-element-component back l false)]]))))

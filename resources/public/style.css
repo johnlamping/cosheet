@@ -40,7 +40,9 @@
      horizontal-labels-element  A non-wrapped combination of a pair of
                              A DOM of labels and a DOM of elements, laid out
                              vertically or horizontally. This is typically
-                             generated for hierarchies.
+                             generated for hierarchies. It can also hold
+                             a combination of a reverse direction arrow
+                             and an inner horizontal-labels-element.
      horizontal-header       One node of the labels in the two-column label
                              layout.
      horizontal-value-last   The holder of the value(s) in the two-column
@@ -51,6 +53,11 @@
      merge-with-parent       A label/header box that merges visually into its
                              parent (nested labels and column headers).
      vertical-stack          Several sibling items stacked vertically.
+     reverse                 A wrapper around the dom of a group of
+                             reverse elements and a reverse-arrow dom on
+                             its left.
+     reverse-arrow           The arrow pointing back toward the source of
+                             reverse elements.
 
    From table-render (tables):
      table                   The whole table.
@@ -250,6 +257,25 @@ body {
 
 .content-plus-elements {
     text-align: left;
+}
+
+/* A group of reverse elements gets an arrow on its left, pointing back
+   toward the elements' source. */
+.reverse {
+    background-color: white;
+
+    & > .reverse-arrow {
+        flex: none;
+        align-self: center;
+        width: 14px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    & > :last-child {
+        flex: 1 1 auto;
+        min-width: 0px;
+    }
 }
 
 .horizontal-stack {
@@ -509,6 +535,10 @@ body {
 .horizontal-labels-element {
     display: flex;
     flex-direction: row;
+    /* Match the corners of a contained horizontal-header, so our
+       background doesn't show outside it. */
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
 
     & > .horizontal-stack > * {
         min-width: 35px;

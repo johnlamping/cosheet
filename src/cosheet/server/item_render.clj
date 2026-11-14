@@ -555,6 +555,14 @@
            (replace-hierarchy-leaves-by-nodes hierarchy)
            specification))))))
 
+(defn reverse-elements-DOM
+  "Wrap the dom for a group of reverse elements, putting an arrow to its
+  left that points back toward the elements' source."
+  [dom]
+  [:div {:class "horizontal-labels-element reverse"}
+   [:div {:class "reverse-arrow"} "\u2923"]
+   dom])
+
 (defn non-label-elements-DOM
   "Make a dom for a sequence of elements, all of which must not be labels.
   Elements that are names are put first, with their name labels hidden
@@ -562,7 +570,8 @@
   virtual-dom all go in a single stack, so the virtual-dom can expand to
   fill the available area.
   The non-name elements keep their order, but each maximal run of them
-  with the same direction is grouped by label separately.
+  with the same direction is grouped by label separately. Each group of
+  reverse elements is wrapped with an arrow to its left.
   If implied-template is non-nil, don't show the elements' labels implied
   by it.  If must-show-label is true, show a virtual dom for labels where
   there are none. If, additionally, it is :wide, show them with
@@ -576,9 +585,12 @@
                       names implied-template must-show-label orientation
                       (into-attributes specification {:class "name"})))
         non-names-doms (mapcat (fn [run]
-                                 (non-label-element-group-doms
-                                  run implied-template must-show-label
-                                  orientation specification))
+                                 (cond->> (non-label-element-group-doms
+                                           run implied-template
+                                           must-show-label orientation
+                                           specification)
+                                   (reverse? (first run))
+                                   (map reverse-elements-DOM)))
                                (partition-by reverse?
                                              (ordered-entities non-names)))]
     (nest-if-multiple-DOM

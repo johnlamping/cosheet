@@ -1493,6 +1493,13 @@
                        :get-action-data (default-AD)}
                 complete-entity (assoc :complete-entity true))])
 
+(defn reverse-group-DOM
+  "The dom for a group of reverse elements, with its arrow."
+  [dom]
+  [:div {:class "horizontal-labels-element reverse"}
+   [:div {:class "reverse-arrow"} "\u2923"]
+   dom])
+
 (deftest non-label-elements-DOM-directions-test
   ;; Elements keep their order, but each run of elements with the same
   ;; direction is grouped by label separately: here a forward element,
@@ -1518,9 +1525,10 @@
                       nil)
         labeled-element
         (fn [element]
-          [:div {:class "horizontal-labels-element link-type wide"}
-           (label-header-DOM [element])
-           (labeled-element-component element l false)])]
+          (cond-> [:div {:class "horizontal-labels-element link-type wide"}
+                   (label-header-DOM [element])
+                   (labeled-element-component element l false)]
+            (reverse? element) reverse-group-DOM))]
     (is (check (non-label-elements-DOM [x back z] nil false nil :vertical
                                        {:template 'anything :width 3.0})
                [:div {:class "vertical-stack"}
@@ -1555,6 +1563,7 @@
                  [:div {:class "vertical-stack"}
                   (labeled-element-component x l true)
                   (labeled-element-component z l true)]]
-                [:div {:class "horizontal-labels-element link-type wide"}
-                 (label-header-DOM [back])
-                 (labeled-element-component back l false)]]))))
+                (reverse-group-DOM
+                 [:div {:class "horizontal-labels-element link-type wide"}
+                  (label-header-DOM [back])
+                  (labeled-element-component back l false)])]))))

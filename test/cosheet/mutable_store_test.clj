@@ -259,25 +259,34 @@
     (is (= (categories-affected-by-ids [iobj] (new-element-store)
                                        (new-element-store))
            #{iobj})))
-  ;; A link/element id: only its target is added.
+  ;; A link/element id: both the objects it connects are adjacent.
   (let [iobj (make-item-id "I")
         [s1 obj] (get-new-object-id (new-element-store))
         [store link] (add-link s1 iobj obj)]
     (is (= (categories-affected-by-ids [link] store store)
-           #{link iobj})))
-  ;; An object that is not interned adds the links for which it is the
-  ;; source, but not the ones for which it is the target.
+           #{link iobj obj})))
+  ;; A link/element id whose target is a link: the target is in the
+  ;; transitively-containing set, and the objects of both links are adjacent.
+  (let [iobj (make-item-id "I")
+        [s1 obj] (get-new-object-id (new-element-store))
+        [s2 obj2] (get-new-object-id s1)
+        [s3 link] (add-link s2 iobj obj)
+        [store label-link] (add-link s3 link obj2)]
+    (is (= (categories-affected-by-ids [label-link] store store)
+           #{label-link link iobj obj obj2})))
+  ;; An object propagates to the links for which it is the source. As
+  ;; an adjacent id, it also adds the links for which it is the
+  ;; target, but without propagating through them.
   (let [iobj (make-item-id "I")
         [s1 obj] (get-new-object-id (new-element-store))
         [s2 src-link] (add-link s1 iobj obj)   ;; obj is the source
-        [store tgt-link] (add-link s2 obj "s")] ;; obj is the target
+        [s3 tgt-link] (add-link s2 obj "s")    ;; obj is the target
+        [store tgt-label-link] (add-link s3 tgt-link "l")]
     (is (not (interned-object-id? store obj)))
     (is (= (categories-affected-by-ids [obj] store store)
-           #{obj src-link iobj})))
-  ;; An object whose interned status differs between the two stores
-  ;; adds the links for which it is the source, and the links for
-  ;; which it is the target whose source is an object. Here obj is
-  ;; unnamed in the before store and named in the after store.
+           #{obj src-link tgt-link iobj})))
+  ;; An interned object propagates just like one that isn't. Here obj
+  ;; is unnamed in the before store and named in the after store.
   (let [iobj (make-item-id "I")
         jobj (make-item-id "J")
         [s1 obj] (get-new-object-id (new-element-store))
@@ -290,7 +299,6 @@
     (is (not (interned-object-id? before-store obj)))
     (is (interned-object-id? after-store obj))
     (is (= (categories-affected-by-ids [obj] before-store after-store)
-           #{obj src-link obj-tgt-link iobj}))
-    ;; Nothing extra if the interned status didn't change.
+           #{obj src-link obj-tgt-link prim-tgt-link name-link iobj}))
     (is (= (categories-affected-by-ids [obj] after-store after-store)
-           #{obj}))))
+           #{obj src-link obj-tgt-link prim-tgt-link name-link iobj}))))

@@ -3,11 +3,13 @@
                                      assoc-if-non-empty
                                      call-pseudo-closure]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [item-id? id->target]]
+                      [store :refer [id->target id->source]]
                       [store-utils :refer [directed-id->subject-value]]
                       [entity :refer [content label->elements
                                       id->entity entity-complexity object?
-                                      reverse? make-reverse-item-id]]
+                                      reverse? make-reverse-item-id
+                                      reverse-id? store-item-id
+                                      directed-item-id?]]
                       [canonical :refer [canonicalize
                                          update-canonical-content]]
                       [orderable :refer [initial orderable-compare]]
@@ -168,11 +170,21 @@
                  (seq (sort-by entity-complexity good-matches))
                  (seq (sort-by entity-complexity matches)))))))
 
+(defn element-subject-id
+  "Return the id of the subject of the element with the given directed
+  id: the source of its link for a reverse id, otherwise its target.
+  Return nil if the id is not a link."
+  [immutable-store id]
+  (if (reverse-id? id)
+    (id->source immutable-store (store-item-id id))
+    (id->target immutable-store id)))
+
 (defn best-matching-element-id
   "Find the element of the subject that best matches the exemplar id's item.
    Return that element's id, if there is any match."
   [exemplar-id subject-id immutable-store]
-  (if (= (id->target immutable-store exemplar-id) subject-id)
+  (if (= (element-subject-id immutable-store exemplar-id)
+         (store-item-id subject-id))
     ;; The exemplar id is an element of the given subject. Return it.
     exemplar-id
     (let [template (-> (id->entity exemplar-id immutable-store)
@@ -184,14 +196,14 @@
 (defn get-item-or-exemplars-for-id
   "Given the subject(s), find items or exemplars for the id."
   [subject-ids immutable-store id]
-  (assert (item-id? id) id)
-  ;; If there are any subjects, and exemplar id has a target, it must
+  (assert (directed-item-id? id) id)
+  ;; If there are any subjects, and exemplar id is an element, it must
   ;; be an element of one of the subjects. Otherwise, we return a nil
   ;; to say we failed.
   (when (or (empty? subject-ids)
-              (let [target-id (id->target immutable-store id)]
-                (or (nil? target-id)
-                    (some #{target-id} subject-ids))))
+            (let [subject-id (element-subject-id immutable-store id)]
+              (or (nil? subject-id)
+                  (some #{subject-id} (map store-item-id subject-ids)))))
     (if (<= (count subject-ids) 1)
       [id]
       (->> subject-ids

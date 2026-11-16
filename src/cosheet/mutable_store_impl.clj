@@ -68,68 +68,111 @@
      ;; between the current store and :current-significant.
      )))
 
-(defn add-id-to-affected-ids
-  "Takes a set of ids that contains all ids that might be affected by a
-  change to any of them. (In concrete terms, it contains all of their
-  targets and contains all ids that contain any of them.) Add the
-  given id and restore the closure property. The store must be
-  immutable. The alternate store is the other store involved in the
-  change, used to tell whether an object's interned status differs
-  between the two stores."
-  [affected store alternate-store id]
-  (loop [pending-ids [id]
-         affected affected]
-    (if (empty? pending-ids)
-      affected
-      (let [[id & remaining-ids] pending-ids]
-        (if (contains? affected id)
-          (recur remaining-ids affected)
-          (recur (concat remaining-ids
-                         (if (object-id? id)
-                           (cond
-                             ;; Interned in one store but not the other:
-                             ;; all links with the object as source are
-                             ;; affected, as are links with the object as
-                             ;; target whose source is an object.
-                             (not= (interned-object-id? store id)
-                                   (interned-object-id? alternate-store id))
-                             (concat (source->ids store id)
-                                     (filter #(object-id? (id->source store %))
-                                             (target->ids store id)))
-                             ;; Not interned: all links with the object
-                             ;; as source are affected.
-                             (not (interned-object-id? store id))
-                             (source->ids store id))
-                           (when-let [target (id->target store id)]
-                             [target])))
-                 (conj affected id)))))))
+;;; TODO: !!!
 
-(defn categories-in-one-store-affected-by-ids
+;;; This is only a temporary solution. It will give the notifications
+;;; that displayed doms need to see, but won't update all queries. For
+;;; that, a query needs to say how many levels of object it looks
+;;; through. Then the updater looks that far out from each change to
+;;; produce the ids the query wants to hear about. It does that by
+;;; recursively calling this function that many times, each iteration
+;;; feeding the adjacent set, plus all objects that are sources for
+;;; which an adjacent set id is a target, as new starting ids.
+
+;;; (Feeding in the adjacent set handles queries with forward elements
+;;; that go through objects, while feeding in the source objects
+;;; handles queries with reverse elements. An optimization would be to
+;;; have queries report how many of each case they need, rather than
+;;; just the total.)
+
+;;; Explosive expansion of the number of ids to visit is a possible
+;;; concern. Most user objects should be relatively poorly connected
+;;; with other objects, and so shouldn't be a big problem. And while a
+;;; single object that is an element label can label many elements,
+;;; none of its links contribute to propagation, since their targets
+;;; are all link ids. But objects that are object labels can connect
+;;; to many objects, and with links that can function in both
+;;; directions. Chasing those would mean that just one step of
+;;; expansion after adding a label to an object would create change
+;;; notifications for every object with that label. To avoid that,
+;;; expandion should always stop at object labels.
+ 
+;;; For now, the caller of this function should add all links
+;;; connecting to the adjacent objects as potential changes. That will
+;;; provide enough notification for simple queries.
+(defn add-id-to-transitively-containing
+  "Updates a set of ids, the transitively-containing set, that
+  indicates what ids transitively contain a starting set of ids.
+  
+  The transitively-containing set consists of a set of starting store
+  ids, plus all ids corresponding to forward elements that have any of
+  the set's ids as their content. This implies that it includes all
+  links that can be reached by following a sequence of forwards
+  elements backwards from any of its ids, hence the transitivity. It
+  can also contain object ids, if they were were starting ids, but
+  objects reached through links are not added, because they aren't
+  needed for its condition to be met.
+
+  A call provides the set, the store, and an id to be added to it, as
+  a starting id. It returns a new set, with the id added if it wasn't
+  already there, and with the condition on the set restored.
+  
+  The store must be immutable."
+  [id transitively-containing store]
+  (loop [pending-ids [id]
+         transitively-containing transitively-containing]
+    (if (empty? pending-ids)
+      transitively-containing
+      (let [[id & remaining-ids] pending-ids]
+        (cond
+          (or (not (item-id? id)) (contains? transitively-containing id))
+          (recur remaining-ids transitively-containing)
+          (object-id? id)
+          (recur (concat remaining-ids (source->ids store id))
+                 (conj transitively-containing id))
+          :else
+          (let [target (id->target store id)]
+            (recur (concat remaining-ids (when (link-id? target) [target]))
+                   (conj transitively-containing id))))))))
+
+(defn categories-affected-by-ids-in-one-store
   "Return a set of categories that might be affected by a change to a
-  set of modified ids in the given store.  A category is any id whose
-  elements or source could be affected by one of the changed ids. The
-  store must be immutable. The alternate store is the other store
-  involved in the change."
-  [modified-ids store alternate-store]
-  (when (seq modified-ids)
-    (reduce (fn [accum id]
-              (add-id-to-affected-ids accum store alternate-store id))
-            #{}
-            modified-ids)))
+  set of modified ids in the given store:
+    * their transitively-containing ids,
+    * the adjacent object-ids, which are the object ids included in
+      the transitively-containing ids plus the objects that are
+      endpoints of links in transitively-containing
+    * All link ids that connect to any of the adjacent ids.
+  The store must be immutable."
+  [modified-ids store]
+  (let [transitively-containing
+        (reduce (fn [transitively-containing id]
+                  (add-id-to-transitively-containing
+                   id transitively-containing store))
+                #{}
+                modified-ids)
+        adjacent (set (filter object-id?
+                              (concat transitively-containing
+                                      (for [id transitively-containing
+                                            endpoint [(id->source store id)
+                                                      (id->target store id)]]
+                                        endpoint))))
+        connecting (for [id adjacent
+                         link (concat (source->ids store id)
+                                      (target->ids store id))]
+                     link)]
+    (into (clojure.set/union transitively-containing adjacent) connecting)))
 
 (defn categories-affected-by-ids
   "Return a set of categories that might be affected by a change to a
-  set of modified ids.  A category is any id whose elements or source
-  could be affected by one of the changed ids. We are given both the
-  old store and the new one, as some modified ids might be in only one
-  of the two stores."
+  set of modified ids. We are given both the old store and the new
+  one, and we look for connections in both. That way we pick up
+  effects from both additions and deletions."
   [modified-ids before-store after-store]
   (when (seq modified-ids)
     (clojure.set/union
-     (categories-in-one-store-affected-by-ids
-      modified-ids before-store after-store)
-     (categories-in-one-store-affected-by-ids
-      modified-ids after-store before-store))))
+     (categories-affected-by-ids-in-one-store modified-ids before-store)
+     (categories-affected-by-ids-in-one-store modified-ids after-store))))
 
 (defmacro cache-and-categorize
   "Return the result of the operation on the store, caching, and using

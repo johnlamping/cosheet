@@ -225,6 +225,11 @@
   (flip-id-direction [this] (make-reverse-item-id this))
   (item-id-name [this] (str "Id:" (id->string this))))
 
+(defn directed-item-id?
+  "Return true if the argument is a DirectedItemId."
+  [x]
+  (satisfies? DirectedItemId x))
+
 (defprotocol ToStoredEntity
   "A description of an item."
   (id->entity-m [this store] [this direction store]

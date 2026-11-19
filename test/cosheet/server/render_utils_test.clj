@@ -50,6 +50,12 @@
                    '("age" "A" ("B" 1) "C")
                    '(nil "A" "A" "B")))
              ["a"]))
+  ;; 'nothing in an element matches nil in a condition.
+  (is (check (map canonicalize
+                  (condition-satisfiers
+                   '("age" (nothing "B") ("" "B") "C")
+                   '(nil (nil "B"))))
+             [(canonicalize '(nothing "B"))]))
   ;; A label object in the entity matches the same label object (by id)
   ;; in the condition even though they have different stores.
   (let [s0 (add-universal-objects (new-element-store))

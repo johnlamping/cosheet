@@ -23,7 +23,8 @@
     [semantic :refer [semantic-elements selector-semantic-elements
                       semantic-label-elements semantic-to-tree
                       semantic-to-tree-excluding-elements
-                      entity->canonical-semantic selector?]]
+                      entity->canonical-semantic selector?
+                      replace-anythings-with-nothing]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves
@@ -186,7 +187,7 @@
        (-> specification
            (assoc :relative-id (or relative-id :virtual-label)
                   :position :after
-                  :template (replace-final-label-content template "")
+                  :template (replace-final-label-content template 'anything)
                   :virtual-object-reference-template
                   (ensure-label-object
                    (content (final-template template)) label-type))
@@ -651,7 +652,8 @@
         true "name"))
 
 (defn element-primitive-content-DOM
-  "Make dom for a primitive that is the content part of an item."
+  "Make dom for a primitive that is the content part of an item.
+  'anything, 'nothing, and the empty string get special handling."
   [item primitive {:keys [class]}]
   (assert (primitive? primitive) primitive)
   (let [anything (= 'anything primitive)]
@@ -668,7 +670,10 @@
                                       (target-entity item))})
             anything
             (into-attributes {:class "placeholder"}))
-     (if anything "\u00A0..." (str primitive))]))
+     (cond anything "\u00A0..."
+           (= primitive 'nothing) ""
+           (= primitive "") "\"\""
+           :else (str primitive))]))
 
 (defn render-object-reference-DOM-R
   "Produce dom for an object reference. This means that we just show its
@@ -720,9 +725,9 @@
   "Return true if an object that is being shown as a content, and with
   the given template, should be shown as if it were interned object,
   even though it has a generic name. We return true if the object
-  matches the template, with nothing extra. These objects can result
-  from add-twin on an interned object, and we want to show them
-  in the same format as their twin."
+  matches the template, as instantiated for a non-selector, with
+  nothing extra. These objects can result from add-twin on an interned
+  object, and we want to show them in the same format as their twin."
   [template-element element]
   (let [template (content template-element)
         object (content element)]
@@ -736,7 +741,8 @@
              (semantic-to-tree-excluding-elements
               object #{(flip-id-direction (:item-id element))}))
             (entity->canonical-semantic
-             (all-presumed-interned-in-different-store template nil))))))
+             (all-presumed-interned-in-different-store
+              (replace-anythings-with-nothing template) nil))))))
 
 (defn element-content-DOM
   "Make dom for the content of an element."

@@ -106,7 +106,7 @@
          (not is-label)
          (conj `(~typing-object))
          (not has-name)
-         (conj `("" (~name-label))))))))
+         (conj `(~'anything (~name-label))))))))
 
 (defn ensure-label-object-content
   "Given a template that can match an element, make its content be a
@@ -119,8 +119,8 @@
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity that match the elements of
-  condition, except that the empty string in an element is considered
-  to match a nil in a condition, and presumed-interned objects match
+  condition, except that 'nothing in an element is considered to match
+  a nil in a condition, and presumed-interned objects match
   only their ids, ignoring their stores. The condition must be in tree
   form.  If part of a condition is not satisfied by any element,
   ignore that part."
@@ -135,7 +135,7 @@
        (multiset (map #(entity->canonical-semantic
                         (replace-in-seqs
                          (all-presumed-interned-in-different-store % nil)
-                         nil ""))
+                         nil 'nothing))
                       condition-elements))
        canonical-elements elements))))
 

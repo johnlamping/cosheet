@@ -166,8 +166,9 @@
 (defn categories-affected-by-ids
   "Return a set of categories that might be affected by a change to a
   set of modified ids. We are given both the old store and the new
-  one, and we look for connections in both. That way we pick up
-  effects from both additions and deletions."
+  one, and we propagate change effects in both. That way we can see
+  changes in paths that callers had been relying on in the old store,
+  and see new paths in the new store."
   [modified-ids before-store after-store]
   (when (seq modified-ids)
     (clojure.set/union

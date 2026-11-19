@@ -54,7 +54,7 @@
                       internal-semantic-to-tree semantic-to-tree
                       selector-semantic-elements selector-semantic-to-tree
                       selector? mark-template-as-selector
-                      replace-anythings-with-empty selector-marked-entities
+                      replace-anythings-with-nothing selector-marked-entities
                       fixed-term-to-template
                       make-non-semantic-tree-object]])))
 
@@ -232,28 +232,23 @@
                element ordered-selector-semantic-elements)))
        make-tree-object))
 
-(defn- replace-anything-content-with-empty
-  "Return the store with the content of the element replaced by an
-  empty object if the element is reversed, otherwise by the empty
-  string."
+(defn- replace-anything-content-with-nothing
+  "Return the store with the content of the element replaced by
+  'nothing."
   [store element]
-  (let [[store value] (if (reverse? element)
-                        (add-object store (make-tree-object []))
-                        [store ""])]
-    (update-directed-id-content-value store (:item-id element) value)))
+  (update-directed-id-content-value store (:item-id element) 'nothing))
 
 (defn modify-to-non-selector
   "Update the store so that the entity with the given id is no longer a
   selector: remove its :selector markings and replace its 'anything
-  contents with the empty string, or with an empty object for reversed
-  elements."
+  contents with 'nothing."
   [store id]
   (reduce (fn [store entity]
             (cond-> (reduce remove-entity-by-id store
                             (map entity-key
                                  (content->elements entity :selector)))
               (and (element? entity) (= (content entity) 'anything))
-              (replace-anything-content-with-empty entity)))
+              (replace-anything-content-with-nothing entity)))
           store
           (selector-marked-entities store id)))
 
@@ -714,7 +709,7 @@
   (let [template (if (and subject-id
                           (selector? (id->entity subject-id store)))
                    (mark-template-as-selector template)
-                   (replace-anythings-with-empty template))]
+                   (replace-anythings-with-nothing template))]
     (if (object? template)
       (let [[store id] (update-add-object-adjacent-to
                         store template

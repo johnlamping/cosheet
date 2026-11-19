@@ -1130,7 +1130,9 @@
               (let [c (content original)
                     content-cost (if (object? c)
                                    (if (presumed-interned-object? c) 1.0 0.3)
-                                   (get {nil 0.3 'anything 0.3 "" 0.4} c 1.0))]
+                                   (get {nil 0.3 'anything 0.3 'nothing 0.3
+                                         "" 0.4}
+                                        c 1.0))]
                 [:entity/omit ; We don't need this element any more. 
                  (+ original-cd
                     content-cost

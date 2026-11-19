@@ -51,6 +51,7 @@
      (or (string? cont)
          (number? cont)
          (= cont 'anything)
+         (= cont 'nothing)
          (and (object? cont)
               (empty? (content->elements cont :non-semantic))))))
 
@@ -318,22 +319,17 @@
           caller-data])
        nil)))))
 
-(defn replace-anythings-with-empty
-  "Return the template with every 'anything value replaced by an empty
-  value: an empty object when it is the content of a reversed element,
-  otherwise the empty string. Cycles and objects reached by multiple
-  paths are handled by repetition-avoiding-threaded-traverse."
+(defn replace-anythings-with-nothing
+  "Return the template with every 'anything value replaced by 'nothing.
+  Cycles and objects reached by multiple paths are handled by
+  repetition-avoiding-threaded-traverse."
   [template]
   (convert-unneeded-conflux-tree-objects
    (first
     (repetition-avoiding-threaded-traverse
      template
-     (fn [parent entity _ caller-data]
-       [(if (= entity 'anything)
-          (if (and (element? parent) (reverse? parent))
-            (make-tree-object [])
-            "")
-          entity)
+     (fn [_parent entity _ caller-data]
+       [(if (= entity 'anything) 'nothing entity)
         caller-data])
      identity-post-fn
      nil))))

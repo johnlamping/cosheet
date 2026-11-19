@@ -57,10 +57,11 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (replace-final-label-content 'anything ""))
+(def virtual-label-template (replace-final-label-content 'anything 'anything))
 (def object-type-label-object-template (ensure-label-object 'anything :object-type))
 (def object-type-virtual-label-template
-  (replace-final-label-content `(~object-type-label-object-template) ""))
+  (replace-final-label-content `(~object-type-label-object-template)
+                               'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -457,7 +458,7 @@
                {:relative-id :virtual-label
                 :template (make-sequential-template
                            '(anything "foo")
-                           '(""))
+                           '(anything))
                 :virtual-object-reference-template label-object-template
                 :position :after
                 :get-action-data (virt-AD)
@@ -557,15 +558,24 @@
 
 (deftest element-primitive-content-DOM-test
   ;; An 'anything content gets the placeholder class, and a label
-  ;; element's content gets the link-type class.
+  ;; element's content gets the link-type class. 'nothing shows as
+  ;; the empty string, and the empty string as paired double quotes.
   (let [[s1 any-id] (add-isolated-element (new-element-store) 'anything)
-        [s2 label-id] (add-isolated-element s1 :foo)]
+        [s2 label-id] (add-isolated-element s1 :foo)
+        [s3 nothing-id] (add-isolated-element s2 'nothing)
+        [s4 empty-id] (add-isolated-element s3 "")]
     (is (check (element-primitive-content-DOM
-                (id->element any-id s2) 'anything {:class "x"})
+                (id->element any-id s4) 'anything {:class "x"})
                [:div {:class "x content-text placeholder"} "\u00A0..."]))
     (is (check (element-primitive-content-DOM
-                (id->element label-id s2) :foo {:class "x"})
-               [:div {:class "x content-text link-type"} ":foo"]))))
+                (id->element label-id s4) :foo {:class "x"})
+               [:div {:class "x content-text link-type"} ":foo"]))
+    (is (check (element-primitive-content-DOM
+                (id->element nothing-id s4) 'nothing {:class "x"})
+               [:div {:class "x content-text"} ""]))
+    (is (check (element-primitive-content-DOM
+                (id->element empty-id s4) "" {:class "x"})
+               [:div {:class "x content-text"} "\"\""]))))
 
 (deftest render-item-DOM-R-test-simple
   ;; Test a simple cell
@@ -612,19 +622,20 @@
                             :recursively-non-editable true
                             :get-action-data (pass-AD)}])))
   ;; Test an entity that is not interned, but that should be displayed
-  ;; as if it is.
+  ;; as if it is: its name is the 'nothing that the template's 'anything
+  ;; instantiates to.
   (let [[s1 anonymous-oid] (-> (new-element-store)
                           (add-universal-objects)
                           (get-new-object-id))
         [s2 anonymous-name-id] (add-element
-                                s1 anonymous-oid `("" (~name-label)))
+                                s1 anonymous-oid `(~'nothing (~name-label)))
         [store anonymous-holder-id] (add-isolated-element
                                      s2 `(~(id->object anonymous-oid nil)))
         dom (run-renderer render-item-DOM-R
                           (assoc basic-dom-specification
                                  :relative-id anonymous-holder-id
                                  :template `(~(make-tree-object
-                                               [`("" (~name-label))])))
+                                               [`(~'anything (~name-label))])))
                           store)
         ;; We expect a component, which we also run, to make sure it is right.
         [_ spec] dom
@@ -637,14 +648,15 @@
                             :target-item-id anonymous-oid,
                             :relative-id :content
                             :template `(~(make-tree-object
-                                          [`("" (~name-label))]))
+                                          [`(~'anything (~name-label))]))
                             :render-dom render-object-reference-DOM-R
                             :recursively-non-editable true
                             :get-action-data (pass-AD)}]))
     (is (check inner-dom
                [:component {:width 1.5
                             :class "editable element object-reference"
-                            :template `(~(make-tree-object [`("" (~name-label))]))
+                            :template `(~(make-tree-object
+                                          [`(~'anything (~name-label))]))
                             :relative-id anonymous-name-id
                             :render-dom render-item-DOM-R
                             :recursively-non-editable true

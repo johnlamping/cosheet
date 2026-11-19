@@ -69,6 +69,7 @@
   (is (semantic-element? (make-tree-element 1 [2])))
   (is (semantic-element? (make-tree-element "1" [2])))
   (is (semantic-element? (make-tree-element 'anything [2])))
+  (is (semantic-element? (make-tree-element 'nothing [2])))
   (is (semantic-element? (make-tree-element
                           (id->object name-label-id nil)
                           [2])))
@@ -438,19 +439,19 @@
                   (make-tree-element a-ref ['(:selector :reverse)] :reverse)
                   :selector]))))))
 
-(deftest replace-anythings-with-empty-test
-  (is (= (replace-anythings-with-empty 'anything) ""))
-  (is (= (replace-anythings-with-empty "x") "x"))
-  (is (check (replace-anythings-with-empty
+(deftest replace-anythings-with-nothing-test
+  (is (= (replace-anythings-with-nothing 'anything) 'nothing))
+  (is (= (replace-anythings-with-nothing "x") "x"))
+  (is (check (replace-anythings-with-nothing
               `(~'anything (~'anything 5) "x"))
-             '("" ("" 5) "x")))
-  (is (check (replace-anythings-with-empty
+             '(nothing (nothing 5) "x")))
+  (is (check (replace-anythings-with-nothing
               (make-tree-object ['anything `(~'anything 3)]))
-             (make-tree-object ["" '("" 3)])))
-  ;; An 'anything that is the content of a reversed element becomes an
-  ;; empty object.
-  (is (check (replace-anythings-with-empty
+             (make-tree-object ['nothing '(nothing 3)])))
+  ;; An 'anything that is the content of a reversed element also
+  ;; becomes 'nothing.
+  (is (check (replace-anythings-with-nothing
               (make-tree-object
                [(make-tree-element 'anything ["x"] :reverse)]))
              (make-tree-object
-              [(make-tree-element (make-tree-object []) ["x"] :reverse)]))))
+              [(make-tree-element 'nothing ["x"] :reverse)]))))

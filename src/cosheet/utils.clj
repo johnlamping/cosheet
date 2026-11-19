@@ -342,6 +342,18 @@
           (cons x (inner xs))))))
    coll))
 
+(defn replace-first
+  "Replace the first item of the seq that matches the pred with the
+  replacement."
+  [pred replacement coll]
+  ((fn inner [coll]
+     (lazy-seq
+      (when-let [[x & xs] (seq coll)]
+        (if (pred x)
+          (cons replacement xs)
+          (cons x (inner xs))))))
+   coll))
+
 (defn extract-first [pred coll]
   "Return the first item of the seq that matches the pred,
    plus the sequence with that item removed."

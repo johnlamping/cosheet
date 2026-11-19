@@ -59,7 +59,7 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (replace-final-label-content 'anything ""))
+(def virtual-label-template (replace-final-label-content 'anything 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -301,10 +301,10 @@
                                           (virt-AD)]
                         :template (make-sequential-template
                                    'anything
-                                   '(""))
+                                   '(anything))
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
-                                           `("" (~name-label))])
+                                           `(~'anything (~name-label))])
                         :position :after
                         :do-not-match-query true}]
            [:component {:relative-id :stack-virtual

@@ -2,7 +2,8 @@
   (:require
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number threaded-map truncate-at-value]]
+    [utils :refer [parse-string-as-number replace-first threaded-map
+                   truncate-at-value]]
     [canonical :refer [equivalent-primitives?]]
     [map-reporter :refer [map-reporter-get-current map-reporter-reset!
                        map-reporter-change-value!
@@ -22,7 +23,8 @@
                          directed-id->content-value
                          update-directed-id-content-value]]
     [entity :refer [id->entity id->element make-tree-object
-                    reverse-id? store-item-id
+                    make-tree-element reverse? reverse-id? store-item-id
+                    make-reverse-item-id
                     add-elements-to-entity
                     all-elements forward-elements content content->elements
                     label->element label->elements
@@ -95,7 +97,10 @@
   ;;     are semantically identical. So we allow that.
   ;;   * If the client had ..., it was a wild card, and we could
   ;;     have anything.
-  ;;   * if the content has 'anything, the client should have "".
+  ;;   * if the content has 'anything or 'nothing, the client could
+  ;;     have "".
+  ;;   * if the content has "", the client could have a pair of
+  ;;     double quotes.
   (let [from (when from (parse-string-as-number from))
         current-content (directed-id->content-value store id)]
     (or
@@ -119,23 +124,55 @@
      ;; Wildcard text matches anything, because it has to match
      ;; instances too in batch edit.
      (= from "\u00A0...")
-     ;; Setting a formerly universal selector
-     (and (= from "") (= current-content 'anything)))))
+     ;; The client shows 'anything and 'nothing as blank.
+     (and (= from "") (#{'anything 'nothing} current-content))
+     ;; The client shows the empty string as a pair of double quotes.
+     (and (= from "\"\"") (= current-content "")))))
+
+(defn- object-template-holding-text
+  "Return an object template that holds the text as content. The
+  template's object is used, or an empty object if the template allows
+  anything. The text goes in the first forward element whose content
+  is 'anything, or, if there is none, in a new forward element with no
+  label."
+  [template text]
+  (let [object-template (cond-> (final-template template) element? content)
+        object-template (if (object? object-template)
+                          object-template
+                          (make-tree-object []))
+        anything-element (first (filter #(= (content %) 'anything)
+                                        (forward-elements object-template)))]
+    (if anything-element
+      (make-tree-object (replace-first
+                         #{anything-element}
+                         (make-tree-element
+                          text (all-elements anything-element))
+                         (all-elements object-template)))
+      (add-elements-to-entity object-template [text]))))
 
 (defn update-change-content
-  "Set the content to to. For a selector, an empty string becomes
-  'anything; to actually set the empty string, the user types two
-  quotation marks."
-  [store id to]
-  (let [to (cond (and (= to "") (selector? (id->entity id store))) 'anything
-                 (= to "\"\"") ""
-                 :else to)]
-    (if (and (reverse-id? id) (not (or (object-id? to) (= to 'anything))))
-      (do (println "Reverse elements may only hold objects or 'anything.")
-          store)
-      (let [modified (update-directed-id-content-value
-                      store id (parse-string-as-number to))]
-        (abandon-problem-changes store modified id)))))
+  "Set the content to to. An empty string becomes 'anything for a
+  selector, and 'nothing otherwise; to actually set the empty string,
+  the user types two quotation marks. A reverse element can't hold any
+  other primitive, so for one, an object matching the template is made
+  to hold the primitive, as described in object-template-holding-text."
+  ([store id to]
+   (update-change-content store id to nil))
+  ([store id to template]
+   (let [to (cond (= to "") (if (selector? (id->entity id store))
+                              'anything
+                              'nothing)
+                  (= to "\"\"") ""
+                  :else to)
+         modified (if (and (reverse-id? id)
+                           (not (or (object-id? to)
+                                    (#{'anything 'nothing} to))))
+                    (first (create-possible-selector-entity
+                            (object-template-holding-text template to)
+                            id id :after false store))
+                    (update-directed-id-content-value
+                     store id (parse-string-as-number to)))]
+     (abandon-problem-changes store modified id))))
 
 (defn object-to-merge-into-renamed
   "When an object is given the given name, the store may already hold a
@@ -212,7 +249,7 @@
         ;; it, or we'll make an object with both that and the name
         ;; the user set.
         elements (remove #(and (seq (content->elements % name-label))
-                               (= (content %) ""))
+                               (generic-name? (content %)))
                          (all-elements object-template))
         [new-store object-ids]
         (if (generic-name? name)
@@ -241,7 +278,7 @@
 (declare do-delete)
 
 (defn do-set-content
-  [store {:keys [subject-ids client-id from to]
+  [store {:keys [subject-ids client-id from to template]
           :as arguments}]
   (when (and from to (seq subject-ids)
              (every? (fn [id] (link-id? (store-item-id id))) subject-ids)
@@ -282,7 +319,7 @@
                          to))
             store (reduce
                    (fn [store id]
-                     (update-change-content store id to))
+                     (update-change-content store id to template))
                    store subject-ids)
             ;; Merge the renamed object with the object that already had
             ;; its new name, if the rename took effect.
@@ -324,6 +361,19 @@
                      `(~'anything) subject-ids subject-ids
                      :before false store)]
     (add-following-selection-by-ids store client-id ids)))
+
+(defn do-add-reverse-element
+  "Add a reverse element to each subject that is an object. Does
+  nothing to other subjects, since only objects can hold reverse
+  elements."
+  [store {:keys [subject-ids session-state client-id]}]
+  (let [object-ids (filter object-id? subject-ids)]
+    (when (seq object-ids)
+      (let [[store ids] (create-possible-selector-entities
+                         (make-tree-element 'anything [] :reverse)
+                         object-ids object-ids :before false store)]
+        (add-following-selection-by-ids
+         store client-id (map make-reverse-item-id ids))))))
 
 (defn do-add-label
   [store {:keys [subject-ids session-state client-id]}]
@@ -398,7 +448,7 @@
                        element? content))
         ;; Turn generic templates into objects.
         template (if (or (nil? template)
-                         (#{'anything "" :singular} template))
+                         (#{'anything 'nothing "" :singular} template))
                    (make-tree-object [])
                    template)
         ;; If the template is an object with no name, and this is not
@@ -489,11 +539,13 @@
 
 (defn empty-content?
   "Return true if the content of the subject is vacuous:
-     nil, 'anything, the empty string, or the id of an empty object."
+     nil, 'anything, 'nothing, the empty string, or the id of an empty
+     object."
   [store id]
   (let [current-content (directed-id->content-value store id)]
     (or (nil? current-content)
         (= current-content 'anything)
+        (= current-content 'nothing)
         (= current-content "")
         (and (object-id? current-content)
              (empty? (semantic-elements (id->entity current-content store)))))))
@@ -518,6 +570,14 @@
           subject-ids))
 
 (defn do-delete
+  "Delete the subject ids. Depending on the situation, this may require
+  deleting more. The general principle is to delete as little as
+  possible, subject to:
+    * The UI appearance has to change.
+    * Everything that the deletion would cause to disappear from the
+      dom that immediately contains the subject has to be deleted.
+      For example, if deleting content would make an element no longer
+      satisfy the template, then the whole element should be deleted."
   [store {:keys [subject-ids past-subject-ids template complete-entity
                  virtual tab-id]}]
   (assert (= (count subject-ids) (count (distinct subject-ids)))
@@ -536,15 +596,16 @@
            (some (fn [id] (has-displayed-elements? (id->entity id store)))
                  subject-ids)))
     nil
-    ;; If the subjects are anonymous objects, and the template doesn't
-    ;; call for an object. Remove the objects, while leaving the
-    ;; forward elements that hold them intact, with empty content.  An
-    ;; object that is still held somewhere else is kept.
-    (and (anonymous-objects? store subject-ids)
+    ;; If the subjects are objects, and the template doesn't call for
+    ;; an object. Remove the objects, while leaving the elements that
+    ;; hold them intact, with 'nothing as content. An object that is
+    ;; still held somewhere else is kept.
+    (and (every? object-id? subject-ids)
          (not (object? template))
          (not (and (element? template) (object? (content template)))))
     (let [holder-ids (filter
-                      (fn [id] (some #{(id->source store id)} subject-ids))
+                      (fn [id] (some #{(directed-id->content-value store id)}
+                                     subject-ids))
                       (first past-subject-ids))
           store (reduce (fn [store id] (update-change-content store id ""))
                         store holder-ids)]
@@ -553,15 +614,17 @@
                   (empty? (source->ids store id))
                   (remove-entity-by-id (store-item-id id))))
               store subject-ids))
-    ;; In these four cases, we want to remove the entire subject-id,
-    ;; not just its current content.
+    ;; In these cases, we want to remove the entire subject-id, not
+    ;; just its current content.
     (or
      ;; The component consists of nothing but the content.
      complete-entity
-     ;; The subject is an object. That's what we have to delete.
+     ;; The template requires an object as content, deleting just
+     ;; the content would make the whole element disappear from the UI,
+     ;; so our action should match that.
+     (and (element? template) (object? (content template)))
+     ;; The subject is an object. There's no other candidate to delete.
      (some object-id? subject-ids)
-     ;; The subject is a reverse element. We can't leave an empty content.
-     (some reverse-id? subject-ids)
      ;; The content is trivial. Maybe non-trivial content was just deleted.
      (every? #(empty-content? store %) subject-ids))
     (when (not= (content template) :singular)
@@ -740,6 +803,7 @@
   additional information it wants to convey."
   [action]
   ({:add-element do-add-element
+    :add-reverse-element do-add-reverse-element
     :add-label do-add-label
     :make-name do-make-name
     :make-object do-make-object

@@ -989,6 +989,7 @@
   (is (= (entity-complexity "a") 1.0))
   (is (= (entity-complexity nil) 0.3))
   (is (= (entity-complexity '(1 2 "" nil)) (+ 1 (* 0.75 (+ 1 0.4 0.3)))))
+  (is (= (entity-complexity '(1 nothing)) (+ 1 (* 0.75 0.3))))
   (is (= (entity-complexity '(1 (2 "a"))) (+ 1 (* 0.75 (+ 1 0.75)))))
   (is (= (entity-complexity `(~(make-tree-object '(1 2)) (2 "a")))
          (+ 0.3 (* 0.75 (+ 1 1)) (* 0.75 (+ 1 0.75))))))

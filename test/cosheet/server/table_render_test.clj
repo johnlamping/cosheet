@@ -63,7 +63,7 @@
 
 (def label-object-template (ensure-label-object 'anything :link-type))
 (def label-template `(~label-object-template))
-(def virtual-label-template (replace-final-label-content 'anything ""))
+(def virtual-label-template (replace-final-label-content 'anything 'anything))
 
 ;;; We make functions that abbreviate the common functions that can be
 ;;; embedded in components.
@@ -115,7 +115,7 @@
         new-store (:store data)
         new-id (first (:subject-ids data))]
     (is (= (semantic-to-tree (id->element new-id new-store))
-           `("" (~(find-object-by-name new-store "A"
+           `(~'nothing (~(find-object-by-name new-store "A"
                                        (link-type-object 'anything))))))))
 
 (deftest table-DOM-test
@@ -347,10 +347,10 @@
                           :incoming-subject-is :sibling
                           :template (make-sequential-template
                                      '(anything :selector)
-                                     '(""))
+                                     '(anything))
                           :virtual-object-reference-template
                           (make-tree-object [`(~link-type)
-                                             `("" (~name-label))])
+                                             `(~'anything (~name-label))])
                           :position :after
                           :get-action-data [composed-get-action-data
                                             (item-AD)
@@ -534,10 +534,10 @@
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
                                    '(anything :selector)
-                                   '(""))
+                                   '(anything))
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
-                                           `("" (~name-label))])
+                                           `(~'anything (~name-label))])
                         :position :after
                         :incoming-subject-is :sibling
                         :width 0.75

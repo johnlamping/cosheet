@@ -380,7 +380,7 @@
   serve to identify an object."
   [name]
   ;; We have to use contains?, calling the set returns nil for nil.
-  (contains? #{nil "" 'anything} name))
+  (contains? #{nil "" 'anything 'nothing} name))
 
 ;;; Note: This must be kept in synch with Entity/interned-object?
 (defn interned-object-id?

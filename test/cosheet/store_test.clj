@@ -737,3 +737,9 @@
   (is (not (equivalent-undo-point?
             (update-equivalent-undo-point test-store false)))))
 
+(deftest generic-name?-test
+  (is (generic-name? nil))
+  (is (generic-name? ""))
+  (is (generic-name? 'anything))
+  (is (generic-name? 'nothing))
+  (is (not (generic-name? "Fred"))))

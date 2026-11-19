@@ -7,8 +7,8 @@
              [orderable :refer [initial split earlier?]]
              [map-reporter :refer [make-map-reporter map-reporter-get-current
                                 map-reporter-reset!]]
-             [entity :as entity :refer [id->entity id->object to-tree
-                                        make-reverse-item-id
+             [entity :as entity :refer [id->entity id->element id->object
+                                        to-tree make-reverse-item-id reverse?
                                         content label->element
                                         label->elements label->content
                                         name-label link-type object-type
@@ -59,7 +59,7 @@
                                pattern->fixed-term-query
                                selector?
                                mark-template-as-selector
-                               replace-anythings-with-empty]]
+                               replace-anythings-with-nothing]]
              [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])
@@ -172,21 +172,28 @@
         [s2 common-id2] (add-element s1 joe-id `(~common-object2))
         [store longer-id] (add-element s2 joe-id `(~longer-object))]
     (let [[store anything-id] (add-element store joe-id 'anything)
+          [store nothing-id] (add-element store joe-id 'nothing)
+          [store empty-id] (add-element store joe-id "")
           [store a-id] (add-element store joe-id "A")]
-      ;; "" in place of 'anything
+      ;; "" in place of 'anything or 'nothing
       (is (current-content-matches-from? store anything-id ""))
+      (is (current-content-matches-from? store nothing-id ""))
+      (is (not (current-content-matches-from? store nothing-id "\"\"")))
+      ;; A pair of double quotes in place of ""
+      (is (current-content-matches-from? store empty-id "\"\""))
+      (is (not (current-content-matches-from? store a-id "\"\"")))
       ;; A universal header matching something random
       (is (current-content-matches-from? store common-id1 "\u00A0...")))))
 
 (deftest do-set-content-test
-  ;; Joe is not a selector, so a blank becomes the empty string.
+  ;; Joe is not a selector, so a blank becomes 'nothing.
   (let [new-store (do-set-content store
                                   {:subject-ids [(:item-id joe-age)]
                                    :from "45"
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           "")))
+           'nothing)))
   ;; Jane is a selector, so a blank becomes 'anything.
   (let [new-store (do-set-content store
                                   {:subject-ids [(:item-id jane-age)]
@@ -195,6 +202,47 @@
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
+  ;; Text set into a reverse element makes an object to hold it.
+  (let [[empty-reverse-link-store link-id]
+        (add-element store joe-id
+                     (make-tree-element 'nothing [`(~o5 :order)] :reverse))
+        reverse-id (make-reverse-item-id link-id)]
+    ;; With a template that allows anything, the object has just the
+    ;; text, besides the link that holds the object.
+    (let [new-store (do-set-content empty-reverse-link-store
+                                    {:subject-ids [reverse-id]
+                                     :from "" :to "Fred"
+                                     :template 'anything
+                                     :session-state session-state})
+          object (content (id->element reverse-id new-store))]
+      (is (entity/object? object))
+      (is (= (count (matching-elements "Fred" object)) 1))
+      (is (= (count (semantic-elements object)) 2)))
+    ;; With a template whose object has an element that allows
+    ;; anything, that element gets the text.
+    (let [new-store (do-set-content
+                     empty-reverse-link-store
+                     {:subject-ids [reverse-id]
+                      :from "" :to "Fred"
+                      :template (list (make-tree-object
+                                       [`(~'anything (~age-label)) "x"]))
+                      :session-state session-state})
+          object (content (id->element reverse-id new-store))]
+      (is (= (count (matching-elements `("Fred" (~age-label)) object)) 1))
+      (is (= (count (matching-elements "x" object)) 1))
+      (is (= (count (semantic-elements object)) 3)))
+    ;; With a template whose object has no such element, a new
+    ;; unlabeled element gets the text.
+    (let [new-store (do-set-content
+                     empty-reverse-link-store
+                     {:subject-ids [reverse-id]
+                      :from "" :to "Fred"
+                      :template (list (make-tree-object ["x"]))
+                      :session-state session-state})
+          object (content (id->element reverse-id new-store))]
+      (is (= (count (matching-elements "Fred" object)) 1))
+      (is (= (count (matching-elements "x" object)) 1))
+      (is (= (count (semantic-elements object)) 3))))
   ;; Test doing nothing when the old doesn't match.
   (let [new-store (do-set-content store
                                   {:subject-ids [(:item-id joe-age)]
@@ -211,7 +259,7 @@
                                    :to ""
                                    :session-state session-state})]
     (is (= (id->source new-store (:item-id joe-age))
-           ""))
+           'nothing))
     (is (= (id->source new-store (:item-id jane-age))
            'anything)))
   ;; Blanking a non-selector that holds a label object is a delete.
@@ -254,8 +302,8 @@
     (is (empty? (matching-elements
                  :selector (id->entity (:item-id jane-age) new-store)))))
   ;; A reverse element's content is the target of its link. Setting it
-  ;; to a non-object is illegal, and should do nothing, returning nil
-  ;; or an unaltered store.
+  ;; to text makes a new object holding the text, and re-points the
+  ;; target to that object.
   (let [[s1 holder-id] (add-element store joe-id
                                     (list (id->object jane-id store)))
         [s _] (add-element s1 holder-id `(~unused-orderable :order))
@@ -263,9 +311,13 @@
         new-store (do-set-content s {:subject-ids [reverse-holder-id]
                                      :from "Joe"
                                      :to "x"
-                                     :session-state session-state})]
-    (is (= (id->target (or new-store s) holder-id) joe-id))
-    (is (= (id->source (or new-store s) holder-id) jane-id))
+                                     :session-state session-state})
+        new-target (id->target new-store holder-id)]
+    (is (object-id? new-target))
+    (is (not= new-target joe-id))
+    (is (= (count (matching-elements "x" (id->entity new-target new-store)))
+           1))
+    (is (= (id->source new-store holder-id) jane-id))
     ;; Setting it to a named object re-points the target to that object.
     (let [new-store (do-set-content
                      s {:subject-ids [reverse-holder-id]
@@ -316,6 +368,16 @@
       (is (selector? header-object))
       (is (not (selector? label-object)))
       (is (= (content (first (label->elements label-object name-label))) "")))
+    ;; A template whose generic name is 'anything, as a label template
+    ;; has, gives the object only the name that was set.
+    (let [label-id (:item-id joe-age-label)
+          template (list (make-tree-object `((~'anything (~name-label)))))
+          new-store (change-object-reference-by-name
+                     store {:subject-ids [label-id] :template template
+                            :from "" :to "Fred"})
+          names (label->elements (content (id->entity label-id new-store))
+                                 name-label)]
+      (is (= (map content names) ["Fred"])))
     ;; Nothing is done when no subject's content matches from.
     (is (nil? (do-set-content
                store {:subject-ids [header-id] :template bare-template
@@ -436,7 +498,7 @@
                (canonicalize
                 (make-tree-object
                  `(("Joe" (~name-label)) "male" "married"
-                   ("" 5)
+                   (~'nothing 5)
                    (45 (~age-label))
                    (39 (~age-label)
                        ("doubtful" "confidence")))))))
@@ -446,7 +508,7 @@
                  `("Jane" "female"
                    (~'anything 5)
                    (45 (~age-label)))))))
-    (let [new-joe-element (first (matching-elements "" new-joe))
+    (let [new-joe-element (first (matching-elements 'nothing new-joe))
           new-jane-element (first (matching-elements 'anything new-jane))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
@@ -461,17 +523,39 @@
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize `(45 (~age-label) ""))))
+               (canonicalize `(45 (~age-label) ~'nothing))))
     ;; Jane is a selector, so the added element is 'anything.
     (is (check (entity->canonical-semantic new-jane-age)
                (canonicalize `(45 (~age-label) ~'anything))))
-    (let [new-joe-element (first (matching-elements "" new-joe-age))
+    (let [new-joe-element (first (matching-elements 'nothing new-joe-age))
           new-jane-element (first (filter #(= (content %) 'anything)
                                           (semantic-elements new-jane-age)))]
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
                   [nil (as-set [(:item-id new-joe-element)
                                 (:item-id new-jane-element)])]})))))
+
+(deftest do-add-reverse-element-test
+  (let [new-store (do-add-reverse-element store
+                                          {:subject-ids [joe-id jane-id]
+                                           :session-state session-state})
+        new-joe-element (first (filter reverse?
+                                       (semantic-elements
+                                        (id->entity joe-id new-store))))
+        new-jane-element (first (filter reverse?
+                                        (semantic-elements
+                                         (id->entity jane-id new-store))))]
+    (is (= (content new-joe-element) 'nothing))
+    ;; Jane is a selector, so the added element is 'anything.
+    (is (= (content new-jane-element) 'anything))
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids
+                [nil (as-set [(:item-id new-joe-element)
+                              (:item-id new-jane-element)])]})))
+  ;; Does nothing to subjects that are not objects.
+  (is (nil? (do-add-reverse-element store
+                                    {:subject-ids [(:item-id joe-age)]
+                                     :session-state session-state}))))
 
 (deftest do-add-label-test
   ;; Test for adding a label when there is more than one subject id.
@@ -482,7 +566,7 @@
         new-jane-age (id->entity (:item-id jane-age) new-store)
         new-joe-age (id->entity (:item-id joe-age) new-store)
         generic-label (all-presumed-interned-in-different-store
-                       (replace-anythings-with-empty
+                       (replace-anythings-with-nothing
                         label-object-template)
                        new-store)
         ;; Jane is a selector, so its label keeps 'anything.
@@ -529,9 +613,10 @@
                                  :session-state session-state
                                  :client-id nil})
         new-joe (id->entity joe-id new-store)
-        new-name (first (matching-elements `("" (~name-label)) new-joe))]
+        new-name (first (matching-elements `(~'nothing (~name-label))
+                                           new-joe))]
     (is (check (entity->canonical-semantic new-name)
-               (canonicalize `("" (~name-label)))))
+               (canonicalize `(~'nothing (~name-label)))))
     (is (check (:ephemeral-data new-store)
                {:following-selection-by-ids [nil [(:item-id new-name)]]})))
   ;; Does nothing to an element whose target is an object but whose
@@ -541,7 +626,8 @@
                           :session-state session-state
                           :client-id nil})))
   ;; Naming a selector object makes it uniquely identified, so it stops
-  ;; being a selector: its markings go, and its 'anythings become "".
+  ;; being a selector: its markings go, and its 'anythings become
+  ;; 'nothing.
   (let [jane-name-id (:item-id (first (matching-elements "Jane" jane)))
         blanked (do-set-content store {:subject-ids [(:item-id jane-age)]
                                        :from "45" :to ""
@@ -554,7 +640,7 @@
     (is (empty? (matching-elements :selector new-jane)))
     (is (empty? (matching-elements
                  :selector (id->entity (:item-id jane-age) new-store))))
-    (is (= (id->source new-store (:item-id jane-age)) ""))))
+    (is (= (id->source new-store (:item-id jane-age)) 'nothing))))
 
 (deftest do-make-object-test
   ;; When the argument is the content of an element (its subject is the
@@ -598,6 +684,22 @@
     (is (check (:ephemeral-data new-store)
                {:following-selection-by-ids [nil [new-content-id]]}))))
 
+(deftest empty-content?-test
+  (let [[s1 anything-id] (add-isolated-element (new-element-store) 'anything)
+        [s2 nothing-id] (add-isolated-element s1 'nothing)
+        [s3 empty-id] (add-isolated-element s2 "")
+        [s4 full-id] (add-isolated-element s3 "x")
+        ;; An element of a link, so its object content has no reverse
+        ;; elements.
+        [store object-id] (add-element
+                           s4 full-id (make-tree-element (make-tree-object [])
+                                                         []))]
+    (is (empty-content? store anything-id))
+    (is (empty-content? store nothing-id))
+    (is (empty-content? store empty-id))
+    (is (not (empty-content? store full-id)))
+    (is (empty-content? store object-id))))
+
 (deftest do-delete-test
   (let [new-store (do-delete store
                              {:subject-ids [(:item-id joe-age)
@@ -605,15 +707,15 @@
         new-jane (id->entity jane-id new-store)
         new-joe (id->entity joe-id new-store)]
     ;; The deleted ages held content, so they are blanked rather than
-    ;; removed: to "" for Joe (not a selector) and to 'anything for
-    ;; Jane (a selector).
+    ;; removed: to 'nothing for Joe (not a selector) and to 'anything
+    ;; for Jane (a selector).
     (is (check (canonicalize (object-semantic-to-tree new-joe))
                (canonicalize
                 (make-tree-object
                  `(("Joe" (~name-label)) "male" "married"
                    (39 (~age-label)
                        ("doubtful" "confidence"))
-                   ("" (~age-label)))))))
+                   (~'nothing (~age-label)))))))
     (is (check (canonicalize (object-semantic-to-tree new-jane))
                (canonicalize
                 (make-tree-object
@@ -636,6 +738,18 @@
                (canonicalize
                 (make-tree-object
                  `("Jane" "female"))))))
+  ;; When the template requires an object as content, the element is
+  ;; removed rather than blanked.
+  (let [new-store (do-delete store
+                             {:subject-ids [(:item-id joe-age)]
+                              :template (list (make-tree-object []))})
+        new-joe (id->entity joe-id new-store)]
+    (is (check (canonicalize (object-semantic-to-tree new-joe))
+               (canonicalize
+                (make-tree-object
+                 `(("Joe" (~name-label)) "male" "married"
+                   (39 (~age-label)
+                       ("doubtful" "confidence"))))))))
   ;; Test that deleting the only element of a column does nothing.
   (let [[store columns-id] (add-isolated-element
                             store
@@ -662,7 +776,7 @@
   (let [joe-name-id (:item-id (first (label->elements joe name-label)))
         new-store (do-delete store {:subject-ids [joe-name-id]
                                     :virtual true})]
-    (is (= (content (id->entity joe-name-id new-store)) "")))
+    (is (= (content (id->entity joe-name-id new-store)) 'nothing)))
   ;; Anonymous objects are removed from the previous subjects that
   ;; held them, which are kept, with empty content and their other
   ;; elements intact.
@@ -674,7 +788,7 @@
         new-store (do-delete s {:subject-ids [object-id]
                                 :past-subject-ids [[holder-id]]})]
     (is (id-valid-link? new-store holder-id))
-    (is (= (content (id->entity holder-id new-store)) ""))
+    (is (= (content (id->entity holder-id new-store)) 'nothing))
     (is (= (count (semantic-elements (id->entity holder-id new-store))) 1))
     ;; The other holder wasn't a previous subject, so it keeps the
     ;; object, which therefore survives.
@@ -683,7 +797,7 @@
     ;; With both holders as previous subjects, the object goes too.
     (let [new-store (do-delete s {:subject-ids [object-id]
                                   :past-subject-ids [[holder-id holder2-id]]})]
-      (is (= (content (id->entity holder2-id new-store)) ""))
+      (is (= (content (id->entity holder2-id new-store)) 'nothing))
       (is (not (id-known-object? new-store object-id))))
     ;; But if the template calls for an object, the holders go too.
     (let [new-store (do-delete s {:subject-ids [object-id]
@@ -692,24 +806,31 @@
       (is (not (id-valid-link? new-store holder-id)))
       (is (not (id-valid-link? new-store holder2-id)))
       (is (not (id-known-object? new-store object-id)))))
-  ;; Deleting through a reverse id removes the whole link. The unnamed
-  ;; object it held is kept when it has an object type label.
-  (let [[s1 _] (add-element store jane-id `(~(object-type-object "row")))
-        [s holder-id] (add-element s1 joe-id (list (id->object jane-id s1)))
-        new-store (do-delete s {:subject-ids [(make-reverse-item-id
-                                               holder-id)]})]
-    (is (not (id-valid-link? new-store holder-id)))
-    (is (id-known-object? new-store joe-id))
-    (is (id-known-object? new-store jane-id)))
-  ;; Without an object type label, the unnamed object goes too, since
-  ;; the link was its only reference.
+  ;; An object held by a reverse element is removed from it,
+  ;; leaving the element with 'nothing as content.
+  (let [[s1 object-id] (add-object store (make-tree-object ["Fred"]))
+        [s holder-id] (add-element s1 joe-id
+                                   (make-tree-element
+                                    (id->object object-id s1)
+                                    [`(~o5 :order)] :reverse))
+        new-store (do-delete s {:subject-ids [object-id]
+                                :past-subject-ids
+                                [[(make-reverse-item-id holder-id)]]})]
+    (is (id-valid-link? new-store holder-id))
+    (is (= (id->target new-store holder-id) 'nothing))
+    (is (= (id->source new-store holder-id) joe-id))
+    (is (not (id-known-object? new-store object-id))))
+  ;; Deleting through a reverse id with non-trivial content blanks the
+  ;; content to 'nothing, keeping the link and both objects.
   (let [[s holder-id] (add-element store joe-id
                                    (list (id->object jane-id store)))
         new-store (do-delete s {:subject-ids [(make-reverse-item-id
                                                holder-id)]})]
-    (is (not (id-valid-link? new-store holder-id)))
+    (is (id-valid-link? new-store holder-id))
+    (is (= (id->target new-store holder-id) 'nothing))
+    (is (= (id->source new-store holder-id) jane-id))
     (is (id-known-object? new-store joe-id))
-    (is (not (id-known-object? new-store jane-id))))
+    (is (id-known-object? new-store jane-id)))
   ;; Deleting through a reverse id whose link's target is a symbol
   ;; removes the link.
   (let [[s holder-id] (add-element store joe-id '((:reverse anything)))
@@ -1114,4 +1235,3 @@
              []))
       (is (= (state-map-get-current-value client-state :last-action) 4))))
   )
-

@@ -159,7 +159,7 @@
       (is (= (:right (get-order id store))
              (:right (get-order joe-id original-store))))
       (is (= (semantic-to-tree (id->entity id store))
-             '("")))))
+             '(nothing)))))
   ;; Try several initial targets, one a selector and one not, and a
   ;; vector as the template.
   (let [data (get-virtual-action-data
@@ -179,7 +179,7 @@
                  `(2 (~age-label-obj))))
       (is (check (semantic-to-tree (id->entity
                                     (id->target store new-joe-id) store))
-                 `("" (2 (~age-label-obj)))))
+                 `(~'nothing (2 (~age-label-obj)))))
       (is (= (id->target store (id->target store new-jane-id)) jane-id))
       (is (check (semantic-to-tree (id->entity new-jane-id store))
                  `(2 (~age-label-obj))))
@@ -204,7 +204,7 @@
       (is (< (:right (get-order id store))
              (:right (get-order (:item-id joe-age) original-store))))
       (is (check (semantic-to-tree (id->entity id store))
-                 '("")))))
+                 '(nothing)))))
   ;; With :incoming-subject-is :sibling and a reversed subject id, the
   ;; new item's subject is the source of the subject's link.
   (let [[s0 object-id] (add-object store (make-tree-object ["x"]))
@@ -221,7 +221,7 @@
           id (first subject-ids)]
       (is (= (id->target store id) object-id))
       (is (check (semantic-to-tree (id->entity id store))
-                 '("")))))
+                 '(nothing)))))
   ;; A reverse element template makes a link whose source is the
   ;; subject, which must be an object, and the new subject id is
   ;; reversed.
@@ -238,8 +238,8 @@
           link-id (store-item-id id)]
       (is (reverse-id? id))
       (is (= (id->source store link-id) object-id))
-      ;; The 'anything became an empty object.
-      (is (object-id? (id->target store link-id)))))
+      ;; The 'anything became 'nothing.
+      (is (= (id->target store link-id) 'nothing))))
   ;; Try an adjacent query.
   (let [data (get-virtual-action-data
               {:template '(anything 2)
@@ -255,7 +255,7 @@
           age-label-obj (in-different-store (content jane-age-label) store)]
       (is (= (id->target store new-joe-id) joe-id))
       (is (check (semantic-to-tree (id->entity new-joe-id store))
-                 '("" 2)))
+                 '(nothing 2)))
       (is (check (map semantic-to-tree
                       (semantic-elements
                        (order-recursively
@@ -263,7 +263,7 @@
                  (as-set
                   `(("male")
                     ("married")
-                    ("" 2)
+                    (~'nothing 2)
                     (39 (~age-label-obj) ("doubtful" "confidence"))
                     (45 (~age-label-obj))))))
       (is (= (id->target store new-jane-id) jane-id))

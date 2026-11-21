@@ -681,7 +681,7 @@
                              :class "link-type"
                              :width 1.5}]
                 [:div {:class "wrapped-elements"}
-                 [:component {:template (as-set `(""
+                 [:component {:template (as-set `(~'anything
                                                   (~one-object)
                                                   (~two-object)))
                               :relative-id :content
@@ -712,7 +712,7 @@
                        :render-dom (virt-DOM)
                        :get-action-data (virt-AD)
                        :width 1.5}]
-          [:component {:template '("")
+          [:component {:template '(anything)
                        :relative-id :content
                        :target-item-id fred-id
                        :render-dom render-element-content-DOM-R
@@ -1021,7 +1021,7 @@
                              store)]
     (is (check dom
                [:div {:class "content-plus-elements element"}
-                [:component {:template '("")
+                [:component {:template '(anything)
                              :width 0.9
                              :relative-id :content
                              :target-item-id fred-id
@@ -1080,7 +1080,7 @@
                              store)]
     (is (check dom
                [:div {:class "content-plus-elements element"}
-                [:component {:template '("")
+                [:component {:template '(anything)
                              :width 0.9
                              :relative-id :content
                              :target-item-id (:fred-id ids)
@@ -1131,7 +1131,7 @@
                              store)]
     (is (check dom
                [:div {:class "content-plus-elements element"}
-                [:component {:template '("")
+                [:component {:template '(anything)
                              :width 0.9
                              :relative-id :content
                              :target-item-id (:fred-id ids)
@@ -1259,7 +1259,7 @@
             :render-dom (virt-DOM)
             :get-action-data (virt-AD)}]
           [:div {:class "content-plus-elements"}
-           [:component {:template '("")
+           [:component {:template '(anything)
                         :width 1.5
                         :relative-id :content
                         :target-item-id fred-id
@@ -1317,7 +1317,7 @@
     (is (check
          dom
          [:div {:class "content-plus-elements element"}
-          [:component {:template '("")
+          [:component {:template '(anything)
                        :width 1.5
                        :relative-id :content
                        :target-item-id (:fred-id ids)
@@ -1369,7 +1369,7 @@
     (is (check
          dom
          [:div {:class "content-plus-elements element"}
-          [:component {:template '("")
+          [:component {:template '(anything)
                        :width 1.5
                        :relative-id :content
                        :target-item-id (:fred-id ids)

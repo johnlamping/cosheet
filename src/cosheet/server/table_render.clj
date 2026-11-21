@@ -271,7 +271,7 @@
     (assoc specification
            :relative-id :virtual
            :virtual true
-           :template ""
+           :template 'anything
            :render-dom render-virtual-DOM
            :get-action-data get-virtual-column-cell-action-data))
    {:class "table-cell virtual-column has-border"}))

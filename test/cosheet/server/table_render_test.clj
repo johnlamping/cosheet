@@ -658,7 +658,7 @@
           [:component {:width 0.75
                        :relative-id :virtual
                        :row-id joe-id
-                       :template ""
+                       :template 'anything
                        :virtual true
                        :render-dom (virt-DOM)
                        :get-action-data
@@ -672,7 +672,7 @@
          [:component
           {:width 0.75
            :relative-id :virtual
-           :template `("" (~bare-single-label-object))
+           :template `(~'anything (~bare-single-label-object))
            :virtual true
            :render-dom (virt-DOM)
            :get-action-data (virt-AD)}]))
@@ -700,7 +700,7 @@
              :render-dom render-item-DOM-R
              :complete-entity true
              :get-action-data (default-AD)
-             :template `("" (~bare-name-label-object))
+             :template `(~'anything (~bare-name-label-object))
              :width 0.75
              :element-ids-to-exclude
              #{(:item-id (first (matching-elements
@@ -726,7 +726,7 @@
               {:relative-id joe-joseph-id
                :render-dom render-item-DOM-R
                :get-action-data (default-AD)
-               :template `("" (~bare-name-label-object)
+               :template `(~'anything (~bare-name-label-object)
                               (~(id->object id-oid nil)))
                :width 0.75
                :element-ids-to-exclude
@@ -739,7 +739,7 @@
           ;; A filler that grows into the cell's free space, for adding.
           [:component
            {:width 0.75
-            :template `("" (~bare-name-label-object))
+            :template `(~'anything (~bare-name-label-object))
             :relative-id :virtual
             :class "stack-filler"
             :adjacent-query (as-set `(nil (~bare-name-label-object)
@@ -760,7 +760,7 @@
                        :class "table-cell"
                        :virtual true
                        :render-dom (virt-DOM)
-                       :template `("" (~bare-single-label-object))
+                       :template `(~'anything (~bare-single-label-object))
                        :get-action-data (virt-AD)
                        :width 0.75}]
           (any) (any) (any) (any) (any) (any)]))
@@ -828,7 +828,7 @@
                        (assoc base-spec :row-id extra-row-id) store)
          [:div {:class "vertical-stack"}
           [:component {:width 0.75
-                       :template ["" "required"]
+                       :template ['anything "required"]
                        :get-do-batch-edit-action-data
                        (table-cell-item-do-batch-AD)
                        :relative-id (any)
@@ -837,7 +837,7 @@
                        :complete-entity true
                        :get-action-data (default-AD)}]
           [:component {:width 0.75
-                       :template ["" "required"]
+                       :template ['anything "required"]
                        :relative-id :virtual
                        :class "stack-filler"
                        :adjacent-query `(nil "required" (nil :order))
@@ -849,7 +849,7 @@
          (run-renderer render-table-cell-DOM-R
                        (assoc base-spec :row-id plain-row-id) store)
          [:component {:width 0.75
-                      :template ["" "required"]
+                      :template ['anything "required"]
                       :get-do-batch-edit-action-data
                       (table-cell-item-do-batch-AD)
                       :relative-id (any)

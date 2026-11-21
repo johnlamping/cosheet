@@ -463,7 +463,7 @@
   {            :width 1.5 ; A float, giving the width of this dom element
                           ; compared to the minimum width for two column
                           ; format.
-            :template ""  ; The template that the twins of this dom
+      :template 'anything ; The template that the twins of this dom
                           ; must start out satisfying.
    })
 

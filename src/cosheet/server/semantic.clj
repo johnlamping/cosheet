@@ -395,7 +395,7 @@
 (defn fixed-term-to-template
   "Given a fixed-term, turn it into a template by removing any (nil :order),
   removing any negations, replacing any nil by the specified
-  replacement (which defaults to the empty string) and turning
+  replacement (which defaults to 'anything) and turning
   reference variables into conflux tree objects.
   The first occurrence of a reference variable becomes a conflux tree
   object with a fresh identity and with elements matching the
@@ -404,7 +404,7 @@
   A non-reference variable is replaced by its qualifier, if it has one,
   and otherwise by the replacement."
   ([query]
-   (fixed-term-to-template query ""))
+   (fixed-term-to-template query 'anything))
   ([query nil-replacement]
    (letfn [(pre-fn [_ entity _ conflux-map]
              (cond

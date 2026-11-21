@@ -90,7 +90,7 @@
                         :get-action-data get-empty-action-data}]
            [:component {:relative-id joe-id
                         :width 3.0
-                        :template ""
+                        :template 'anything
                         :must-show-label true
                         :class "top-level-entity"
                         :render-dom render-item-DOM-R

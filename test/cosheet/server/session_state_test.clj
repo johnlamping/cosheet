@@ -147,7 +147,7 @@
         (is (check (reporter-value-or-invalid (:dom-R @root-component))
                    [:div {}
                     [:component {:width 3.0,
-                                 :template ""
+                                 :template 'anything
                                  :relative-id (:item-id row1)
                                  :must-show-label true
                                  :class "top-level-entity"

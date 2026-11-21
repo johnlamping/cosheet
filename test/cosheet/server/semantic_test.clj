@@ -351,10 +351,10 @@
   ;; are removed.
   (is (= (fixed-term-to-template
           `(nil "x" (nil :order) ~(make-not-query 5)))
-         '("" "x")))
-  (is (= (fixed-term-to-template
-          `(nil "x" (nil :order) ~(make-not-query 5)) 'anything)
          '(anything "x")))
+  (is (= (fixed-term-to-template
+          `(nil "x" (nil :order) ~(make-not-query 5)) "")
+         '("" "x")))
   ;; A reference variable becomes a conflux tree object whose elements
   ;; match the variable's qualifier. This round-trips a conflux with a
   ;; cyclic back-reference to itself.
@@ -376,10 +376,10 @@
   (is (= (fixed-term-to-template (make-variable-query "v" :qualifier '(2 3)))
          '(2 3)))
   (is (= (fixed-term-to-template (make-variable-query "v" :form :element))
-         '("")))
-  (is (= (fixed-term-to-template (make-variable-query "v" :form :element)
-                                 'anything)
          '(anything)))
+  (is (= (fixed-term-to-template (make-variable-query "v" :form :element)
+                                 "")
+         '("")))
   (is (= (fixed-term-to-template
           `(1 ~(make-variable-query "v" :qualifier '(2 3))))
          '(1 (2 3)))))

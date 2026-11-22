@@ -967,7 +967,6 @@
       (is (= (count new-headers)
              (count headers))))))
 
-              new-session-ephemeral (id->entity ephemeral-id (:store reupdated))
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,
                                       ; so we don't mess up the starting one.

@@ -24,7 +24,7 @@
              [store :refer [new-element-store new-mutable-store
                             name-label-id target->ids id->source
                             target-label->ids
-                            current-store id-valid-link?
+                            current-store id-valid-link? id-known?
                             id->target id->string
                             get-new-object-id object-id? id-known-object?
                             update-source store-update!
@@ -44,7 +44,8 @@
                                   client-id->relative-ids]]
              [actions :refer :all]
              [action-data :refer [get-id-action-data default-get-action-data
-                                  update-action-data-for-component]]
+                                  update-action-data-for-component
+                                  get-virtual-action-data]]
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [add-order-elements]]
              [model-utils :refer [object-semantic-to-tree
@@ -533,7 +534,12 @@
       (is (check (:ephemeral-data new-store)
                  {:following-selection-by-ids
                   [nil (as-set [(:item-id new-joe-element)
-                                (:item-id new-jane-element)])]})))))
+                                (:item-id new-jane-element)])]}))))
+  ;; Nothing is added to new subjects, but the store is kept.
+  (is (= (do-add-element store {:subject-ids [(:item-id joe-age)]
+                                :new-subjects true
+                                :session-state session-state})
+         store)))
 
 (deftest do-add-reverse-element-test
   (let [new-store (do-add-reverse-element store
@@ -961,73 +967,7 @@
       (is (= (count new-headers)
              (count headers))))))
 
-;;; TODO: Redo this once batch-edit is fixed.
-(comment
-  (deftest do-batch-edit-test
-    (let [updated (do-batch-edit
-                   store
-                   {:query-ids [joe-id]
-                    :stack-ids [jane-id]
-                    :selected-index 0
-                    :selection-sequence [(:item-id jane-age)]
-                    :session-state session-state})
-          session-ephemeral (id->entity ephemeral-id (:store updated))
-          query-item (first (label->elements session-ephemeral :batch-query))
-          stack-item (first (label->elements session-ephemeral :batch-stack))]
-      (is (check (canonicalize (semantic-to-tree query-item))
-                 (canonicalize `(~'anything
-                                 ("Joe"
-                                  "male"
-                                  "married"
-                                  (39 (~age-label)
-                                      ("doubtful" "confidence"))
-                                  (45 (~age-label)))))))
-      (is (check (canonicalize (semantic-to-tree stack-item))
-                 (canonicalize `(~'anything
-                                 ("Jane"
-                                  (45 (~age-label))
-                                  "female")))))
-      (is (check (:ephemeral-data (:store updated))
-                 {:following-selection-by-ids
-                  [nil [(:item-id (first
-                                   (matching-elements
-                                    45 (first (matching-elements
-                                               "Jane" stack-item)))))]]}))
-      ;; Now try an update to the new store, with no stack selector.
-      (let [reupdated (do-batch-edit
-                       (:store updated)
-                       {:query-ids [jane-id joe-id]
-                        :stack-ids []
-                        :session-state session-state})
-            session-ephemeral (id->entity ephemeral-id (:store reupdated))
-            query-item (label->element session-ephemeral :batch-query)
-            stack-item (label->element session-ephemeral :batch-stack)]
-        (is (check (semantic-to-tree stack-item)
-                   'anything))
-        (is (check (canonicalize (semantic-to-tree query-item))
-                   (canonicalize `(~'anything
-                                   ("Joe"
-                                    "male"
-                                    "married"
-                                    (39 (~age-label)
-                                        ("doubtful" "confidence"))
-                                    (45 (~age-label)))
-                                   ("Jane"
-                                    (45 (~age-label))
-                                    "female")))))
-        (is (earlier? (label->content
-                       (first (matching-elements "Jane" query-item)) :order)
-                      (label->content
-                       (first (matching-elements "Joe" query-item)) :order)))
-        ;; Now try with no batch edit information in the target
-        (let [rereupdated (do-batch-edit
-                           (:store reupdated)
-                           {:session-state session-state})
               new-session-ephemeral (id->entity ephemeral-id (:store reupdated))
-              new-query-item (first (label->elements session-ephemeral
-                                                     :batch-query))]
-          (is (= new-query-item query-item)))))))
-
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,
                                       ; so we don't mess up the starting one.
@@ -1069,14 +1009,13 @@
     (is (nil? (do-redo ms nil)))
     (is (= (current-store ms) following-store))))
 
-(deftest do-actions-test
+(defn make-session-state-with-joe-child
+  "Return a session state on a new mutable store for the test store,
+  with a dom manager whose root component shows joe, and holds a child
+  component with the given properties."
+  [child-component-properties]
   (let [queue (make-priority-task-queue 0)
         cd (make-calculator-data queue)
-        joe-age-id (:item-id joe-age)
-        joe-client-id (relative-ids->client-id
-                       [:root joe-id])
-        joe-age-client-id (relative-ids->client-id
-                           [:root joe-id joe-age-id])
         mutable-store (new-mutable-store store)
         manager (make-dom-manager mutable-store cd)
         session-state {:session-ephemeral-id ephemeral-id
@@ -1092,15 +1031,51 @@
         [:div [:component
                {:relative-id joe-id
                 :get-action-data [get-id-action-data joe-id]
-                :render-dom
-                (fn [spec store]
-                  [:div
-                   [:component
-                    {:relative-id joe-age-id
-                     :render-dom (fn [spec store]
-                                   [:div 45])
-                     :get-action-data [get-id-action-data
-                                       joe-age-id]}]])}]])})
+                :render-dom (fn [spec store]
+                              [:div [:component
+                                     child-component-properties]])}]])})
+    session-state))
+
+(deftest do-contextual-action-test
+  (let [joe-client-id (relative-ids->client-id [:root joe-id])
+        virtual-client-id (relative-ids->client-id [:root joe-id :virtual])
+        {mutable-store :store :as session-state}
+        (make-session-state-with-joe-child
+         {:relative-id :virtual
+          :virtual true
+          :template 'anything
+          :render-dom (fn [spec store] [:div])
+          :get-action-data get-virtual-action-data})
+        ;; A handler that records its arguments and makes no changes.
+        arguments (atom nil)
+        capture-handler (fn [store args] (reset! arguments args) nil)]
+    (with-redefs [get-contextual-handler (constantly capture-handler)]
+      ;; A subject that is already in the store is not new.
+      (do-contextual-action mutable-store session-state
+                            [:set-content joe-client-id])
+      (is (check (select-keys @arguments [:subject-ids :new-subjects])
+                 {:subject-ids [joe-id]}))
+      ;; A subject that the action data instantiated for a virtual
+      ;; component is new.
+      (do-contextual-action mutable-store session-state
+                            [:set-content virtual-client-id])
+      (is (not (id-known? store (first (:subject-ids @arguments)))))
+      (is (check (select-keys @arguments [:new-subjects])
+                 {:new-subjects true})))))
+
+(deftest do-actions-test
+  (let [joe-age-id (:item-id joe-age)
+        joe-client-id (relative-ids->client-id
+                       [:root joe-id])
+        joe-age-client-id (relative-ids->client-id
+                           [:root joe-id joe-age-id])
+        {mutable-store :store :as session-state}
+        (make-session-state-with-joe-child
+         {:relative-id joe-age-id
+          :render-dom (fn [spec store]
+                        [:div 45])
+          :get-action-data [get-id-action-data
+                            joe-age-id]})]
     (let [for-client (do-actions
                       mutable-store session-state
                       [[:set-content joe-age-client-id
@@ -1127,111 +1102,3 @@
       (is (= (:following-selection-by-ids
               (:ephemeral-data (current-store mutable-store)))
              [joe-age-client-id [joe-age-id]])))))
-
-(comment
-  (deftest do-add-twin-test
-    (let [result (do-add-twin
-                  store
-                  {:referent (item-referent jane-age)
-                   :template `(~'anything (~age-label))
-                   :target-key ["jane" "jane-age"]})
-          new-store (:store result)]
-      (is (check (item->canonical-semantic
-                  (to-tree (id->entity (:item-id jane) new-store)))
-                 (canonicalize `("Jane"
-                                 "female"
-                                 (45 (~age-label))
-                                 (~'anything (~age-label))))))
-      (is (check (:select result)
-                 [["jane" (any)] [["jane" "jane-age"]]]))))
-
-  (deftest do-add-virtual-test
-    (let [result (do-add-virtual
-                  store
-                  {:referent
-                   (virtual-referent `(~'anything (~age-label))
-                                     (union-referent [(item-referent jane)])
-                                     (item-referent jane) :position :after)
-                   :select-pattern ["jane" [:pattern]]
-                   :target-key ["jane" "jane-age"]})]
-      (is (check (item->canonical-semantic
-                  (to-tree (id->entity (:item-id jane) (:store result))))
-                 (canonicalize `("Jane"
-                                 "female"
-                                 (45 (~age-label))
-                                 (~'anything (~age-label))))))
-      (is (check (:select result)
-                 [["jane" (any)] [["jane" "jane-age"]]]))))
-
-  (deftest do-open-in-new-window-test
-    (is (check (do-open-in-new-window store
-                              {:referent (item-referent joe)
-                               :target-key "joe"
-                               :session-state {:url-path "foo"}})
-               {:store store
-                :open (str "foo?referent="
-                           (referent->string (item-referent joe)))})))
-
-  (deftest batch-edit-select-key-test
-    (is (= (batch-edit-select-key
-            [joe joe-age joe-age-label]
-            [jane joe])
-           [:batch (:item-id joe) (:item-id joe-age-label)]))
-    (is (= (batch-edit-select-key
-            [joe joe-age joe-age-label]
-            [jane])
-           nil)))
-
-  (deftest do-actions-test
-    (let [queue (make-priority-task-queue 0)
-          mutable-store (new-mutable-store store queue)
-          tracker (new-dom-tracker mutable-store)
-          session-state {:tracker tracker
-                         :store mutable-store
-                         :selector-interpretation :broad
-                         :client-state (new-state-map {:last-action nil} queue)}
-          attributes {:commands {:add-element nil}
-                      :target {:referent
-                               (union-referent [(item-referent jane)
-                                                (item-referent joe)])}}]
-      (swap! tracker update-set-component
-             {:key [:jane]
-              :definition [(fn [& _] [:div])]
-              :attributes attributes})
-      (let [result (do-actions mutable-store session-state
-                               [[:add-element (key->id tracker [:jane])]])
-            new-store (current-store mutable-store)
-            select (:select result)
-            new-id (last (first select))]
-        (is (= select [[:jane new-id] [[:jane]]]))
-        (is (check (item->canonical-semantic
-                    (id->entity (:item-id jane) new-store))
-                   (canonicalize `("Jane" "female"
-                                   (45 (~age-label))
-                                   ~'anything))))
-        (is (check (item->canonical-semantic
-                    (id->entity (:item-id joe) new-store))
-                   (canonicalize `("Joe"
-                                   "male"
-                                   (39 (~age-label)
-                                       ("doubtful" "confidence"))
-                                   "married"
-                                   (45 (~age-label))
-                                   ""))))
-        (is (= (immutable-semantic-to-tree
-                (id->entity new-id new-store))
-               'anything)))))
-
-  (deftest confirm-actions-test
-    (let [queue (make-priority-task-queue 0)
-          client-state (new-state-map {:last-action nil} queue)]
-      (is (= (confirm-actions {1 :a 2 :b 3 :c} client-state)
-             [:a :b :c]))
-      (is (= (confirm-actions {2 :b 3 :c 4 :d} client-state)
-             [:d]))
-      (is (= (confirm-actions {2 :b 3 :c 4 :d} client-state)
-             []))
-      (is (= (confirm-actions {} client-state)
-             []))
-      (is (= (state-map-get-current-value client-state :last-action) 4))))
-  )

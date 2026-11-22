@@ -356,11 +356,15 @@
       (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-element
-  [store {:keys [subject-ids session-state client-id]}]
-  (let [[store ids] (create-possible-selector-entities
-                     `(~'anything) subject-ids subject-ids
-                     :before false store)]
-    (add-following-selection-by-ids store client-id ids)))
+  "Add an element to each subject, unless the subjects are already new,
+  in which case virtual items got added, so just return the store."
+  [store {:keys [subject-ids session-state client-id new-subjects]}]
+  (if new-subjects
+    store
+    (let [[store ids] (create-possible-selector-entities
+                       `(~'anything) subject-ids subject-ids
+                       :before false store)]
+      (add-following-selection-by-ids store client-id ids))))
 
 (defn do-add-reverse-element
   "Add a reverse element to each subject that is an object. Does
@@ -827,7 +831,8 @@
   plus :virtual, :complete-entity, and
   :virtual-object-reference-template from the spec,
   plus :client-id, :session-state, and any other arguments the client
-  provided. In addition to information
+  provided, plus :new-subjects, which is true if the first subject id
+  was not known in the store before the action. In addition to information
   for the client, the handler can also specify whether we
   are :batch-editing, and a new :root-id."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
@@ -862,11 +867,19 @@
                          spec-info (select-keys
                                     spec [:virtual :complete-entity
                                           :virtual-object-reference-template])
+                         subject-ids (:subject-ids action-data)
+                         new-subjects (and (seq subject-ids)
+                                           (not (id-known?
+                                                 store
+                                                 (store-item-id
+                                                  (first subject-ids)))))
                          arguments (-> action-data
                                        (into spec-info)
                                        (into client-args)
                                        (assoc :session-state session-state
-                                              :client-id client-id))
+                                              :client-id client-id)
+                                       (cond-> new-subjects
+                                         (assoc :new-subjects true)))
                          _ (println "HANDLER ARGUMENTS: "
                                     (simplify-for-print
                                      (dissoc arguments :session-state)))

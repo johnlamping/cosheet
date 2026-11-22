@@ -48,7 +48,7 @@
                                transform-pattern-toward-fixed-term
                                pattern->fixed-term-query
                                mark-template-as-selector
-                               replace-anythings-with-nothing
+                               replace-non-selector-anythings-with-nothing
                                add-non-selector-to-fixed-term]]
              [order-utils :refer [ordered-entities]])
             ; :reload
@@ -145,7 +145,7 @@
                                (mark-template-as-selector unmarked))
         after (modify-to-non-selector store id)]
     (is (check (canonicalize (to-tree (id->entity id after)))
-               (canonicalize (replace-anythings-with-nothing
+               (canonicalize (replace-non-selector-anythings-with-nothing
                               unmarked)))))
   ;; A reversed 'anything element also gets 'nothing as its content.
   (let [unmarked (make-tree-object
@@ -155,7 +155,7 @@
                                (mark-template-as-selector unmarked))
         after (modify-to-non-selector store id)]
     (is (check (canonicalize (to-tree (id->entity id after)))
-               (canonicalize (replace-anythings-with-nothing
+               (canonicalize (replace-non-selector-anythings-with-nothing
                               unmarked))))))
 
 (deftest selector-object-semantic-to-tree-test

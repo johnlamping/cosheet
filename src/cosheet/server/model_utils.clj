@@ -54,7 +54,8 @@
                       internal-semantic-to-tree semantic-to-tree
                       selector-semantic-elements selector-semantic-to-tree
                       selector? mark-template-as-selector
-                      replace-anythings-with-nothing selector-marked-entities
+                      replace-non-selector-anythings-with-nothing
+                      selector-marked-entities
                       fixed-term-to-template
                       make-non-semantic-tree-object]])))
 
@@ -696,20 +697,22 @@
 
 (defn create-possible-selector-entity
   "Create an entity matching the template. If the subject-id is a
-  selector, mark the template as a selector before adding it.
-  If the template is an element, make the subject-id, whatever its
-  direction, its subject, with the new link direction matching the
-  template's.
-  If the template is an object and the subject-id is non-nil, it may
-  be a DirectedItemId; its content endpoint will be set to the new
-  object.
+  selector, mark the template as a selector before adding it. Preserve
+  any selector markings on the template, even if the subject-id is not
+  a selector.  
+  If the template is an element, make the new link have the subject-id
+  as its subject. (Which endpoint that is depends on the template's
+  direction.)
+  If, instead, the template is an object and the subject-id is
+  non-nil, it may be a DirectedItemId. Set its content endpoint to the
+  new object.
   Return the updated store and the id of the new entity."
   [template subject-id adjacent-id position use-bigger store]
   (assert (or (nil? subject-id) (satisfies? DirectedItemId subject-id)))
   (let [template (if (and subject-id
                           (selector? (id->entity subject-id store)))
                    (mark-template-as-selector template)
-                   (replace-anythings-with-nothing template))]
+                   (replace-non-selector-anythings-with-nothing template))]
     (if (object? template)
       (let [[store id] (update-add-object-adjacent-to
                         store template

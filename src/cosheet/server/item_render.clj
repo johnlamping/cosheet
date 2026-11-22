@@ -24,7 +24,7 @@
                       semantic-label-elements semantic-to-tree
                       semantic-to-tree-excluding-elements
                       entity->canonical-semantic selector?
-                      replace-anythings-with-nothing]]
+                      replace-non-selector-anythings-with-nothing]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
                        hierarchy-node-leaves
@@ -742,7 +742,7 @@
               object #{(flip-id-direction (:item-id element))}))
             (entity->canonical-semantic
              (all-presumed-interned-in-different-store
-              (replace-anythings-with-nothing template) nil))))))
+              (replace-non-selector-anythings-with-nothing template) nil))))))
 
 (defn element-content-DOM
   "Make dom for the content of an element."

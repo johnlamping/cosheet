@@ -439,19 +439,23 @@
                   (make-tree-element a-ref ['(:selector :reverse)] :reverse)
                   :selector]))))))
 
-(deftest replace-anythings-with-nothing-test
-  (is (= (replace-anythings-with-nothing 'anything) 'nothing))
-  (is (= (replace-anythings-with-nothing "x") "x"))
-  (is (check (replace-anythings-with-nothing
+(deftest replace-non-selector-anythings-with-nothing-test
+  (is (= (replace-non-selector-anythings-with-nothing 'anything) 'nothing))
+  (is (= (replace-non-selector-anythings-with-nothing "x") "x"))
+  (is (check (replace-non-selector-anythings-with-nothing
               `(~'anything (~'anything 5) "x"))
              '(nothing (nothing 5) "x")))
-  (is (check (replace-anythings-with-nothing
+  (is (check (replace-non-selector-anythings-with-nothing
               (make-tree-object ['anything `(~'anything 3)]))
              (make-tree-object ['nothing '(nothing 3)])))
   ;; An 'anything that is the content of a reversed element also
   ;; becomes 'nothing.
-  (is (check (replace-anythings-with-nothing
+  (is (check (replace-non-selector-anythings-with-nothing
               (make-tree-object
                [(make-tree-element 'anything ["x"] :reverse)]))
              (make-tree-object
-              [(make-tree-element 'nothing ["x"] :reverse)]))))
+              [(make-tree-element 'nothing ["x"] :reverse)])))
+  ;; An entity marked :selector is left alone, including its parts.
+  (is (check (replace-non-selector-anythings-with-nothing
+              `(~'anything (~'anything :selector (~'anything 3)) "x"))
+             '(nothing (anything :selector (anything 3)) "x"))))

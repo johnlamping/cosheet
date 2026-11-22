@@ -319,9 +319,10 @@
           caller-data])
        nil)))))
 
-(defn replace-anythings-with-nothing
-  "Return the template with every 'anything value replaced by 'nothing.
-  Cycles and objects reached by multiple paths are handled by
+(defn replace-non-selector-anythings-with-nothing
+  "Return the template with every 'anything value replaced by 'nothing,
+  except that any entity marked :selector is left unchanged. Cycles and
+  objects reached by multiple paths are handled by
   repetition-avoiding-threaded-traverse."
   [template]
   (convert-unneeded-conflux-tree-objects
@@ -329,7 +330,9 @@
     (repetition-avoiding-threaded-traverse
      template
      (fn [_parent entity _ caller-data]
-       [(if (= entity 'anything) 'nothing entity)
+       [(cond (= entity 'anything) 'nothing
+              (selector? entity) [:entity/do-not-process entity]
+              :else entity)
         caller-data])
      identity-post-fn
      nil))))

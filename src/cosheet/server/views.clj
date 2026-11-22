@@ -212,7 +212,7 @@
   [:div#context-menu.popup.context_menu
    [:div#add-twin-menu.menu-item "add twin (same labels)"]
    [:div#add-element-menu.menu-item "add child"]
-   [:div#add-reverse-element-menu.menu-item "add reverse child"]
+   [:div#reverse-direction-menu.menu-item "reverse direction"]
    [:div#add-label-menu.menu-item "add label"]
    [:div#make-object-menu.menu-item "make object"]
    [:div#make-name-menu.menu-item "make name"]])

@@ -72,7 +72,7 @@
                              "open-in-new-window" :open-in-new-window
                              "add-twin" :add-twin
                              "add-element" :add-element
-                             "add-reverse-element" :add-reverse-element
+                             "reverse-direction" :reverse-direction
                              "add-label" :add-label
                              "make-name" :make-name
                              "make-object" :make-object

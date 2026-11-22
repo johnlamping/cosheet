@@ -535,33 +535,55 @@
                  {:following-selection-by-ids
                   [nil (as-set [(:item-id new-joe-element)
                                 (:item-id new-jane-element)])]}))))
-  ;; Nothing is added to new subjects, but the store is kept.
-  (is (= (do-add-element store {:subject-ids [(:item-id joe-age)]
-                                :new-subjects true
-                                :session-state session-state})
-         store)))
+  ;; Nothing is added to new subjects, but they are selected.
+  (is (check (do-add-element store {:subject-ids [(:item-id joe-age)]
+                                    :new-subjects true
+                                    :session-state session-state})
+             (assoc-in store [:ephemeral-data :following-selection-by-ids]
+                       [nil [(:item-id joe-age)]]))))
 
-(deftest do-add-reverse-element-test
-  (let [new-store (do-add-reverse-element store
-                                          {:subject-ids [joe-id jane-id]
-                                           :session-state session-state})
-        new-joe-element (first (filter reverse?
-                                       (semantic-elements
-                                        (id->entity joe-id new-store))))
-        new-jane-element (first (filter reverse?
-                                        (semantic-elements
-                                         (id->entity jane-id new-store))))]
-    (is (= (content new-joe-element) 'nothing))
-    ;; Jane is a selector, so the added element is 'anything.
-    (is (= (content new-jane-element) 'anything))
+(deftest do-reverse-direction-test
+  (let [[s0 object-id] (add-object store (make-tree-object ["x"]))
+        [s1 holder-id] (add-element s0 joe-id
+                                    (list (id->object object-id s0)))
+        [s2 nothing-id] (add-element s1 joe-id 'nothing)
+        new-store (do-reverse-direction
+                   s2 {:subject-ids [holder-id
+                                     (make-reverse-item-id nothing-id)
+                                     (:item-id joe-age)]
+                       :session-state session-state})]
+    ;; A link between two objects is swapped.
+    (is (= (id->target new-store holder-id) object-id))
+    (is (= (id->source new-store holder-id) joe-id))
+    ;; A link between an object and a symbol is swapped.
+    (is (= (id->target new-store nothing-id) 'nothing))
+    (is (= (id->source new-store nothing-id) joe-id))
+    ;; A link whose source is a primitive is left alone.
+    (is (= (id->target new-store (:item-id joe-age)) joe-id))
+    (is (= (id->source new-store (:item-id joe-age)) 45))
+    ;; The swapped links are selected as seen from their subjects' new
+    ;; directions.
     (is (check (:ephemeral-data new-store)
                {:following-selection-by-ids
-                [nil (as-set [(:item-id new-joe-element)
-                              (:item-id new-jane-element)])]})))
-  ;; Does nothing to subjects that are not objects.
-  (is (nil? (do-add-reverse-element store
-                                    {:subject-ids [(:item-id joe-age)]
-                                     :session-state session-state}))))
+                [nil [(make-reverse-item-id holder-id) nothing-id]]})))
+  ;; An object subject whose past subject is a link stands for that
+  ;; link.
+  (let [[s0 object-id] (add-object store (make-tree-object ["x"]))
+        [s1 holder-id] (add-element s0 joe-id
+                                    (list (id->object object-id s0)))
+        new-store (do-reverse-direction
+                   s1 {:subject-ids [object-id]
+                       :past-subject-ids [[holder-id] [joe-id]]
+                       :session-state session-state})]
+    (is (= (id->target new-store holder-id) object-id))
+    (is (= (id->source new-store holder-id) joe-id))
+    (is (check (:ephemeral-data new-store)
+               {:following-selection-by-ids
+                [nil [(make-reverse-item-id holder-id)]]})))
+  ;; Does nothing if no subject is a link that can be swapped.
+  (is (nil? (do-reverse-direction store
+                                  {:subject-ids [joe-id (:item-id joe-age)]
+                                   :session-state session-state}))))
 
 (deftest do-add-label-test
   ;; Test for adding a label when there is more than one subject id.

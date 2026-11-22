@@ -8,7 +8,7 @@
     [map-reporter :refer [map-reporter-get-current map-reporter-reset!
                        map-reporter-change-value!
                        map-reporter-change-value-control-return!]]
-    [store :refer [update-source
+    [store :refer [update-source update-target
                    equivalent-undo-point? update-equivalent-undo-point
                    store-update-control-return!
                    id->target target-label->ids target-source->ids
@@ -23,8 +23,8 @@
                          directed-id->content-value
                          update-directed-id-content-value]]
     [entity :refer [id->entity id->element make-tree-object
-                    make-tree-element reverse? reverse-id? store-item-id
-                    make-reverse-item-id
+                    make-tree-element reverse-id? store-item-id
+                    flip-id-direction
                     add-elements-to-entity
                     all-elements forward-elements content content->elements
                     label->element label->elements
@@ -357,27 +357,55 @@
 
 (defn do-add-element
   "Add an element to each subject, unless the subjects are already new,
-  in which case virtual items got added, so just return the store."
+  in which case virtual items got added, so just select the subjects."
   [store {:keys [subject-ids session-state client-id new-subjects]}]
-  (if new-subjects
-    store
-    (let [[store ids] (create-possible-selector-entities
+  (let [[store ids] (if new-subjects
+                      [store subject-ids]
+                      (create-possible-selector-entities
                        `(~'anything) subject-ids subject-ids
-                       :before false store)]
-      (add-following-selection-by-ids store client-id ids))))
+                       :before false store))]
+    (add-following-selection-by-ids store client-id ids)))
 
-(defn do-add-reverse-element
-  "Add a reverse element to each subject that is an object. Does
-  nothing to other subjects, since only objects can hold reverse
-  elements."
-  [store {:keys [subject-ids session-state client-id]}]
-  (let [object-ids (filter object-id? subject-ids)]
-    (when (seq object-ids)
-      (let [[store ids] (create-possible-selector-entities
-                         (make-tree-element 'anything [] :reverse)
-                         object-ids object-ids :before false store)]
+(defn- swappable-endpoint?
+  "Return whether a link endpoint is acceptable as both the target and
+  the source of a link."
+  [endpoint]
+  (or (symbol? endpoint) (object-id? endpoint)))
+
+(defn do-reverse-direction
+  "For each subject that is a link whose source and target can legally
+  be swapped, swap them. A subject that is an object whose
+  corresponding past subject is a link is replaced by that link.
+  Select the swapped links as seen from their subjects' new
+  directions. Does nothing if no subject qualifies."
+  [store {:keys [subject-ids past-subject-ids session-state client-id]}]
+  (let [candidate-ids (map (fn [id past-id]
+                             (if (and (object-id? id)
+                                      past-id
+                                      (link-id? (store-item-id past-id)))
+                               past-id
+                               id))
+                           subject-ids
+                           (concat (first past-subject-ids) (repeat nil)))
+        swapped-ids (filter (fn [id]
+                              (let [store-id (store-item-id id)]
+                                (and (link-id? store-id)
+                                     (swappable-endpoint?
+                                      (id->target store store-id))
+                                     (swappable-endpoint?
+                                      (id->source store store-id)))))
+                            candidate-ids)]
+    (when (seq swapped-ids)
+      (let [store (reduce (fn [store id]
+                            (let [store-id (store-item-id id)
+                                  target (id->target store store-id)
+                                  source (id->source store store-id)]
+                              (-> store
+                                  (update-target store-id source)
+                                  (update-source store-id target))))
+                          store swapped-ids)]
         (add-following-selection-by-ids
-         store client-id (map make-reverse-item-id ids))))))
+         store client-id (map flip-id-direction swapped-ids))))))
 
 (defn do-add-label
   [store {:keys [subject-ids session-state client-id]}]
@@ -807,7 +835,7 @@
   additional information it wants to convey."
   [action]
   ({:add-element do-add-element
-    :add-reverse-element do-add-reverse-element
+    :reverse-direction do-reverse-direction
     :add-label do-add-label
     :make-name do-make-name
     :make-object do-make-object

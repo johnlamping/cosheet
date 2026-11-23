@@ -525,8 +525,9 @@
   ;; full (by object-DOM). Even though the content is not immutable, the
   ;; resulting component gets class "object" but not "editable", since
   ;; the object itself is not directly-editable text.
-  ;; But if the object is also the content of another element, none of
-  ;; its elements are shown.
+  ;; But if the object is also the content of another element, it is
+  ;; shown collapsed: a component for the object whose dom is a div
+  ;; with no sub-doms.
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-content-id] (get-new-object-id s0)
         [s2 x-id] (add-element s1 obj-content-id "x")
@@ -549,12 +550,11 @@
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id
-                            :element-ids-to-exclude
-                            #{x-id (flip-id-direction elem-id)
-                              (flip-id-direction other-id)}
                             :class "object"
-                            :render-dom render-item-DOM-R
-                            :get-action-data (default-AD)}]))))
+                            :render-dom render-collapsed-object-DOM-R
+                            :get-action-data (default-AD)}]))
+    (is (check (render-collapsed-object-DOM-R {:class "object"} shared-store)
+               [:div {:class "object collapsed-object"}]))))
 
 (deftest element-primitive-content-DOM-test
   ;; An 'anything content gets the placeholder class, and a label

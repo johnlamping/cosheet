@@ -744,6 +744,18 @@
              (all-presumed-interned-in-different-store
               (replace-non-selector-anythings-with-nothing template) nil))))))
 
+(defn render-collapsed-object-DOM-R
+  "Render a dom for an object none of whose elements are to be shown:
+  a div with no sub-doms."
+  [specification store]
+  (cond-> [:div {:class "object collapsed-object"}]
+    (:class specification) (add-attributes {:class (:class specification)})))
+
+(defmethod print-method
+  cosheet.server.item_render$render_collapsed_object_DOM_R
+  [v ^java.io.Writer w]
+  (.write w "collapsed-object-DOM"))
+
 (defn element-content-DOM
   "Make dom for the content of an element."
   [element {:keys [immutable template] :as specification}]
@@ -768,27 +780,28 @@
           (object-reference-component contents specification)
           true
           (do (assert (object? contents))
-              (item-component
-               contents
-               (-> specification
-                   (assoc :template (content template)
-                          :element-ids-to-exclude
-                          ;; Show none of the content's elements if the
-                          ;; element and its content differ in being
-                          ;; selectors, or if a non-selector element is
-                          ;; reversed or its content is also the content
-                          ;; of another element.
-                          (if (if (selector? element)
-                                (not (selector? contents))
-                                (or (selector? contents)
-                                    (reverse? element)
-                                    (> (count (containing-elements contents))
-                                       1)))
-                            (set (map :item-id
-                                      (concat (forward-elements contents)
-                                              (reverse-elements contents))))
-                            #{(flip-id-direction (:item-id element))}))
-                   (into-attributes {:class "object"})))))))
+              (let [object-spec (-> specification
+                                    (assoc :template (content template))
+                                    (into-attributes {:class "object"}))]
+                ;; Show the content collapsed, with none of its
+                ;; elements, not even virtual ones, if the element and
+                ;; its content differ in being selectors, or if a
+                ;; non-selector element is reversed or its content is
+                ;; also the content of another element.
+                (if (if (selector? element)
+                      (not (selector? contents))
+                      (or (selector? contents)
+                          (reverse? element)
+                          (> (count (containing-elements contents)) 1)))
+                  (make-component
+                   (assoc object-spec
+                          :relative-id (:item-id contents)
+                          :render-dom render-collapsed-object-DOM-R
+                          :get-action-data default-get-action-data))
+                  (item-component
+                   contents
+                   (assoc object-spec :element-ids-to-exclude
+                          #{(flip-id-direction (:item-id element))}))))))))
 
 (defn render-element-content-DOM-R
   "Given an item that represents an element, render a dom for

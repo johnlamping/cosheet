@@ -504,6 +504,10 @@ body {
     border-color: var(--object-border-color);
 }
 
+.collapsed-object {
+    min-height: 14px;
+}
+
 /* --- names --- */
 
 .name {
@@ -596,7 +600,7 @@ body {
     }
 }
 
-.label-wrapping-elements.link-type > .wrapped-elements > * {
+.label-wrapping-elements.link-type > .wrapped-elements > *:not(.object) {
     margin-bottom: var(--nbw);
     margin-right: var(--nbw);
 

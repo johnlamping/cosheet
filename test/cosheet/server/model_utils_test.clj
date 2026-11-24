@@ -49,7 +49,8 @@
                                pattern->fixed-term-query
                                mark-template-as-selector
                                replace-non-selector-anythings-with-nothing
-                               add-non-selector-to-fixed-term]]
+                               add-non-selector-to-fixed-term
+                               transparent?]]
              [order-utils :refer [ordered-entities]])
             ; :reload
             ))
@@ -157,6 +158,24 @@
     (is (check (canonicalize (to-tree (id->entity id after)))
                (canonicalize (replace-non-selector-anythings-with-nothing
                               unmarked))))))
+
+(deftest remove-stale-transparent-mark-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 object-id] (add-object s0 (make-tree-object ["x"]))
+        [s2 link-id] (add-isolated-element
+                      s1 `(~(id->object object-id s1) :transparent))]
+    ;; The content is still an unnamed object, so the mark stays.
+    (is (= (remove-stale-transparent-mark s2 link-id) s2))
+    ;; Naming the object removes the mark.
+    (let [[s3 _] (add-element s2 object-id `("Fred" (~name-label)))]
+      (is (not (transparent?
+                (id->entity link-id
+                            (remove-stale-transparent-mark s3 link-id))))))
+    ;; Changing the content to a primitive removes the mark.
+    (let [s3 (update-source s2 link-id "text")]
+      (is (not (transparent?
+                (id->entity link-id
+                            (remove-stale-transparent-mark s3 link-id))))))))
 
 (deftest selector-object-semantic-to-tree-test
   (let [unmarked (make-tree-object
@@ -721,7 +740,8 @@
                  (canonicalize (semantic-to-tree-excluding-elements
                                 (id->entity new-id s2)
                                 #{(make-reverse-item-id subject-id)}))))
-      (is (= (id->source s2 subject-id) new-id)))
+      (is (= (id->source s2 subject-id) new-id))
+      (is (transparent? (id->entity subject-id s2))))
     ;; When the subject-id is reverse, the content of the subject is the
     ;; target of its link, so that is what gets set. The subject's link
     ;; then becomes a forward element of the new object.
@@ -732,13 +752,38 @@
                  (canonicalize (semantic-to-tree-excluding-elements
                                 (id->entity new-id s2) #{subject-id}))))
       (is (= (id->target s2 subject-id) new-id))
-      (is (= (id->source s2 subject-id) "subject")))
+      (is (= (id->source s2 subject-id) "subject"))
+      (is (not (transparent? (id->entity subject-id s2)))))
     ;; When the template is a forward element, the subject is the
     ;; target of the new link.
     (let [[s2 new-id] (create-possible-selector-entity
                        '("Barney") subject-id subject-id :before false s1)]
       (is (= (id->target s2 new-id) subject-id))
-      (is (= (id->source s2 new-id) "Barney")))
+      (is (= (id->source s2 new-id) "Barney"))
+      (is (not (transparent? (id->entity new-id s2)))))
+    ;; A forward element template holding a new object is marked
+    ;; transparent.
+    (let [[s2 new-id] (create-possible-selector-entity
+                       (list (make-tree-object ["Barney"]))
+                       subject-id subject-id :before false s1)]
+      (is (transparent? (id->entity new-id s2))))
+    ;; When the template is a named object, the subject whose content
+    ;; becomes the new object is not marked transparent.
+    (let [named-template (make-tree-object [`("Fred" (~name-label))])
+          [s2 _] (create-possible-selector-entity
+                  named-template subject-id subject-id :before false s1)]
+      (is (not (transparent? (id->entity subject-id s2))))
+      ;; Nor is a forward element template holding the named object.
+      (let [[s2 new-id] (create-possible-selector-entity
+                         (list named-template)
+                         subject-id subject-id :before false s1)]
+        (is (not (transparent? (id->entity new-id s2))))))
+    ;; Nor does a new object held by a selector.
+    (let [[s2 selector-id] (add-isolated-element
+                            s1 `("subject" :selector (~o1 :order)))
+          [s3 _] (create-possible-selector-entity
+                  object-template selector-id selector-id :before false s2)]
+      (is (not (transparent? (id->entity selector-id s3)))))
     ;; When the template is a reverse element, the subject is the
     ;; source of the new link, so it must be an object.
     (let [[s2 new-id] (create-possible-selector-entity

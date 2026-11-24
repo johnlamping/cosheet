@@ -459,3 +459,31 @@
   (is (check (replace-non-selector-anythings-with-nothing
               `(~'anything (~'anything :selector (~'anything 3)) "x"))
              '(nothing (anything :selector (anything 3)) "x"))))
+
+(deftest transparent?-test
+  (is (transparent? '("x" :transparent)))
+  (is (not (transparent? '("x" :selector)))))
+
+(deftest mark-object-holders-transparent-test
+  ;; Forward elements holding objects get marked, down through nested
+  ;; objects. Reverse elements, primitives, and holders of interned
+  ;; objects are left alone.
+  (let [inner (make-tree-object ["z"])
+        reverse-element (make-tree-element (make-tree-object ["y"]) []
+                                           :reverse)
+        outer (make-tree-object [`(~inner) reverse-element])
+        label (link-type-object "lt")]
+    (is (check (mark-object-holders-transparent
+                `("a" (~outer) (~label) "b"))
+               `("a" (~(make-tree-object [`(~inner :transparent)
+                                          reverse-element])
+                      :transparent)
+                     (~label) "b")))
+    ;; A selector is left unchanged, down through its elements.
+    (is (check (mark-object-holders-transparent
+                `("a" (~inner :selector (~inner))))
+               `("a" (~inner :selector (~inner)))))
+    ;; An already transparent holder is not marked again.
+    (is (check (mark-object-holders-transparent
+                `("a" (~inner :transparent)))
+               `("a" (~inner :transparent))))))

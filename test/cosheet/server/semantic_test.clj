@@ -461,10 +461,25 @@
              '(nothing (anything :selector (anything 3)) "x"))))
 
 (deftest transparent?-test
-  (is (transparent? '("x" :transparent)))
+  (is (transparent? `("x" ~transparent-mark)))
   (is (not (transparent? '("x" :selector)))))
 
-(deftest mark-object-holders-transparent-test
+(deftest transparency-allowed-to?-test
+  (let [s0 (add-universal-objects (new-element-store))
+        [s1 object-id] (add-object s0 (make-tree-object ["x"]))
+        [s2 link-id] (add-isolated-element s1 "text")
+        [s3 _] (add-element s2 object-id `("Fred" (~name-label)))]
+    ;; An unnamed object, stored or not, may be held transparently.
+    (is (transparency-allowed-to? (id->entity object-id s2)))
+    (is (transparency-allowed-to? (make-tree-object ["x"])))
+    ;; A named object, an interned object, a link, and a primitive may
+    ;; not.
+    (is (not (transparency-allowed-to? (id->entity object-id s3))))
+    (is (not (transparency-allowed-to? (link-type-object "lt"))))
+    (is (not (transparency-allowed-to? (id->entity link-id s2))))
+    (is (not (transparency-allowed-to? "text")))))
+
+(deftest make-object-holders-transparent-test
   ;; Forward elements holding objects get marked, down through nested
   ;; objects. Reverse elements, primitives, and holders of interned
   ;; objects are left alone.
@@ -473,17 +488,18 @@
                                            :reverse)
         outer (make-tree-object [`(~inner) reverse-element])
         label (link-type-object "lt")]
-    (is (check (mark-object-holders-transparent
-                `("a" (~outer) (~label) "b"))
-               `("a" (~(make-tree-object [`(~inner :transparent)
-                                          reverse-element])
-                      :transparent)
-                     (~label) "b")))
+    (is (check (canonicalize (make-object-holders-transparent
+                             `("a" (~outer) (~label) "b")))
+               (canonicalize
+                `("a" (~(make-tree-object [`(~inner ~transparent-mark)
+                                           reverse-element])
+                       ~transparent-mark)
+                      (~label) "b"))))
     ;; A selector is left unchanged, down through its elements.
-    (is (check (mark-object-holders-transparent
+    (is (check (make-object-holders-transparent
                 `("a" (~inner :selector (~inner))))
                `("a" (~inner :selector (~inner)))))
     ;; An already transparent holder is not marked again.
-    (is (check (mark-object-holders-transparent
-                `("a" (~inner :transparent)))
-               `("a" (~inner :transparent))))))
+    (is (check (canonicalize (make-object-holders-transparent
+                             `("a" (~inner ~transparent-mark))))
+               (canonicalize `("a" (~inner ~transparent-mark)))))))

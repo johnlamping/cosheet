@@ -53,8 +53,10 @@
     [semantic :refer [semantic-element? semantic-elements
                       internal-semantic-to-tree semantic-to-tree
                       selector-semantic-elements selector-semantic-to-tree
-                      selector? transparent? mark-template-as-selector
-                      mark-object-holders-transparent
+                      selector? transparent? transparency-allowed-to?
+                      transparent-mark transparent-mark-elements
+                      mark-template-as-selector
+                      make-object-holders-transparent
                       replace-non-selector-anythings-with-nothing
                       selector-marked-entities
                       fixed-term-to-template
@@ -254,19 +256,61 @@
           store
           (selector-marked-entities store id)))
 
-(defn remove-stale-transparent-mark
-  "Return the store with any :transparent mark removed from the link
-  with the given id, if its content is no longer an object, or is a
-  uniquely identified object."
+(defn ensure-transparent
+  "Return the store with the link with the given id transparent, if it
+  isn't already."
+  [store link-id]
+  (cond-> store
+    (not (transparent? (id->entity link-id store)))
+    (-> (add-element link-id transparent-mark)
+        first)))
+
+(defn ensure-not-transparent
+  "Return the store with the link with the given id not transparent."
   [store id]
-  (let [link (id->entity id store)
-        contents (content link)]
-    (if (and (transparent? link)
-             (not (and (object? contents)
-                       (not (uniquely-identified-object? contents)))))
-      (reduce remove-entity-by-id store
-              (map entity-key (content->elements link :transparent)))
-      store)))
+  (reduce remove-entity-by-id store
+          (map entity-key
+               (transparent-mark-elements (id->entity id store)))))
+
+(defn set-link-transparency
+  "Return the store with the link with the given id transparent if
+  transparent is true, and not transparent otherwise."
+  [store link-id transparent]
+  (if transparent
+    (ensure-transparent store link-id)
+    (ensure-not-transparent store link-id)))
+
+(defn remove-stale-transparency
+  "Return the store with the link with the given id made not
+  transparent, if it is transparent and its source no longer permits
+  transparency."
+  [store id]
+  (cond-> store
+    (let [element (id->entity (store-item-id id) store)]
+      (and (transparent? element)
+           (not (transparency-allowed-to? (content element)))))
+    (ensure-not-transparent id)))
+
+(defn remove-stale-holder-transparency
+  "Return the store with every link whose content is the object with
+  the given id made not transparent, if that object may no longer be
+  held transparently."
+  [store object-id]
+  (if (transparency-allowed-to? (id->entity object-id store))
+    store
+    (reduce ensure-not-transparent store (source->ids store object-id))))
+
+(defn update-flavors-for-becoming-named
+  "Return the store with the flavors of the object with the given id and
+  of its containers updated for its having been given a name: if the
+  name makes it uniquely identified, it is no longer a selector, and
+  the links holding it are no longer transparent."
+  [store renamed-object-id]
+  (let [object (id->entity renamed-object-id store)]
+    (-> store
+        (cond-> (and (selector? object) (uniquely-identified-object? object))
+          (modify-to-non-selector renamed-object-id))
+        (remove-stale-holder-transparency renamed-object-id))))
 
 ;;; Adding new elements and objects, noting the orders in their
 ;;; templates.
@@ -710,27 +754,21 @@
     (repetition-avoiding-threaded-traverse
        generic pre-fn identity-post-fn store)))
 
-(defn- ensure-link-transparent
-  "Return the store with the link with the given id marked :transparent,
-  if it isn't already."
-  [store link-id]
-  (cond-> store
-    (not (transparent? (id->entity link-id store)))
-    (-> (add-element link-id :transparent) first)))
-
-(defn create-possible-selector-entity
-  "Create an entity matching the template. If the subject-id is a
-  selector, mark the template as a selector before adding it. Preserve
-  any selector markings on the template, even if the subject-id is not
-  a selector. Otherwise, mark as :transparent the template's forward
-  elements that hold new objects.
-  If the template is an element, make the new link have the subject-id
-  as its subject. (Which endpoint that is depends on the template's
-  direction.)
+(defn adjust-flavors-and-create-entity
+  "Create an entity matching the template.
+  If the subject-id is a selector, mark the template as a selector
+  before adding it. Preserve any selector markings on the template,
+  even if the subject-id is not a selector.
+  If, instead, the subject-id is not a selector, mark each of the
+  template's forward elements as transparent if their content allows
+  that.
+  If the template is an element, make the new link representing it
+  have the subject-id as its subject. (Which endpoint that is depends
+  on the template's direction.)
   If, instead, the template is an object and the subject-id is
   non-nil, it may be a DirectedItemId. Set its content endpoint to the
-  new object. If the subject is a forward non-selector link and the
-  new object is not uniquely identified, mark the subject :transparent.
+  new object, and if it is a non-selector forward link, mark it be
+  transparent if and only if the template object allows that.
   Return the updated store and the id of the new entity."
   [template subject-id adjacent-id position use-bigger store]
   (assert (or (nil? subject-id) (satisfies? DirectedItemId subject-id)))
@@ -740,7 +778,7 @@
                    (mark-template-as-selector template)
                    (-> template
                        replace-non-selector-anythings-with-nothing
-                       mark-object-holders-transparent))]
+                       make-object-holders-transparent))]
     (if (object? template)
       (let [[store id] (update-add-object-adjacent-to
                         store template
@@ -750,11 +788,10 @@
            subject-id
            (update-directed-id-content-value subject-id id)
            (and subject-id
-                (not subject-selector?)
                 (not (reverse-id? subject-id))
-                (not (uniquely-identified-object? template))
-                (not (presumed-interned-object? template)))
-           (ensure-link-transparent subject-id))
+                (not subject-selector?))
+           (set-link-transparency subject-id
+                                  (transparency-allowed-to? template)))
          id])
       (update-add-element-adjacent-to store (some-> subject-id store-item-id)
                                       template (id->entity adjacent-id store)
@@ -768,7 +805,7 @@
   (let [[specialized-template store] (specialize-generic template store)
         [ids store] (threaded-map
                      (fn [[subject adjacent] store]
-                       (let [[store id] (create-possible-selector-entity
+                       (let [[store id] (adjust-flavors-and-create-entity
                                          specialized-template
                                          subject adjacent position use-bigger
                                          store)]

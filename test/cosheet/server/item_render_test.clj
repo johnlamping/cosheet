@@ -6,7 +6,7 @@
              [query :refer [matching-elements]]
              [debug :refer [envs-to-trees simplify-for-print]]
              [entity :refer [id->element id->object flip-id-direction
-                             name-label link-type object-type
+                             content name-label link-type object-type
                              make-tree-object make-tree-element
                              uniquely-identified-object?
                              to-tree reverse?]]
@@ -22,7 +22,8 @@
              [test-utils :refer [check any as-set]])
             (cosheet.server
              [semantic :refer [semantic-label-elements
-                               semantic-non-label-elements]]
+                               semantic-non-label-elements
+                               transparent-mark]]
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
@@ -521,22 +522,24 @@
                             :get-action-data (pass-AD)}]))))
 
 (deftest element-content-DOM-object-test
-  ;; An element whose content is a non-interned object is rendered in
-  ;; full (by object-DOM). Even though the content is not immutable, the
-  ;; resulting component gets class "object" but not "editable", since
-  ;; the object itself is not directly-editable text.
-  ;; But if the object is also the content of another element, it is
-  ;; shown collapsed: a component for the object whose dom is a div
+  ;; A transparent forward element whose content is a non-interned
+  ;; object is rendered in full (by object-DOM). Even though the content
+  ;; is not immutable, the resulting component gets class "object" but
+  ;; not "editable", since the object itself is not directly-editable
+  ;; text.
+  ;; An element that is not transparent, or that is reverse, shows its
+  ;; content collapsed: a component for the object whose dom is a div
   ;; with no sub-doms.
   (let [s0 (add-universal-objects (new-element-store))
         [s1 obj-content-id] (get-new-object-id s0)
         [s2 x-id] (add-element s1 obj-content-id "x")
-        [store elem-id] (add-isolated-element s2
-                                              `(~(id->object obj-content-id s2)))
+        [s3 elem-id] (add-isolated-element
+                      s2 `(~(id->object obj-content-id s2)
+                           ~transparent-mark))
+        [store plain-id] (add-isolated-element
+                          s3 `(~(id->object obj-content-id s3)))
         element (id->element elem-id store)
-        spec {:width 1.5 :template `(~'anything (~name-label))}
-        [shared-store other-id] (add-isolated-element
-                                 store `(~(id->object obj-content-id store)))]
+        spec {:width 1.5 :template `(~'anything (~name-label))}]
     (is (check (element-content-DOM element spec)
                [:component {:width 1.5
                             :template 'anything
@@ -546,15 +549,26 @@
                             :class "object"
                             :render-dom render-item-DOM-R
                             :get-action-data (default-AD)}]))
-    (is (check (element-content-DOM (id->element elem-id shared-store) spec)
+    (is (check (element-content-DOM (id->element plain-id store) spec)
                [:component {:width 1.5
                             :template 'anything
                             :relative-id obj-content-id
                             :class "object"
                             :render-dom render-collapsed-object-DOM-R
                             :get-action-data (default-AD)}]))
-    (is (check (render-collapsed-object-DOM-R {:class "object"} shared-store)
-               [:div {:class "object collapsed-object"}]))))
+    ;; Seen in reverse, the transparent element's content is the
+    ;; object that the isolated element was added to.
+    (let [reverse-element (id->element (flip-id-direction elem-id) store)]
+      (is (check (element-content-DOM reverse-element spec)
+                 [:component {:width 1.5
+                              :template 'anything
+                              :relative-id (:item-id
+                                            (content reverse-element))
+                              :class "object"
+                              :render-dom render-collapsed-object-DOM-R
+                              :get-action-data (default-AD)}])))
+    (is (check (render-collapsed-object-DOM-R {:class "object"} store)
+               [:div {:class "editable object collapsed-object"}]))))
 
 (deftest element-primitive-content-DOM-test
   ;; An 'anything content gets the placeholder class, and a label

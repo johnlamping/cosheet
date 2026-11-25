@@ -48,8 +48,11 @@
                          unspecified-column-header-template
                          update-add-element-with-order-and-ephemeral
                          get-or-make-ordered-object-by-name
-                         create-possible-selector-entity merge-objects
-                         modify-to-non-selector remove-entity-by-id
+                         adjust-flavors-and-create-entity merge-objects
+                         remove-entity-by-id
+                         ensure-not-transparent
+                         remove-stale-transparency
+                         update-flavors-for-becoming-named
                          object-semantic-to-tree add-item-tab tabs-cleanup
                          tab-query]]
     [semantic :refer [semantic-elements entity->canonical-semantic
@@ -155,7 +158,9 @@
   selector, and 'nothing otherwise; to actually set the empty string,
   the user types two quotation marks. A reverse element can't hold any
   other primitive, so for one, an object matching the template is made
-  to hold the primitive, as described in object-template-holding-text."
+  to hold the primitive, as described in object-template-holding-text.
+  A forward element loses its transparency if its new content no
+  longer permits it."
   ([store id to]
    (update-change-content store id to nil))
   ([store id to template]
@@ -167,11 +172,13 @@
          modified (if (and (reverse-id? id)
                            (not (or (object-id? to)
                                     (#{'anything 'nothing} to))))
-                    (first (create-possible-selector-entity
+                    (first (adjust-flavors-and-create-entity
                             (object-template-holding-text template to)
                             id id :after false store))
-                    (update-directed-id-content-value
-                     store id (parse-string-as-number to)))]
+                    (cond-> (update-directed-id-content-value
+                             store id (parse-string-as-number to))
+                      (not (reverse-id? id))
+                      (remove-stale-transparency id)))]
      (abandon-problem-changes store modified id))))
 
 (defn object-to-merge-into-renamed
@@ -186,16 +193,6 @@
       (when (not= (:item-id existing) renamed-object-id)
         (:item-id existing)))))
 
-(defn modify-to-non-selector-if-identified
-  "If the object with the given id is uniquely identified and a
-  selector, return the store with the object changed to a
-  non-selector. Otherwise return the store unchanged."
-  [store object-id]
-  (let [object (id->entity object-id store)]
-    (cond-> store
-      (and (selector? object) (uniquely-identified-object? object))
-      (modify-to-non-selector object-id))))
-
 (defn- change-object-references-to-new-objects
   "For each subject, make a new object matching the template, marked as
   a selector when the subject is, and make it the subject's content.
@@ -204,7 +201,7 @@
   [store subject-ids template]
   (assert (not (uniquely-identified-object? template)))
   (reduce (fn [[store object-ids] subject-id]
-            (let [[store object-id] (create-possible-selector-entity
+            (let [[store object-id] (adjust-flavors-and-create-entity
                                      template subject-id subject-id
                                      :after false store)]
               [store (conj object-ids object-id)]))
@@ -328,11 +325,11 @@
                                    (id->entity renamed-object-id store)))
                     (merge-objects renamed-object-id donor-id))
             ;; If the rename made the object uniquely identified, it
-            ;; can no longer be a selector.
+            ;; can no longer be a selector, and the links holding it
+            ;; can no longer be transparent.
             store (cond-> store
                     renamed-object-id
-                    (modify-to-non-selector-if-identified
-                     renamed-object-id))]
+                    (update-flavors-for-becoming-named renamed-object-id))]
         ;; We might have set the content on a virtual item.
         ;; This will make sure any newly created item is selected.
         (add-following-selection-by-ids store client-id subject-ids)))))
@@ -376,8 +373,9 @@
   "For each subject that is a link whose source and target can legally
   be swapped, swap them. A subject that is an object whose
   corresponding past subject is a link is replaced by that link.
-  Select the swapped links as seen from their subjects' new
-  directions. Does nothing if no subject qualifies."
+  Swapped links lose any transparency. Select the swapped links
+  as seen from their subjects' new directions. Does nothing if no
+  subject qualifies."
   [store {:keys [subject-ids past-subject-ids session-state client-id]}]
   (let [candidate-ids (map (fn [id past-id]
                              (if (and (object-id? id)
@@ -402,7 +400,8 @@
                                   source (id->source store store-id)]
                               (-> store
                                   (update-target store-id source)
-                                  (update-source store-id target))))
+                                  (update-source store-id target)
+                                  (ensure-not-transparent store-id))))
                           store swapped-ids)]
         (add-following-selection-by-ids
          store client-id (map flip-id-direction swapped-ids))))))
@@ -456,11 +455,11 @@
                                    (id->entity renamed-object-id store)))
                     (merge-objects renamed-object-id donor-id))
             ;; If the naming made the object uniquely identified, it
-            ;; can no longer be a selector.
+            ;; can no longer be a selector, and the links holding it
+            ;; can no longer be transparent.
             store (cond-> store
                     renamed-object-id
-                    (modify-to-non-selector-if-identified
-                     renamed-object-id))]
+                    (update-flavors-for-becoming-named renamed-object-id))]
         (add-following-selection-by-ids
          store client-id (concat object-new-ids name-new-ids))))))
 
@@ -514,7 +513,7 @@
                                          store subject-id))]
                       :else
                       (let [[s1 object-id]
-                            (create-possible-selector-entity
+                            (adjust-flavors-and-create-entity
                              template subject-id subject-id :after false store)]
                         (if (= store
                                (abandon-problem-changes store s1 subject-id))

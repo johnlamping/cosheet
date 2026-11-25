@@ -155,11 +155,28 @@
   [entity]
   (seq (content->elements entity :selector)))
 
+(def transparent-mark
+  "The element that marks an element as transparent."
+  '(:transparent))
+
+(defn transparent-mark-elements
+  "Return the entity's elements that are transparent marks."
+  [entity]
+  (content->elements entity :transparent))
+
 (defn transparent?
   "Return whether the element is transparent: marked to show the object
   it holds expanded."
   [entity]
-  (seq (content->elements entity :transparent)))
+  (seq (transparent-mark-elements entity)))
+
+(defn transparency-allowed-to?
+  "Return true if a forward element that has the argument as its content
+  is allowed to be made transparent."
+  [entity]
+  (and (object? entity)
+       (not (uniquely-identified-object? entity))
+       (not (presumed-interned-object? entity))))
 
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
@@ -343,11 +360,10 @@
      identity-post-fn
      nil))))
 
-(defn mark-object-holders-transparent
-  "Return the template with a :transparent element added to each forward
-  element whose content is an object that is neither uniquely identified
-  nor presumed interned, except that any entity marked :selector is
-  left unchanged."
+(defn make-object-holders-transparent
+  "Return the template with transparency added to each forward element
+  that is not a selector and whose content is an object that permits
+  it."
   [template]
   (convert-unneeded-conflux-tree-objects
    (first
@@ -362,10 +378,8 @@
             (and (element? assembled)
                  (not (reverse? assembled))
                  (not (transparent? assembled))
-                 (object? contents)
-                 (not (uniquely-identified-object? contents))
-                 (not (presumed-interned-object? contents)))
-            (add-elements-to-entity [:transparent])))
+                 (transparency-allowed-to? contents))
+            (add-elements-to-entity [transparent-mark])))
         caller-data])
      nil))))
 

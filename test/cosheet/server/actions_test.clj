@@ -58,7 +58,7 @@
              [semantic :refer [entity->canonical-semantic semantic-elements
                                semantic-to-tree
                                pattern->fixed-term-query
-                               selector?
+                               selector? transparent? transparent-mark
                                mark-template-as-selector
                                replace-non-selector-anythings-with-nothing]]
              [session-state :refer [update-add-session-ephemeral-object]]
@@ -334,7 +334,29 @@
       (is (= (label->content (id->entity new-target (or new-store s))
                              name-label)
              "Fred"))
-      (is (= (id->source (or new-store s) holder-id) jane-id)))))
+      (is (= (id->source (or new-store s) holder-id) jane-id))))
+  ;; A transparent element holding an object with only a generic name
+  ;; loses its mark when its content becomes text, and when the object
+  ;; is given a real name.
+  (let [[s0 object-id] (add-object store
+                                   (make-tree-object [`("" (~name-label))]))
+        object (id->object object-id s0)
+        [s1 holder-id] (add-element s0 joe-id
+                                    (list object transparent-mark))
+        [s2 other-holder-id] (add-element s1 jane-id
+                                          (list object transparent-mark))
+        name-id (:item-id (first (matching-elements "" object)))]
+    (is (not (transparent?
+              (id->entity holder-id
+                          (do-set-content s2 {:subject-ids [holder-id]
+                                              :from "" :to "text"
+                                              :session-state
+                                              session-state})))))
+    (let [renamed (do-set-content s2 {:subject-ids [name-id]
+                                      :from "" :to "Fred"
+                                      :session-state session-state})]
+      (is (not (transparent? (id->entity holder-id renamed))))
+      (is (not (transparent? (id->entity other-holder-id renamed)))))))
 
 (deftest change-object-reference-by-name-test
   (let [header-id (first header-ids)
@@ -545,16 +567,19 @@
 (deftest do-reverse-direction-test
   (let [[s0 object-id] (add-object store (make-tree-object ["x"]))
         [s1 holder-id] (add-element s0 joe-id
-                                    (list (id->object object-id s0)))
+                                    (list (id->object object-id s0)
+                                          transparent-mark))
         [s2 nothing-id] (add-element s1 joe-id 'nothing)
         new-store (do-reverse-direction
                    s2 {:subject-ids [holder-id
                                      (make-reverse-item-id nothing-id)
                                      (:item-id joe-age)]
                        :session-state session-state})]
-    ;; A link between two objects is swapped.
+    ;; A link between two objects is swapped, and loses its
+    ;; transparent mark.
     (is (= (id->target new-store holder-id) object-id))
     (is (= (id->source new-store holder-id) joe-id))
+    (is (not (transparent? (id->entity holder-id new-store))))
     ;; A link between an object and a symbol is swapped.
     (is (= (id->target new-store nothing-id) 'nothing))
     (is (= (id->source new-store nothing-id) joe-id))
@@ -668,7 +693,17 @@
     (is (empty? (matching-elements :selector new-jane)))
     (is (empty? (matching-elements
                  :selector (id->entity (:item-id jane-age) new-store))))
-    (is (= (id->source new-store (:item-id jane-age)) 'nothing))))
+    (is (= (id->source new-store (:item-id jane-age)) 'nothing)))
+  ;; Naming an object held by a transparent element removes the mark.
+  (let [[s0 object-id] (add-object store
+                                   (make-tree-object [`("x" (~o3 :order))]))
+        object (id->object object-id s0)
+        [s1 holder-id] (add-element s0 joe-id
+                                    (list object transparent-mark))
+        x-id (:item-id (first (matching-elements "x" object)))
+        new-store (do-make-name s1 {:subject-ids [x-id]
+                                    :session-state session-state})]
+    (is (not (transparent? (id->entity holder-id new-store))))))
 
 (deftest do-make-object-test
   ;; When the argument is the content of an element (its subject is the

@@ -23,7 +23,7 @@
     [semantic :refer [semantic-elements selector-semantic-elements
                       semantic-label-elements semantic-to-tree
                       semantic-to-tree-excluding-elements
-                      entity->canonical-semantic selector?
+                      entity->canonical-semantic selector? transparent?
                       replace-non-selector-anythings-with-nothing]]
     [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                        hierarchy-node-descendants
@@ -748,7 +748,7 @@
   "Render a dom for an object none of whose elements are to be shown:
   a div with no sub-doms."
   [specification store]
-  (cond-> [:div {:class "object collapsed-object"}]
+  (cond-> [:div {:class "editable object collapsed-object"}]
     (:class specification) (add-attributes {:class (:class specification)})))
 
 (defmethod print-method
@@ -783,25 +783,25 @@
               (let [object-spec (-> specification
                                     (assoc :template (content template))
                                     (into-attributes {:class "object"}))]
-                ;; Show the content collapsed, with none of its
-                ;; elements, not even virtual ones, if the element and
-                ;; its content differ in being selectors, or if a
-                ;; non-selector element is reversed or its content is
-                ;; also the content of another element.
+                ;; Show the content expanded, with its elements, only
+                ;; if the element and its content are both selectors,
+                ;; or neither is and the element is transparent and
+                ;; forward. Otherwise, show it collapsed, with none of
+                ;; its elements, not even virtual elements.
                 (if (if (selector? element)
-                      (not (selector? contents))
-                      (or (selector? contents)
-                          (reverse? element)
-                          (> (count (containing-elements contents)) 1)))
+                      (selector? contents)
+                      (and (not (selector? contents))
+                           (transparent? element)
+                           (not (reverse? element))))
+                  (item-component
+                   contents
+                   (assoc object-spec :element-ids-to-exclude
+                          #{(flip-id-direction (:item-id element))}))
                   (make-component
                    (assoc object-spec
                           :relative-id (:item-id contents)
                           :render-dom render-collapsed-object-DOM-R
-                          :get-action-data default-get-action-data))
-                  (item-component
-                   contents
-                   (assoc object-spec :element-ids-to-exclude
-                          #{(flip-id-direction (:item-id element))}))))))))
+                          :get-action-data default-get-action-data))))))))
 
 (defn render-element-content-DOM-R
   "Given an item that represents an element, render a dom for

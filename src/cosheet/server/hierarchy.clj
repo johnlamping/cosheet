@@ -6,9 +6,9 @@
              query-impl
              [reporter-macros :refer [let-R]])
             (cosheet.server
-             [semantic :refer [entity->canonical-semantic semantic-elements
-                               semantic-label-elements
-                               selector->fixed-term-with-negations]])))
+             [flavors :refer [entity->canonical-semantic semantic-elements
+                              semantic-label-elements
+                              selector->fixed-term-with-negations]])))
 
 ;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,
 ;;; based on a multiset of "properties" associated with each leaf.

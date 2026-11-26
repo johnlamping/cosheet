@@ -17,9 +17,7 @@
                     repetition-avoiding-threaded-traverse]]
     [query :refer [matching-items]]
     [utils :refer [with-latest-value update-new-further-action]]
-    [task-queue :refer [add-task-with-priority]])
-   (cosheet.server
-    [semantic :refer [semantic-element?]])))
+    [task-queue :refer [add-task-with-priority]])))
 
 ;;; Utilities for creating and using orders.
 
@@ -183,11 +181,6 @@
     (make-reporter :calculator ordered-ids-calculator
                   :ids ids
                   :store store)))
-
-(defn orderable-entity?
-  "Return whether this entity should get an order position."
-  [entity]
-  (and (semantic-element? entity) (not (keyword? (content entity)))))
 
 (defn furthest-item
   "Given a list of items and a position,

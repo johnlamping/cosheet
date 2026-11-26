@@ -41,16 +41,18 @@
              [test-setup :refer [cyclic-and-shared-a-b-stores]])
             (cosheet.server
              [model-utils :refer :all]
-             [semantic :refer [semantic-element? semantic-elements
-                               semantic-to-tree
-                               semantic-to-tree-excluding-elements
-                               entity->canonical-semantic
-                               transform-pattern-toward-fixed-term
-                               pattern->fixed-term-query
-                               mark-template-as-selector
-                               replace-non-selector-anythings-with-nothing
-                               add-non-selector-to-fixed-term
-                               transparent? transparent-mark]]
+             [flavors :refer [semantic-element? semantic-elements
+                              semantic-to-tree ordered-semantic-to-tree
+                              object-semantic-to-tree
+                              semantic-to-tree-excluding-elements
+                              entity->canonical-semantic
+                              transform-pattern-toward-fixed-term
+                              pattern->fixed-term-query
+                              mark-template-as-selector
+                              replace-non-selector-anythings-with-nothing
+                              add-non-selector-to-fixed-term
+                              selector? selector-mark
+                              transparent? transparent-mark]]
              [order-utils :refer [ordered-entities]])
             ; :reload
             ))
@@ -201,29 +203,12 @@
       (is (not (transparent? (id->entity link1-id s5))))
       (is (not (transparent? (id->entity link2-id s5)))))))
 
-(deftest selector-object-semantic-to-tree-test
-  (let [unmarked (make-tree-object
-                  [`("x" (~o1 :order))
-                   `(~(make-tree-object [`("y" (~o2 :order))]) (~o3 :order))])
-        [s1 id] (add-object (new-element-store)
-                            (mark-template-as-selector unmarked))
-        ;; An unmarked element is left out.
-        [s2 _] (add-element s1 id `("z" (~o4 :order)))
-        ;; Once the object is named, and so interned, the object version
-        ;; still expands it, following only the marked elements.
-        [s3 _] (add-element s2 id `("N" (~name-label) (~o6 :order)))]
-    (is (check (canonicalize (selector-object-semantic-to-tree
-                              (id->object id s3)))
-               (canonicalize (semantic-to-tree unmarked))))))
-
 (deftest modify-to-non-selector-cycle-test
   ;; The store forbids links that would create a loop among non-interned
   ;; objects, but we can build one by linking two interned (named)
   ;; objects and then removing their names. That leaves a cycle: a to b
-  ;; via ab, and b to a via ba. repetition-avoiding-threaded-traverse
-  ;; keeps the traversal from looping; the forward links and objects are
-  ;; unmarked, while ba, whose direction disagrees with its (non-reverse)
-  ;; :selector wherever it is reached, keeps its marking.
+  ;; via ab, and b to a via ba. Only the links are marked :selector, so
+  ;; the traversal stops at the unmarked objects rather than looping.
   (let [[s1 a-id] (add-object
                    (new-element-store)
                    (make-tree-object [`("A" (~name-label) (~o1 :order))]))
@@ -231,10 +216,8 @@
                    s1 (make-tree-object [`("B" (~name-label) (~o2 :order))]))
         [s3 ab-id] (add-link s2 a-id b-id)
         [s4 ba-id] (add-link s3 b-id a-id)
-        [s5 _] (add-link s4 a-id :selector)
-        [s6 _] (add-link s5 b-id :selector)
-        [s7 _] (add-link s6 ab-id :selector)
-        [s8 _] (add-link s7 ba-id :selector)
+        [s5 _] (add-element s4 ab-id selector-mark)
+        [s6 _] (add-element s5 ba-id selector-mark)
         name-id (fn [s id nm]
                   (->> (id->object id s)
                        all-elements
@@ -242,23 +225,19 @@
                        first
                        :item-id))
         ;; Removing the names un-interns a and b, closing the cycle.
-        store (-> s8
-                  (remove-entity-by-id (name-id s8 a-id "A"))
-                  (remove-entity-by-id (name-id s8 b-id "B")))
-        marked? (fn [s id] (boolean (seq (content->elements
-                                          (id->entity id s) :selector))))]
+        store (-> s6
+                  (remove-entity-by-id (name-id s6 a-id "A"))
+                  (remove-entity-by-id (name-id s6 b-id "B")))]
     ;; The links could only be built because a and b were interned; now
     ;; they are not.
-    (is (interned-object? (id->object a-id s8)))
+    (is (interned-object? (id->object a-id s6)))
     (is (not (interned-object? (id->object a-id store))))
     (is (not (interned-object? (id->object b-id store))))
-    ;; The traversal terminates. a, b, and the forward link ab are
-    ;; unmarked; the reverse link ba keeps its :selector.
-    (let [from-a (modify-to-non-selector store a-id)]
-      (is (not (marked? from-a a-id)))
-      (is (not (marked? from-a b-id)))
-      (is (not (marked? from-a ab-id)))
-      (is (marked? from-a ba-id)))))
+    ;; The traversal terminates. ab is unmarked, and ba, reachable only
+    ;; through the unmarked b, keeps its :selector.
+    (let [from-ab (modify-to-non-selector store ab-id)]
+      (is (not (selector? (id->entity ab-id from-ab))))
+      (is (selector? (id->entity ba-id from-ab))))))
 
 (deftest changes-to-merge-elements-test
   (is (check (changes-to-merge-elements [2 3 4] [1 2 3])
@@ -812,7 +791,8 @@
         (is (not (transparent? (id->entity transparent-id s3))))))
     ;; Nor does a new object held by a selector.
     (let [[s2 selector-id] (add-isolated-element
-                            s1 `("subject" :selector (~o1 :order)))
+                            s1 (mark-template-as-selector
+                                `("subject" (~o1 :order))))
           [s3 _] (adjust-flavors-and-create-entity
                   object-template selector-id selector-id :before false s2)]
       (is (not (transparent? (id->entity selector-id s3)))))

@@ -17,8 +17,8 @@
             (cosheet.server
              [render-utils :refer [sequential-template?]]
              [model-utils :refer [create-possible-selector-entities]]
-             [semantic :refer [semantic-to-tree entity->canonical-semantic
-                               pattern->fixed-term-query]])))
+             [flavors :refer [semantic-to-tree entity->canonical-semantic
+                              pattern->fixed-term-query]])))
 
 ;;; This file contains the basic action data getters, plus utilities for them.
 ;;; Files with unique needs for action data getters define their own.

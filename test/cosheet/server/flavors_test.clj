@@ -1,4 +1,4 @@
-(ns cosheet.server.semantic-test
+(ns cosheet.server.flavors-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [orderable :refer [split initial]]
                      [entity :refer [link-type object-type name-label
@@ -26,7 +26,7 @@
             (cosheet
              [test-setup :refer [cyclic-and-shared-a-b-stores]])
             (cosheet.server
-             [semantic :refer :all]
+             [flavors :refer :all]
              [model-utils :refer [starting-store ordered-tabs-ids-R
                                   tab-topic]])
             ; :reload
@@ -162,7 +162,8 @@
 (deftest selector-semantic-to-tree-test
   (let [unmarked (make-tree-object
                   [`("x" (~o1 :order))
-                   `(~(make-tree-object [`("y" (~o2 :order))]) (~o3 :order))])
+                   `(~(make-tree-object [`("y" (~name-label) (~o2 :order))])
+                     (~o3 :order))])
         [s1 id] (add-object (new-element-store)
                             (mark-template-as-selector unmarked))
         ;; An unmarked element is left out.
@@ -171,19 +172,29 @@
         ;; this one, is left out too, since its :selector isn't :reverse.
         [s3 other-id] (add-object s2 (make-tree-object
                                       [`("other" (~o5 :order))]))
-        [s4 link-id] (add-link s3 other-id id)
-        [s5 _] (add-link s4 link-id :selector)
+        y-object (find-object-by-name s3 "y" (make-tree-object nil))
+        [s4 link-id] (add-link s3 other-id (:item-id y-object))
+        [s5 _] (add-element s4 link-id selector-mark)
         object (id->object id s5)]
     (is (seq (matching-elements "z" object)))
+    ;; The named "y" object is interned, so it is not expanded.
     (is (check (canonicalize (selector-semantic-to-tree object))
-               (canonicalize (semantic-to-tree unmarked))))
-    ;; From the other object, the marked link is followed, and the
-    ;; object it reaches is expanded the same way, while the other
-    ;; object's own unmarked element is left out.
-    (is (check (canonicalize (selector-semantic-to-tree
-                              (id->object other-id s5)))
-               (canonicalize (make-tree-object
-                              [(list (semantic-to-tree unmarked))]))))))
+               (canonicalize (make-tree-object ["x" `(~y-object)]))))))
+
+(deftest selector-object-semantic-to-tree-test
+  (let [unmarked (make-tree-object
+                  [`("x" (~o1 :order))
+                   `(~(make-tree-object [`("y" (~name-label) (~o2 :order))])
+                     (~o3 :order))])
+        [s1 id] (add-object (new-element-store)
+                            (mark-template-as-selector unmarked))
+        ;; An unmarked element is left out.
+        [s2 _] (add-element s1 id `("z" (~o4 :order)))
+        y-object (find-object-by-name s2 "y" (make-tree-object nil))]
+    ;; The named "y" object is interned, so it is not expanded.
+    (is (check (canonicalize (selector-object-semantic-to-tree
+                              (id->object id s2)))
+               (canonicalize (make-tree-object ["x" `(~y-object)]))))))
 
 (deftest transform-pattern-toward-fixed-term-test
   (let [pattern (make-tree-element
@@ -305,11 +316,12 @@
 (deftest selector?-test
   (let [[s1 selector-root-id] (add-isolated-element
                                (starting-store "starting-tab")
-                               `("thing" :selector
+                               `("thing" ~selector-mark
                                          ("child" (1 :order)
-                                                  ("grandchild" :selector)
-                                                  :selector)
-                                 (~(make-tree-object [4 :selector]) "object")))
+                                                  ("grandchild" ~selector-mark)
+                                                  ~selector-mark)
+                                 (~(make-tree-object [4 selector-mark])
+                                  "object")))
         [s non-selector-root-id] (add-isolated-element
                                   s1
                                   `("thing" ("child" (1 :order)
@@ -388,11 +400,11 @@
   (is (check (add-non-selector-to-fixed-term
               (make-tree-object [`(~(link-type-object "hi"))]))
              (make-tree-object [`(~(link-type-object "hi"))
-                                (make-not-query '(:selector))])))
+                                (make-not-query selector-mark)])))
   (is (check (add-non-selector-to-fixed-term
               `(nil (~(link-type-object "hi"))))
              `(nil (~(link-type-object "hi"))
-                   ~(make-not-query '(:selector))))))
+                   ~(make-not-query selector-mark)))))
 
 (deftest mark-template-as-selector-test
   (let [template (make-tree-object
@@ -404,15 +416,16 @@
                 ['("age" ("years" :selector) :selector)
                  (make-tree-element
                   (make-tree-object ['(1 :selector) :selector])
-                  ['(:selector :reverse)]
+                  [:selector]
                   :reverse)
                  ;; The "Fred" object should not be marked as a selector,
                  ;; since it is named.
                  `(~(make-tree-object [`("Fred" (~name-label))]) :selector)
                  :selector]))))
   ;; A primitive template becomes a marked element.
-  (is (check (mark-template-as-selector 'anything) '(anything :selector)))
-  (is (check (mark-template-as-selector "") '("" :selector)))
+  (is (check (mark-template-as-selector 'anything)
+             `(~'anything ~selector-mark)))
+  (is (check (mark-template-as-selector "") `("" ~selector-mark)))
   ;; A non-semantic element is not marked, and its sub-elements are not
   ;; visited, so a semantic sub-element it contains is left unmarked.
   (is (check (mark-template-as-selector
@@ -436,7 +449,7 @@
                 (make-tree-object
                  [`("z" (~a :selector) :selector)
                   '("y" :selector)
-                  (make-tree-element a-ref ['(:selector :reverse)] :reverse)
+                  (make-tree-element a-ref [:selector] :reverse)
                   :selector]))))))
 
 (deftest replace-non-selector-anythings-with-nothing-test
@@ -456,13 +469,15 @@
              (make-tree-object
               [(make-tree-element 'nothing ["x"] :reverse)])))
   ;; An entity marked :selector is left alone, including its parts.
-  (is (check (replace-non-selector-anythings-with-nothing
-              `(~'anything (~'anything :selector (~'anything 3)) "x"))
-             '(nothing (anything :selector (anything 3)) "x"))))
+  (is (check (canonicalize
+              (replace-non-selector-anythings-with-nothing
+               `(~'anything (~'anything ~selector-mark (~'anything 3)) "x")))
+             (canonicalize
+              `(~'nothing (~'anything ~selector-mark (~'anything 3)) "x")))))
 
 (deftest transparent?-test
   (is (transparent? `("x" ~transparent-mark)))
-  (is (not (transparent? '("x" :selector)))))
+  (is (not (transparent? `("x" ~selector-mark)))))
 
 (deftest transparency-allowed-to?-test
   (let [s0 (add-universal-objects (new-element-store))
@@ -496,9 +511,9 @@
                        ~transparent-mark)
                       (~label) "b"))))
     ;; A selector is left unchanged, down through its elements.
-    (is (check (make-object-holders-transparent
-                `("a" (~inner :selector (~inner))))
-               `("a" (~inner :selector (~inner)))))
+    (is (check (canonicalize (make-object-holders-transparent
+                             `("a" (~inner ~selector-mark (~inner)))))
+               (canonicalize `("a" (~inner ~selector-mark (~inner))))))
     ;; An already transparent holder is not marked again.
     (is (check (canonicalize (make-object-holders-transparent
                              `("a" (~inner ~transparent-mark))))

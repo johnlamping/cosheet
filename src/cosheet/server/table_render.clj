@@ -18,14 +18,14 @@
                                   table-row-condition-id
                                   table-column-headers-element
                                   table-row-condition-object
-                                  selector-object-semantic-to-tree
                                   column-header-template
                                   unspecified-column-header-template]]
-             [semantic :refer [semantic-to-tree semantic-elements
-                               pattern->fixed-term-query
-                               selector->fixed-term-query
-                               fixed-term-to-template
-                               add-non-selector-to-fixed-term]]
+             [flavors :refer [semantic-to-tree semantic-elements selector-mark
+                              selector-object-semantic-to-tree
+                              pattern->fixed-term-query
+                              selector->fixed-term-query
+                              fixed-term-to-template
+                              add-non-selector-to-fixed-term]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM
                                    condition-satisfiers
@@ -157,7 +157,7 @@
   (let-R [row-condition-object (id->updating-entity-R relative-id store)]
     (let [condition-elements (semantic-elements row-condition-object)
           spec-down (assoc (select-keys spec inherited-specification-keys)
-                           :template `(~'anything :selector)
+                           :template `(~'anything ~selector-mark)
                            :width 0.75)
           last-item (last (ordered-entities
                            (remove label-element? condition-elements)))

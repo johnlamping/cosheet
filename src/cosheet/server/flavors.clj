@@ -1,4 +1,4 @@
-(ns cosheet.server.semantic
+(ns cosheet.server.flavors
   (:require
    (cosheet
     [canonical :refer [canonicalize]]
@@ -16,9 +16,29 @@
                     repetition-avoiding-threaded-traverse]]
     [query :refer [make-not-query make-variable-query special-form?
                    variable-query? variable-name variable-qualifier
-                   variable-reference]])))
+                   variable-reference]])
+   (cosheet.server
+    [order-utils :refer [ordered-entities]])))
 
-;;; This file addrsses whether entities are semantic and/or selectors.
+;;; Entities can have various "flavors". These are interpretations
+;;; defined in terms of the basic entity structure. There are three
+;;; flavors, and an entity can have more than one of them:
+;;;   * Semantic: The entity can participate in a match of a user
+;;;     query.
+;;;   * Selector: The entity describes a user query, not part of the
+;;;     world model.
+;;;   * Transparent: The entity is an element whose content is an
+;;;     object that should be expanded in the UI when the element is
+;;;     displayed in the forward direction.
+
+;;; There is another set of weaker "flavors" that describe ways
+;;; entities may be used: queries, pattern, template, and generic.
+;;; There are handled later in this file.
+
+;;; This file handles the flavor of entities. But changing flavors in
+;;; the store is handled by model_utils.
+
+;;; Semantic flavor
 
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information
@@ -26,8 +46,11 @@
 ;;; matching a condition. We call the elements that do matter the
 ;;; semantic elements.
 
-;;; Specifically, a semantic element is one whose content is something
-;;; the user can enter, and is not an object marked :non-semantic.
+;;; Specifically, an object is semantic unless it is marked with
+;;; :non-semantic, and an element is semantic unless it is marked with
+;;; :non-semantic, or its content is non-semantic or is something the
+;;; user can't enter, like an order or a keyword.
+
 ;;; Note that this test depends on direction: the content of a reverse
 ;;; element is the link's target. So a link whose source is a
 ;;; non-semantic object is non-semantic seen from its target, but seen
@@ -39,12 +62,8 @@
 ;;; have an :order element even if it is non-semantic. (This happens
 ;;; with tabs.)
 
-;;; Note: transform-pattern-toward-fixed-term's handling of
-;;; :require-semantic needs to be kept in synch with the definition of
-;;; a semantic element.
-
 (defn semantic-element?
-  "Return true if an item counts as semantic information. An element
+  "Return true if an element counts as semantic information. An element
   whose content is an object marked :non-semantic does not."
   [immutable-entity]
    (let [cont (content immutable-entity)]
@@ -69,7 +88,8 @@
 (defn semantic-label-elements
   "Return the semantic elements of an entity that are labels."
   [entity]
-  (filter #(and (label-element? %) (semantic-element? %)) (all-elements entity)))
+  (filter #(and (label-element? %) (semantic-element? %))
+          (all-elements entity)))
 
 (defn semantic-non-label-elements
   "Return the semantic elements of an entity that are not labels."
@@ -130,30 +150,180 @@
   [entity]
   (canonicalize (semantic-to-tree entity)))
 
-(defn selector-marked-element?
-  "Return whether the element is marked with a :selector whose :reverse
-  information matches the orientation of the element."
-  [element]
-  (when-let [selector (first (content->elements element :selector))]
-    (= (reverse? element)
-       (boolean (seq (content->elements selector :reverse))))))
-
-(defn selector-semantic-elements
-  "Return the semantic elements of an entity that are marked with a
-  :selector whose orientation matches theirs."
+(defn orderable-entity?
+  "Return whether this entity should get an order position."
   [entity]
-  (filter selector-marked-element? (semantic-elements entity)))
+  (and (semantic-element? entity) (not (keyword? (content entity)))))
 
-(defn selector-semantic-to-tree
-  "Like semantic-to-tree, but only follows elements that are marked with
-  a :selector whose orientation matches theirs."
+(defn ordered-semantic-elements
+  "Return the semantic elements of an entity, in the order that the
+  :order information calls for."
   [immutable-entity]
-  (internal-semantic-to-tree immutable-entity selector-semantic-elements))
+  (ordered-entities (semantic-elements immutable-entity)))
+
+(defn ordered-semantic-to-tree
+  "Given an immutable entity, make a list representation of the
+  semantic information of the entity, putting elements in the order that the
+  :order information calls for."
+  [immutable-entity]
+  (internal-semantic-to-tree immutable-entity ordered-semantic-elements))
+
+(defn object-semantic-to-tree
+  "Given an immutable object, make a list representation of its semantic
+  information, even if the object is identified. Put elements in the
+  order that the :order information calls for."
+  [immutable-entity]
+  ;; internal-semantic-to-tree wouldn't expand an interned object, so
+  ;; do the first expansion here and call internal-semantic-to-tree on
+  ;; each of the resulting sub-elements.
+  (->> (ordered-semantic-elements immutable-entity)
+       (map ordered-semantic-to-tree)
+       make-tree-object))
+
+;;; Selector flavor
+
+;;; In the store, an entity is marked as a selector if it is intended
+;;; to be used as a query. This means that it should typically not be
+;;; returned as the result of a query. For example, a table's row
+;;; condition shouldn't be returned as one of the rows of a table. And
+;;; even part of a row condition shouldn't be returned for a query
+;;; that is looking for that part.
+
+;;; An entity is a selector if and only if it is marked with :selector.
+
+;;; Selector marks may only be added when an entity is first created,
+;;; never aftwerwards.  And named objects may never be marked as
+;;; selectors; if an object gains a name, any selector marking it had
+;;; must be removed.
+
+;;; Since a new entity can only create a loop by referencing an
+;;; interned object, and interned objects can never be selectors,
+;;; selector entities can never form loops. This accords with the
+;;; intent that selectors indicate specific queries; the query will be
+;;; everything reachable via selectors from its starting id.
+
+(def selector-mark
+  "The element that marks an entity as a selector."
+  '(:selector))
+
+(defn selector-marked-elements
+  "Return the entity's elements that are selector marks."
+  [entity]
+  (content->elements entity :selector))
 
 (defn selector?
   "Return whether the entity is a selector."
   [entity]
-  (seq (content->elements entity :selector)))
+  (seq (selector-marked-elements entity)))
+
+(defn mark-template-as-selector
+  "Return the template with a selector marking added to it and,
+  recursively, to each of its semantic elements and non-identified,
+  non-interned objects."
+  [template]
+  (if (primitive? template)
+    ;; Our recursion doesn't touch primitives, because it will have
+    ;; marked their holders as selectors. So if we start with a bare
+    ;; primitive, we have to handle it specially.
+    (make-tree-element template [selector-mark])
+    (convert-unneeded-conflux-tree-objects
+     (first
+      (repetition-avoiding-threaded-traverse
+       template
+       (fn [_ entity _ caller-data]
+         (if (or (and (element? entity) (semantic-element? entity))
+                 (and (object? entity)
+                      (not (uniquely-identified-object? entity))
+                      (not (presumed-interned-object? entity))))
+           [entity caller-data]
+           [[:entity/do-not-process entity] caller-data]))
+       (fn [_ assembled _ caller-data]
+         [(add-elements-to-entity assembled [selector-mark])
+          caller-data])
+       nil)))))
+
+(defn replace-non-selector-anythings-with-nothing
+  "Return the template with every 'anything value replaced by 'nothing,
+  except that any selector entity is left unchanged. Cycles and
+  objects reached by multiple paths are handled by
+  repetition-avoiding-threaded-traverse."
+  [template]
+  (convert-unneeded-conflux-tree-objects
+   (first
+    (repetition-avoiding-threaded-traverse
+     template
+     (fn [_parent entity _ caller-data]
+       [(cond (= entity 'anything) 'nothing
+              (selector? entity) [:entity/do-not-process entity]
+              :else entity)
+        caller-data])
+     identity-post-fn
+     nil))))
+
+(defn selector-semantic-elements
+  "Return the semantic elements of an entity that are selectors."
+  [entity]
+  (filter selector? (semantic-elements entity)))
+
+(defn selector-sub-entities
+  "Returns the selector entities, starting from the given one, that are
+  reachable via selectors. For this one function, the starting entity
+  may be an interned object, in the process of getting its selector
+  mark removed."
+  [entity]
+  (repetition-avoiding-threaded-traverse
+   ;; The traversal doesn't descend into interned objects. But the
+   ;; starting object may have just become interned, so start from
+   ;; a tree copy of its elements.
+   (if (interned-object? entity)
+     (make-tree-object (all-elements entity))
+     entity)
+   (fn [_ entity _ entities]
+     (if (selector? entity)
+       [entity (conj entities entity)]
+       [:entity/omit entities]))
+   nil
+   []))
+
+(defn selector-semantic-to-tree
+  "Like semantic-to-tree, but only includes entities that selectors. If
+  an object that isn't a selector is encountered as a content, it will
+  appear in the tree, but with no elements."
+  [immutable-entity]
+  (internal-semantic-to-tree immutable-entity
+                             (fn [entity]
+                               (when (selector? entity)
+                                 (selector-semantic-elements entity)))))
+
+(defn ordered-selector-semantic-elements
+  "Return the selector semantic elements of an entity, in the order that
+  their :order information calls for."
+  [entity]
+  (ordered-entities (selector-semantic-elements entity)))
+
+(defn selector-object-semantic-to-tree
+  "Like object-semantic-to-tree, but only includes entities that are
+  selectors."
+  [immutable-entity]
+  (->> (ordered-selector-semantic-elements immutable-entity)
+       (map (fn [element]
+              (internal-semantic-to-tree
+               element
+               (fn [entity] (when (selector? entity)
+                              (ordered-selector-semantic-elements entity))))))
+       make-tree-object))
+
+;;; Transparency flavor
+
+;;; The only entities that may be marked transparent are forward
+;;; non-selector elements whose content is a non-interned object. This
+;;; is indicated with a :transparent mark. (A reverse element with a
+;;; :transparent mark is not transparent.)
+
+;;; When a transparent element is displayed in the UI, the object that
+;;; is its content should be expanded. (Displayed selectors also
+;;; expand their non-interned object contents, without being
+;;; transparent.)
 
 (def transparent-mark
   "The element that marks an element as transparent."
@@ -177,6 +347,47 @@
   (and (object? entity)
        (not (uniquely-identified-object? entity))
        (not (presumed-interned-object? entity))))
+
+(defn make-object-holders-transparent
+  "Return the template with transparency added to each forward element
+  that is not a selector and whose content is an object that permits
+  it."
+  [template]
+  (convert-unneeded-conflux-tree-objects
+   (first
+    (repetition-avoiding-threaded-traverse
+     template
+     (fn [_ entity _ caller-data]
+       [(if (selector? entity) [:entity/do-not-process entity] entity)
+        caller-data])
+     (fn [_ assembled _ caller-data]
+       [(let [contents (content assembled)]
+          (cond-> assembled
+            (and (element? assembled)
+                 (not (reverse? assembled))
+                 (not (transparent? assembled))
+                 (transparency-allowed-to? contents))
+            (add-elements-to-entity [transparent-mark])))
+        caller-data])
+     nil))))
+
+;;; Weaker flavors
+
+;;; We have various list forms of entities for different purposes:
+;;;      query: a form suitable for use as a query. It can have nils,
+;;;             which means it can't be saved in the store. It may
+;;;             include non-semantic information, like :order to
+;;;             restrict what it matches.
+;;;    pattern: a form of a query that can be saved in the store. It
+;;;             uses 'anything for wildcards, where a query would have
+;;;             nil. We need to distiguish wildcards from an empty
+;;;             value, because the user might want to search for an
+;;;             empty value, and the only natural way to express that
+;;;             is with an empty value, distinct from a wildcard.
+;;;  template:  the list form for the semantic content of a new item.
+;;;             It may have 'anything as they are allowed in items.
+;;;    generic: a pattern or template that has '??? to indicate values
+;;;             that need to be filled in with unique strings.
 
 (defn transform-pattern-toward-fixed-term
   "Given a pattern, alter it in accordance with the options. Specifically:
@@ -310,111 +521,6 @@
   (assert (selector? selector-entity) selector-entity)
   (pattern->fixed-term-query (selector-semantic-to-tree selector-entity)))
 
-(defn mark-template-as-selector
-  "Return the template with a :selector element added to it and,
-  recursively, to each of its semantic elements and non-identified,
-  non-interned objects. When adding a :selector element to a reverse
-  link, add a :reverse sub-element. That allows recreating the
-  direction in which the template was traversed."
-  [template]
-  (if (primitive? template)
-    ;; Our recursion doesn't touch primitives, because it will have
-    ;; marked their holders as selectors. So if we start with a bare
-    ;; primitive, we have to handle it specially.
-    (make-tree-element template [:selector])
-    (convert-unneeded-conflux-tree-objects
-     (first
-      (repetition-avoiding-threaded-traverse
-       template
-       (fn [_ entity _ caller-data]
-         (if (or (and (element? entity) (semantic-element? entity))
-                 (and (object? entity)
-                      (not (uniquely-identified-object? entity))
-                      (not (presumed-interned-object? entity))))
-           [entity caller-data]
-           [[:entity/do-not-process entity] caller-data]))
-       (fn [_ assembled _ caller-data]
-         [(add-elements-to-entity
-           assembled [(if (and (element? assembled)
-                               (reverse? assembled))
-                        '(:selector :reverse)
-                        :selector)])
-          caller-data])
-       nil)))))
-
-(defn replace-non-selector-anythings-with-nothing
-  "Return the template with every 'anything value replaced by 'nothing,
-  except that any entity marked :selector is left unchanged. Cycles and
-  objects reached by multiple paths are handled by
-  repetition-avoiding-threaded-traverse."
-  [template]
-  (convert-unneeded-conflux-tree-objects
-   (first
-    (repetition-avoiding-threaded-traverse
-     template
-     (fn [_parent entity _ caller-data]
-       [(cond (= entity 'anything) 'nothing
-              (selector? entity) [:entity/do-not-process entity]
-              :else entity)
-        caller-data])
-     identity-post-fn
-     nil))))
-
-(defn make-object-holders-transparent
-  "Return the template with transparency added to each forward element
-  that is not a selector and whose content is an object that permits
-  it."
-  [template]
-  (convert-unneeded-conflux-tree-objects
-   (first
-    (repetition-avoiding-threaded-traverse
-     template
-     (fn [_ entity _ caller-data]
-       [(if (selector? entity) [:entity/do-not-process entity] entity)
-        caller-data])
-     (fn [_ assembled _ caller-data]
-       [(let [contents (content assembled)]
-          (cond-> assembled
-            (and (element? assembled)
-                 (not (reverse? assembled))
-                 (not (transparent? assembled))
-                 (transparency-allowed-to? contents))
-            (add-elements-to-entity [transparent-mark])))
-        caller-data])
-     nil))))
-
-(defn selector-marked-entities
-  "Returns the entities, starting from the one with the given id, that
-  carry the :selector markings that mark-template-as-selector
-  added. Does not recurse into interned objects or into unmarked
-  entities. Doesn't include an element if it's not marked with
-  :selector or the :reverse information on the :selector doesn't match
-  the orientation of the element.
-  The orientation restriction is for handling objects. Without it, it
-  could be possible recurse from an object to one that had referenced
-  it, by following the reference link in reverse. With the orientation
-  information, we can restrict the traversal to what was added to a
-  selector while it was a selector."
-  [store id]
-  (repetition-avoiding-threaded-traverse
-   (let [entity (id->entity id store)]
-     ;; The traversal doesn't descend into interned objects. But the
-     ;; starting object may have just become interned, so start from
-     ;; a tree copy of its elements.
-     (if (interned-object? entity)
-       (make-tree-object (all-elements entity))
-       entity))
-   (fn [_ entity _ entities]
-     (let [selector (first (content->elements entity :selector))]
-       (cond
-         (nil? selector) [:entity/omit entities]
-         (or (object? entity)
-             (= (reverse? entity)
-                (boolean (seq (content->elements selector :reverse)))))
-         [entity (conj entities entity)]
-         :else [:entity/omit entities])))
-   nil
-   []))
 
 (defn add-non-selector-to-fixed-term
   "Given a fixed-term pattern, return a pattern that additionally
@@ -423,23 +529,7 @@
   callers to this should generally filter the results to make sure
   they are not selectors."
   [pattern]
-  (add-elements-to-entity pattern [(make-not-query '(:selector))]))
-
-;;; We have various list forms of entities for different purposes:
-;;;      query: a form suitable for use as a query. It can have nils,
-;;;             which means it can't be saved in the store. It may
-;;;             include non-semantic information, like :order to
-;;;             restrict what it matches.
-;;;    pattern: a form of a query that can be saved in the store. It
-;;;             uses 'anything for wildcards, where a query would have
-;;;             nil. We need to distiguish wildcards from an empty
-;;;             value, because the user might want to search for an
-;;;             empty value, and the only natural way to express that
-;;;             is with an empty value, distinct from a wildcard.
-;;;  template:  the list form for the semantic content of a new item.
-;;;             It may have 'anything as they are allowed in items.
-;;;    generic: a pattern or template that has '??? to indicate values
-;;;             that need to be filled in with unique strings.
+  (add-elements-to-entity pattern [(make-not-query selector-mark)]))
 
 (defn fixed-term-to-template
   "Given a fixed-term, turn it into a template by removing any (nil :order),

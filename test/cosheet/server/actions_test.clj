@@ -48,19 +48,19 @@
                                   get-virtual-action-data]]
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [add-order-elements]]
-             [model-utils :refer [object-semantic-to-tree
-                                  label-object-template
+             [model-utils :refer [label-object-template
                                   update-add-object-with-order
                                   update-add-element-with-order-and-ephemeral
                                   tab-query tab-topic
                                   add-at-end-of-tabs
                                   tab-object-template]]
-             [semantic :refer [entity->canonical-semantic semantic-elements
-                               semantic-to-tree
-                               pattern->fixed-term-query
-                               selector? transparent? transparent-mark
-                               mark-template-as-selector
-                               replace-non-selector-anythings-with-nothing]]
+             [flavors :refer [entity->canonical-semantic semantic-elements
+                              semantic-to-tree object-semantic-to-tree
+                              pattern->fixed-term-query
+                              selector? selector-mark
+                              transparent? transparent-mark
+                              mark-template-as-selector
+                              replace-non-selector-anythings-with-nothing]]
              [session-state :refer [update-add-session-ephemeral-object]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]])
@@ -94,7 +94,7 @@
                           `(~'anything (~c2-label))]))
 (def table-list (add-order-elements
                  `(:x
-                   :selector
+                   ~selector-mark
                    (~(mark-template-as-selector
                       (make-tree-object row-condition-elements))
                     :row-condition)
@@ -274,9 +274,9 @@
   ;; Test that setting a column to 'anything does nothing.
   (let [[store columns-id] (add-isolated-element
                             store
-                            `(~'anything :column-headers :selector
-                              (~'anything :selector
-                               (~name-label (~o1 :order) :selector)
+                            `(~'anything :column-headers ~selector-mark
+                              (~'anything ~selector-mark
+                               (~name-label (~o1 :order) ~selector-mark)
                                (~o1 :order))))
         columns (id->entity columns-id store)
         column1 (first (matching-elements `(~'anything (~name-label))
@@ -292,16 +292,15 @@
   ;; Giving a selector object's generic name real content makes it
   ;; uniquely identified, so it stops being a selector.
   (let [[s1 name-id] (add-element store jane-id
-                                  `(~'anything (~name-label) :selector
+                                  `(~'anything (~name-label) ~selector-mark
                                     (~o5 :order)))
         new-store (do-set-content s1 {:subject-ids [name-id]
                                       :from "" :to "Fred"
                                       :session-state session-state})
         new-jane (id->entity jane-id new-store)]
     (is (uniquely-identified-object? new-jane))
-    (is (empty? (matching-elements :selector new-jane)))
-    (is (empty? (matching-elements
-                 :selector (id->entity (:item-id jane-age) new-store)))))
+    (is (not (selector? new-jane)))
+    (is (not (selector? (id->entity (:item-id jane-age) new-store)))))
   ;; A reverse element's content is the target of its link. Setting it
   ;; to text makes a new object holding the text, and re-points the
   ;; target to that object.
@@ -690,9 +689,8 @@
                                          :session-state session-state})
         new-jane (id->entity jane-id new-store)]
     (is (uniquely-identified-object? new-jane))
-    (is (empty? (matching-elements :selector new-jane)))
-    (is (empty? (matching-elements
-                 :selector (id->entity (:item-id jane-age) new-store))))
+    (is (not (selector? new-jane)))
+    (is (not (selector? (id->entity (:item-id jane-age) new-store))))
     (is (= (id->source new-store (:item-id jane-age)) 'nothing)))
   ;; Naming an object held by a transparent element removes the mark.
   (let [[s0 object-id] (add-object store
@@ -816,7 +814,7 @@
   ;; Test that deleting the only element of a column does nothing.
   (let [[store columns-id] (add-isolated-element
                             store
-                            `(~'anything :column-headers :selector
+                            `(~'anything :column-headers ~selector-mark
                               (~'anything
                                (~name-label (~o1 :order))
                                (~o1 :order))))

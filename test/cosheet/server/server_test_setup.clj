@@ -15,7 +15,7 @@
              store-impl
              mutable-store-impl)
             (cosheet.server
-             [order-utils :refer [orderable-entity?]])))
+             [flavors :refer [orderable-entity?]])))
 
 (defn run-renderer
   "Run the renderer, then run the resulting dom-R, to get the final

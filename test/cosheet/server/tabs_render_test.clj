@@ -20,7 +20,7 @@
              [model-utils :refer [starting-store add-at-end-of-tabs
                                   tab-object-template
                                   new-table-object-template]]
-             [semantic :refer [make-non-semantic-tree-object]]
+             [flavors :refer [make-non-semantic-tree-object]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data

@@ -18,7 +18,7 @@
    (cosheet.server
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R
                          remove-entity-by-id]]
-    [semantic :refer [make-non-semantic-tree-object]]
+    [flavors :refer [make-non-semantic-tree-object selector-mark]]
     [format-convert :refer [convert-to-current]]
     [render :refer [top-level-DOM-spec]]
     [dom-manager :refer [make-dom-manager add-root-dom remove-all-doms]])))
@@ -159,10 +159,10 @@
   [immutable-store]
   (add-object immutable-store
               (make-non-semantic-tree-object
-               '(:root-ephemeral
+               `(:root-ephemeral
                  ;; These hold the data that control batch edit mode.
-                 (anything :batch-query :selector)
-                 (anything :batch-stack :selector)))))
+                 (~'anything :batch-query ~selector-mark)
+                 (~'anything :batch-stack ~selector-mark)))))
 
 (defn add-session-ephemeral-object!
   "Add a session ephemeral object to the store, and return its id."

@@ -41,7 +41,7 @@
     [dom-manager :refer [client-id->action-data
                          client-id->relative-ids
                          relative-ids->client-id]]
-    [model-utils :refer [abandon-problem-changes ordered-semantic-to-tree
+    [model-utils :refer [abandon-problem-changes
                          create-possible-selector-entities
                          remove-semantic-elements label-object-template
                          table-row-template table-column-headers-id
@@ -53,11 +53,12 @@
                          ensure-not-transparent
                          remove-stale-transparency
                          update-flavors-for-becoming-named
-                         object-semantic-to-tree add-item-tab tabs-cleanup
+                         add-item-tab tabs-cleanup
                          tab-query]]
-    [semantic :refer [semantic-elements entity->canonical-semantic
-                      semantic-element? selector->fixed-term-query
-                      selector?]]
+    [flavors :refer [semantic-elements entity->canonical-semantic
+                     semantic-element? selector->fixed-term-query
+                     selector? ordered-semantic-to-tree
+                     object-semantic-to-tree]]
     [render-utils :refer [final-template]]
     [order-utils :refer [order-element-for-item]])))
 

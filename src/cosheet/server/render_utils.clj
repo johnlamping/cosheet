@@ -16,8 +16,8 @@
                                          canonical-extended-by?
                                          canonical-have-common-elaboration?]])
             (cosheet.server
-             [semantic :refer [semantic-elements entity->canonical-semantic
-                               selector->fixed-term selector?]])))
+             [flavors :refer [semantic-elements entity->canonical-semantic
+                              selector->fixed-term selector?]])))
 
 ;;; The following records hold definitions for templates for virtual items.
 

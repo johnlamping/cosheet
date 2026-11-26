@@ -41,8 +41,8 @@
              [order-utils :refer [ordered-entities]]
              [server-test-setup :refer [run-renderer add-order-elements]]
              [model-utils :refer [table-row-condition-object]]
-             [semantic :refer [semantic-to-tree semantic-elements
-                               mark-template-as-selector]]
+             [flavors :refer [semantic-to-tree semantic-elements
+                              mark-template-as-selector selector-mark]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -332,7 +332,7 @@
                           :get-action-data (default-AD)}]
              [:div {:class "wrapped-elements"}
               [:component {:template `(~'anything
-                                       :selector
+                                       ~selector-mark
                                        (~(id->object age-oid nil)))
                            :width 0.75
                            :element-ids-to-exclude #{(any)}
@@ -346,7 +346,7 @@
                           :width 0.75
                           :incoming-subject-is :sibling
                           :template (make-sequential-template
-                                     '(anything :selector)
+                                     `(~'anything ~selector-mark)
                                      '(anything))
                           :virtual-object-reference-template
                           (make-tree-object [`(~link-type)
@@ -359,7 +359,7 @@
                           :virtual true
                           :render-dom render-virtual-DOM}]
              [:div  {:class "wrapped-elements"}
-              [:component {:template '(anything :selector)
+              [:component {:template `(~'anything ~selector-mark)
                            :incoming-subject-is :sibling
                            :width 0.75
                            :relative-id :virtual
@@ -533,7 +533,7 @@
                              " column-header virtual-column")}
            [:component {:relative-id :virtual-label
                         :template (make-sequential-template
-                                   '(anything :selector)
+                                   `(~'anything ~selector-mark)
                                    '(anything))
                         :virtual-object-reference-template
                         (make-tree-object [`(~link-type)
@@ -548,7 +548,7 @@
                         :render-dom (virt-DOM)}]
            [:div {:class "wrapped-elements"}
             [:component {:relative-id :virtual-column
-                         :template '(anything :selector)
+                         :template `(~'anything ~selector-mark)
                          :width 0.75
                          :incoming-subject-is :sibling
                          :target-item-id c7-id

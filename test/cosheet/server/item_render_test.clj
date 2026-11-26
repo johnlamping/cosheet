@@ -21,9 +21,9 @@
                                   find-object-by-name]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [semantic :refer [semantic-label-elements
-                               semantic-non-label-elements
-                               transparent-mark]]
+             [flavors :refer [semantic-label-elements
+                              semantic-non-label-elements
+                              transparent-mark]]
              [hierarchy :refer [item-maps-by-elements
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]

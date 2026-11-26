@@ -13,7 +13,7 @@
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [new-table-object-template tab-query
                                   tab-object-template]]
-             [semantic :refer [semantic-elements]]
+             [flavors :refer [semantic-elements]]
              [render-utils :refer [hierarchy-node-DOM make-component
                                    make-sequential-template]]
              [item-render :refer [virtual-DOM-component

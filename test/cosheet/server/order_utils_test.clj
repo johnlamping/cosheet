@@ -24,7 +24,7 @@
             (cosheet.server
              [order-utils :refer :all]
              [model-utils :refer [remove-entity-by-id]]
-             [semantic :refer [semantic-to-tree semantic-element?]])
+             [flavors :refer [semantic-to-tree semantic-element?]])
             ; :reload
             ))
 

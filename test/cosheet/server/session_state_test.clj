@@ -24,7 +24,7 @@
              [session-state :refer :all]
              [item-render :refer [render-item-DOM-R]]
              [model-utils :refer [starting-store add-table]]
-             [semantic :refer [semantic-to-tree]]
+             [flavors :refer [semantic-to-tree]]
              [dom-manager :refer [relative-ids->client-id
                                   client-id->component]]
              [action-data :refer [get-id-action-data]])

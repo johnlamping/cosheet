@@ -3,8 +3,10 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [multiset-diff]]
+                      entity-impl
                       [test-utils :refer [check]])
-            (cosheet.server [hierarchy :refer :all :as hierarchy])
+            (cosheet.server [hierarchy :refer :all :as hierarchy]
+                            [flavors :refer [selector-mark]])
              ; :reload
             ))
 
@@ -409,25 +411,27 @@
   ;; them into queries.
   (let [h {::hierarchy/hierarchy-node true
            :properties {:a 1}
-           :leaves [{:item '(:j :a :selector)}]
+           :leaves [{:item `(:j :a ~selector-mark)}]
            :child-nodes [{::hierarchy/hierarchy-node true
                           :properties {:b 1}
-                          :leaves [{:item '(:j :a :b :selector)}]
+                          :leaves [{:item `(:j :a :b ~selector-mark)}]
                           :child-nodes [{::hierarchy/hierarchy-node true
                                          :properties {:c 1}
                                          :leaves
-                                         [{:item '(:j :a :b :c :selector)}
-                                          {:item '(:jj :a :b :c :selector)}]}]}
+                                         [{:item
+                                           `(:j :a :b :c ~selector-mark)}
+                                          {:item
+                                           `(:jj :a :b :c ~selector-mark)}]}]}
                          {::hierarchy/hierarchy-node true
                           :properties {}
-                          :leaves [{:item '(:k :a :selector)}]}]}]
+                          :leaves [{:item `(:k :a ~selector-mark)}]}]}]
     (is (check (set (hierarchy-node-descendant-cover h))
-               #{{:item '(:j :a :selector)}
-                 ;; Not {:item '(:j :a :b :selector)}
-                 ;; or {:item '(:j :a :b :c :selector)}
-                 {:item '(:jj :a :b :c :selector)}
-                 {:item '(:k :a :selector)}}))
+               #{{:item `(:j :a ~selector-mark)}
+                 ;; Not {:item `(:j :a :b ~selector-mark)}
+                 ;; or {:item `(:j :a :b :c ~selector-mark)}
+                 {:item `(:jj :a :b :c ~selector-mark)}
+                 {:item `(:k :a ~selector-mark)}}))
     (is (check (set (hierarchy-node-non-immediate-descendant-cover h))
-               #{{:item '(:j :a :b :selector)}
-                 ;; Not {:item '(:j :a :b :c :selector)}
-                 {:item '(:jj :a :b :c :selector)}}))))
+               #{{:item `(:j :a :b ~selector-mark)}
+                 ;; Not {:item `(:j :a :b :c ~selector-mark)}
+                 {:item `(:jj :a :b :c ~selector-mark)}}))))

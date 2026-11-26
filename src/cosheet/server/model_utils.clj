@@ -48,19 +48,21 @@
                    extended-by?]]
     [query-calculator :refer [matching-item-ids-R]])
    (cosheet.server
-    [order-utils :refer [orderable-entity? ordered-ids-R ordered-entities
+    [order-utils :refer [ordered-ids-R ordered-entities
                          order-element-for-item furthest-item]]
-    [semantic :refer [semantic-element? semantic-elements
-                      internal-semantic-to-tree semantic-to-tree
-                      selector-semantic-elements selector-semantic-to-tree
-                      selector? transparent? transparency-allowed-to?
-                      transparent-mark transparent-mark-elements
-                      mark-template-as-selector
-                      make-object-holders-transparent
-                      replace-non-selector-anythings-with-nothing
-                      selector-marked-entities
-                      fixed-term-to-template
-                      make-non-semantic-tree-object]])))
+    [flavors :refer [semantic-element? orderable-entity? semantic-elements
+                     internal-semantic-to-tree semantic-to-tree
+                     selector-semantic-elements selector-semantic-to-tree
+                     selector? selector-mark selector-marked-elements
+                     transparent? transparency-allowed-to?
+                     transparent-mark transparent-mark-elements
+                     mark-template-as-selector
+                     make-object-holders-transparent
+                     replace-non-selector-anythings-with-nothing
+                     selector-sub-entities
+                     selector-object-semantic-to-tree
+                     fixed-term-to-template
+                     make-non-semantic-tree-object]])))
 
 ;;; Utilities that know about how information is encoded in terms of the store.
 
@@ -104,12 +106,6 @@
             (let [[new-string store] (get-new-string store)]
               [(conj strings new-string) store]))
           [[] store] (range n)))
-
-(defn ordered-semantic-elements
-  "Return the semantic elements of an entity, in the order that the
-  :order information calls for."
-  [immutable-entity]
-  (ordered-entities (semantic-elements immutable-entity)))
 
 (defn- only-name-and-type-semantic-elements?
   "Return true if every semantic element of the object with the given id
@@ -179,6 +175,9 @@
   (reduce (fn [store id] (remove-link store id))
           store (links-to-remove store nil id)))
 
+;;; TODO: !!! This is currently only used by the obsolete batch-edit
+;;; code, and in some unit tests. Try to get rid of it once batch-edit
+;;; is rewritten.
 (defn remove-semantic-elements
   "Return the store with all semantic elements of the given id removed."
   [immutable-store id]
@@ -187,54 +186,6 @@
             immutable-store
             (map (fn [element] (store-item-id (:item-id element)))
                  (semantic-elements item)))))
-
-(defn ordered-semantic-to-tree
-  "Given an immutable entity, make a list representation of the
-  semantic information of the entity, putting elements in the order that the
-  :order information calls for."
-  [immutable-entity]
-  (internal-semantic-to-tree immutable-entity ordered-semantic-elements))
-
-;;; In the store, an entity is marked as a selector if it is intended
-;;; to be used as a query. This means that it should typically not be
-;;; returned as the result of a query. For example, a table's row
-;;; condition shouldn't be returned as one of the rows of a table. And
-;;; even part of a row condition shouldn't be returned for a query
-;;; that is looking for that part.
-
-;;; To indicate that an entity is a selector, it is marked with an
-;;; element whose content is :selector. Further, all of its recursive
-;;; sub-parts (not counting interned objects) are also considered to
-;;; be selectors. In addition, reverse links encountered in the
-;;; recursion have their :selector element marked with :reversed.
-
-(defn ordered-selector-semantic-elements
-  "Return the selector-marked semantic elements of an entity, in the
-  order that the :order information calls for."
-  [entity]
-  (ordered-entities (selector-semantic-elements entity)))
-
-(defn object-semantic-to-tree
-  "Given an immutable object, make a list representation of its semantic
-  information, even if the object is identified. Put elements in the
-  order that the :order information calls for."
-  [immutable-entity]
-  ;; internal-semantic-to-tree wouldn't expand an interned object, so
-  ;; do the first expansion here and call internal-semantic-to-tree on
-  ;; each of the resulting sub-elements.
-  (->> (ordered-semantic-elements immutable-entity)
-       (map ordered-semantic-to-tree)
-       make-tree-object))
-
-(defn selector-object-semantic-to-tree
-  "Like object-semantic-to-tree, but only follows elements that are
-  marked with a :selector whose orientation matches theirs."
-  [immutable-entity]
-  (->> (ordered-selector-semantic-elements immutable-entity)
-       (map (fn [element]
-              (internal-semantic-to-tree
-               element ordered-selector-semantic-elements)))
-       make-tree-object))
 
 (defn- replace-anything-content-with-nothing
   "Return the store with the content of the element replaced by
@@ -249,12 +200,11 @@
   [store id]
   (reduce (fn [store entity]
             (cond-> (reduce remove-entity-by-id store
-                            (map entity-key
-                                 (content->elements entity :selector)))
+                            (map entity-key (selector-marked-elements entity)))
               (and (element? entity) (= (content entity) 'anything))
               (replace-anything-content-with-nothing entity)))
           store
-          (selector-marked-entities store id)))
+          (selector-sub-entities (id->entity id store))))
 
 (defn ensure-transparent
   "Return the store with the link with the given id transparent, if it
@@ -926,9 +876,9 @@
    [:table
     `(~(make-tree-object
         (conj (map mark-template-as-selector row-condition-elements)
-              :selector))
+              selector-mark))
       :row-condition)
-    (concat '(anything :column-headers :selector)
+    (concat `(~'anything :column-headers ~selector-mark)
             (map mark-template-as-selector header-elements))]))
 
 (def new-table-object-template
@@ -949,7 +899,7 @@
   ;; of the :column-headers entity.
   `(~'anything ; a keyword here would make this non-semantic and hence
                ; not orderable
-    :selector
+    ~selector-mark
     ) 
   )
 

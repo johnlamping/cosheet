@@ -22,8 +22,9 @@
             (cosheet.server [action-data :refer :all]
                              [order-utils :refer [ordered-entities
                                                   order-recursively]]
-                             [semantic :refer [semantic-to-tree
-                                               semantic-elements]]
+                             [flavors :refer [semantic-to-tree
+                                              semantic-elements
+                                              selector-mark]]
                              [server-test-setup :refer [add-order-elements]]
                              [render-utils :refer [make-sequential-template]])
             ; :reload
@@ -77,7 +78,7 @@
                 (45 (~o4 :order)
                     (~age-label-object (~o4 :order)))))
 (def jane-list `("Jane" (~o1 :order)
-                 (:selector)
+                 ~selector-mark
                  ("female" (~o2 :order))
                  (45 (~o3 :order)
                      (~age-label-object (~o3 :order)))))

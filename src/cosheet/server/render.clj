@@ -11,7 +11,7 @@
                       [hiccup-utils :refer [add-attributes]])
             (cosheet.server
              [model-utils :refer [ordered-tabs-ids-R tab-topic table-item?]]
-             [semantic :refer [semantic-element? semantic-to-tree]]
+             [flavors :refer [semantic-element? semantic-to-tree]]
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM-R]]
              [table-render :refer [render-table-DOM-R]]
